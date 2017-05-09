@@ -18,7 +18,7 @@ After your contribution is included, you will be listed in CONTRIBUTORS.txt and/
 
 ## How to Contribute
 
-Our production vision and high level requirements are explained in the [BRIEF.md](BRIEF.md)
+Our production vision and high level requirements are explained in the [fontbakery/BRIEF.md](https://github.com/googlefonts/fontbakery/blob/master/BRIEF.md)
 
 We use Github's Issue Tracker to report and track bugs, map out future improvements, set priorities and assign people to them.
 
