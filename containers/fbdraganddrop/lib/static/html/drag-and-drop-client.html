@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>FontBakery</title>
+    <script src="/static/js/bower_components/requirejs/require.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Monoton|Raleway:300,400" rel="stylesheet">
+
+    <!-- FIXME: use some material design framework instead -->
+    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <style>
+
+        html {
+            font-size: 20px;
+            font-family: Raleway, sans-serif;
+        }
+        article, header {
+            width: 80%;
+            margin: 0 auto;
+        }
+        header img{
+            display: block;
+            margin: 0 auto;
+        }
+
+        h1, h2{
+            font-family: Raleway, sans-serif;
+            font-weight: 300;
+        }
+        h1{
+            font-size: 2em;
+        }
+        h2{
+            font-size: 1.7em;
+        }
+        em {
+            color: orange;
+            display: block;
+            font-family: 'Monoton', cursive;
+            font-size: 4em;
+            text-align: center;
+        }
+
+        input,
+        button {
+            display: block;
+            width: 100%;
+            padding: .5em;
+            font-family: Raleway, sans-serif;
+            font-size: 1em;
+        }
+
+
+        input, .drop-fonts, button {
+            background: white;
+            border: 5px solid grey;
+            box-sizing: border-box;
+
+        }
+        .general-controls, .drop-fonts, button{
+            text-align: center;
+        }
+
+        input {
+            margin-bottom : 1em;
+            background: lightyellow;
+            padding: .5em;
+            font-size: 1.3em;
+        }
+        .drop-fonts:hover, button:hover {
+            background: #b3eeff; /* this is also the background color of the fb logo */
+
+        }
+
+        .drop-fonts:hover em, button:hover em{
+            color: white
+        }
+
+        .filename {
+            white-space: nowrap;
+            display: block:
+            padding-left: 1em;
+        }
+
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 3px 10px;
+            border: 1px solid #ddd;
+        }
+
+        td {
+            vertical-align: top;
+        }
+    </style>
+    <script>
+    require(['/static/js/bootstrap.js'], function(require) {
+        require(['main'], function(main){main()});
+    });
+    </script>
+</head>
+<body>
+<div class="templates" style="display:none">
+    <div class="sending-interface">
+        <div class="drop-fonts"><p><em>Drop</em> the <em>font files</em> here or click to choose.</p></div>
+        <div class="interface">
+            <ol class="files-controls"></ol>
+            <div class="general-controls"></p></div>
+        </div>
+        <div id="results"></div>
+    </div>
+    <div class="reporting-interface">reporting ...</div>
+</div>
+<header>
+        <img alt="Font Bakery"src="/static/img/logo_200px.png"/>
+        <p>Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.</p>
+        <p>Font Bakery will run inter-family checks if you drop more than one font.</p>
+</header>
+<article class="active-interface"></article>
+</body>
+</html>

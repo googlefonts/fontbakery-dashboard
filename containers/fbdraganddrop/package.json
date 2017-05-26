@@ -1,0 +1,25 @@
+{
+  "name": "fbdraganddrop",
+  "version": "0.0.1",
+  "description": "A drag and drop web interface to Font Bakery check-ttf.",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node lib/server/main.js"
+  },
+  "keywords": [
+    "font",
+    "testing",
+    "fontbakery"
+  ],
+  "author": "Lasse Fister <commander@graphicore.de>",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "amqplib": "^0.5.1",
+    "body-parser": "^1.17.2",
+    "express": "^4.15.3",
+    "rethinkdbdash": "^2.3.28",
+    "socketio": "^1.0.0"
+  }
+}
