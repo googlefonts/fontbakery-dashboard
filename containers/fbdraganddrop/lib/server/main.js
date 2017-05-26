@@ -25,6 +25,7 @@ var ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep);
  */
 function Server(portNum,  amqpSetup, rethinkSetup) {
     this._portNum = portNum;
+    this._dbName = rethinkSetup.db;
     this._dbTable = 'draganddrop';
     this._app = express();
     this._server = http.createServer(this._app);
@@ -37,7 +38,11 @@ function Server(portNum,  amqpSetup, rethinkSetup) {
     Promise.all([
             this._initDB()
           , this._initAmqp()
-    ]).then(this.listen.bind(this));
+    ]).then(this.listen.bind(this))
+    .catch(function(err){
+        console.error('Can\'t initialize server.', err)
+        process.exit(1);
+    });
 
     this._app.get('/', this.fbDNDIndex.bind(this));
     this._app.use('/static', express.static('lib/static'));
@@ -52,20 +57,42 @@ function Server(portNum,  amqpSetup, rethinkSetup) {
 var _p = Server.prototype;
 
 _p._initDB = function() {
-    return this._r.tableCreate(this._dbTable)
-           .run()
-           //.then(function(response) {
-           //     // pass
-           //})
-            .error(function(err) {
-                // it's not an error if the table already exists
-                console.error('Error while creating table.', err);
+    var createDatabase, createTable;
+
+    createDatabase = function() {
+        return this._r.dbCreate(this._dbName)
+            .run()
+            //.then(function(response) {/* pass */})
+            .error(function(err){
+                if (err.message.indexOf('already exists') !== -1)
+                    return;
                 throw err;
             });
+
+    }.bind(this);
+
+    createTable = function() {
+        return this._r.tableCreate(this._dbTable)
+            .run()
+            //.then(function(response) {/* pass */})
+            .error(function(err){
+            if (err.message.indexOf('already exists') !== -1)
+                return;
+            throw err;
+        });
+    }.bind(this);
+
+    return createDatabase()
+        .then(createTable)
+        .error(function(err) {
+            // it's not an error if the table already exists
+            console.error('Error while initializing database.', err);
+            throw err;
+        });
 };
 
 _p._initAmqp = function() {
-    return amqplib.connect(amqpSetup.host)
+    return amqplib.connect('amqp://' + amqpSetup.host)
             .then(function(connection) {
                 this._amqpConnection = connection;
             }.bind(this))
@@ -137,7 +164,7 @@ _p.fbDNDReport = function(req, res) {
     var docid = req.param('docid');
 
     console.log('fbDNDReport docid:', docid);
-    // if there's no docid with docid return 404
+    // TODO: if there's no docid with docid return 404
 
     // at the client:
     // <script src="/socket.io/socket.io.js"></script>
@@ -164,7 +191,7 @@ function mergeArrays(arrays) {
 }
 
 _p._onDocCreated = function(req, res, dbResponse) {
-
+    console.error('dbResponse', dbResponse, Array.from(arguments).slice(3));
     var docid = dbResponse.generated_keys[0];
     res.setHeader('Content-Type', 'application/json');
     res.send(JSON.stringify({docid: docid, url: 'report/' + docid}));
@@ -220,7 +247,7 @@ _p.fbDNDReceive = function(req, res) {
     this._r.table(this._dbTable)
            .insert(doc)
             .run()
-            .then(this._onDocCreated.bind(this, res))
+            .then(this._onDocCreated.bind(this, req, res))
             .error(function(err) {
                 console.error('Creating a doc failed ', err);
             });
@@ -307,7 +334,6 @@ _p._fbDNDRethinkChangeFeed = function(cursor, socket, channel, data) {
  * data.docid is the rethink db document UUID.
  */
 _p._subscribeToDoc = function(socket, data) {
-    // FIXME: query just one document
     this._r.table(this._dbTable)
         .get(data.docid)
         .changes({includeInitial: true, squash:true})
@@ -339,7 +365,7 @@ if (typeof require != 'undefined' && require.main==module) {
 
     var rethinkSetup = {
             host: process.env.RETHINKDB_DRIVER_SERVICE_HOST
-          , port: 28015
+          , port: process.env.RETHINKDB_DRIVER_SERVICE_PORT
           , db: 'fontbakery'
         }
       , amqpSetup = {

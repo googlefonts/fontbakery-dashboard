@@ -1,0 +1,32 @@
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: www-fontbakery
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        run: www-fontbakery
+    spec:
+      containers:
+      - name: www-fontbakery
+        image: localhost:5000/fontbakery/www-fontbakery:1
+        ports:
+        - containerPort: 3000
+        workingDir: /var/www-fontbakery
+        command: ["npm", "start"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: www-fontbakery
+  labels:
+    run: www-fontbakery
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 80
+      targetPort: 3000
+  selector:
+    run: www-fontbakery

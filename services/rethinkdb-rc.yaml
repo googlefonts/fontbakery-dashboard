@@ -16,7 +16,7 @@ spec:
         role: replicas
     spec:
       containers:
-      - image: gcr.io/fontbakery/rethinkdb-2.3.5
+      - image: localhost:5000/fontbakery/rethinkdb-2.3.5
         name: rethinkdb
         env:
         - name: POD_NAMESPACE

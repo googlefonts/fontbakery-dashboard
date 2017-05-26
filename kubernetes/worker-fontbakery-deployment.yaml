@@ -1,0 +1,14 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: worker-fontbakery
+spec:
+  replicas: 8
+  template:
+    metadata:
+      labels:
+        run: worker-fontbakery
+    spec:
+      containers:
+      - name: worker-fontbakery
+        image: localhost:5000/fontbakery/fontbakery-draganddrop-worker:1

@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
       - name: dashboard
-        image: gcr.io/fontbakery/fb-dashboard-1
+        image: localhost:5000/fontbakery/fb-dashboard-1
         ports:
         - containerPort: 5000
