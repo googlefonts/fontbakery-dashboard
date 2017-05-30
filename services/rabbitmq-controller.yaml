@@ -20,3 +20,17 @@ spec:
         resources:
           limits:
             cpu: 100m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-management
+  labels:
+    component: rabbitmq
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 8888
+      targetPort: 15672
+  selector:
+    component: rabbitmq

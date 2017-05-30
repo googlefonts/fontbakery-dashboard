@@ -11,10 +11,10 @@ spec:
     spec:
       containers:
       - name: c
-        image: gcr.io/fontbakery/job-fb-dispatcher-1
+        image: localhost:5000/fontbakery/job-fb-dispatcher-1
         env:
         - name: QUEUE
           value: job1
         - name: FONTBAKERY_LOCAL_DEVEL
-          value: 1
+          value: "1"
       restartPolicy: OnFailure

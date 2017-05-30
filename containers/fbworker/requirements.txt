@@ -1,5 +1,4 @@
-python-dateutil
 pika
 rethinkdb
-
+pytz
 

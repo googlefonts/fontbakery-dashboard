@@ -94,9 +94,11 @@ _p._initDB = function() {
 _p._initAmqp = function() {
     return amqplib.connect('amqp://' + amqpSetup.host)
             .then(function(connection) {
+                process.once('SIGINT', connection.close.bind(connection));
+
                 this._amqpConnection = connection;
             }.bind(this))
-                        .error(function(err) {
+            .catch(function(err) {
                 // it's not an error if the table already exists
                 console.error('Error while connecting to queue.', err);
                 throw err;
@@ -177,37 +179,38 @@ _p.fbDNDReport = function(req, res) {
 };
 
 /**
- * Straight copy from the clients Controller.js
+ * Almost straight copy from the clients Controller.js
  */
 function mergeArrays(arrays) {
     var jobSize = arrays.reduce(function(prev, cur){
                                 return prev + cur.byteLength; }, 0)
       , result, i, l, offset
       ;
-    result = new Uint8Array(jobSize);
+    result = new Buffer(jobSize);
     for(i=0,l=arrays.length,offset=0; i<l;offset+=arrays[i].byteLength, i++)
-        result.set(new Uint8Array(arrays[i]), offset);
-    return result.buffer;
+        result.set(new Buffer(arrays[i].buffer), offset);
+    return result;
 }
 
 _p._onDocCreated = function(req, res, dbResponse) {
-    console.error('dbResponse', dbResponse, Array.from(arguments).slice(3));
+    console.log('_onDocCreated','dbResponse', dbResponse);
     var docid = dbResponse.generated_keys[0];
+
+    console.log('sending response')
+
     res.setHeader('Content-Type', 'application/json');
     res.send(JSON.stringify({docid: docid, url: 'report/' + docid}));
 
+    console.log('creating amqp channel')
 
-
-    this._amqpConnection.createChannel(function(err, channel) {
-        if(err) {
-            console.err('Can\'t create channel.', err);
-            return;
-        }
+    this._amqpConnection.createChannel().then(function(channel) {
+        console.log('got channel')
         var exchange = ''
-          , routingKey = 'drag_and_drop_queue'
+          , queue = 'drag_and_drop_queue'
           , options = {
                         // TODO: do we need persistence here?
                         persistent: true
+                        // this? , deliveryMode: true
                     }
             // a buffer
           , content
@@ -217,9 +220,20 @@ _p._onDocCreated = function(req, res, dbResponse) {
           , docidLen = new Uint32Array(1)
           ;
         docidLen[0] = docidArray.byteLength;
-        content = mergeArrays([docidLen, docidArray, req.body]);
-        channel.publish(exchange, routingKey, content.buffer, options);
 
+        console.log('docidLen is ', docidArray.byteLength , 'and looks like this:', docidLen.buffer)
+
+        content = mergeArrays([docidLen, docidArray, req.body]);
+        function onAssert(){
+            console.log('sendToQueue', 'queue', queue, content.byteLength, 'Bytes', typeof content, content, content[0], content[1], content[2], content[3])
+            channel.sendToQueue(queue, content, options);
+            return channel.close();
+        }
+        channel.assertQueue(queue, {durable: true}).then(onAssert)
+    })
+    .catch(function(err) {
+        console.error('Can\'t create channel.', err);
+        return;
     });
 };
 
@@ -236,13 +250,15 @@ _p._onDocCreated = function(req, res, dbResponse) {
  *         must do the static urls.
  */
 _p.fbDNDReceive = function(req, res) {
-    var files = this.unpack(req.body)
-      , doc = {
+    console.log('fbDNDReceive', req.body.byteLength, 'Bytes')
+
+    // var files = this.unpack(req.body)
+    var doc = {
            isFinished: false
-         , files: files.map(function(file){return {filename: file[0].filename};})
+         , files: {}
+         , created: new Date()
         }
       ;
-
 
     this._r.table(this._dbTable)
            .insert(doc)
@@ -275,9 +291,8 @@ _p.fbDNDReceive = function(req, res) {
  */
 _p.fbDNDSocketConnect = function(socket) {
     // wait for docid request ...
-
     socket.on('subscribe-changes', function (data) {
-        console.log('changes subscription requested for', data);
+        console.log('fbDNDSocketConnectchanges subscription requested for', data);
         // simple sanitation, all strings are valid requests so far
         if(typeof data.docid !== 'string')
             // this is actually required
@@ -320,7 +335,12 @@ _p.fbDNDSocketConnect = function(socket) {
  *      close socket
  *      close changefeed
  */
-_p._fbDNDRethinkChangeFeed = function(cursor, socket, channel, data) {
+_p._fbDNDRethinkChangeFeed = function(cursor, socket, channel, err, data) {
+    if (err) {
+        // TODO: Handle error
+        console.error('Fail receivng the changes feed.', err);
+        return;
+    }
     socket.emit(channel, data);
     if(data.isFinished) {
         // don't use close=true if only the namespace needs closing
@@ -338,27 +358,14 @@ _p._subscribeToDoc = function(socket, data) {
         .get(data.docid)
         .changes({includeInitial: true, squash:true})
         .run(function(err, cursor) {
-            if (err) {
-                // TODO: Handle error
-                console.error('subscribing to changes failed', err);
-                return;
+            if(err) {
+                console.error('Can\'t run query for changes.', err);
+                throw err;
             }
-
-            cursor.on("error", function(error) {
-                // Handle error, loggong it should suffice in this case
-                // I dont't expect this actually to be a problem for the
-                // beginning.
-                console.error('cursor error for docid', data.docid, error);
-            });
-
-            // calls socket.emit('changes', message)
-            // let's hope this cursor is removed when the socket changes
             cursor.each(this._fbDNDRethinkChangeFeed.bind(this
                                         , cursor, socket, 'changes'));
-        }.bind(this));
+        }.bind(this))
 };
-
-
 
 
 if (typeof require != 'undefined' && require.main==module) {

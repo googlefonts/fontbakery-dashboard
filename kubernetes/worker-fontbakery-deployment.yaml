@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: worker-fontbakery
 spec:
-  replicas: 8
+  replicas: 1
   template:
     metadata:
       labels:
