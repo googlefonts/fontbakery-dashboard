@@ -33,4 +33,4 @@ RUN pip install -r requirements.txt
 
 ADD fontbakery-dragandrop-worker.py /
 
-CMD ["python2", "fontbakery-dragandrop-worker.py"]
+CMD ["python2",  "-u", "fontbakery-dragandrop-worker.py"]
