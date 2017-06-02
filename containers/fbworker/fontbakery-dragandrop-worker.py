@@ -153,6 +153,7 @@ def consume(dbTableContext, ch, method, properties, body): #pylint: disable=unus
   logging.info('Consuming ...')
   logging.debug('consuming args: %s %s', method, properties)
   tmpDirectory =  tempfile.mkdtemp()
+  logging.info('Tempdir: %s', tmpDirectory)
   job = None
   docid = None
   try:
@@ -232,7 +233,7 @@ def setLoglevel(loglevel):
   logging.basicConfig(level=numeric_level)
 
 def main():
-  setLoglevel(os.environ.get("WORKER_LOG_LEVEL", 'INFO'))
+  setLoglevel(os.environ.get("FONTBAKERY_WORKER_LOG_LEVEL", 'INFO'))
 
   db_host = os.environ.get("RETHINKDB_DRIVER_SERVICE_HOST")
   db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", 28015)
