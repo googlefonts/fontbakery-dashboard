@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node lib/server/main.js"
+    "start": "node lib/server/main.js",
+    "prepare": "bower install --allow-root && browserify ./lib/static/js/bower_components/jiff/jiff.js -s jiff -o ./lib/static/js/bower_components/jiff/jiff.umd.js && browserify ./lib/static/js/bower_components/jiff/lib/jsonPointer -s jsonPointer -o ./lib/static/js/bower_components/jiff/jsonPointer.umd.js"
   },
   "keywords": [
     "font",

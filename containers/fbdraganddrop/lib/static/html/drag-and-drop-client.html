@@ -4,15 +4,12 @@
     <meta charset="utf-8" />
     <title>FontBakery</title>
     <script src="/static/js/bower_components/requirejs/require.js"></script>
-    <link href="https://fonts.googleapis.com/css?family=Monoton|Raleway:300,400" rel="stylesheet">
-
-    <!-- FIXME: use some material design framework instead -->
-    <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+    <link href="https://fonts.googleapis.com/css?family=Monoton|Inconsolata|Roboto:300,300i,400,400i,700,700i" rel="stylesheet">
     <style>
 
         html {
             font-size: 20px;
-            font-family: Raleway, sans-serif;
+            font-family: Roboto, sans-serif;
         }
         article, header {
             width: 80%;
@@ -24,7 +21,7 @@
         }
 
         h1, h2{
-            font-family: Raleway, sans-serif;
+            font-family: Roboto, sans-serif;
             font-weight: 300;
         }
         h1{
@@ -33,7 +30,13 @@
         h2{
             font-size: 1.7em;
         }
-        em {
+
+        pre {
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+        }
+
+        .sending-interface em {
             color: orange;
             display: block;
             font-family: 'Monoton', cursive;
@@ -41,17 +44,17 @@
             text-align: center;
         }
 
-        input,
-        button {
+        .sending-interface input,
+        .sending-interface button {
             display: block;
             width: 100%;
             padding: .5em;
-            font-family: Raleway, sans-serif;
+            font-family: Roboto, sans-serif;
             font-size: 1em;
         }
 
 
-        input, .drop-fonts, button {
+        input, .drop-fonts, .sending-interface button {
             background: white;
             border: 5px solid grey;
             box-sizing: border-box;
@@ -69,7 +72,6 @@
         }
         .drop-fonts:hover, button:hover {
             background: #b3eeff; /* this is also the background color of the fb logo */
-
         }
 
         .drop-fonts:hover em, button:hover em{
@@ -95,6 +97,189 @@
         td {
             vertical-align: top;
         }
+
+        /* Reporting Interface */
+
+        .report-container_isFinished > strong,
+        .report-container_created > strong,
+        .report-container_started > strong,
+        .report-container_finished > strong {
+            display: inline-block;
+            margin-right: .5em;
+        }
+
+        .report-container_stderr pre,
+        .report-container_stdout pre {
+            background: darkgreen;
+            color: lime;
+            border: 3px solid lime;
+            padding: .5em;
+            overflow: auto;
+            max-height: 30em;
+            white-space: pre-wrap;
+        }
+
+        .report-container_exception pre {
+            background: pink;
+            border: 3px solid tomato;
+            padding: .5em
+        }
+
+        .report-container_command ol {
+            list-style: none;
+            padding: 0;
+        }
+        .report-container_command ol:before {
+            content: '$';
+            font-weight: bold;
+        }
+
+        .report-container_command {
+            margin: 1em 0;
+        }
+
+        .report-container_command li {
+            display: inline-block;
+            background: lightgrey;
+            margin: 0 0 .5em .5em;
+            padding: .2em;
+        }
+
+        .report-container_command li > * {
+            white-space: pre;
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+        }
+
+        .report-container_preparation_logs ol,
+        .check-item-container_log_messages ol {
+            background: LemonChiffon;
+            max-height: 15em;
+            overflow: auto;
+        }
+
+        .report-container_preparation_logs li,
+        .check-item-container_log_messages li {
+            padding: .1em;
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+            /* "pre-wrap" is closest to what the terminal does */
+            white-space: pre-wrap;
+        }
+
+        .result-value_indicator-button,
+        .report-container_results_result-tab {
+            display: inline-block;
+            margin-right: .5em;
+            margin-bottom: .5em;
+            padding: .4em;
+            font-weight: bold;
+            cursor: pointer;
+            border: 3px solid lightgrey;
+        }
+
+        .report-container_results_result-tab:hover,
+        .report-container_results_result-tab.active-result {
+            background-color: #b3eeff;
+        }
+
+        .report-container_results_result-doc {
+            display: none;
+        }
+
+        .report-container_results_result-doc ul {
+            overflow: auto;
+            list-style: none;
+            padding: 0;
+            background: #EFEFEF;
+            border-top: 3px solid lightgrey;
+        }
+
+        .report-container_results_result-doc.active-result{
+            display: block;
+        }
+
+        .result-doc_check-item {
+            margin: 1em 0;
+            background: white;
+            /* enforces the margins to not float into each other */
+            border-top: 1px solid transparent;
+            border-bottom: 1px solid transparent;
+        }
+
+        .result-value_indicator-button {
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .result-value_indicator-button .background-dimmer {
+            display: block;
+            background-color: white;
+            opacity: 0;
+            transition: opacity .3s;
+
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: -1;
+        }
+
+
+        .result-value_indicator-button.inactive {
+            color: grey;
+        }
+
+        .result-value_indicator-button.inactive .background-dimmer {
+            opacity: .7;
+        }
+
+        .result-value_indicator-button:hover {
+            border-color: #555;
+            color: #555;
+        }
+
+        .result-value_indicator {
+            display: inline-block;
+            margin-right: .5em;
+            margin-bottom: .5em;
+            padding: .4em;
+        }
+
+        /* test result colors */
+        .test-result-ERROR .check-item-container_result,
+        .result-value-ERROR {
+            background: tomato;
+        }
+        .test-result-WARNING .check-item-container_result,
+        .result-value-WARNING {
+            background: darkorange;
+        }
+        .test-result-SKIP .check-item-container_result,
+        .result-value-SKIP {
+            background: LemonChiffon;
+        }
+        .test-result-INFO .check-item-container_result,
+        .result-value-INFO {
+            background: #b3eeff;
+        }
+        .test-result-OK .check-item-container_result,
+        .result-value-OK {
+            background: greenyellow;
+        }
+
+        .check-item-container_result {
+            padding: .5em;
+        }
+
+        .result-doc_check-item .generic-items > *{
+            margin-right: 1em;
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+            font-size: .7em;
+        }
     </style>
     <script>
     require(['/static/js/bootstrap.js'], function(require) {
@@ -112,7 +297,70 @@
         </div>
         <div id="results"></div>
     </div>
-    <div class="reporting-interface">reporting ...</div>
+    <div class="reporting-interface">
+    <!-- insert: report-root -->
+    </div>
+</div>
+
+<div class="report-templates" style="display:none">
+
+    <div class="report-root">
+        <div>
+            <!-- insert: id-->
+            <!-- insert: isFinished -->
+            <!-- insert: created -->
+            <!-- insert: started -->
+            <!-- insert: finished -->
+            <!-- insert: command -->
+            <!-- insert: exception -->
+        </div>
+        <!-- insert: results -->
+        <div class="generic-items"></div>
+    </div>
+
+    <h1 class="report-container_id">Report ID: <!-- insert: id--></h1>
+
+    <div class="report-container_results">
+        <div class="report-result-aggregation">
+            <strong>Aggregated Results</strong> <!-- insert: result-indicator -->
+            Total <!-- insert: results-total -->
+        </div>
+        <div class="report-container_results_tabs">
+            <!-- insert: tabs -->
+        </div>
+        <div class="report-container_results_docs">
+            <!-- insert: docs -->
+        </div>
+    </div>
+
+    <div class="report-container_results_result-tab"><!-- insert: title --></div>
+
+    <div class="report-container_results_result-doc">
+        <h2><!-- insert: key --></h2>
+        <strong>Results</strong> <!-- insert: result-indicator -->
+        Total <!-- insert: results-total -->
+        <ul>
+            <!-- insert: children -->
+        </ul>
+    </div>
+
+    <li class="result-doc_check-item">
+
+
+        <p>
+            <!-- insert: result -->
+            <strong>Check <!-- insert: check_number --></strong>
+            <!-- insert: description -->
+        </p>
+        <!-- insert: log_messages -->
+        <p class="generic-items"></p>
+    </li>
+    <span class="result-value_indicator"><!-- insert: name --> <!-- insert: value --></span>
+    <button class="result-value_indicator-button">
+        <!-- insert: name --> <!-- insert: value -->
+        <span class="background-dimmer"></span>
+    </button>
+
 </div>
 <header>
         <img alt="Font Bakery"src="/static/img/logo_200px.png"/>

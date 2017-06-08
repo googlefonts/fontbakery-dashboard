@@ -1,12 +1,14 @@
 define([
     'dom-tool'
-  , 'Controller'
   , 'socket.io'
+  , 'Controller'
+  , 'Report'
 
 ], function(
     dom
-  , Controller
   , socketio
+  , Controller
+  , Report
 ) {
     "use strict";
     /*global document, window, FileReader*/
@@ -61,8 +63,12 @@ define([
     }
 
 
+    function getTemplatesContainer(klass) {
+        return document.querySelector('body > .' + klass);
+    }
+
     function activateTemplate(klass) {
-        var templatesContainer = document.getElementsByClassName('templates')[0]
+        var templatesContainer = getTemplatesContainer('templates')
           , template = templatesContainer.getElementsByClassName(klass)[0]
           , target = document.getElementsByClassName('active-interface')[0]
           , activatedElement
@@ -89,16 +95,16 @@ define([
 
     function initReportingInterface(data) {
         var container = activateTemplate('reporting-interface')
+          , templatesContainer = getTemplatesContainer('report-templates')
           , socket = socketio('/')
+          , report = new Report(container, templatesContainer, data)
           ;
-        socket.on('changes', function (data) {
-            console.log('got change data:', data);
 
-        });
+        socket.on('changes', report.onChange.bind(report));
         socket.emit('subscribe-changes', { docid: data.docid });
     }
 
-    function getInterfaceMode(){
+    function getInterfaceMode() {
         // if 'reporting/' in url
         // docid is at reporting/{id}
         var data = null
