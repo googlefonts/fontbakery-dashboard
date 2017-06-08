@@ -203,10 +203,11 @@ _p.fbDNDReport = function(req, res, next) {
             if(found)
                 // This is the same client as the index page,
                 // after the docid was returned
-                return this.fbDNDIndex.bind(this, req, res, next);
+                return this.fbDNDIndex(req, res, next);
             // answer 404: NotFound
             return res.status(404).send('Not found');
-        }).catch(next);
+        }.bind(this))
+        .catch(next);
 };
 
 /**
