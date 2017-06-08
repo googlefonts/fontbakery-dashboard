@@ -25,8 +25,12 @@ class FontbakeryWorkerError(Exception):
 class FontbakeryPreparationError(FontbakeryWorkerError):
   pass
 
+class FontbakeryCommandError(FontbakeryWorkerError):
+  pass
+
+
 def _get_font_results(directory):
-  marker = 'fontbakery.json'
+  marker = '.fontbakery.json'
   for f in os.listdir(directory):
     logging.debug('_get_font_results for "%s".', f)
     if not f.endswith(marker):
@@ -64,6 +68,9 @@ def run_fontbakery(dbTableContext, docid, directory):
       'stdout': stdout.decode('utf-8')
     }).run(conn)
 
+
+  if p.returncode != 0:
+    raise FontbakeryCommandError('Exit code was not zero: "{0}". See "stderr".'.format(p.returncode))
 
   allResults = {}
   for resultFile, results in _get_font_results(directory):
@@ -165,7 +172,7 @@ def consume(dbTableContext, ch, method, properties, body): #pylint: disable=unus
       logging.debug('Files in tmp {}'.format(os.listdir(tmpDirectory)))
       logging.info('Starting ...')
       with dbTableContext() as (q, conn):
-        q.get(docid).update({'prepLogs': logs}).run(conn)
+        q.get(docid).update({'preparation_logs': logs}).run(conn)
       run_fontbakery(dbTableContext, docid, tmpDirectory)
       logging.info('DONE!')
     else:
