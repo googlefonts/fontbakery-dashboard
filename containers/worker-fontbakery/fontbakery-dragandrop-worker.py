@@ -245,12 +245,14 @@ def main():
   # in gcloud, we use a cluster with proxy setup
   # the proxy service is called: "rethinkdb-proxy" hence:
   db_host = os.environ.get("RETHINKDB_PROXY_SERVICE_HOST", None)
-  db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", None)
+  db_port = os.environ.get("RETHINKDB_PROXY_SERVICE_PORT", 28015)
 
   if db_host is None:
     # Fall back to "rethinkdb-driver"
     db_host = os.environ.get("RETHINKDB_DRIVER_SERVICE_HOST")
     db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", 28015)
+
+  print ('RethinkDB', 'HOST', db_host, 'PORT', db_port)
 
   dbTableContext = partial(get_db, db_host, db_port, 'fontbakery', 'draganddrop')
 
