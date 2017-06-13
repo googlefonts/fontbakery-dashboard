@@ -25,7 +25,6 @@ RUN curl -o /tmp/fontbakery-microsoft-vendorlist.cache https://www.microsoft.com
 
 # FIXME: should be git+https://github.com/googlefonts/fontbakery
 RUN pip install git+https://github.com/graphicore/fontbakery@hotfix-dependencies
-
 RUN pip install --upgrade git+https://github.com/davelab6/pyfontaine.git;
 
 ADD requirements.txt /
