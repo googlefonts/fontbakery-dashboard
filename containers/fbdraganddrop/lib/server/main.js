@@ -389,8 +389,8 @@ _p._subscribeToDoc = function(socket, data) {
 if (typeof require != 'undefined' && require.main==module) {
 
     var rethinkSetup = {
-            host: process.env.RETHINKDB_DRIVER_SERVICE_HOST
-          , port: process.env.RETHINKDB_DRIVER_SERVICE_PORT
+            host: null
+          , port: null
           , db: 'fontbakery'
         }
       , amqpSetup = {
@@ -400,6 +400,18 @@ if (typeof require != 'undefined' && require.main==module) {
         }
       , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
       ;
+
+    if(process.env.RETHINKDB_PROXY_SERVICE_HOST) {
+        // in gcloud, we use a cluster with proxy setup
+        // ther proxy service is called: "rethinkdb-proxy" hence:
+        rethinkSetup.host = process.env.RETHINKDB_PROXY_SERVICE_HOST;
+        rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
+    }
+    else {
+        // Fall back to "rethinkdb-driver"
+        rethinkSetup.host = process.env.RETHINKDB_DRIVER_SERVICE_HOST;
+        rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
+    }
 
     logging.info('Init server ...');
     new Server(logging, 3000, amqpSetup, rethinkSetup);
