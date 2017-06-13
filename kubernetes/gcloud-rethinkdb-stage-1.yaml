@@ -1,0 +1,138 @@
+# https://github.com/rosskukulinski/kubernetes-rethinkdb-cluster/blob/master/rethinkdb-services.yml
+# we creatd the services first
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-admin
+spec:
+# maybe we can use `kubectl proxy` to access this, not exposing
+# it to the public internet (what LoadBalancer does).
+#  type: LoadBalancer
+# ClusterIP is the default
+  type: ClusterIP
+  ports:
+   - port: 8080
+     targetPort: admin
+  selector:
+    db: rethinkdb
+    role: admin
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb
+spec:
+  ports:
+  - port: 29015
+    targetPort: cluster
+  selector:
+    db: rethinkdb
+    role: replica
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-proxy
+spec:
+# I don't know why all these thing should be exposed to the internet
+# I don't want to see any `LoadBalancer` despite our one web frontend.
+#  type: LoadBalancer
+  ports:
+    - port: 28015
+      targetPort: driver
+  selector:
+    db: rethinkdb
+    role: proxy
+---
+# two replicas, one proxy...
+# https://github.com/rosskukulinski/kubernetes-rethinkdb-cluster/blob/master/rethinkdb-replica.1.yml
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-replica-1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        db: rethinkdb
+        role: replica
+        instance: one
+    spec:
+      containers:
+# review looked OK, but we should think about our trust model
+# here, some binaries are included that we just need to trust and
+# it runs NOT through Debian or something.
+      - image: rosskukulinski/rethinkdb-kubernetes:2.3.5
+        args:
+          - "--cache-size"
+          - "100"
+        imagePullPolicy: Always
+        name: rethinkdb
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: RETHINK_CLUSTER
+          value: rethinkdb
+        ports:
+        - containerPort: 8080
+          name: admin
+        - containerPort: 28015
+          name: driver
+        - containerPort: 29015
+          name: cluster
+        livenessProbe:
+          exec:
+            command:
+              - /probe
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+              - /probe
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 100m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /data
+          name: storage
+      volumes:
+      - gcePersistentDisk:
+          # This GCE PD must already exist.
+          fsType: ext4
+          pdName: rethinkdb-storage-1
+        name: storage
+# When this is up, apply gcloud-rethinkdb-stage-2.yaml to
+# start the rest of the cluster.

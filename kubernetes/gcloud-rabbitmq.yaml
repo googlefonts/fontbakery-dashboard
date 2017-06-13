@@ -1,0 +1,55 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    component: rabbitmq
+  name: rabbitmq
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: taskQueue
+        component: rabbitmq
+    spec:
+      containers:
+      - image: rabbitmq:3-management
+        name: rabbitmq
+        ports:
+        - containerPort: 5672
+        resources:
+          limits:
+            cpu: 100m
+# Setting these must be reflected in the clients!
+#        env:
+#        - name: RABBITMQ_DEFAULT_USER
+#          value: "admin"
+#        - name: RABBITMQ_DEFAULT_PASS
+#          value: "admin"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-management
+  labels:
+    component: rabbitmq
+spec:
+  ports:
+    - port: 8888
+      targetPort: 15672
+      name: http
+  selector:
+    component: rabbitmq
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-service
+  labels:
+    component: rabbitmq
+spec:
+  ports:
+  - port: 5672
+  selector:
+    app: taskQueue
+    component: rabbitmq
