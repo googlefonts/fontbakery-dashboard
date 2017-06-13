@@ -1,9 +1,11 @@
 FROM node:latest
 
-RUN npm install -g bower
+RUN npm install -g bower requirejs browserify
 
-ADD . /var/www-fontbakery
+ADD ./.bowerrc ./bower.json ./package.json /var/www-fontbakery/
 
-RUN cd /var/www-fontbakery; npm install
+RUN cd /var/www-fontbakery && npm install --unsafe-perm
 
-RUN cd /var/www-fontbakery; bower install --allow-root
+ADD . /var/www-fontbakery/
+
+RUN cd /var/www-fontbakery;
