@@ -242,10 +242,17 @@ def setLoglevel(loglevel):
 def main():
   setLoglevel(os.environ.get("FONTBAKERY_WORKER_LOG_LEVEL", 'INFO'))
 
-  db_host = os.environ.get("RETHINKDB_DRIVER_SERVICE_HOST")
-  db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", 28015)
-  dbTableContext = partial(get_db, db_host, db_port, 'fontbakery', 'draganddrop')
+  # in gcloud, we use a cluster with proxy setup
+  # the proxy service is called: "rethinkdb-proxy" hence:
+  db_host = os.environ.get("RETHINKDB_PROXY_SERVICE_HOST", None)
+  db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", None)
 
+  if db_host is None:
+    # Fall back to "rethinkdb-driver"
+    db_host = os.environ.get("RETHINKDB_DRIVER_SERVICE_HOST")
+    db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", 28015)
+
+  dbTableContext = partial(get_db, db_host, db_port, 'fontbakery', 'draganddrop')
 
   queue_name='drag_and_drop_queue'
   # FIXME: Where would BROKER be set? RABBITMQ_SERVICE_SERVICE_HOST is
