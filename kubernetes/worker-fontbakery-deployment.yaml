@@ -12,3 +12,5 @@ spec:
       containers:
       - name: worker-fontbakery
         image: localhost:5000/fontbakery/fontbakery-draganddrop-worker:1
+        workingDir: /var/worker-fontbakery
+        command: ["python2",  "-u", "fontbakery-dragandrop-worker.py"]
