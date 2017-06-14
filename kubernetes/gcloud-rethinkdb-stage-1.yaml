@@ -7,7 +7,7 @@ metadata:
     db: rethinkdb
   name: rethinkdb-admin
 spec:
-# maybe we can use `kubectl proxy` to access this, not exposing
+# We can use `kubectl proxy` to access this, not exposing
 # it to the public internet (what LoadBalancer does).
 #  type: LoadBalancer
 # ClusterIP is the default
