@@ -2,10 +2,12 @@ define([
     'dom-tool'
   , 'jiff'
   , 'reporterBlocks'
+  , 'ansiUp'
 ], function(
     dom
   , jiff
   , reporterBlocks
+  , ansiUp
 ) {
     "use strict";
 
@@ -14,6 +16,7 @@ define([
       , DictionaryBlock = reporterBlocks.DictionaryBlock
       , PrimitiveValueBlock = reporterBlocks.PrimitiveValueBlock
       , GenericDictionaryBlock = reporterBlocks.GenericDictionaryBlock
+      , AnsiUp = ansiUp.default
       ;
 
 
@@ -660,6 +663,20 @@ define([
                     }
                 }
             }
+            ,  preformatedAnsicolorSpec = {
+                spec: {
+                    '': {
+                        keyTag: 'h3'
+                      , dataTag: 'pre'
+                      , dataFormater: function(txt) {
+                            var ansi_up = new AnsiUp()
+                              , html = ansi_up.ansi_to_html(txt)
+                              ;
+                            return dom.createFragmentFromHTML(html);
+                        }
+                    }
+                }
+            }
             ,  inlineTextSpec = {
                 spec: {
                     '': {
@@ -788,8 +805,8 @@ define([
                     }
                 }
               , exception: preformatedTextSpec
-              , stderr: preformatedTextSpec
-              , stdout: preformatedTextSpec
+              , stderr: preformatedAnsicolorSpec
+              , stdout: preformatedAnsicolorSpec
               , created: datesSpec
               , started: datesSpec
               , finished: datesSpec

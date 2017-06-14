@@ -579,7 +579,6 @@ define([
                         ? data
                         : JSON.stringify(data, null, 2)
                         ;
-
             children.push(dom.createElement(
                         spec[''].dataTag || 'span', {}, formated, false)
 

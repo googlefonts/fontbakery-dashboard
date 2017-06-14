@@ -74,6 +74,12 @@ define([
         appendHTML(elem, marked(markdown, {gfd: true}));
     }
 
+    function createFragmentFromHTML(html) {
+        var frag = document.createDocumentFragment();
+        appendHTML(frag, html);
+        return frag;
+    }
+
     function createFragment(contents, cloneChildNodes) {
         var frag = document.createDocumentFragment();
         appendChildren(frag, contents, cloneChildNodes);
@@ -174,6 +180,7 @@ define([
       , appendHTML: appendHTML
       , appendMarkdown: appendMarkdown
       , createFragment: createFragment
+      , createFragmentFromHTML: createFragmentFromHTML
       , isDOMElement: isDOMElement
       , replaceNode: replaceNode
       , removeNode: removeNode
