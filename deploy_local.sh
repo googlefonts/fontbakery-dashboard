@@ -60,6 +60,21 @@ $DOCKER build -t www-fontbakery:1 containers/fbdraganddrop/
 $DOCKER tag www-fontbakery:1 $REGISTRY/$PROJECT/www-fontbakery:1
 $DOCKER_PUSH $REGISTRY/$PROJECT/www-fontbakery:1
 kubectl create -f kubernetes/web-fontbakery-deployment.yaml
+
+
+# NOTE apply -f instead of create is better, because it can do incremental updates!
+
+# update_workers:
+$DOCKER build -t fontbakery-draganddrop-worker:1 containers/fbworker/
+$DOCKER tag fontbakery-draganddrop-worker:1 $REGISTRY/$PROJECT/fontbakery-draganddrop-worker:1
+$DOCKER push $REGISTRY/$PROJECT/fontbakery-draganddrop-worker:1
+kubectl apply -f kubernetes/worker-fontbakery-deployment.yaml
+
+
+kubectl delete job job-fb-worker-1
+kubectl create -f jobs/worker_local.yaml
+
+
 # > deployment "web-fonbakery" created
 # > service "www-fontbakery-service" created
 kubectl delete deployment web-fonbakery
