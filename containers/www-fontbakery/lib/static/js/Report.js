@@ -160,6 +160,10 @@ define([
 
             //always do this, no matter where elem is from
             elem.classList.add('result-value-' + name);
+            // default is active
+            elem.classList.add('active');
+
+
             elem.setAttribute('data-result-type', name);
 
             marker = dom.getMarkerComment(this.container,
@@ -334,6 +338,7 @@ define([
        var klass = this._getResultTypeToggleClass(name);
        this.container.classList.toggle(klass);
        this._aggregateResultElements[name].classList.toggle('inactive');
+       this._aggregateResultElements[name].classList.toggle('active');
     };
 
     _p._initAggregateResultHandler = function(name) {
