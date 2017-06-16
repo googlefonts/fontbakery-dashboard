@@ -645,6 +645,29 @@ define([
             // this is to define the order of check result values
             // in the interfaces aggregating these.
           , resultVals = ['ERROR', 'WARNING', 'OK', 'SKIP']
+          , isFinishedSpec = {
+                spec: {
+                    '': {
+                        skipKey: true
+                      , dataTag: 'div'
+                      , dataFormater: function(data) {
+                            var klass = 'status ', message;
+                            if(!data) {
+                                message = 'in progress';
+                                klass += 'in-progress';
+                            }
+                            else {
+                                message = 'DONE!';
+                                klass += 'finished';
+                            }
+                            return dom.createElement('span', {'class': klass}, [
+                                dom.createElement('strong', {}, 'Status')
+                              , ' '
+                              , message]);
+                        }
+                    }
+                }
+            }
           , datesSpec = {
                 spec: {
                     '': {
@@ -677,7 +700,7 @@ define([
                     }
                 }
             }
-            ,  inlineTextSpec = {
+            , inlineTextSpec = {
                 spec: {
                     '': {
                         skipKey: true
@@ -804,6 +827,7 @@ define([
                         }
                     }
                 }
+              , isFinished: isFinishedSpec
               , exception: preformatedTextSpec
               , stderr: preformatedAnsicolorSpec
               , stdout: preformatedAnsicolorSpec

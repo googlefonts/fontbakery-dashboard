@@ -251,6 +251,33 @@
             font-size: 1.1em;
             font-size: .7em;
         }
+
+
+        /* by https://stephanwagner.me/only-css-loading-spinner */
+
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .report-container_isFinished .status{
+            position: relative;
+        }
+
+        .report-container_isFinished .status.in-progress:after {
+          content: '';
+          box-sizing: border-box;
+          position: absolute;
+          width: 20px;
+          height: 20px;
+          margin-left: 5px;
+          border-radius: 50%;
+          border: 2px solid #ccc;
+          border-top-color: #333;
+          animation: spinner .6s linear infinite;
+        }
+
+
     </style>
     <script>
     require(['/static/js/bootstrap.js'], function(require) {
