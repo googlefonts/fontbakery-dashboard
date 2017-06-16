@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <title>FontBakery</title>
     <script src="/static/js/bower_components/requirejs/require.js"></script>
-    <link href="https://fonts.googleapis.com/css?family=Monoton|Inconsolata|Roboto:300,300i,400,400i,700,700i" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata|Roboto:300,300i,400,400i,700,700i" rel="stylesheet">
     <style>
 
         html {
@@ -36,41 +36,32 @@
             font-size: 1.1em;
         }
 
-        .sending-interface em {
-            color: orange;
-            display: block;
-            font-family: 'Monoton', cursive;
-            font-size: 3em;
-            text-align: center;
-        }
-
         .sending-interface input,
         .sending-interface button {
-            display: block;
-            width: 100%;
             padding: .5em;
             font-family: Roboto, sans-serif;
             font-size: 1em;
         }
 
 
-        .drop-fonts, .sending-interface button {
-            background: white;
-            border: 5px solid grey;
-            box-sizing: border-box;
+        .sending-interface button {
             cursor: pointer;
-
-        }
-        .general-controls, .drop-fonts, button{
-            text-align: center;
         }
 
-        .drop-fonts:hover, .general-controls button:hover {
+        .drop-fonts {
+            display: inline-block;
+            border: 3px solid grey;
+            padding: .5em;
+            vertical-align: baseline;
+        }
+
+        .general-controls{
+            display: inline-block;
+            vertical-align: baseline;
+        }
+
+        .drop-fonts:hover {
             background: #b3eeff; /* this is also the background color of the fb logo */
-        }
-
-        .drop-fonts:hover em, button:hover em{
-            color: white
         }
 
         .filename {
@@ -270,12 +261,9 @@
 <body>
 <div class="templates" style="display:none">
     <div class="sending-interface">
-        <div class="drop-fonts"><p><em>Drop</em> the <em>font files</em> here or click to choose.</p></div>
-        <div class="interface">
-            <ol class="files-controls"></ol>
-            <div class="general-controls"></p></div>
-        </div>
-        <div id="results"></div>
+        <div class="drop-fonts"><p>Drop font files here or <button>click to choose</button></p></div>
+        <div class="general-controls"></p></div>
+        <ol class="files-controls"></ol>
     </div>
     <div class="reporting-interface">
     <!-- insert: report-root -->

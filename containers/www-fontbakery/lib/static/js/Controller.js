@@ -146,11 +146,8 @@ define([
     };
 
     _p._initControls = function() {
-        var send = dom.createChildElement(this.generalControls, 'button', null,
-                                          [dom.createElement('em', null,'Run'),
-                                           ' the ',
-                                           dom.createElement('em', null,'Checks!')
-                                           ]);
+        var send = dom.createChildElement(this.generalControls, 'button'
+                                            , null, 'Run the Checks!');
 
         send.addEventListener('click', this._send.bind(this));
     };
