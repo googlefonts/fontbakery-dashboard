@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: www-fontbakery
-        image: gcr.io/fontbakery-168509/www-fontbakery:1.01
+        image: gcr.io/fontbakery-168509/www-fontbakery:1.03
         ports:
         - containerPort: 3000
         workingDir: /var/www-fontbakery
