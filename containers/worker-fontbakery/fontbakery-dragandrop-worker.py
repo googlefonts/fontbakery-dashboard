@@ -10,7 +10,7 @@ import pytz
 from datetime import datetime
 import tempfile
 import struct
-from io import BytesIO
+from io import BytesIO, SEEK_CUR
 import shutil
 import traceback
 from contextlib import contextmanager
@@ -40,7 +40,73 @@ def _get_font_results(directory):
       results = json.load(io)
     yield fileName, results
 
-def run_fontbakery(dbTableContext, docid, directory):
+def serialize_order(order):
+  # serialize session, test etc. in a way that we can identify them
+  # and also that they can be a json document.
+  # No need to keep the actual objects, just ids/names
+  raise NotImplementedError('serialize_order')
+
+def distribute_jobs(dbTableContext, job):
+  full_order = fontbakery.get_order(files['desc'])
+
+  # FIXME: do something fancy to split this up
+  orders = [ full_order ]
+  docid = job['docid']
+  jobid = 0 # equals the job-index!
+  jobs_meta = []
+  jobs = []
+  for jobid, order in enumerate(orders):
+    # if split up in more jobs, these are created multiple times
+    jobs_meta.append({
+        'id': jobid
+      , 'created': datetime.now(pytz.utc)
+      , 'started': None
+      , 'finished': None
+    })
+    jobs.append({
+        'docid': docid
+      , 'type': 'distributed'
+      , 'id': jobid
+      , 'order': serialize_order(order)
+      , 'files': None # will be filled by parse_job
+    })
+
+  with dbTableContext() as (q, conn):
+    # important for parallel execution, to piece together the original
+    # order again and to have a place where the sub-workers can report
+    q.get(docid).update({
+      'started': datetime.now(pytz.utc)
+    , 'execution_order': serialize_order(full_order)
+    , 'jobs': jobs_meta # record start and end times
+    })
+
+  queue_options = {
+        # TODO: do we need persistent here?
+        'persistent': True
+        # this? , 'deliveryMode': True
+  }
+  # dispatch sub jobs
+  for sub_job in jobs:
+    FIXME: a stub
+    job_bytes = json.dumps(sub_job)
+    content = b''.join([
+        struct.pack('I', len(job_bytes))
+      , job_bytes
+      # this is still packed readily for us
+      , job['files']['bytes']
+    ])
+
+    #log.info('sendToQueue doc', docid, 'job', sub_job['id'], 'queue', queueName
+    #                                    , len(content), 'Bytes');
+    queue_channel.sendToQueue(queueName, content, options);
+
+def run_fontbakery(dbTableContext, tmpDirectory, job):
+  # fixme: get rid of fontbakery
+  with dbTableContext() as (q, conn):
+    q.get(docid).update({'isFinished': True
+                      , 'finished': datetime.now(pytz.utc)}).run(conn)
+
+def run_fontbakery(dbTableContext, docid, directory, jobid, order):
   files = []
   for f in os.listdir(directory):
     # TODO: allow also .woff .woff2 .otf in the future. Not urgent, though,
@@ -83,39 +149,62 @@ def run_fontbakery(dbTableContext, docid, directory):
     q.get(docid).update({'isFinished': True
                       , 'finished': datetime.now(pytz.utc)}).run(conn)
 
-def _unpack_files(stream):
-    # L = unsignedlong 4 bytes
-    while True:
-      head = stream.read(8)
-      if len(head) != 8:
-        break
-      jsonlen, filelen = struct.unpack('II', head)
+def _unpack_files(stream, description_only=False):
+  while True:
+    head = stream.read(8)
+    if len(head) != 8:
+      break
+    jsonlen, filelen = struct.unpack('II', head)
 
-      desc = stream.read(jsonlen)
-      assert len(desc) == jsonlen, 'Stream was long enough to contain JSON-data.'
-      desc = json.loads(desc.decode('utf-8'))
-
-      filedata = stream.read(filelen)
-      assert len(filedata) == filelen, 'Stream was long enough to contain file-data.'
-
-      yield (desc, filedata)
+    desc = stream.read(jsonlen)
+    assert len(desc) == jsonlen, 'Stream was long enough to contain JSON-data.'
+    desc = json.loads(desc.decode('utf-8'))
+    if description_only:
+      yield desc
+      # advance the stream for `filelen` from `SEEK_CUR` (current position)
+      stream.seek(filelen, SEEK_CUR)
+      continue
+    # also yield the bytes of file
+    filedata = stream.read(filelen)
+    assert len(filedata) == filelen, 'Stream was long enough to contain file-data.'
+    yield (desc, filedata)
 
 def parse_job(stream):
   # read one Uint32\
-  docidLen = stream.read(4)
-  docidLen = struct.unpack('<I', docidLen)[0]
-  # This is an assumption about how rethinkdb automatic id's work.
-  # don't expect it to be forever true.
-  assert docidLen == 36, 'DocidLen is 36: {0}.'.format(docidLen)
-  docid = stream.read(docidLen).decode('utf-8')
-  if len(docid) != docidLen:
-    return None
+  data_len = stream.read(4)
+  data_len = struct.unpack('<I', data_len)[0]
+  data = stream.read(data_len).decode('utf-8')
 
-  files = []
-  for desc_filedata in _unpack_files(stream):
-    files.append(desc_filedata)
+  try:
+    job = json.loads(data)
+    is_origin = False
+  except ValueError:# No JSON object could be decoded
+    # This is an assumption about how rethinkdb automatic id's work.
+    # don't expect it to be forever true.
+    # We should json decode it like so: '"{}"'.format(docid), then all
+    # these lengths checks wouldn't really be needed.
+    assert data_len == 36, 'DocidLen is 36: {0}.'.format(docidLen)
+    if len(docid) != data_len:
+      return None
+    docid = data
+    is_origin = True
 
-  return {'docid':docid, 'files': files}
+  if !is_origin:
+    job['files'] = list(_unpack_files(stream))
+    return job
+
+  # originial job
+  cur = stream.tell()
+  files_bytes = stream.read() # all to the end
+  stream.seek(cur) # reset
+  descriptions = list(_unpack_files(stream, description_only=True))
+  return {
+      'docid': docid
+    , 'type': 'origin'
+    , 'files': {'desc': descriptions, 'bytes': files_bytes}
+  }
+
+
 
 def prepare_fontbakery(tmpDirectory, job):
   """
@@ -159,21 +248,30 @@ def prepare_fontbakery(tmpDirectory, job):
 def consume(dbTableContext, ch, method, properties, body): #pylint: disable=unused-argument
   logging.info('Consuming ...')
   logging.debug('consuming args: %s %s', method, properties)
-  tmpDirectory =  tempfile.mkdtemp()
-  logging.info('Tempdir: %s', tmpDirectory)
   job = None
   docid = None
+  tmpDirectory = None
   try:
     job = parse_job(BytesIO(body))
     if job is not None:
       docid = job['docid']
-      logging.debug('Got docid: %s', docid)
-      logs = prepare_fontbakery(tmpDirectory, job)
-      logging.debug('Files in tmp {}'.format(os.listdir(tmpDirectory)))
-      logging.info('Starting ...')
-      with dbTableContext() as (q, conn):
-        q.get(docid).update({'preparation_logs': logs}).run(conn)
-      run_fontbakery(dbTableContext, docid, tmpDirectory)
+      logging.debug('Got docid: %s a job of type: $s', job['docid'], job['type'])
+      if job['type'] == 'origin':
+        distribute_jobs(dbTableContext, job)
+      else:
+        tmpDirectory =  tempfile.mkdtemp()
+        logging.info('Tempdir: %s', tmpDirectory)
+        logs = prepare_fontbakery(tmpDirectory, job)
+        logging.debug('Files in tmp {}'.format(os.listdir(tmpDirectory)))
+        logging.info('Starting ...')
+        with dbTableContext() as (q, conn):
+          q.get(docid).update({'preparation_logs': logs}).run(conn)
+        run_fontbakery(dbTableContext, tmpDirectory, job)
+      else:
+        # fixme: tmpDirectory! we should be able to directly load the blobs
+        # as
+        run_fontbary(dbTableContext, job, tmpDirectory)
+
       logging.info('DONE!')
     else:
       logging.warning('Job is None, doing nothing')
@@ -196,8 +294,9 @@ def consume(dbTableContext, ch, method, properties, body): #pylint: disable=unus
       # Did not report this appropriately
       raise
   finally:
-    # remove all temp files
-    shutil.rmtree(tmpDirectory)
+    if tmpDirectory is not None:
+      # remove all temp files
+      shutil.rmtree(tmpDirectory)
 
     # FIXME: we really shouldn't ack the job if can't even mark it as
     # failed in the RethinkDB-doc.
