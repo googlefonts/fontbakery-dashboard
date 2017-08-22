@@ -228,8 +228,7 @@ _p._onCreateAMQPChannel = function  (docid, payload, channel) {
     this._log.debug('_onCreateAMQPChannel', docid);
     var options = {
             // TODO: do we need persistent here?
-            persistent: true
-            // this? , deliveryMode: true
+            persistent: true // same as deliveryMode: true or deliveryMode: 2
         }
         // a buffer
       , content
