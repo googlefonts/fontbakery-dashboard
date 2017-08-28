@@ -25,11 +25,23 @@ RUN apt-get update && apt-get upgrade -y \
 RUN curl -o /tmp/fontbakery-microsoft-vendorlist.cache https://www.microsoft.com/typography/links/vendorlist.aspx
 
 
-# FIXME: should be git+https://github.com/googlefonts/fontbakery
-RUN pip install git+https://github.com/graphicore/fontbakery@hotfix-dependencies
-RUN pip install --upgrade git+https://github.com/davelab6/pyfontaine.git;
+# This is taking forever to compile, so it slows down reiterations
+# it's a dependency of fontbakery. Adding it early, so it is cached
+# by the docker build
+# This is bad: fontbakery requirements.txt needs a version and setup.py doesn't, we
+# install from both ...
+RUN pip install lxml==3.5.0
+
 
 ADD requirements.txt /var/worker-fontbakery/requirements.txt
 RUN pip install -r /var/worker-fontbakery/requirements.txt
+
+RUN touch /tmp/cache_spoof_9
+
+# FIXME: doesn't install all dependencies!
+# RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
+
+RUN git clone --depth 1 -b dashboard_related git://github.com/googlefonts/fontbakery /tmp/fontbakery;\
+    pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
 
 ADD fontbakery-dragandrop-worker.py /var/worker-fontbakery/fontbakery-dragandrop-worker.py

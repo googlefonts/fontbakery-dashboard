@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, unicode_literals
 
-import sys
 import os
 import json
 from subprocess import  Popen, PIPE
@@ -29,33 +28,30 @@ class FontbakeryPreparationError(FontbakeryWorkerError):
 class FontbakeryCommandError(FontbakeryWorkerError):
   pass
 
-# FIXME: probably a method of specification
-def serialize_order(order):
-  # serialize session, test etc. in a way that we can identify them
-  # and also that they can be a json document.
-  # No need to keep the actual objects, just ids/names
-  # an entry that means the same must be serialized the same
-  # and deserialized without any loss!
-  raise NotImplementedError('serialize_order')
+def get_fontbakery(fonts):
+  from fontbakery.commands.check_googlefonts import runner_factory
+  runner = runner_factory(fonts)
+  spec = runner.specification
+  return runner, spec
 
-# FIXME: requires the spec! probably a method of specification
-def deserialize_order(order):
-  # serialize session, test etc. in a way that we can identify them
-  # and also that they can be a json document.
-  # No need to keep the actual objects, just ids/names
-  raise NotImplementedError('serialize_order')
+def worker_distribute_jobs(dbOps, queueData, job):
+  # this is a dry run, but it will fail early if there's a problem with
+  # the files in job, also, it lists the fonts.
+  prep_logs, fonts = prepare_fontbakery(None, job)
 
-def worker_distribute_jobs(dbTableContext, queue, job):
-  full_order = fontbakery.get_order(files['desc'])
+  dbOps.update({'preparation_logs': prep_logs})
+  runner, spec = get_fontbakery(fonts)
+
+  # this must survive JSON
+  full_order = spec.serialize_order(runner.order)
   # FIXME: do something fancy to split this up
   # maybe we can distribute long running tests evenly or such
   # this would require more info of course.
   jobs = 5  # go with 5 parallel jobs
   from math import ceil
-  job_size = ceil(len(full_order) / jobs)
-  orders = [full_order[i:i+job_size] \
+  job_size = int(ceil(len(full_order) / jobs))
+  orders = [full_order[i:i+job_size]
                             for i in range(0, len(full_order), job_size)]
-  docid = job['docid']
   jobs_meta = []
   jobs = []
   for jobid, order in enumerate(orders):
@@ -65,29 +61,34 @@ def worker_distribute_jobs(dbTableContext, queue, job):
       , 'created': datetime.now(pytz.utc)
       , 'started': None
       , 'finished': None
+      , 'exception': None
+      # the indexes in full_order of the tests this job is supposed to run
+      # could be helpful, to mark the not finished ones as doomed if the
+      # job has an exception and terminates.
     })
     jobs.append({
-        'docid': docid
+        'docid': job['docid']
       , 'type': 'distributed'
       , 'id': jobid
-      , 'order': spec.serialize_order(order)
+      , 'order': order
       , 'files': None # will be filled by parse_job
     })
 
-  with dbTableContext() as (q, conn):
-    # important for parallel execution, to piece together the original
-    # order again and to have a place where the sub-workers can report
-    q.get(docid).update({
-      'started': datetime.now(pytz.utc)
-      # the items in the execution_order list are strings!
-    , 'execution_order': spec.serialize_order(full_order)
-    , 'jobs': jobs_meta # record start and end times
-    , 'tests': []
-    })
+  dbOps.update({
+        'started': datetime.now(pytz.utc)
+        # important for parallel execution, to piece together the original
+        # order again. The items in the execution_order list are JSON
+        # formatted strings and can be used as keys.
+      , 'execution_order': full_order
+      , 'iterargs': runner.iterargs
+        # and to have a place where the sub-workers can report
+      , 'jobs': jobs_meta # record start and end times
+      , 'tests': []
+  })
 
   options = pika.BasicProperties(
         # TODO: do we need persistent here?
-        delivery_mode=pika.spec.PERSISTENT_DELIVERY_MODE # == 2
+        delivery_mode=2  # pika.spec.PERSISTENT_DELIVERY_MODE
   )
   # dispatch sub jobs
   for sub_job in jobs:
@@ -96,104 +97,89 @@ def worker_distribute_jobs(dbTableContext, queue, job):
         struct.pack('I', len(job_bytes))
       , job_bytes
       # this is still packed readily for us
-      , job['files']['bytes']
+      , job['files_data']
     ])
-
-    #log.info('sendToQueue doc', docid, 'job', sub_job['id'], 'queue', queueName
-    #                                    , len(content), 'Bytes');
-
-    # For point-to-point routing, the routing key is the name of a message queue.
-    queue.channel.basic_publish(exchange=None, routing_key=queue.name
+    logging.debug('dispatching job %s of docid %s', sub_job['id'], sub_job['docid'])
+    queueData.channel.basic_publish(exchange='', routing_key=queueData.name
                                       , body=content, properties=options)
 
 from fontbakery.reporters import FontbakeryReporter
+from fontbakery.message import Message
+from fontbakery.testrunner import STARTTEST, ENDTEST, DEBUG
 class DashbordWorkerReporter(FontbakeryReporter):
-  def __init__(self, dbTableContext, docid, jobid, runner, **kwd):
-    super(SerializeReporter, self).__init__(runner=runner, **kwd)
-    self._dbTableContext = dbTableContext
-    self._docid = docid
+  def __init__(self, dbOps, jobid, specification, runner, **kwd):
+    super(DashbordWorkerReporter, self).__init__(runner=runner, **kwd)
+    self._dbOps = dbOps
     self._jobid = jobid
+    self._spec = specification
+    self.doc = []
+    self._current = None
 
-  def _flush_result(self, signature, test_result):
-    # FIXME: it would be good if test_result was already the complete document
-    # then we wouldn't have to amend signature and job_id in here.
-    with self._dbTableContext() as (q, conn):
-      q.get(self._docid)('tests').append({
-          # this must equal the line in execution_order, a string
-          # thus, probably the spec should serialize it
-          'signature':
-        , 'result': test_result
-        , 'job_id': self._jobid # for debugging/analysis tasks
-      });
+  def _register(self, event):
+    super(DashbordWorkerReporter, self)._register(event)
+    status, message, identity = event
+    section, test, iterargs = identity
+    if not test:
+      return
 
-def _run_fontbakery(dbTableContext, tmpDirectory, job):
-  # TODO: it would be nice to get rid of tmpDirectory, but some tests
-  # expect a tmpDirectory. Maybe we can differentiate the jobs in the
-  # future, split in those who need a tmpDir and those who don't.
-  # A (tmp_)directory condition could even handle this from within fontbakery
-  # e.g. the ms fontvalidator would require a `directory` and it would be
-  # created on the fly. Though, fontbakery would have to clean it up
-  # again as well, which is not yet supported!
+    key = self._spec.serialize_identity(identity)
 
-  # This is BAD because it has a race condition with the other jobs!
-  # It actually always overrides all jobs, thus it may reset other jobs.
-  # This is the example an internet search gives usually
-  # worked in javascript:
-  #    r.db('fontbakery').table('ballpark').get(key).update({
-  #      jobs: r.row('jobs').map(function (job) {
-  #        return r.branch(
-  #            // 1. Which element(s) in the array you want to update
-  #            job('id').eq(0),
-  #            // 2. The change you want to perform on the matching elements
-  #            job.merge({started: new Date()}),
-  #            job)
-  #      })
-  #    }
-  #   );
-  # Python:
-  # q.get(docid).update({
-  #   "jobs": r.row('jobs').map(lambda job_row: r.branch(
-  #         # 1. Which element(s) in the array you want to update
-  #         job_row('id').eq(job['id']),
-  #         # 2. The change you want to perform on the matching elements
-  #         job_row.merge({'started': datetime.now(pytz.utc)}),
-  #         job_row
-  #   ))
-  # })
+    if status == STARTTEST:
+        self._current = {
+            'key': key
+          , 'job_id': self._jobid # for debugging/analysis tasks
+          , 'statuses': []
+        }
 
+    if status == ENDTEST:
+        # Do more? Anything more would make access easier but also be a
+        # derivative of the actual data, i.e. not SSOT. Calculating (and
+        # thus interpreting) results for the tests is probably not too
+        # expensive to do it on the fly.
+        self._flush_result(self._current)
+        self._current = None
 
+    if status >= DEBUG:
+      # message can be a lot here, currently we know about:
+      #    string, an Exception, a Message. Probably we should leave it
+      #    like this. Message should be the ultimate answer if it's not
+      #    an Exception or a string.
+      # turn everything in a fontbakery/Message like object
+      # `code` may be used for overwriting special failing statuses
+      # otherwise, code must be none
+      #
+      # Optional keys are:
+      #  "code": used to explicitly overwrite specific (FAIL) statuses
+      #  "traceback": only provided if message is an Excepion and likely
+      #               if status is "ERROR"
+      log = {'status': status.name}
 
-  # worked in javascript:
-  #    r.db('fontbakery').table('ballpark').get(key).update(
-  #   {
-  #     jobs: r.row('jobs').changeAt(1,
-  #       r.row('jobs').nth(1).merge({started: new Date()}))
-  #   }
-  # );
-  # This is GOOD since job-id is exclusive to this worker, there's no
-  # race condition with other workers (maybe within this one!?).
-  with dbTableContext() as (q, conn):
-    q.get(docid).update({
-      'jobs': r.row('jobs').changeAt(job['id'],
-        # merge creates and returns a new object
-        # thus, parallel access to job-id would be a race condition.
-        r.row('jobs').nth(job['id']).merge({'started': datetime.now(pytz.utc)})
-      )
-    })
+      if hasattr(message, 'traceback'):
+        # message is likely a FontbakeryError if this is not None
+        log['traceback'] = message.traceback
+      if isinstance(message, Message):
+        # Ducktyping could be a valid option here.
+        # in that case, a FontbakeryError could also provide a `code` attribute
+        # which would allow to skip that error explicitly. However
+        # ERROR statuses should never be skiped explicitly, the cause
+        # of the error must be repaired!
+        log.update(message.getData())
+      else:
+        log['message'] = '{}'.format(message)
+      self._current['statuses'].append(log)
 
+  def _flush_result(self, test_result):
+    """ send test_result to the retthinkdb document"""
+    self._dbOps.append_test(test_result)
+
+def _run_fontbakery(dbOps, job, fonts):
+  dbOps.update({'started': datetime.now(pytz.utc)})
+  runner, spec = get_fontbakery(fonts)
   order = spec.deserialize_order(job['order'])
-  reporter = DashbordWorkerReporter(dbTableContext, docid, job['id']
-                                                        , runner=runner)
+  reporter = DashbordWorkerReporter(dbOps, job['id'],
+                                      specification=spec, runner=runner)
   reporter.run(order)
-
-  with dbTableContext() as (q, conn):
-    q.get(docid).update({
-      'jobs': r.row('jobs').changeAt(job['id'],
-        # merge creates and returns a new object
-        # thus, parallel access to job-id would be a race condition.
-        r.row('jobs').nth(job['id']).merge({'finished': datetime.now(pytz.utc)})
-      )
-    })
+  dbOps.update({'finished': datetime.now(pytz.utc)})
 
 def prepare_fontbakery(tmpDirectory, job):
   """
@@ -207,9 +193,13 @@ def prepare_fontbakery(tmpDirectory, job):
   """
   # `maxfiles` files should be small enough to not totally DOS us easily.
   # And big enough for all of our jobs, otherwise, change ;-)
+
   maxfiles = 25
   logs = []
+  if tmpDirectory is not None:
+    logs.append('Dry run! tmpDirectory is None.')
   seen = set()
+  fontfiles = []
   for desc, data in job['files']:
     filename = desc['filename']
     # Basic input validation
@@ -227,74 +217,41 @@ def prepare_fontbakery(tmpDirectory, job):
       continue
 
     seen.add(filename)
-    with open(os.path.join(tmpDirectory, filename), 'wb') as f:
-      f.write(data)
-      logs.append('Added file "{}".'.format(filename))
-  return logs
+    if tmpDirectory is not None:
+      path = os.path.join(tmpDirectory, filename)
+      with open(path, 'wb') as f:
+        f.write(data)
+    else:
+      path = filename
 
-def worker_run_fontbakery(dbTableContext, queue, job):  #pylint: disable=unused-argument
+    logs.append('Added file "{}".'.format(filename))
+    if path.endswith('.ttf'):
+      fontfiles.append(path)
+
+  if len(fontfiles) == 0:
+    raise FontbakeryPreparationError('Could not find .ttf files in job.')
+  return logs, fontfiles
+
+def worker_run_fontbakery(dbOps, queueData, job):   # pylint: disable=unused-argument
+  # TODO: it would be nice to get rid of tmpDirectory, but some tests
+  # expect a tmpDirectory. Maybe we can differentiate the jobs in the
+  # future, split in those who need a tmpDir and those who don't.
+  # A (tmp_)directory condition could even handle this from within fontbakery
+  # e.g. the ms fontvalidator would require a `directory` and it would be
+  # created on the fly. Though, fontbakery would have to clean it up
+  # again as well, which is not yet supported!
   with tempdir() as tmpDirectory:
     logging.info('Tempdir: %s', tmpDirectory)
-    logs = prepare_fontbakery(tmpDirectory, job)
+    logs, fonts = prepare_fontbakery(tmpDirectory, job)
     logging.debug('Files in tmp {}'.format(os.listdir(tmpDirectory)))
-    logging.info('Starting ...')
-    with dbTableContext() as (q, conn):
-      q.get(job['docid']).update({'preparation_logs': logs}).run(conn)
-    _run_fontbakery(dbTableContext, tmpDirectory, job)
-
-def _get_font_results(directory):
-  marker = '.fontbakery.json'
-  for f in os.listdir(directory):
-    logging.debug('_get_font_results for "%s".', f)
-    if not f.endswith(marker):
-      continue
-    fileName = f[:-len(marker)]
-    with open(os.path.join(directory, f)) as io:
-      results = json.load(io)
-    yield fileName, results
-
-def old_run_fontbakery(dbTableContext, docid, directory, jobid, order):
-  files = []
-  for f in os.listdir(directory):
-    # TODO: allow also .woff .woff2 .otf in the future. Not urgent, though,
-    # our google fonts needs are only ttf now.
-    if f[-4:] == ".ttf":
-      files.append(f)
-  if len(files) == 0:
-    raise FontbakeryPreparationError('Could not find .ttf files in job.')
-
-  with dbTableContext() as (q, conn):
-    q.get(docid).update({'started': datetime.now(pytz.utc)}).run(conn)
-
-  cmd = ["fontbakery", "check-ttf", "--verbose", "--json"]
-  cmd += [os.path.join(directory, f) for f in files]
-  # FIXME: eventually we should get completely rid of this type of fontbakery
-  # output. Until then, having it written to doc.stdout and doc.stderr would be
-  # OK as well I guess.
-  p = Popen(cmd, stdout=PIPE, stderr=PIPE)
-  stdout, stderr = p.communicate()
-
-  with dbTableContext() as (q, conn):
-    q.get(docid).update({
-      'command': cmd,
-      'stderr': stderr.decode('utf-8'),
-      'stdout': stdout.decode('utf-8')
-    }).run(conn)
-
-
-  if p.returncode != 0:
-    raise FontbakeryCommandError('Exit code was not zero: "{0}". See "stderr".'.format(p.returncode))
-
-  allResults = {}
-  for resultFile, results in _get_font_results(directory):
-    logging.debug('Saving result document "%s".', resultFile)
-    allResults[resultFile] = results;
-  with dbTableContext() as (q, conn):
-    q.get(docid).update({'results': allResults}).run(conn)
-
-  with dbTableContext() as (q, conn):
-    q.get(docid).update({'isFinished': True
-                      , 'finished': datetime.now(pytz.utc)}).run(conn)
+    logging.info('Starting run_fontbakery ...')
+    # got these logs in distribute for the entire doc (a dry run)
+    # but also uses prepare_fontbakery
+    # this should produce a very similar log.
+    # with dbTableContext() as (q, conn):
+    #   ATTENTION: this would have to go to the job item at `jobs[job["id"]]`
+    #   q.get(job['docid']).update({'preparation_logs': logs}).run(conn)
+    _run_fontbakery(dbOps, job, fonts)
 
 def _unpack_files(stream, description_only=False):
   while True:
@@ -307,7 +264,7 @@ def _unpack_files(stream, description_only=False):
     assert len(desc) == jsonlen, 'Stream was long enough to contain JSON-data.'
     desc = json.loads(desc.decode('utf-8'))
     if description_only:
-      yield desc
+      yield (desc, None)
       # advance the stream for `filelen` from `SEEK_CUR` (current position)
       stream.seek(filelen, SEEK_CUR)
       continue
@@ -330,13 +287,13 @@ def parse_job(stream):
     # don't expect it to be forever true.
     # We should json decode it like so: '"{}"'.format(docid), then all
     # these lengths checks wouldn't really be needed.
-    assert data_len == 36, 'DocidLen is 36: {0}.'.format(docidLen)
-    if len(docid) != data_len:
+    assert data_len == 36, 'Docid length should be 36 but is {0}.'.format(data_len)
+    if len(data) != data_len:
       return None
     docid = data
     is_origin = True
 
-  if !is_origin:
+  if not is_origin:
     job['files'] = list(_unpack_files(stream))
     return job
 
@@ -344,11 +301,11 @@ def parse_job(stream):
   cur = stream.tell()
   files_bytes = stream.read() # all to the end
   stream.seek(cur) # reset
-  descriptions = list(_unpack_files(stream, description_only=True))
   return {
       'docid': docid
     , 'type': 'origin'
-    , 'files': {'desc': descriptions, 'bytes': files_bytes}
+    , 'files': list(_unpack_files(stream, description_only=True))
+    , 'files_data': files_bytes
   }
 
 @contextmanager
@@ -358,7 +315,33 @@ def tempdir():
   yield tmpDirectory
   shutil.rmtree(tmpDirectory)
 
-def consume(dbTableContext, queue, method, properties, body): #pylint: disable=unused-argument
+class DBOperations(object):
+  def __init__(self, dbTableContext, docid, jobid=None):
+    self.dbTableContext = dbTableContext
+    self._docid = docid
+    self._jobid = jobid
+
+  @property
+  def has_job(self):
+    return self._jobid is not None
+
+  def update(self, doc):
+    if self.has_job:
+      # even for this, `update` is supposed to be atomic.
+      _doc = {
+        'jobs': r.row['jobs'].change_at(self._jobid
+                            , r.row['jobs'].nth(self._jobid).merge(doc))}
+    else:
+      _doc = doc
+    with self.dbTableContext() as (q, conn):
+      return q.get(self._docid).update(_doc).run(conn)
+
+  def append_test(self, test_result):
+    doc = {'tests': r.row['tests'].append(test_result)}
+    with self.dbTableContext() as (q, conn):
+      q.get(self._docid).update(doc).run(conn)
+
+def consume(dbTableContext, queueData, method, properties, body):  # pylint: disable=unused-argument
   logging.info('Consuming ...')
   logging.debug('consuming args: %s %s', method, properties)
   job = None
@@ -367,32 +350,34 @@ def consume(dbTableContext, queue, method, properties, body): #pylint: disable=u
     if job is not None:
       logging.debug('Got docid: %s a job of type: $s', job['docid'], job['type'])
       if job['type'] == 'origin':
-        worker_distribute_jobs(dbTableContext, queue, job)
-      else if job['type'] == 'distributed':
-        worker_run_fontbakery(dbTableContext, queue, job)
+        dbOps = DBOperations(dbTableContext, job['docid'])
+        worker_distribute_jobs(dbOps, queueData, job)
+      elif job['type'] == 'distributed':
+        dbOps = DBOperations(dbTableContext, job['docid'], job['id'])
+        worker_run_fontbakery(dbOps, queueData, job)
       else:
+        dbOps = DBOperations(dbTableContext, job['docid'])
         raise FontbakeryWorkerError('Job type has no dispatcher: {}'.format(job['type']))
-      logging.info('DONE!')
+      logging.info('DONE! (job type: %s)', job['type'])
     else:
       logging.warning('Job is None, doing nothing')
-  except Exception:
+  except Exception as e:
     # write to the DB doc
     # NOTE: we may have no docid here, if the message was lying or unparsable
-    if job is not None:
-      docid = job['docid']
+    if job is not None and dbOps:
       # Report suppression of the error
-      logging.exception('FAIL docid: %s', docid)
+      logging.exception('FAIL docid: %s', job['docid'])
       # It will be handy to know this from the client.
       exception = traceback.format_exc()
-      with dbTableContext() as (q, conn):
-        q.get(docid).update({
-                              'isFinished': True
-                            , 'finished': datetime.now(pytz.utc)
-                            , 'exception': exception
-                            }).run(conn)
-      logging.debug('Document closed exceptionally.')
+      # if there is a jobid, this is reported in the job, otherwise it
+      # is reported in the doc.
+      dbOps.update({'finished': datetime.now(pytz.utc)
+                  , 'exception': exception
+                  })
+      logging.exception('Document closed exceptionally. %s', e)
     else:
       # Did not report this appropriately
+      logging.exception('Can\'t report to data base document. %s', e)
       raise
   finally:
     # anything else to clean up?
@@ -409,7 +394,9 @@ def consume(dbTableContext, queue, method, properties, body): #pylint: disable=u
     # queue, but with an incremented retry count. After {n} retries we could
     # move it to the dead-end. That way, a temporary db failure or such would
     # not be a "job killer".
-    queue_channel.basic_ack(delivery_tag=method.delivery_tag)
+
+
+  queueData.channel.basic_ack(delivery_tag=method.delivery_tag)
 
 @contextmanager
 def get_db(host, port, db, table=None):
@@ -468,12 +455,12 @@ def main(queue_name, db_name, db_table, consumefunc):
       queue_channel = connection.channel()
       queue_channel.basic_qos(prefetch_count=1)
       queue_channel.queue_declare(queue=queue_name, durable=True)
-      logging.info('Waiting for messages...')
+      logging.info('Waiting for messages in %s...', queue_name)
       # BlockingChannel has a generator
       queue = QueueData(queue_channel, queue_name)
       for method, properties, body in queue.channel.consume(queue.name):
         consumefunc(dbTableContext, queue, method, properties, body)
-    except pika.exceptions.ConnectionClosed as e:
+    except pika.exceptions.ConnectionClosed:
       logging.warning('RabbitMQ not ready yet.', exc_info=True)
       time.sleep(1)
     finally:
