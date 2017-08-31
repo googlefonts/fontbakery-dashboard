@@ -32,46 +32,85 @@ One of the most annoying things with Minikube is establishing a local docker reg
 
 This solution creates a registry server within the minikube vm images and persists the registry data between reboots of minikube `minikube stop; minikube start`:
 
-## (DEPRECATED! use `$ . <(minikube docker-env)`) set up the docker registry
+## Minikube needs no docker registry
+
+
+```
+# start minikube normally:
+$ minikube start
+
+# use minikubes docker:
+$ . <(minikube docker-env)
+
+# build and tag an image as "fontbakery/worker-fontbakery:1":
+$ docker build -t fontbakery/worker-fontbakery:1 containers/worker-fontbakery/
 
 ```
 
-# we'll always have to start minikube with the `--insecure-registry` option
-$ minikube start --insecure-registry localhost:5000
+In the yaml file, the container is referenced directly by its tag `fontbakery/worker-fontbakery:1`:
 
-# this will make the local `docker` command use the minikube vm as docker host
-# thus all commands starting with `docker` will affect the minikube vm not the host computer
-$ eval $(minikube docker-env)
-
-# "registry:2" is: https://github.com/docker/distribution
-#  `/data` within minikube is persisted, as documented per:
-# https://github.com/kubernetes/minikube/blob/master/docs/persistent_volumes.md#persistent-volumes
-docker run -d -p 5000:5000 --restart=always --name registry   -v /data/docker-registry:/var/lib/registry registry:2
+```yaml
+# minikube-worker-fontbakery.yaml
+[…]
+    spec:
+      containers:
+      - name: worker-fontbakery
+        image: fontbakery/worker-fontbakery:1
+        workingDir: /var/worker-fontbakery
+        command: ["python2",  "-u", "fontbakery-dragandrop-worker.py"]
+[…]
 ```
 
-That's it, now we can use docker to build images, then tag them like in this example:
+This can be applied directly **without** `$ docker push`:
 
 ```
-docker tag rethinkdb-2.3.5 localhost:5000/fontbakery/rethinkdb-2.3.5
-docker push localhost:5000/fontbakery/rethinkdb-2.3.5
+# NAMESPACE=fontbakery
+$ kubectl -n $NAMESPACE apply -f minikube-worker-fontbakery.yaml
 ```
 
-To pull them in k8s, the `yml` `spec.containers.image` key looks like this:
 
-```
-spec:
-  containers:
-  - image: localhost:5000/fontbakery/rethinkdb-2.3.5
-    name: rethinkdb
-```
 
-After the registry setup, starting minikube always involves:
 
-```
-$ minikube start --insecure-registry localhost:5000
-# AND *important*
-$ eval $(minikube docker-env)
-```
+### DEPRECATED! (see above "Minikube needs no docker registry") set up the docker registry
+
+> ```
+>
+> # we'll always have to start minikube with the `--insecure-registry` option
+> $ minikube start --insecure-registry localhost:5000
+>
+> # this will make the local `docker` command use the minikube vm as docker host
+> # thus all commands starting with `docker` will affect the minikube vm not the host computer
+> $ eval $(minikube docker-env)
+>
+> # "registry:2" is: https://github.com/docker/distribution
+> #  `/data` within minikube is persisted, as documented per:
+> # https://github.com/kubernetes/minikube/blob/master/docs/persistent_volumes.md#persistent-volumes
+> docker run -d -p 5000:5000 --restart=always --name registry   -v /data/docker-registry:/var/lib/registry registry:2
+> ```
+>
+> That's it, now we can use docker to build images, then tag them like in this example:
+>
+> ```
+> docker tag rethinkdb-2.3.5 localhost:5000/fontbakery/rethinkdb-2.3.5
+> docker push localhost:5000/fontbakery/rethinkdb-2.3.5
+> ```
+>
+> To pull them in k8s, the `yml` `spec.containers.image` key looks like this:
+>
+> ```
+> spec:
+>   containers:
+>   - image: localhost:5000/fontbakery/rethinkdb-2.3.5
+>     name: rethinkdb
+> ```
+>
+> After the registry setup, starting minikube always involves:
+>
+> ```
+> $ minikube start --insecure-registry localhost:5000
+> # AND *important*
+> $ eval $(minikube docker-env)
+> ```
 
 ---
 

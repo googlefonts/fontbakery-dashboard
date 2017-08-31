@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: www-fontbakery
-        image: localhost:5000/fontbakery/www-fontbakery:1
+        image: fontbakery/www-fontbakery:1
         ports:
         - containerPort: 3000
         workingDir: /var/www-fontbakery
