@@ -7,7 +7,7 @@ import time
 import os
 from fontprojects import git_repos
 
-local_devel = (os.environ.get("FONTBAKERY_LOCAL_DEVEL" == 1)
+local_devel = os.environ.get("FONTBAKERY_LOCAL_DEVEL") == 1
 local_families_selection = [
   "Roboto",
   "Roboto Condensed",
