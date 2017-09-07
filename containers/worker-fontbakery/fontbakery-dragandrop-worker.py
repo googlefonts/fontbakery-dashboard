@@ -44,6 +44,8 @@ def worker_distribute_jobs(dbOps, queueData, job):
 
   # this must survive JSON
   full_order = spec.serialize_order(runner.order)
+  tests = {identity:{'index':index}  for index, identity in enumerate(full_order)}
+
   # FIXME: do something fancy to split this up
   # maybe we can distribute long running tests evenly or such
   # this would require more info of course.
@@ -59,9 +61,6 @@ def worker_distribute_jobs(dbOps, queueData, job):
     jobs_meta.append({
         'id': jobid
       , 'created': datetime.now(pytz.utc)
-      , 'started': None
-      , 'finished': None
-      , 'exception': None
       # the indexes in full_order of the tests this job is supposed to run
       # could be helpful, to mark the not finished ones as doomed if the
       # job has an exception and terminates.
@@ -79,11 +78,11 @@ def worker_distribute_jobs(dbOps, queueData, job):
         # important for parallel execution, to piece together the original
         # order again. The items in the execution_order list are JSON
         # formatted strings and can be used as keys.
-      , 'execution_order': full_order
       , 'iterargs': runner.iterargs
         # and to have a place where the sub-workers can report
       , 'jobs': jobs_meta # record start and end times
-      , 'tests': []
+      , 'tests': tests
+      , 'results': {}
   })
 
   options = pika.BasicProperties(
@@ -126,8 +125,7 @@ class DashbordWorkerReporter(FontbakeryReporter):
 
     if status == STARTTEST:
         self._current = {
-            'key': key
-          , 'job_id': self._jobid # for debugging/analysis tasks
+            'job_id': self._jobid # for debugging/analysis tasks
           , 'statuses': []
         }
 
@@ -136,7 +134,8 @@ class DashbordWorkerReporter(FontbakeryReporter):
         # derivative of the actual data, i.e. not SSOT. Calculating (and
         # thus interpreting) results for the tests is probably not too
         # expensive to do it on the fly.
-        self._flush_result(self._current)
+        self._current['result'] = message.name
+        self._flush_result(key, self._current)
         self._current = None
 
     if status >= DEBUG:
@@ -168,9 +167,9 @@ class DashbordWorkerReporter(FontbakeryReporter):
         log['message'] = '{}'.format(message)
       self._current['statuses'].append(log)
 
-  def _flush_result(self, test_result):
+  def _flush_result(self, key, test_result):
     """ send test_result to the retthinkdb document"""
-    self._dbOps.append_test(test_result)
+    self._dbOps.insert_test(key, test_result)
 
 def _run_fontbakery(dbOps, job, fonts):
   dbOps.update({'started': datetime.now(pytz.utc)})
@@ -336,8 +335,20 @@ class DBOperations(object):
     with self.dbTableContext() as (q, conn):
       return q.get(self._docid).update(_doc).run(conn)
 
-  def append_test(self, test_result):
-    doc = {'tests': r.row['tests'].append(test_result)}
+  def insert_test(self, key, test_result):
+    doc = {
+        'tests': r.row['tests'].merge({key: test_result})
+      # increase the counter
+      # FIXME: This is a denormalization, and we can most probably create
+      # a rethinkdb query to fetch a results object like this on the fly.
+      # This is mainly useful for the collection-wide test results view.
+      # Maybe an on-the-fly created results object is fast enough. After all,
+      # this is a classical case for an SQL database query.
+      , 'results': r.row['results'].merge(lambda results: {
+          test_result['result']: results[test_result['result']].default(0).add(1)
+      })
+    }
+
     with self.dbTableContext() as (q, conn):
       q.get(self._docid).update(doc).run(conn)
 
