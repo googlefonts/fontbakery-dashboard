@@ -154,7 +154,7 @@
         }
 
         .result-value_indicator-button,
-        .report-container_results_result-tab {
+        .report-container_tests-tab {
             display: inline-block;
             margin-right: .5em;
             margin-bottom: .5em;
@@ -163,23 +163,25 @@
             cursor: pointer;
         }
 
-        .report-container_results_result-tab:hover,
-        .report-container_results_result-tab.active-result {
+        report-container_tests_tabs
+
+        .report-container_tests-tab:hover,
+        .report-container_tests-tab.active-tab {
             background-color: #b3eeff;
         }
 
-        .report-container_results_result-tab:hover,
-        .report-container_results_result-tab.active-result,
+        .report-container_tests-tab:hover,
+        .report-container_tests-tab.active-tab,
         .result-value_indicator-button.active,
         .result-value_indicator-button:hover {
             border-style: inset;
         }
 
-        .report-container_results_result-doc {
+        .report-container_tests-container {
             display: none;
         }
 
-        .report-container_results_result-doc ul {
+        .report-container_tests-container ol {
             overflow: auto;
             list-style: none;
             padding: 0;
@@ -187,7 +189,7 @@
             border-top: 3px solid lightgrey;
         }
 
-        .report-container_results_result-doc.active-result{
+        .report-container_tests-container.active-tab {
             display: block;
         }
 
@@ -202,7 +204,6 @@
         /* Repeat class names to make the selector more specific ;-)
            Nobody needs !important!
         */
-        .result-value_indicator-button.inactive.inactive.inactive:hover,
         .result-value_indicator-button.active.active.active:hover {
             background: #DDD;
         }
@@ -217,28 +218,47 @@
         /* test result colors */
         .test-result-ERROR .check-item-container_result,
         .result-value_indicator-button.active.result-value-ERROR,
+        .result-value_indicator-button.inactive.result-value-ERROR:hover,
         .result-value_indicator.result-value-ERROR {
+            background: crimson;
+            color: white;
+        }
+        .test-result-FAIL .check-item-container_result,
+        .result-value_indicator-button.active.result-value-FAIL,
+        .result-value_indicator-button.inactive.result-value-FAIL:hover,
+        .result-value_indicator.result-value-FAIL {
             background: tomato;
         }
-        .test-result-WARNING .check-item-container_result,
-        .result-value_indicator-button.active.result-value-WARNING,
-        .result-value_indicator.result-value-WARNING {
+        .test-result-WARN .check-item-container_result,
+        .result-value_indicator-button.active.result-value-WARN,
+        .result-value_indicator-button.inactive.result-value-WARN:hover,
+        .result-value_indicator.result-value-WARN {
             background: darkorange;
         }
         .test-result-SKIP .check-item-container_result,
         .result-value_indicator-button.active.result-value-SKIP,
+        .result-value_indicator-button.inactive.result-value-SKIP:hover,
         .result-value_indicator.result-value-SKIP {
             background: LemonChiffon;
         }
         .test-result-INFO .check-item-container_result,
         .result-value_indicator-button.active.result-value-INFO,
+        .result-value_indicator-button.inactive.result-value-INFO:hover,
         .result-value_indicator.result-value-INFO {
             background: #b3eeff;
         }
-        .test-result-OK .check-item-container_result,
-        .result-value_indicator-button.active.result-value-OK,
-        .result-value_indicator.result-value-OK {
+        .test-result-PASS .check-item-container_result,
+        .result-value_indicator-button.active.result-value-PASS,
+        .result-value_indicator-button.inactive.result-value-PASS:hover,
+        .result-value_indicator.result-value-PASS {
             background: greenyellow;
+        }
+
+        .test-result-DEBUG .check-item-container_result,
+        .result-value_indicator-button.active.result-value-DEBUG,
+        .result-value_indicator-button.inactive.result-value-DEBUG:hover,
+        .result-value_indicator.result-value-DEBUG {
+            background: lavender ;
         }
 
         .check-item-container_result {
@@ -302,46 +322,36 @@
     <div class="report-root">
         <div>
             <!-- insert: id-->
-            <!-- insert: isFinished -->
             <!-- insert: created -->
             <!-- insert: started -->
             <!-- insert: finished -->
-            <!-- insert: command -->
             <!-- insert: exception -->
         </div>
-        <!-- insert: results -->
+        <!-- insert: tests -->
         <div class="generic-items"></div>
     </div>
 
     <h1 class="report-container_id">Report ID: <!-- insert: id--></h1>
 
-    <div class="report-container_results">
-        <div class="report-result-aggregation">
-            <strong>Aggregated Results</strong> <!-- insert: result-indicator -->
-            Total <!-- insert: results-total -->
-        </div>
-        <div class="report-container_results_tabs">
+    <div class="report-container_tests_results-aggregation">
+        <strong>Aggregated Results</strong> <!-- insert: result-indicator -->
+        Total <!-- insert: results-total -->
+    </div>
+
+    <div class="report-container_tests">
+        <!-- insert: results-aggregation -->
+        <div class="report-container_tests_tabs">
             <!-- insert: tabs -->
         </div>
-        <div class="report-container_results_docs">
-            <!-- insert: docs -->
+        <div class="report-container_tests_containers">
+            <!-- insert: containers -->
         </div>
     </div>
 
-    <button class="report-container_results_result-tab"><!-- insert: title --></button>
+    <button class="report-container_tests-tab"><!-- insert: title --></button>
 
-    <div class="report-container_results_result-doc">
+    <li class="report-container_test-item">
         <h2><!-- insert: key --></h2>
-        <strong>Results</strong> <!-- insert: result-indicator -->
-        Total <!-- insert: results-total -->
-        <ul>
-            <!-- insert: children -->
-        </ul>
-    </div>
-
-    <li class="result-doc_check-item">
-
-
         <p>
             <!-- insert: result -->
             <strong>Check <!-- insert: check_number --></strong>
@@ -350,7 +360,17 @@
         <!-- insert: log_messages -->
         <p class="generic-items"></p>
     </li>
+
+    <ol class="report-container_tests-items"></ol>
+
+    <div class="report-container_tests-container">
+        <strong>Results</strong> <!-- insert: result-indicator -->
+        Total <!-- insert: results-total -->
+        <!-- insert: tests -->
+    </div>
+
     <span class="result-value_indicator"><!-- insert: name --> <!-- insert: value --></span>
+
     <button class="result-value_indicator-button">
         <!-- insert: name --> <!-- insert: value -->
     </button>

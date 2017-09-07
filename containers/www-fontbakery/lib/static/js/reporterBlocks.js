@@ -193,14 +193,14 @@ define([
         this._insertChild(key, block);
     };
 
-    _p._getContainerForBlock = function(key) {
-        var container = this._makeChildContainer(key);
+    _p._getContainerForBlock = function(key, data) {
+        var container = this._makeChildContainer(key, data);
         this._insertChildContainer(key, container);
         return container;
     };
 
     _p.add = function(key, data) {
-        var container = this._getContainerForBlock(key);
+        var container = this._getContainerForBlock(key, data);
         this._create(container, key, data);
     };
 
@@ -269,12 +269,12 @@ define([
         }
     });
 
-    _p._insertChild = function(key, child){
+    _p._insertChild = function(key, child) {
         this._children[key] = child;
     };
 
     _p._deleteChild = function(key) {
-        delete  this._children[key];
+        delete this._children[key];
     };
 
     /**
@@ -338,7 +338,7 @@ define([
     };
 
     _p._deleteChild = function(key) {
-        delete  this._children[key];
+        delete this._children[key];
     };
 
     /**
@@ -562,7 +562,7 @@ define([
             children.push(dom.createElement(
                         spec[''].keyTag ||  'strong', {}, key, false));
 
-        if(!spec[''].skipKey && !spec[''].skipData && spec[''].seperator) {
+        if(!(spec[''].skipKey || spec[''].skipData) && spec[''].seperator) {
             if(spec[''].seperatorTag)
                 seperator = dom.createElement(spec[''].seperatorTag, {}, spec[''].seperator);
             else

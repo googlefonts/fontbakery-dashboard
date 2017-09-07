@@ -286,11 +286,7 @@ _p._onDocCreated = function(req, res, next, dbResponse) {
 _p.fbDNDReceive = function(req, res, next) {
 
     // var files = this.unpack(req.body)
-    var doc = {
-           isFinished: false
-         , created: new Date()
-        }
-      ;
+    var doc = {created: new Date()};
     function success(docid) {
         //jshint validthis:true
         this._log.debug('Sending response:', docid);
