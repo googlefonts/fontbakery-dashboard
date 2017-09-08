@@ -79,6 +79,8 @@ def worker_distribute_jobs(dbOps, queueData, job):
         # order again. The items in the execution_order list are JSON
         # formatted strings and can be used as keys.
       , 'iterargs': runner.iterargs
+      , 'test_descriptions': {test.id: test.description
+                                        for _, test, _ in runner.order}
         # and to have a place where the sub-workers can report
       , 'jobs': jobs_meta # record start and end times
       , 'tests': tests
