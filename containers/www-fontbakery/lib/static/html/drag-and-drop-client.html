@@ -181,7 +181,7 @@
             display: none;
         }
 
-        .report-container_tests-container ol {
+        .report-container_tests-container > ol {
             overflow: auto;
             list-style: none;
             padding: 0;
@@ -193,12 +193,23 @@
             display: block;
         }
 
-        .result-doc_check-item {
+        .report-container_test-item {
             margin: 1em 0;
             background: white;
             /* enforces the margins to not float into each other */
             border-top: 1px solid transparent;
             border-bottom: 1px solid transparent;
+        }
+
+        .report-container_test-item .generic-items > * {
+            margin-right: 1em;
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+            font-size: .7em;
+        }
+
+        .check-item-container_result {
+            padding: .5em;
         }
 
         /* Repeat class names to make the selector more specific ;-)
@@ -260,18 +271,6 @@
         .result-value_indicator.result-value-DEBUG {
             background: lavender ;
         }
-
-        .check-item-container_result {
-            padding: .5em;
-        }
-
-        .result-doc_check-item .generic-items > *{
-            margin-right: 1em;
-            font-family: 'Inconsolata', monospace;
-            font-size: 1.1em;
-            font-size: .7em;
-        }
-
 
         /* by https://stephanwagner.me/only-css-loading-spinner */
 
@@ -335,7 +334,9 @@
 
     <div class="report-container_tests_results-aggregation">
         <strong>Aggregated Results</strong> <!-- insert: result-indicator -->
-        Total <!-- insert: results-total -->
+        <!-- insert: percent -->&nbsp;%
+        <!-- insert: results-total -->&nbsp;of&nbsp;<!--insert: tests-total -->
+
     </div>
 
     <div class="report-container_tests">
@@ -351,10 +352,9 @@
     <button class="report-container_tests-tab"><!-- insert: title --></button>
 
     <li class="report-container_test-item">
-        <h2><!-- insert: key --></h2>
         <p>
             <!-- insert: result -->
-            <strong>Check <!-- insert: check_number --></strong>
+            <strong><!-- insert: test-key --></strong>
             <!-- insert: description -->
         </p>
         <!-- insert: log_messages -->
@@ -364,6 +364,7 @@
     <ol class="report-container_tests-items"></ol>
 
     <div class="report-container_tests-container">
+        <h2><!-- insert: label --></h2>
         <strong>Results</strong> <!-- insert: result-indicator -->
         Total <!-- insert: results-total -->
         <!-- insert: tests -->

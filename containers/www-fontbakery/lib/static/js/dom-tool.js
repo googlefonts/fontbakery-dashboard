@@ -162,12 +162,15 @@ define([
         return null;
     }
 
-    function insertAtMarkerComment(element, child, marker, fallbackPosition) {
+    function insertAtMarkerComment(element, marker, child, fallbackPosition) {
         var found = getMarkerComment(element, marker);
         if(found)
             insert(found, 'after', child);
+        else if (fallbackPosition !== false)
+            // undefined defaults to append
+            insert(element, fallbackPosition || 'append', child);
         else
-            insert(element, fallbackPosition || 'after', child);
+            throw new Error('Marker <!-- '+marker+' --> not found');
     }
 
     return {

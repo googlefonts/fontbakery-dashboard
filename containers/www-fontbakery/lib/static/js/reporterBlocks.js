@@ -1,9 +1,11 @@
 define([
     'dom-tool'
   , 'jsonPointer'
+  , 'PubSub'
 ], function(
     dom
   , jsonPointer
+  , PubSub
 ) {
     "use strict";
     function NotImplementedError(message, stack) {
@@ -73,9 +75,8 @@ define([
     var _Block = (function() {
     function _Block(supreme, container, key, spec) {
         // jshint validthis: true
-        this._supreme = supreme;
+        this.supreme = supreme;
         this.container = container;
-        this.key = key;
         this._spec = spec;
 
         // http://jsonpatch.com/
@@ -87,6 +88,17 @@ define([
     }
 
     var _p = _Block.prototype;
+
+    Object.defineProperty(_p, 'path', {
+        get: function() {
+            var pathParts = [this.key], parent=this.parent;
+            while(parent) {
+                pathParts.push(parent.key);
+                parent=parent.parent;
+            }
+            return pathParts.reverse().join('/');
+        }
+    });
 
     /**
      * For simple values this is simply returning the value,
@@ -158,10 +170,7 @@ define([
     };
 
     _p._create = function(container, key, data) {
-        var BlockFactory = this._getChildFactory(key)
-                    // Can be a factory OR a constructor, the new operator
-                    // is flexible enough for this. If it is a factory,
-                    // it must return a new object, that's all.
+        var constructor = this._getChildFactory(key)
           , spec = {}, childSpec
           , skipEmptyKey = new Set([''])
           , block
@@ -187,15 +196,29 @@ define([
         if (!('GenericType' in spec['']))
             spec[''].GenericType = this._spec[''].GenericType;
 
+        if(constructor.constructorGetter)
+            constructor = constructor(this.supreme, container, key, spec, data);
 
-        block = new BlockFactory(this, container, key, spec, data);
+        block = Object.create(constructor.prototype);
+        // so we can always calculate the path!
+        // actually, having the constructor arguments always available,
+        // even in the constructor, would make things easier in some
+        // places.
+        Object.defineProperties(block, {
+            parent: { value: this, enumerable: true}
+          , key: { value: key, enumerable: true}
+        });
+        constructor.call(block, this.supreme, container, key, spec, data);
+
          // find the right place to insert
         this._insertChild(key, block);
     };
 
     _p._getContainerForBlock = function(key, data) {
         var container = this._makeChildContainer(key, data);
-        this._insertChildContainer(key, container);
+        if(container)
+            // allow blocks without container
+            this._insertChildContainer(key, container);
         return container;
     };
 
@@ -598,27 +621,30 @@ define([
     return GenericPrimitiveValueBlock;
     })();
 
+    // not really a factory anymore :-/
     function genericBlockFactory(supreme, container, key, spec, data) {
-        var Constructor, instance;
+        // jshint unused:vars
+        var Constructor;
         if(data instanceof Array)
             Constructor = GenericArrayBlock;
         else if(data === null || typeof data !== 'object')
             Constructor = GenericPrimitiveValueBlock;
         else
             Constructor = GenericDictionaryBlock;
-        instance = Object.create(Constructor.prototype);
-        Constructor.call(instance, supreme, container, key, spec, data);
-        return instance;
+        return Constructor;
     }
+    genericBlockFactory.constructorGetter = true;
 
     var Supreme = (function() {
-    function Supreme(RootBlock, container, rootTemplateElement, rootInsertionMarker, spec) {
+    function Supreme(RootBlock, container, rootTemplateElement
+                            , rootInsertionMarker, spec) {
         this._container = container;
         this._rootInsertionMarker = rootInsertionMarker;
         this._rootTemplateElement = rootTemplateElement;
         this.RootBlock = RootBlock;
         this._root = null;
         this._spec = spec;
+        this.pubSub = new PubSub();
         this._replaceRoot({});
     }
 
@@ -631,9 +657,11 @@ define([
             dom.replaceNode(container, this._root.container);
         }
         else
-            dom.insertAtMarkerComment(this._container, container
-                                , this._rootInsertionMarker, 'append');
-
+            dom.insertAtMarkerComment(this._container
+                        , this._rootInsertionMarker, container, 'append');
+        // Note, we don't set Parent and key is ''
+        // !block.parent is a stop condition
+        // key '' makes pathes absolute i.e. `pathParts.join('/')`
         this._root = new this.RootBlock(this, container, '', this._spec, data);
     };
 
@@ -720,24 +748,41 @@ define([
         this.add(path, data);
     };
 
+    function isEqual(a, b) {
+        // this only works for objects that can come from JSON:
+        // string, number, object, array, true, false, null
+        // where `object` must be vanilla js objects no types etc.
+        var i, l, k;
+        if(a === b)
+            return true;
+        if(a instanceof Array) {
+            if(!(b instanceof Array))
+                return false;
+            if(a.length != b.length)
+                return false;
+            for(i=0,l=a.length;i<l;i++) {
+                if(!isEqual(a[i], b[i]))
+                    return false;
+            }
+            return true;
+        }
+        if(typeof a === 'object') {
+            if(typeof b !== 'object')
+                return false;
+            for(k in a) {
+                if(!(k in b))
+                    return false;
+                if(!isEqual(a[k], b[k]))
+                    return false;
+            }
+            return true;
+        }
+        return false;
+    }
+
     _p.test = function(path, value) {
         var data = this._getBlock(path).data;
-        // works yet only for simple values
-        if (typeof value === 'object')
-            throw new Error('Test currently works only for simple values.');
-
-        if (typeof data === 'object')
-            // this is only true as long as the condition above is false:
-            // assert typeof value !== 'object'
-            return false;
-
-        if(value !== data) {
-            console.warn('test value', value);
-            console.warn('block data', data);
-            throw new Error('Test for path "'+path+'" failed');
-        }
-
-        return true;
+        return isEqual(value, data);
     };
 
     return Supreme;

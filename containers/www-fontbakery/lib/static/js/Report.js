@@ -15,6 +15,7 @@ define([
       , Supreme = reporterBlocks.Supreme
       , DictionaryBlock = reporterBlocks.DictionaryBlock
       , PrimitiveValueBlock = reporterBlocks.PrimitiveValueBlock
+      , ArrayBlock = reporterBlocks.ArrayBlock
       , AnsiUp = ansiUp.default
       ;
 
@@ -35,7 +36,6 @@ define([
 
     var Parent = DictionaryBlock;
     function FlexibleDocumentBlock(supreme, container, key, spec, data) {
-        this._init(container, key, spec, data);
         this._genericItemsContainer = dom.getChildElementForSelector(
                                             container, '.generic-items');
         Parent.call(this, supreme, container, key, spec, data);
@@ -52,6 +52,8 @@ define([
      * Returns a DOM-Element, that is not yet in the document
      */
     _p._makeChildContainer = function(key) {
+        if(this._spec[''].containerless &&  this._spec[''].containerless.has(key))
+            return;
         // query the templates for {key} and return a deep copy of the result
         var container = this._spec[''].getElementFromTemplate(key);
         if(!container)
@@ -97,27 +99,52 @@ define([
     return HrefDocumentBlock;
     })();
 
-
-    function mixinResultChangeChannel(_p) {
+    function mixinSubscriberChannel(_p, channelName, initialMessages) {
         // target must define _resultChangeSubscriptions as
         // this._resultChangeSubscriptions = [];
         // in the constructor.
-        _p._dispatchResultChange = function(report) {
-            var i, l, callback, args;
-            for(i=0,l=this._resultChangeSubscriptions.length;i<l;i++) {
-                callback = this._resultChangeSubscriptions[i][0];
-                args = this._resultChangeSubscriptions[i][1].slice();
-                args.push(report);
-                callback.apply(this, args);
-            }
+        // initialMessages: if true this stores the last messages and
+        // sends it on new subscriptions. This only works if the
+        // the last messages always represents the full state of the
+        // subscription, i.e. not for more complex use cases.
+        var subscriptions = '_' + channelName + 'Subscriptions'
+          , _ChannelName = channelName.charAt(0).toUpperCase()
+                                                    + channelName.slice(1)
+          , dispatch = '_dispatch' + _ChannelName
+          , on = 'on' + _ChannelName
+          , lastMessage = null
+          ;
+        _p[dispatch] = function(/* message1, ..., message2 */) {
+            var i, l, message = [];
+            for(i=0,l=arguments.length;i<l;i++)
+                message.push(arguments[i]);
+            for(i=0,l=this[subscriptions].length;i<l;i++)
+                _publish(false, this[subscriptions][i], message, this);
+            if(initialMessages)
+                lastMessage = message;
         };
 
-        _p.onResultChange = function (callback) {
-            var args = [], i, l, _callback;
+        function _publish(async, subscription, message, thisVal) {
+            /* global setTimeout */
+            var callback = subscription[0]
+              , args = subscription[1].slice()
+              , _this = thisVal || null
+              ;
+            Array.prototype.push.apply(args, message);
+            if(async)
+                setTimeout(callback.apply.bind(callback, _this, args), 0);
+            else
+                return callback.apply(_this, args);
+        }
+
+        _p[on] = function (callback) {
+            var args = [], i, l, subscription;
             for(i=1,l=arguments.length;i<l;i++)
                 args.push(arguments[i]);
-            _callback = [callback, args];
-            this._resultChangeSubscriptions.push(_callback);
+            subscription = [callback, args];
+            this[subscriptions].push(subscription);
+            if(initialMessages && lastMessage)
+                _publish(false, subscription, lastMessage, this);
         };
     }
 
@@ -135,27 +162,16 @@ define([
         this.aggregateResults = Object.create(null);
         this.elements = {};
 
-        var closureValue = 0
-            , display = dom.createTextNode(0)
-            , marker
-            ;
-        Object.defineProperty(this.aggregateResults, '~~total~~', {
-            set: function(value) {
-                closureValue = value;
-                display.data = value;
-            }
-            , get: function() {
-                return closureValue;
-            }
-            , enumerable: true
-        });
+        this._total = 0;
+        this._totalDisplay = dom.createTextNode(0);
 
-        marker = dom.getMarkerComment(this.container
+        var marker = dom.getMarkerComment(this.container
                                 , this._resultsTotalIndicatorMarker);
         if(marker)
-            dom.insert(marker, 'after', display);
+            dom.insert(marker, 'after', this._totalDisplay);
 
         this._resultVals.forEach(this._initResultValueName, this);
+        this._totalChangeSubscriptions = [];
     }
 
     var _p = AggregatedResults.prototype;
@@ -170,19 +186,41 @@ define([
         return elem;
     };
 
+    _p._updateTotal = function(change) {
+        this._setTotal(this._total + change);
+    };
+
+    _p._setTotal = function(value) {
+        var i, l, cb;
+        if(this._total === value)
+            return;
+
+        this._total = value;
+        this._totalDisplay.data = value;
+
+        for(i=0,l=this._totalChangeSubscriptions.length;i<l;i++) {
+            cb=this._totalChangeSubscriptions[i];
+            cb(value);
+        }
+    };
+
+    _p.subscribeTotal = function(cb) {
+        this._totalChangeSubscriptions.push(cb);
+    };
+
     _p._initResultValueName = function(name) {
         var elem, closureValue, display, marker
-            , nameNode;
+            , nameNode, updateTotal;
         if(name in this.aggregateResults)
             return;
 
         // important for closure
         closureValue = 0;
         display = dom.createTextNode(0);
-
+        updateTotal = this._updateTotal.bind(this);
         Object.defineProperty(this.aggregateResults, name, {
             set: function(value) {
-                this['~~total~~'] += (value - closureValue);
+                updateTotal(value - closureValue);
                 closureValue = value;
                 display.data = value;
             }
@@ -236,6 +274,12 @@ define([
         }
     };
 
+    Object.defineProperty(_p, 'total', {
+        get: function() {
+            return this._total;
+        }
+    });
+
     return AggregatedResults;
     })();
 
@@ -254,11 +298,30 @@ define([
         return elem.getAttribute(searchAttribute);
     }
 
+    function _parseTestKey(key) {
+        var raw = JSON.parse(key)
+          , data = {
+              test: raw.test
+            , section: raw.section
+            , iterargs: {}
+           }
+         ;
+        raw.iterargs.forEach(function(item){this[item[0]] = item[1];}
+                                                        , data.iterargs);
+        return data;
+    }
+
     var TestsBlock = (function() {
     var Parent = DictionaryBlock;
     function TestsBlock(supreme, container, key, spec, data) {
+        // we need these earlier than Parent can run
+        this.supreme = supreme;
+        this.container = container;
+        this.spec = spec;
+
         this._tabs = {};
         this._tabsOrder = [];
+        this._testsLength = 0;
 
         var markerPrefix = spec[''].insertionMarkerPrefix;
 
@@ -268,6 +331,7 @@ define([
         this._tabsContainer = this._tabsMarker.parentElement;
         this._tabsContainer.addEventListener('click'
                                     , this._selectTabHandler.bind(this));
+        this._updateTabLabelHandler = this._updateTabLabel.bind(this);
 
         // init
         this._createdResultTypeRules = new Set();
@@ -276,24 +340,71 @@ define([
         this._styleElement.ownerDocument.head.appendChild(this._styleElement);
         this._uniqueClass = 'unique-class-' + Math.round(
                                       Math.random() * Math.pow(10, 17));
-        this.container = container;
+
         this.container.classList.add(this._uniqueClass);
 
         this._resultIndicatorMarker = markerPrefix + 'results-aggregation';
         this.resultChangeHandler = this._resultChangeHandler.bind(this);
-        this._results = this._initTotalResults(container, spec);
+        this._results = this._initTotalResults(container);
         Object.keys(this._results.elements).forEach(
                                     this._initAggregateResultHandler, this);
         this._results.container.addEventListener('click'
                                 , this._selectResultTypeHandler.bind(this));
-
+        this._results.subscribeTotal(this._updateCompletionIndicator.bind(this));
+        this._testsTotalLabel = dom.createTextNode();
+        this._testsPercentLabel = dom.createTextNode();
+        dom.insertAtMarkerComment(this._results.container
+                    , markerPrefix + 'tests-total', this._testsTotalLabel);
+        dom.insertAtMarkerComment(this._results.container
+                    , markerPrefix + 'percent', this._testsPercentLabel);
+        // init this
+        this._updateCompletionIndicator();
         Parent.call(this, supreme, container, key, spec, data);
+
+
     }
     var _p = TestsBlock.prototype = Object.create(Parent.prototype);
+
+    _p._updateCompletionIndicator = function() {
+        var total = this._testsLength
+          , done = this._results.total
+          , percent = 0
+          , ratio = 0
+          ;
+        if (total !== 0) {
+            ratio = done/total;
+            // leave 2 decimal places
+            percent = Math.round(ratio * 10000) / 100;
+        }
+
+        this._testsTotalLabel.data = total;
+        this._testsPercentLabel.data = percent;
+
+        this.supreme.pubSub.publish('tests/completion'
+                                          , ratio, done, total, percent);
+    };
+
+    _p.add = function(key, data) {
+        Parent.prototype.add.call(this, key, data);
+        this._testsLength += 1;
+        this._updateCompletionIndicator();
+    };
+
+    _p.remove = function(key) {
+        Parent.prototype.remove.call(this, key);
+        this._testsLength -= 1;
+        this._updateCompletionIndicator();
+    };
 
     _p.destroy = function() {
         Parent.prototype.destroy.call(this);
         dom.removeNode(this._styleElement);
+        var k, tab;
+        for(k in this._tabs) {
+            tab = this._tabs[k];
+            if(tab.unsubscribeLabel)
+                tab.unsubscribeLabel();
+        }
     };
 
     // START RESULTS CONTROL
@@ -336,83 +447,87 @@ define([
             this._toggleResultType(name);
     };
 
-    _p._initTotalResults = function(container, spec) {
-        var resultsContainer = spec[''].getElementFromTemplate(spec[''].resultsTemplateClass)
+    _p._initTotalResults = function(container) {
+        var spec = this.spec['']
+          , resultsContainer = spec.getElementFromTemplate(spec.resultsTemplateClass)
           , target = dom.getMarkerComment(container, this._resultIndicatorMarker)
           ;
 
         dom.insert(target, 'after', resultsContainer);
         return new AggregatedResults(resultsContainer
-            , spec[''].resultIndicatorButtonClass // = 'result-value_indicator-button'
-            , spec[''].resultVals
-            , spec[''].getElementFromTemplate
+            , spec.resultIndicatorButtonClass // = 'result-value_indicator-button'
+            , spec.resultVals
+            , spec.getElementFromTemplate
         );
     };
 
     // END RESULTS CONTROL
 
-    _p._makeTab = function(key, label) {
-        var markerPrefix = this._spec[''].insertionMarkerPrefix
-          , tab = this._spec[''].getElementFromTemplate(this._spec[''].tabTemplateClass)
-          , tabTitleMarker = markerPrefix + 'title'
-          , tabTitleTarget = dom.getMarkerComment(tab, tabTitleMarker)
-          , tabTitle = dom.createElement('span', {}, label)
-          , container = this._spec[''].getElementFromTemplate(this._spec[''].containerTemplateClass)
-          , items = this._spec[''].getElementFromTemplate(this._spec[''].itemsTemplateClass)
-          , itemsMarker = markerPrefix + 'tests'
-          , itemsTarget = dom.getMarkerComment(container, itemsMarker)
+    _p._makeTab = function(key, fallbackLabel) {
+        var spec = this._spec['']
+          , markerPrefix = spec.insertionMarkerPrefix
+          , getElementFromTemplate = spec.getElementFromTemplate.bind(spec)
+          , tab = getElementFromTemplate(spec.tabTemplateClass)
+          , labelNode = dom.createTextNode()
+          , tabTitle = dom.createElement('span', {}, labelNode)
+          , containerLabelNode = dom.createTextNode()
+          , container = getElementFromTemplate(spec.containerTemplateClass)
+          , items = getElementFromTemplate(spec.itemsTemplateClass)
             // has <!-- insert: result-indicator --> and <!-- insert: results-total -->
           , resultsContainer = container
           , results
           ;
 
-        dom.insert(tabTitleTarget, 'after', tabTitle);
-        dom.insert(itemsTarget, 'after', items);
+        dom.insertAtMarkerComment(tab, markerPrefix + 'title'
+                                                , tabTitle, false);
+        dom.insertAtMarkerComment(container, markerPrefix + 'tests'
+                                                , items, false);
+        dom.insertAtMarkerComment(container, markerPrefix + 'label'
+                                                , containerLabelNode, false);
         tab.setAttribute('data-tab-key', key);
 
-        // this._spec[''].resultIndicatorButtonClass // = 'result-value_indicator-button'
+        // spec.resultIndicatorButtonClass // = 'result-value_indicator-button'
         results = new AggregatedResults(resultsContainer
-            , this._spec[''].resultIndicatorClass // = 'result-value_indicator'
-            , this._spec[''].resultVals
-            , this._spec[''].getElementFromTemplate
+            , spec.resultIndicatorClass // = 'result-value_indicator'
+            , spec.resultVals
+            , getElementFromTemplate
         );
 
         return {
             key: key
           , tab: tab
+          , fallbackLabel: fallbackLabel || key
           , container: container
           , items: items
-          , label: label
+          , label: null
+          , labelNodes: [labelNode, containerLabelNode]
+          , unsubscribeLabel: null
           , results: results
         };
     };
 
-    _p._getTab = function(key, cached) {
-        var keyData = _parseTestKey(key)
-            // TODO: this will be spec config
-          , clusteringKey  = 'font'
-          , clusteringIndex = keyData.iterargs[clusteringKey]
-          , tabKey = '('+ clusteringKey +': ' + clusteringIndex + ')'
-          , tab = this._tabs[tabKey]
-          , tabLabel, target, marker, element
+    _p._updateTabLabel = function(tabKey, label) {
+        var tab = this._tabs[tabKey]
+          , oldIndex, target, element
+          , newLabel = label || tab.fallbackLabel
           ;
-        if(tab)
-            // it exists already
-            return tab;
-        if(cached)
-            // the caller is only interested if there's a cached version
-            return undefined;
-        // create the tab
+        if(tab.label === newLabel)
+            return;
+        tab.label = newLabel;
+        tab.labelNodes.forEach(function(n){n.data = newLabel;});
 
-        // TODO: complex! Maybe have an API to query parent for this?
-        // , clusteringLabel = global.iterargs[clusteringKey][clusteringId]
-        // in theory, this would have to change when the global value
-        // changes (what shouldn't happen in praxis, once the global value
-        // has been set,
-        tabLabel = tabKey;
-        tab = this._makeTab(tabKey, tabLabel);
-
+        // remove to find the new index
+        oldIndex = this._tabsOrder.indexOf(tab);
+        if(oldIndex !== -1)
+            // remove tab for _binInsert
+            this._tabsOrder.splice(oldIndex, 1);
         target = _binInsert(tab, this._tabsOrder, _compareTabs);
+        if(target.index === oldIndex) {
+            // return it and leave
+            this._tabsOrder.splice(oldIndex, 0, tab);
+            return;
+        }
+
         if(target.pos === 'append') {
             // first element
             target.pos = 'after';
@@ -421,9 +536,42 @@ define([
         }
         else
             element = this._tabsOrder[target.index].tab;
+
         dom.insert(element, target.pos, tab.tab);
         this._tabsOrder.splice(
                 target.index + (target.pos === 'after' ? 1 : 0), 0, tab);
+    };
+
+    _p._getTab = function(key, cached) {
+        var keyData = _parseTestKey(key)
+            // TODO: this will be spec config
+          , clusteringKey  = 'font'
+          , noClusteringLabel = 'Family Checks'
+          , clusteringIndex = keyData.iterargs[clusteringKey]
+          , tabKey = '('+ clusteringKey +': ' + clusteringIndex + ')'
+          , tab = this._tabs[tabKey]
+          , fallbackLabel, marker, element, channel
+          ;
+        if(tab)
+            // it exists already
+            return tab;
+        if(cached)
+            // the caller is only interested if there's a cached version
+            return undefined;
+
+        // create the tab
+        fallbackLabel = clusteringIndex === undefined
+                                                ? noClusteringLabel
+                                                : tabKey
+                                                ;
+        this._tabs[tabKey] = tab = this._makeTab(tabKey, fallbackLabel);
+        channel = 'change:' +['', 'iterargs', clusteringKey, clusteringIndex].join('/');
+        // runs the handler immediately if there is already a message!
+        tab.unsubscribeLabel = this.supreme.pubSub.subscribe(channel
+                                  , this._updateTabLabelHandler, tabKey);
+        if(tab.label === null)
+            //There was no label message (we have no label yet)
+            this._updateTabLabel(tabKey);
 
         // just append where it belongs, it will be switched on and off
         // <!-- insert: containers -->
@@ -431,13 +579,30 @@ define([
         element = dom.getMarkerComment(this.container, marker);
         dom.insert(element, 'after', tab.container);
 
-        this._tabs[tabKey] = tab;
-
         // this was the first tab (in time), activate
         if(this._tabsOrder.length === 1)
             this._activateTab(tab.key);
 
         return tab;
+    };
+
+    /**
+     * reason to reorder is new/changed names. Really depends on how they
+     * are ordered.
+     */
+    _p._reorderTabs = function() {
+        var newOrder = this._tabsOrder.slice().sort(_compareTabs)
+          , i = 0
+          , l = newOrder.length
+          , element = this._tabsMarker
+          ;
+        if(l)
+            do {
+                dom.insert(element, 'after', newOrder[i].tab);
+                element = newOrder[i].tab;
+                i++;
+            } while(i<l);
+        this._tabsOrder = newOrder;
     };
 
     // START TABS CONTROL
@@ -482,6 +647,8 @@ define([
         dom.removeNode(tab.container);
         delete this._tabs[tab.key];
         this._tabsOrder.splice(this._tabsOrder.indexOf(tab), 1);
+        if(tab.unsubscribeLabel)
+            tab.unsubscribeLabel();
     };
 
     _p.remove = function(key) {
@@ -511,19 +678,12 @@ define([
         // jshint unused:vars
         var klass = this._spec[''].itemTemplateClass
           , elem = this._spec[''].getElementFromTemplate(klass)
-          , marker, target
           ;
-        // elem.setAttribute('data-result-key', key); ??
         // This is a bit evil: if data.index would ever change, we'd
         // have to update data-index AND the element position. BUT,
         // that's over-engineering for this use case. data.index never
         // changes in a report!
         elem.setAttribute('data-index', data.index);
-
-        marker = this._spec[''].insertionMarkerPrefix + 'key';
-        target = dom.getMarkerComment(elem, marker);
-        dom.insert(target, 'after', dom.createTextNode(key));
-
         return elem;
     };
 
@@ -583,22 +743,9 @@ define([
         return a.label < b.label ? -1 : 1;
     }
 
-    function _parseTestKey(key) {
-        var raw = JSON.parse(key)
-          , data = {
-              test: raw.test
-            , section: raw.section
-            , iterargs: {}
-           }
-         ;
-        raw.iterargs.forEach(function(item){this[item[0]] = item[1];}, data.iterargs);
-        return data;
-    }
-
     function _getChildIndex(container) {
         return parseInt(container.getAttribute('data-index'), 10);
     }
-
 
     function _binInsert(value, others, compare) {
         var length = others.length
@@ -661,11 +808,6 @@ define([
 
         // for each child added
         child.onResultChange(this.resultChangeHandler, key);
-
-        // one problem is that we miss the initial value like this, thus:
-        var resultValue = child.getResult();
-        if(resultValue)
-            this.resultChangeHandler(key, [[resultValue, 1]]);
     };
 
     return TestsBlock;
@@ -678,10 +820,32 @@ define([
         this._resultChangeSubscriptions = [];
         this._result = undefined;
         Parent.call(this, supreme, container, key, spec, data);
+
+        this._keyData = _parseTestKey(this.key);
+
+        var channel = 'change:/test_descriptions/' + this._keyData.test
+          , markerPrefix = this._spec[''].insertionMarkerPrefix
+          ;
+        this._descriptionNode = dom.createTextNode();
+        dom.insertAtMarkerComment(container, markerPrefix + 'test-key'
+                        , dom.createTextNode(this._keyData.test), false);
+        dom.insertAtMarkerComment(container, markerPrefix + 'description'
+                                        , this._descriptionNode, false);
+        this.unsubscribeDesc = this.supreme.pubSub.subscribe(channel
+                                    , this._updateDescription.bind(this));
     }
     var _p = CheckItemDocBlock.prototype = Object.create(Parent.prototype);
 
-    mixinResultChangeChannel(_p);
+    mixinSubscriberChannel(_p, 'resultChange', true);
+
+    _p._updateDescription = function(description) {
+        this._descriptionNode.data = description;
+    };
+
+    _p.destroy = function() {
+        Parent.prototype.destroy.call(this);
+        this.unsubscribeDesc();
+    };
 
     _p._setResult = function (value) {
         var old = this._result
@@ -729,6 +893,92 @@ define([
     };
 
     return CheckItemDocBlock;
+    })();
+
+    var NoContainerDictBlock = (function() {
+    var Parent = DictionaryBlock;
+    function NoContainerDictBlock(supreme, container, key, spec, data) {
+        Parent.call(this, supreme, container, key, spec, data);
+    }
+
+    var _p = NoContainerDictBlock.prototype = Object.create(Parent.prototype);
+    _p.constructor = NoContainerDictBlock;
+
+    _p._publishChange = function(key /*, data*/) {
+        var channel = 'change:' + this.path + '/' + key
+          , args = [channel], i, l
+          ;
+        for(i=1,l=arguments.length;i<l;i++)
+            args.push(arguments[i]);
+        this.supreme.pubSub.publish.apply(this.supreme.pubSub, args);
+    };
+
+    _p.add = function(key, data) {
+        Parent.prototype.add.call(this, key, data);
+        if(this._spec[''].publishChanges)
+            this._publishChange(key, data);
+    };
+
+    _p.remove = function(key) {
+        Parent.prototype.remove.call(this, key);
+        if(this._spec[''].publishChanges)
+            this._publishChange(key);
+    };
+
+    _p.replace = function(key, data) {
+        Parent.prototype.replace.call(this, key, data);
+        if(this._spec[''].publishChanges)
+            this._publishChange(key, data);
+    };
+
+    _p._makeChildContainer = function(key) {
+        // jshint unused:vars
+        return;
+    };
+
+    return NoContainerDictBlock;
+    })();
+
+    var IterargArrayBlock = (function() {
+    var Parent = ArrayBlock;
+    function IterargArrayBlock(supreme, container, key, spec, data) {
+        this._changeSubscriptions = [];
+        Parent.call(this, supreme, container, key, spec, data);
+    }
+
+    var _p = IterargArrayBlock.prototype = Object.create(Parent.prototype);
+    _p.constructor = IterargArrayBlock;
+
+    _p._makeChildContainer = function(key) {
+        // jshint unused:vars
+        return;
+    };
+
+    _p._publishChange = function(index /*, data*/) {
+        var channel = 'change:' + this.path + '/' + index
+          , args = [channel], i, l
+          ;
+        for(i=1,l=arguments.length;i<l;i++)
+            args.push(arguments[i]);
+        this.supreme.pubSub.publish.apply(this.supreme.pubSub, args);
+    };
+
+    _p.add = function(key, data) {
+        Parent.prototype.add.call(this, key, data);
+        this._publishChange(key, data);
+    };
+
+    _p.remove = function(key) {
+        Parent.prototype.remove.call(this, key);
+        this._publishChange(key);
+    };
+
+    _p.replace = function(key, data) {
+        Parent.prototype.replace.call(this, key, data);
+        this._publishChange(key, data);
+    };
+
+    return IterargArrayBlock;
     })();
 
 
@@ -863,6 +1113,31 @@ define([
                     }
                 }
             }
+          , iterargsSpec = {
+                Type: NoContainerDictBlock
+              , spec: {
+                    '': {
+                        GenericType: IterargArrayBlock
+                      , genericSpec: {
+                            '': {
+                                GenericType: PrimitiveValueBlock
+                              , genericSpec: {}
+                            }
+                        }
+                        , publishChanges: false
+                    }
+                }
+            }
+          , testDescriptionsSpec = {
+                Type: NoContainerDictBlock
+              , spec: {
+                    '': {
+                        GenericType: PrimitiveValueBlock
+                      , genericSpec: {}
+                      , publishChanges: true
+                    }
+                }
+            }
           , testsSpec = {
                 // heavily functional block. provides:
                 // Aggregate results (filter buttons and numbers)
@@ -900,6 +1175,7 @@ define([
                         var klass = this.getClassForKey(key);
                         return getElementFromTemplate(klass);
                     }
+                  , containerless: new Set(['iterargs', 'test_descriptions'])
                 }
               , id: {
                     Type: HrefDocumentBlock
@@ -917,6 +1193,8 @@ define([
               , created: datesSpec
               , started: datesSpec
               , finished: datesSpec
+              , iterargs: iterargsSpec
+              , test_descriptions: testDescriptionsSpec
               , command: {
                     spec: {
                         '': {
@@ -937,7 +1215,7 @@ define([
           , rootInsertionMarker = 'insert: report-root'
           ;
 
-        this._supreme = new Supreme(
+        this.supreme = new Supreme(
                                      ReportDocumentBlock
                                    , this._container
                                    , rootTemplateElement
@@ -958,7 +1236,7 @@ define([
         // The api understands full JSONPAtch
         // there are generic renderers for unspecified data
         console.log('patches', patches);
-        this._supreme.applyPatches(patches);
+        this.supreme.applyPatches(patches);
 
     };
 
