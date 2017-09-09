@@ -32,6 +32,18 @@ define([
     KeyError.prototype = Object.create(Error.prototype);
     KeyError.prototype.constructor = KeyError;
 
+    function ValueError(message, stack) {
+        this.name = 'ValueError';
+        this.message = message || '(No message for ValueError)';
+        if(!stack && typeof Error.captureStackTrace === 'function')
+            Error.captureStackTrace(this, ValueError);
+        else {
+            this.stack = stack || (new Error()).stack || '(no stack available)';
+        }
+    }
+    ValueError.prototype = Object.create(Error.prototype);
+    ValueError.prototype.constructor = ValueError;
+
     function HasNoChildrenError(message, stack) {
         this.name = 'HasNoChildrenError';
         this.message = message || '(No message for HasNoChildrenError)';
@@ -44,7 +56,41 @@ define([
     HasNoChildrenError.prototype = Object.create(Error.prototype);
     HasNoChildrenError.prototype.constructor = HasNoChildrenError;
 
+    function binInsert(value, others, compare) {
+        var length = others.length
+          , start, end, middle, cmp
+          ;
 
+        if(!length)
+            return {index: 0, pos: 'prepend'};
+
+        cmp = compare || function(a, b) {
+              if(a > b) return 1;
+              if(a < b) return -1;
+              return 0;
+        };
+        start = 0;
+        end = length - 1;
+        while(true) {
+            // binary insert:
+            if(cmp (value, others[end]) > 0)
+                return {index: end, pos: 'after'};
+
+            if(cmp(value,  others[start]) < 0)
+                return {index: start, pos: 'before'};
+
+            middle = start + Math.floor((end - start) / 2);
+
+            if(cmp(value, others[middle]) < 0)
+                end = middle - 1;
+            else if(cmp(value, others[middle]) > 0)
+                start = middle + 1;
+            else
+                // This should *NEVER* happen!
+                throw new ValueError('An element with value "' + value
+                                    + '" is already in the list.');
+        }
+    }
     /**
      * Convenience function, don't parse the path if it is an array already.
      * But, if it is an array, return a copy, so that it can be altered by
@@ -133,7 +179,7 @@ define([
     };
 
     /**
-     *  insert into this._container at the right position
+     *  insert into this.container at the right position
      */
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
@@ -275,7 +321,7 @@ define([
 
     _p.getChild = function(key) {
         if(!(key in this._children))
-            throw new KeyError('Child not found "'+key+'" in "'+this+'"');
+            throw new Error('Child not found "'+key+'" in "'+this+'"');
         return this._children[key];
     };
 
@@ -309,7 +355,7 @@ define([
     };
 
     /**
-     *  insert into this._container at the right position
+     *  insert into this.container at the right position
      */
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
@@ -342,7 +388,7 @@ define([
 
     _p.getChild = function(key) {
         if(this._children[key] === undefined)
-            throw new KeyError('Child not found "'+key+'" in "'+this+'".');
+            throw new Error('Child not found "'+key+'" in "'+this+'".');
         return this._children[key];
     };
 
@@ -357,11 +403,11 @@ define([
     });
 
     _p._insertChild = function(key, child) {
-        this._children[key] = child;
+        this._children.splice(key, 0, child);
     };
 
     _p._deleteChild = function(key) {
-        delete this._children[key];
+        this._children.splice(key, 1);
     };
 
     /**
@@ -373,7 +419,7 @@ define([
     };
 
     /**
-     *  insert into this._container at the right position
+     *  insert into this.container at the right position
      */
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
@@ -433,7 +479,7 @@ define([
     };
 
     /**
-     *  insert into this._container at the right position
+     *  insert into this.container at the right position
      */
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
@@ -560,16 +606,21 @@ define([
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
         var index  = parseInt(key, 10)
-          , position, reference
+          , position, reference, target
           ;
         if(index === 0) {
-            position = 'append';
+            position = 'prepend';
             reference = this._container;
-
+        }
+        else if(this._children[index]) {
+            position = 'before';
+            reference = this._children[index].container;
         }
         else {
-            position = 'after';
-            reference = this._children[index-1].container;
+            target = binInsert(index, this._children.map(function(item) {
+                                        return parseInt(item.key, 10);}));
+            reference = this._children[target.index].container;
+            position = target.pos;
         }
         dom.insert(reference, position, container);
     };
@@ -608,6 +659,9 @@ define([
 
             );
         }
+
+        if(spec[''].addClasses)
+            container.classList.add.apply(container.classList, spec[''].addClasses(data));
 
         // this should be styled as preformat
         dom.appendChildren(container, children, false);
@@ -791,7 +845,9 @@ define([
     return {
         NotImplementedError: NotImplementedError
       , KeyError: KeyError
+      , ValueError: ValueError
       , HasNoChildrenError: HasNoChildrenError
+      , binInsert: binInsert
       , _Block: _Block
       , DictionaryBlock: DictionaryBlock
       , ArrayBlock: ArrayBlock

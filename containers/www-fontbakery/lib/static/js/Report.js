@@ -16,21 +16,9 @@ define([
       , DictionaryBlock = reporterBlocks.DictionaryBlock
       , PrimitiveValueBlock = reporterBlocks.PrimitiveValueBlock
       , ArrayBlock = reporterBlocks.ArrayBlock
+      , binInsert = reporterBlocks.binInsert
       , AnsiUp = ansiUp.default
       ;
-
-    function ValueError(message, stack) {
-        this.name = 'ValueError';
-        this.message = message || '(No message for ValueError)';
-        if(!stack && typeof Error.captureStackTrace === 'function')
-            Error.captureStackTrace(this, ValueError);
-        else {
-            this.stack = stack || (new Error()).stack || '(no stack available)';
-        }
-    }
-    ValueError.prototype = Object.create(Error.prototype);
-    ValueError.prototype.constructor = ValueError;
-
 
     var FlexibleDocumentBlock = (function(){
 
@@ -39,13 +27,16 @@ define([
         this._genericItemsContainer = dom.getChildElementForSelector(
                                             container, '.generic-items');
         Parent.call(this, supreme, container, key, spec, data);
-        this._init();
     }
     var _p = FlexibleDocumentBlock.prototype = Object.create(Parent.prototype);
 
-    _p._init = function() {
-        // Some js maybe for interactions?
-        // If so, shutdown on destroy?!
+    _p._getClassForKey = function(key) {
+        return this._spec[''].classPrefix + key;
+    };
+
+    _p._getElementFromTemplate = function(key) {
+        var klass = this._getClassForKey(key);
+        return this._spec[''].getElementFromTemplate(klass);
     };
 
     /**
@@ -55,10 +46,10 @@ define([
         if(this._spec[''].containerless &&  this._spec[''].containerless.has(key))
             return;
         // query the templates for {key} and return a deep copy of the result
-        var container = this._spec[''].getElementFromTemplate(key);
+        var container = this._getElementFromTemplate(key);
         if(!container)
             container = dom.createElement(this._spec[''].childTag || 'div',
-                            {'class': this._spec[''].getClassForKey(key)});
+                            {'class': this._getClassForKey(key)});
         return container;
     };
 
@@ -85,7 +76,6 @@ define([
     return FlexibleDocumentBlock;
     })();
 
-    // we'll have to extend this a bit.
     var ReportDocumentBlock = FlexibleDocumentBlock;
 
     var HrefDocumentBlock = (function() {
@@ -317,7 +307,7 @@ define([
         // we need these earlier than Parent can run
         this.supreme = supreme;
         this.container = container;
-        this.spec = spec;
+        this._spec = spec;
 
         this._tabs = {};
         this._tabsOrder = [];
@@ -448,7 +438,7 @@ define([
     };
 
     _p._initTotalResults = function(container) {
-        var spec = this.spec['']
+        var spec = this._spec['']
           , resultsContainer = spec.getElementFromTemplate(spec.resultsTemplateClass)
           , target = dom.getMarkerComment(container, this._resultIndicatorMarker)
           ;
@@ -519,16 +509,16 @@ define([
         // remove to find the new index
         oldIndex = this._tabsOrder.indexOf(tab);
         if(oldIndex !== -1)
-            // remove tab for _binInsert
+            // remove tab for binInsert
             this._tabsOrder.splice(oldIndex, 1);
-        target = _binInsert(tab, this._tabsOrder, _compareTabs);
+        target = binInsert(tab, this._tabsOrder, _compareTabs);
         if(target.index === oldIndex) {
             // return it and leave
             this._tabsOrder.splice(oldIndex, 0, tab);
             return;
         }
 
-        if(target.pos === 'append') {
+        if(target.pos === 'prepend') {
             // first element
             target.pos = 'after';
             // <!-- insert: tabs -->
@@ -720,9 +710,9 @@ define([
         if(a === b)
             return 0;
 
-        if(a.label === notdef)
+        if(a.key === notdef)
             return -1;
-        if(b.label === notdef)
+        if(b.key === notdef)
             return 1;
 
         aFont = _analyzeFontName(a.label);
@@ -747,50 +737,14 @@ define([
         return parseInt(container.getAttribute('data-index'), 10);
     }
 
-    function _binInsert(value, others, compare) {
-        var length = others.length
-          , start, end, middle, cmp
-          ;
-
-        if(!length)
-            return {index: 0, pos: 'append'};
-
-        cmp = compare || function(a, b) {
-              if(a > b) return 1;
-              if(a < b) return -1;
-              return 0;
-        };
-        start = 0;
-        end = length - 1;
-        while(true) {
-            // binary insert:
-            if(cmp (value, others[end]) > 0)
-                return {index: end, pos: 'after'};
-
-            if(cmp(value,  others[start]) < 0)
-                return {index: start, pos: 'before'};
-
-            middle = start + Math.floor((end - start) / 2);
-
-            if(cmp(value, others[middle]) < 0)
-                end = middle - 1;
-            else if(cmp(value, others[middle]) > 0)
-                start = middle + 1;
-            else
-                // This should *NEVER* happen!
-                throw new ValueError('An element with value "' + value
-                                    + '" is already in the list.');
-        }
-    }
-
     _p._insertChildContainer = function(key, container) {
         var tab = this._getTab(key)
           , value = _getChildIndex(container)
           , children = tab.items.children
           , others = Array.prototype.map.call(children, _getChildIndex)
             // get the position, where in tab.items to insert container:
-          , target =  _binInsert(value, others)
-          , element = (target.pos === 'append')
+          , target =  binInsert(value, others)
+          , element = (target.pos === 'prepend')
                                             ? tab.items
                                             : children[target.index]
           ;
@@ -895,15 +849,60 @@ define([
     return CheckItemDocBlock;
     })();
 
-    var NoContainerDictBlock = (function() {
-    var Parent = DictionaryBlock;
-    function NoContainerDictBlock(supreme, container, key, spec, data) {
+
+    var FlexibleArrayBlock = (function() {
+    var Parent = ArrayBlock;
+    function FlexibleArrayBlock(supreme, container, key, spec, data) {
         Parent.call(this, supreme, container, key, spec, data);
     }
 
-    var _p = NoContainerDictBlock.prototype = Object.create(Parent.prototype);
-    _p.constructor = NoContainerDictBlock;
+    var _p = FlexibleArrayBlock.prototype = Object.create(Parent.prototype);
+    _p.constructor = FlexibleArrayBlock;
 
+    /**
+     * Returns a DOM-Element, that is not yet in the document
+     */
+    _p._makeChildContainer = function(key) {
+        //jshint unused:vars
+        if(this._spec[''].containerlessChildren)
+            return;
+        var container = this._spec[''].getElementFromTemplate(
+                                                this._spec[''].childClass);
+        if(!container)
+            container = dom.createElement(this._spec[''].childTag || 'li',
+                            {'class': this._spec[''].childClass});
+        return container;
+    };
+
+    /**
+     *  insert into this.container at the right position
+     */
+    _p._insertChildContainer = function(key, container) {
+        // jshint unused:vars
+        var index  = parseInt(key, 10)
+          , position, reference, target
+          ;
+        if(index === 0) {
+            position = 'prepend';
+            reference = this.container;
+        }
+        else if(this._children[index]){
+            position = 'before';
+            reference = this._children[index].container;
+        }
+        else {
+            target = binInsert(index, this._children.map(function(item) {
+                                        return parseInt(item.key, 10);}));
+            reference = this._children[target.index].container;
+            position = target.pos;
+        }
+        dom.insert(reference, position, container);
+    };
+
+    return FlexibleArrayBlock;
+    })();
+
+    function _mixinChangePublishing(_p, Parent) {
     _p._publishChange = function(key /*, data*/) {
         var channel = 'change:' + this.path + '/' + key
           , args = [channel], i, l
@@ -930,55 +929,44 @@ define([
         if(this._spec[''].publishChanges)
             this._publishChange(key, data);
     };
+    }
 
-    _p._makeChildContainer = function(key) {
-        // jshint unused:vars
-        return;
-    };
-
-    return NoContainerDictBlock;
-    })();
-
-    var IterargArrayBlock = (function() {
-    var Parent = ArrayBlock;
-    function IterargArrayBlock(supreme, container, key, spec, data) {
-        this._changeSubscriptions = [];
+    var PublishingDictBlock = (function() {
+    var Parent = DictionaryBlock;
+    function PublishingDictBlock(supreme, container, key, spec, data) {
         Parent.call(this, supreme, container, key, spec, data);
     }
 
-    var _p = IterargArrayBlock.prototype = Object.create(Parent.prototype);
-    _p.constructor = IterargArrayBlock;
+    var _p = PublishingDictBlock.prototype = Object.create(Parent.prototype);
+    _p.constructor = PublishingDictBlock;
 
     _p._makeChildContainer = function(key) {
         // jshint unused:vars
         return;
     };
 
-    _p._publishChange = function(index /*, data*/) {
-        var channel = 'change:' + this.path + '/' + index
-          , args = [channel], i, l
-          ;
-        for(i=1,l=arguments.length;i<l;i++)
-            args.push(arguments[i]);
-        this.supreme.pubSub.publish.apply(this.supreme.pubSub, args);
+    _mixinChangePublishing(_p, Parent);
+
+    return PublishingDictBlock;
+    })();
+
+    var PublishingArrayBlock = (function() {
+    var Parent = ArrayBlock;
+    function PublishingArrayBlock(supreme, container, key, spec, data) {
+        Parent.call(this, supreme, container, key, spec, data);
+    }
+
+    var _p = PublishingArrayBlock.prototype = Object.create(Parent.prototype);
+    _p.constructor = PublishingArrayBlock;
+
+    _p._makeChildContainer = function(key) {
+        // jshint unused:vars
+        return;
     };
 
-    _p.add = function(key, data) {
-        Parent.prototype.add.call(this, key, data);
-        this._publishChange(key, data);
-    };
+    _mixinChangePublishing(_p, Parent);
 
-    _p.remove = function(key) {
-        Parent.prototype.remove.call(this, key);
-        this._publishChange(key);
-    };
-
-    _p.replace = function(key, data) {
-        Parent.prototype.replace.call(this, key, data);
-        this._publishChange(key, data);
-    };
-
-    return IterargArrayBlock;
+    return PublishingArrayBlock;
     })();
 
 
@@ -991,7 +979,7 @@ define([
         }
 
         // Here are the definitions for our current document format.
-        var getTemplateForSelector = dom.getChildElementForSelector.bind(null, templatesContainer)
+        var getTemplateForSelector = dom.getChildElementForSelector.bind(dom, templatesContainer)
             // this is to define the order of check result values
             // in the interfaces aggregating these.
           , resultVals = ['ERROR', 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS']
@@ -1072,8 +1060,53 @@ define([
                     }
                 }
             }
+          , statusIndicatorSpec = {
+                spec: {
+                    '': {
+                        skipKey: true
+                      , dataUnescaped: true
+                      , addClasses: function(data) {
+                            return ['status-value-' + data];
+                        }
+                    }
+                }
+            }
+          , checkStatusSpec = {
+                // Type: FlexibleDocumentBlock but via GenericType (is a FlexibleDocumentBlock)
+                '': {
+                    GenericType: genericBlockFactory
+                  , insertionMarkerPrefix: 'insert: '
+                  , classPrefix: 'check-item_status_'
+                  , getElementFromTemplate: getElementFromTemplate
+                  , skipKey: true
+                }
+              , status: statusIndicatorSpec
+              , traceback: preformatedTextSpec
+              , message: inlineTextSpec
+              , code: {
+                  spec: {
+                      '': {
+                          keyTag: 'strong'
+                        , seperator: ' '
+                        , dataTag: 'span'
+                        , dataUnescaped: true
+                      }
+                    }
+                }
+            }
+          , checkStatusesSpec = {
+                Type: FlexibleArrayBlock
+              , spec: {
+                    '': {
+                        GenericType: FlexibleDocumentBlock
+                      , genericSpec: checkStatusSpec
+                      , childClass: 'check-item_status'
+                      , getElementFromTemplate: getElementFromTemplate
+                    }
+                }
+            }
           , checkItemSpec = {
-                // Type: CheckItemDocBlock but via GenericType
+                // Type: CheckItemDocBlock but via GenericType (is a FlexibleDocumentBlock)
                 '': {
                     GenericType: genericBlockFactory
                   , genericSpec: {
@@ -1084,44 +1117,22 @@ define([
                     }
                   , classPrefix: 'check-item-container_'
                   , insertionMarkerPrefix: 'insert: '
-                  , childTag: 'span'
-                  , getClassForKey: function(key) {
-                        return this.classPrefix + key;
-                    }
-                  , getElementFromTemplate: function(key) {
-                        var klass = this.getClassForKey(key);
-                        return getElementFromTemplate(klass);
-                    }
+                  , childTag: 'div'
+                  , getElementFromTemplate: getElementFromTemplate
                 }
-              , check_number: inlineTextSpec
-              , description: inlineTextSpec
-              , log_messages: {
-                    spec: {
-                        '': {
-                            skipKey: true
-                            // for each item, of GenericType
-                          , genericSpec: logListSpec.spec[''].genericSpec
-                        }
-                    }
-                }
-              , result: {
-                    spec: {
-                        '': {
-                            skipKey: true
-                          , dataUnescaped: true
-                        }
-                    }
-                }
+              , statuses: checkStatusesSpec
+              , result: statusIndicatorSpec
             }
           , iterargsSpec = {
-                Type: NoContainerDictBlock
+                Type: PublishingDictBlock
               , spec: {
                     '': {
-                        GenericType: IterargArrayBlock
+                        GenericType: PublishingArrayBlock
                       , genericSpec: {
                             '': {
                                 GenericType: PrimitiveValueBlock
                               , genericSpec: {}
+                              , publishChanges: true
                             }
                         }
                         , publishChanges: false
@@ -1129,12 +1140,22 @@ define([
                 }
             }
           , testDescriptionsSpec = {
-                Type: NoContainerDictBlock
+                Type: PublishingDictBlock
               , spec: {
                     '': {
                         GenericType: PrimitiveValueBlock
                       , genericSpec: {}
                       , publishChanges: true
+                    }
+                }
+            }
+          , hiddenDictSpec = {
+                Type: PublishingDictBlock
+              , spec: {
+                    '': {
+                        GenericType: PrimitiveValueBlock
+                      , genericSpec: {}
+                      , publishChanges: false
                     }
                 }
             }
@@ -1153,7 +1174,7 @@ define([
                       , itemTemplateClass: 'report-container_test-item'
                       , insertionMarkerPrefix: 'insert: '
                       , getElementFromTemplate: getElementFromTemplate
-                      , GenericType: CheckItemDocBlock
+                      , GenericType: CheckItemDocBlock //  is a FlexibleDocumentBlock
                       , genericSpec: checkItemSpec
                       // for the aggregate results
                       , resultVals: resultVals
@@ -1163,19 +1184,13 @@ define([
                     }
                 }
             }
-          , spec = {
+          , spec = { // ReportDocumentBlock is a FlexibleDocumentBlock
                 '': {
                     GenericType: genericBlockFactory
                   , classPrefix: 'report-container_'
                   , insertionMarkerPrefix: 'insert: '
-                  , getClassForKey: function(key) {
-                        return this.classPrefix + key;
-                    }
-                  , getElementFromTemplate: function(key) {
-                        var klass = this.getClassForKey(key);
-                        return getElementFromTemplate(klass);
-                    }
-                  , containerless: new Set(['iterargs', 'test_descriptions'])
+                  , getElementFromTemplate: getElementFromTemplate
+                  , containerless: new Set(['iterargs', 'test_descriptions', 'results'])
                 }
               , id: {
                     Type: HrefDocumentBlock
@@ -1195,6 +1210,7 @@ define([
               , finished: datesSpec
               , iterargs: iterargsSpec
               , test_descriptions: testDescriptionsSpec
+              , results: hiddenDictSpec
               , command: {
                     spec: {
                         '': {

@@ -133,19 +133,22 @@
 
         .report-container_command li > * {
             white-space: pre;
-            font-family: 'Inconsolata', monospace;
+
             font-size: 1.1em;
         }
 
+        .report-container_test-item > .generic-items > div{
+            display: inline;
+        }
+
         .report-container_preparation_logs ol,
-        .check-item-container_log_messages ol {
+        .check-item-container_statuses {
             background: LemonChiffon;
             max-height: 15em;
             overflow: auto;
         }
 
-        .report-container_preparation_logs li,
-        .check-item-container_log_messages li {
+        .report-container_preparation_logs li {
             padding: .1em;
             font-family: 'Inconsolata', monospace;
             font-size: 1.1em;
@@ -162,8 +165,6 @@
             border-style: outset;
             cursor: pointer;
         }
-
-        report-container_tests_tabs
 
         .report-container_tests-tab:hover,
         .report-container_tests-tab.active-tab {
@@ -201,6 +202,16 @@
             border-bottom: 1px solid transparent;
         }
 
+
+        .report-container_test-item .check-item-container_result {
+            float: left;
+            margin-right: .5em;
+        }
+
+        .report-container_test-item > p:first-child {
+            min-height: 2.2em;
+        }
+
         .report-container_test-item .generic-items > * {
             margin-right: 1em;
             font-family: 'Inconsolata', monospace;
@@ -208,9 +219,32 @@
             font-size: .7em;
         }
 
+
         .check-item-container_result {
             padding: .5em;
         }
+
+        .check-item_status_code:before {
+            content: '[';
+        }
+        .check-item_status_code:after {
+            content: ']';
+        }
+        .check-item_status_code {
+            background: #EEE;
+            color: #555;
+            font-family: 'Inconsolata', monospace;
+            /* "pre-wrap" is closest to what the terminal does */
+            white-space: pre-wrap;
+            font-size: .75em;
+        }
+
+        .check-item_status_status,
+        .check-item_status_message,
+        .check-item_status_code {
+            display: inline;
+        }
+
 
         /* Repeat class names to make the selector more specific ;-)
            Nobody needs !important!
@@ -227,45 +261,45 @@
         }
 
         /* test result colors */
-        .test-result-ERROR .check-item-container_result,
+        .report-container_tests .status-value-ERROR,
         .result-value_indicator-button.active.result-value-ERROR,
         .result-value_indicator-button.inactive.result-value-ERROR:hover,
         .result-value_indicator.result-value-ERROR {
             background: crimson;
             color: white;
         }
-        .test-result-FAIL .check-item-container_result,
+        .report-container_tests .status-value-FAIL,
         .result-value_indicator-button.active.result-value-FAIL,
         .result-value_indicator-button.inactive.result-value-FAIL:hover,
         .result-value_indicator.result-value-FAIL {
             background: tomato;
         }
-        .test-result-WARN .check-item-container_result,
+        .report-container_tests .status-value-WARN,
         .result-value_indicator-button.active.result-value-WARN,
         .result-value_indicator-button.inactive.result-value-WARN:hover,
         .result-value_indicator.result-value-WARN {
             background: darkorange;
         }
-        .test-result-SKIP .check-item-container_result,
+        .report-container_tests .status-value-SKIP,
         .result-value_indicator-button.active.result-value-SKIP,
         .result-value_indicator-button.inactive.result-value-SKIP:hover,
         .result-value_indicator.result-value-SKIP {
             background: LemonChiffon;
         }
-        .test-result-INFO .check-item-container_result,
+        .report-container_tests .status-value-INFO,
         .result-value_indicator-button.active.result-value-INFO,
         .result-value_indicator-button.inactive.result-value-INFO:hover,
         .result-value_indicator.result-value-INFO {
             background: #b3eeff;
         }
-        .test-result-PASS .check-item-container_result,
+        .report-container_tests .status-value-PASS,
         .result-value_indicator-button.active.result-value-PASS,
         .result-value_indicator-button.inactive.result-value-PASS:hover,
         .result-value_indicator.result-value-PASS {
             background: greenyellow;
         }
 
-        .test-result-DEBUG .check-item-container_result,
+        .report-container_tests .status-value-DEBUG,
         .result-value_indicator-button.active.result-value-DEBUG,
         .result-value_indicator-button.inactive.result-value-DEBUG:hover,
         .result-value_indicator.result-value-DEBUG {
@@ -351,14 +385,25 @@
 
     <button class="report-container_tests-tab"><!-- insert: title --></button>
 
+
+    <ol class="check-item-container_statuses"></ol>
+    <li class="check-item_status">
+        <!-- insert: status -->
+        <!-- insert: message -->
+        <!-- insert: traceback -->
+        <!-- insert: code -->
+    </li>
+
+    <span class="check-item-container_result"></span>
+
     <li class="report-container_test-item">
         <p>
             <!-- insert: result -->
             <strong><!-- insert: test-key --></strong>
             <!-- insert: description -->
         </p>
-        <!-- insert: log_messages -->
-        <p class="generic-items"></p>
+        <!-- insert: statuses -->
+        <div class="generic-items"></div>
     </li>
 
     <ol class="report-container_tests-items"></ol>
@@ -375,7 +420,6 @@
     <button class="result-value_indicator-button">
         <!-- insert: name --> <!-- insert: value -->
     </button>
-
 </div>
 <header>
         <img alt="Font Bakery"src="/static/img/logo_200px.png"/>

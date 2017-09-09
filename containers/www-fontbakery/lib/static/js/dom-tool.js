@@ -115,7 +115,10 @@ define([
                 element.appendChild(child);
                 break;
             case 'prepend':
-                insertBefore(child, element.firstChild);
+                if(element.firstChild)
+                    insertBefore(child, element.firstChild);
+                else
+                    element.appendChild(child);
                 break;
             case 'before':
                 insertBefore(child, element);
