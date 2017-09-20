@@ -86,6 +86,10 @@ define([
         return frag;
     }
 
+    function createComment(text) {
+        return document.createComment(text);
+    }
+
     function isDOMElement(node) {
         return node && node.nodeType && node.nodeType === 1;
     }
@@ -131,14 +135,16 @@ define([
         }
     }
 
-    function getChildElementForSelector(element, klass) {
-        var elem = Array.prototype.slice
-                            .call(element.querySelectorAll(klass))
-                            // I don't know an easier way to only allow
-                            // direct children.
-                            .filter(function(elem) {
-                                return elem.parentNode === element;})[0];
-        return elem || null;
+    function getChildElementForSelector(element, klass, deep) {
+
+        var elements = Array.prototype.slice
+                            .call(element.querySelectorAll(klass));
+        if(!deep)
+            // I don't know an easier way to only allow
+            // direct children.
+            elements = elements.filter(function(elem) {
+                                return elem.parentNode === element;});
+        return elements[0] || null;
     }
 
     function getMarkerComment(element, marker) {
@@ -155,7 +161,7 @@ define([
                            && childNode.textContent.trim() === marker) {
                     return childNode;
                 }
-                if(childNode.nodeType === 1) { //Node.ELEMEMT_NODE == 8
+                if(childNode.nodeType === 1) { //Node.ELEMEMT_NODE == 1
                     frames.push([nodelist, i+1]);
                     frames.push([childNode.childNodes, 0]);
                     break;
@@ -186,6 +192,7 @@ define([
       , appendHTML: appendHTML
       , appendMarkdown: appendMarkdown
       , createFragment: createFragment
+      , createComment: createComment
       , createFragmentFromHTML: createFragmentFromHTML
       , isDOMElement: isDOMElement
       , replaceNode: replaceNode

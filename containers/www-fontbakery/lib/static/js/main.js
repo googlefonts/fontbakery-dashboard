@@ -3,12 +3,15 @@ define([
   , 'socket.io'
   , 'Controller'
   , 'Report'
-
+  , 'CollectionController'
+  , 'CollectionReport'
 ], function(
     dom
   , socketio
   , Controller
   , Report
+  , CollectionController
+  , CollectionReport
 ) {
     "use strict";
     /*global document, window, FileReader*/
@@ -81,7 +84,7 @@ define([
         return activatedElement;
     }
 
-    function initSendingInterface() {
+    function initDNDSendingInterface() {
         var container = activateTemplate('sending-interface')
           , ctrl = new Controller(
                   container.getElementsByClassName('files-controls')[0]
@@ -101,22 +104,53 @@ define([
           ;
 
         socket.on('changes', report.onChange.bind(report));
-        socket.emit('subscribe-changes', { docid: data.docid });
+        socket.emit('subscribe-report', { docid: data.docid });
+    }
+
+    function initCollectionInterface() {
+        var container = activateTemplate('collection-landing-page')
+          , ctrl = new CollectionController(container)
+          ;
+        ctrl.onResponse(initCollectionReportInterface);
+    }
+    function initCollectionReportInterface(data) {
+        var container = activateTemplate('collection-report-interface')
+          , templatesContainer = getTemplatesContainer('collection-report-templates')
+          , socket = socketio('/')
+          , report = new CollectionReport(container, templatesContainer, data)
+          ;
+
+        socket.on('changes', report.onChange.bind(report));
+        socket.emit('subscribe-collection', { docid: data.docid });
     }
 
     function getInterfaceMode() {
-        // if 'reporting/' in url
-        // docid is at reporting/{id}
+
         var data = null
-          , mode = 'sending'
+          , mode = 'dnd-sending'
           , pathparts = window.location.pathname.split('/')
           , i, l
           , reportMarker = 'report' // yes, hard coded for now.
+          , collectionMarker = 'collection'
+          , collectionReportMarker = 'collection-report'
           ;
-
         for(i=0,l=pathparts.length;i<l;i++) {
             if(pathparts[i] === reportMarker) {
+                // if 'reporting/' in url
+                // docid is at reporting/{id}
                 mode = 'reporting';
+                data = {
+                    docid: pathparts[i+1]
+                  , url:  window.location.pathname
+                };
+                break;
+            }
+            if(pathparts[i] === collectionMarker) {
+                mode = 'collection';
+                break;
+            }
+            if(pathparts[i] === collectionReportMarker) {
+                mode = 'collection-report';
                 data = {
                     docid: pathparts[i+1]
                   , url:  window.location.pathname
@@ -134,10 +168,14 @@ define([
         // The sending interface will also transform into the reporting interface.
 
         var interfaceMode = getInterfaceMode();
-        if(interfaceMode[0] === 'sending')
-            initSendingInterface();
+        if(interfaceMode[0] === 'dnd-sending')
+            initDNDSendingInterface();
         else if(interfaceMode[0] === 'reporting')
             initReportingInterface(interfaceMode[1]);
+        else if(interfaceMode[0] === 'collection')
+            initCollectionInterface(interfaceMode[1]);
+        else if(interfaceMode[0] === 'collection-report')
+            initCollectionReportInterface(interfaceMode[1]);
 
         // Using pushstate changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushstate was not used.

@@ -341,13 +341,61 @@
 <body>
 <div class="templates" style="display:none">
     <div class="sending-interface">
+        <p>Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.</p>
+        <p>Font Bakery will run inter-family checks if you drop more than one font.</p>
         <div class="drop-fonts"><p>Drop font files here or <button>click to choose</button></p></div>
-        <div class="general-controls"></p></div>
+        <div class="general-controls"></div>
         <ol class="files-controls"></ol>
     </div>
     <div class="reporting-interface">
     <!-- insert: report-root -->
     </div>
+
+    <div class="collection-report-interface">
+    <!-- insert: report-root -->
+    </div>
+
+    <div class="collection-landing-page">
+        <div class="launch-controls">
+            <p>Run a collection-wide test run:</p>
+            <!-- insert: secret --> <!-- insert: send -->
+            <h2>Previous collection wide tests</h2>
+            <ol><!-- insert: link --></ol>
+        </div>
+    </div>
+</div>
+
+<div class="collection-report-templates" style="display:none">
+    <div class="report-root">
+        <!-- insert: results -->
+         <div class="generic-items"></div>
+    </div>
+
+
+    <table class="table_templates">
+    <tr class="collection-report_reports-head">
+        <th>Family</th>
+        <!-- insert: items -->
+    </tr>
+
+    <tr class="collection-report_reports-results">
+        <th>
+            <!-- insert: label -->
+            <div class="generic-items"></div>
+        </th>
+        <!-- insert: results -->
+    </tr>
+
+    <tbody class="collection-report_reports-children"><!-- insert: children --></tbody>
+
+    </table>
+
+    <table class="collection-report-container_reports">
+        <thead>
+            <!-- insert: head-row -->
+        </thead>
+        <!-- insert: body -->
+    </table>
 </div>
 
 <div class="report-templates" style="display:none">
@@ -385,7 +433,6 @@
 
     <button class="report-container_tests-tab"><!-- insert: title --></button>
 
-
     <ol class="check-item-container_statuses"></ol>
     <li class="check-item_status">
         <!-- insert: status -->
@@ -422,9 +469,7 @@
     </button>
 </div>
 <header>
-        <img alt="Font Bakery"src="/static/img/logo_200px.png"/>
-        <p>Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.</p>
-        <p>Font Bakery will run inter-family checks if you drop more than one font.</p>
+    <img alt="Font Bakery" src="/static/img/logo_200px.png"/>
 </header>
 <article class="active-interface"></article>
 </body>

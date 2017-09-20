@@ -293,7 +293,9 @@ define([
           ;
         oldBlock.destroy();
         this._deleteChild(key);
-        dom.replaceNode(container, oldBlock.container);
+        if(oldBlock.container)
+            // some blocks don't have containers
+            dom.replaceNode(container, oldBlock.container);
         this._create(container, key, data);
     };
     return _Block;
@@ -689,6 +691,116 @@ define([
     }
     genericBlockFactory.constructorGetter = true;
 
+    var FlexibleDocumentBlock = (function(){
+
+    var Parent = DictionaryBlock;
+    function FlexibleDocumentBlock(supreme, container, key, spec, data) {
+        if(!this._genericItemsContainer)
+            this._genericItemsContainer = dom.getChildElementForSelector(
+                                            container, '.generic-items');
+        Parent.call(this, supreme, container, key, spec, data);
+    }
+    var _p = FlexibleDocumentBlock.prototype = Object.create(Parent.prototype);
+
+    _p._getClassForKey = function(key) {
+        return this._spec[''].classPrefix + key;
+    };
+
+    _p._getElementFromTemplate = function(key) {
+        var klass = this._getClassForKey(key);
+        return this._spec[''].getElementFromTemplate(klass);
+    };
+
+    /**
+     * Returns a DOM-Element, that is not yet in the document
+     */
+    _p._makeChildContainer = function(key) {
+        if(this._spec[''].containerless &&  this._spec[''].containerless.has(key))
+            return;
+        // query the templates for {key} and return a deep copy of the result
+        var container = this._getElementFromTemplate(key);
+        if(!container)
+            container = dom.createElement(this._spec[''].childTag || 'div',
+                            {'class': this._getClassForKey(key)});
+        return container;
+    };
+
+    /**
+     *  insert into this._container at the right position
+     */
+    _p._insertChildContainer = function(key, container) {
+        // custom comment markers would be nice here
+        var target, position
+          , insertionMarker = this._spec[''].insertionMarkerPrefix + key
+          ;
+
+        target = dom.getMarkerComment(this.container, insertionMarker);
+        if(target)
+            position = 'after';
+
+        if(!target) {
+            target = this._genericItemsContainer;
+            position = 'append';
+        }
+        dom.insert(target, position, container);
+    };
+
+    return FlexibleDocumentBlock;
+    })();
+
+    var FlexibleArrayBlock = (function() {
+    var Parent = ArrayBlock;
+    function FlexibleArrayBlock(supreme, container, key, spec, data) {
+        Parent.call(this, supreme, container, key, spec, data);
+    }
+
+    var _p = FlexibleArrayBlock.prototype = Object.create(Parent.prototype);
+    _p.constructor = FlexibleArrayBlock;
+
+    /**
+     * Returns a DOM-Element, that is not yet in the document
+     */
+    _p._makeChildContainer = function(key) {
+        //jshint unused:vars
+        if(this._spec[''].containerlessChildren)
+            return;
+        var container = this._spec[''].getElementFromTemplate(
+                                                this._spec[''].childClass);
+        if(!container)
+            container = dom.createElement(this._spec[''].childTag || 'li',
+                            {'class': this._spec[''].childClass});
+        return container;
+    };
+
+    /**
+     *  insert into this.container at the right position
+     */
+    _p._insertChildContainer = function(key, container) {
+        // jshint unused:vars
+        var index  = parseInt(key, 10)
+          , position, reference, target
+          ;
+        if(index === 0) {
+            position = 'prepend';
+            // this._childrenContainer can be defined by sub-classes
+            reference = this._childrenContainer || this.container;
+        }
+        else if(this._children[index]){
+            position = 'before';
+            reference = this._children[index].container;
+        }
+        else {
+            target = binInsert(index, this._children.map(function(item) {
+                                        return parseInt(item.key, 10);}));
+            reference = this._children[target.index].container;
+            position = target.pos;
+        }
+        dom.insert(reference, position, container);
+    };
+
+    return FlexibleArrayBlock;
+    })();
+
     var Supreme = (function() {
     function Supreme(RootBlock, container, rootTemplateElement
                             , rootInsertionMarker, spec) {
@@ -856,6 +968,8 @@ define([
       , GenericArrayBlock: GenericArrayBlock
       , GenericPrimitiveValueBlock: GenericPrimitiveValueBlock
       , genericBlockFactory: genericBlockFactory
+      , FlexibleDocumentBlock: FlexibleDocumentBlock
+      , FlexibleArrayBlock: FlexibleArrayBlock
       , Supreme: Supreme
     };
 });

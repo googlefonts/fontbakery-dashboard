@@ -9,7 +9,6 @@ define([
 
     var _p = PubSub.prototype;
 
-
     _p._getTopic = function(topic) {
         if(this._topics.has(topic))
             return this._topics.get(topic);
