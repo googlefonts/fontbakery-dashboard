@@ -12,5 +12,9 @@ spec:
       containers:
       - name: worker-fontbakery
         image: fontbakery/worker-fontbakery:1
+        env:
+          - name: FONTBAKERY_WORKER_LOG_LEVEL
+            value: "INFO"
         workingDir: /var/worker-fontbakery
         command: ["python2",  "-u", "fontbakery-dragandrop-worker.py"]
+

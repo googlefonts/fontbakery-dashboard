@@ -12,6 +12,11 @@ spec:
       containers:
       - name: www-fontbakery
         image: fontbakery/www-fontbakery:1
+        env:
+          - name: COLLECTION_AUTH_SECRET
+            value: ""
+          - name: FONTBAKERY_LOG_LEVEL
+            value: "DEBUG"
         ports:
         - containerPort: 3000
         workingDir: /var/www-fontbakery
