@@ -1,4 +1,4 @@
 pika
 rethinkdb
 pytz
-
+requests

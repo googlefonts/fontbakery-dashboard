@@ -18,6 +18,7 @@ import pika
 import rethinkdb as r
 import logging
 from collections import namedtuple
+import requests
 
 class FontbakeryWorkerError(Exception):
   pass
@@ -34,10 +35,10 @@ def get_fontbakery(fonts):
   spec = runner.specification
   return runner, spec
 
-def worker_distribute_jobs(dbOps, queueData, job):
+def worker_distribute_jobs(dbOps, queueData, job, prepare, dispatch):
   # this is a dry run, but it will fail early if there's a problem with
   # the files in job, also, it lists the fonts.
-  prep_logs, fonts = prepare_fontbakery(None, job)
+  prep_logs, fonts = prepare(None, job)
 
   dbOps.update({'preparation_logs': prep_logs})
   runner, spec = get_fontbakery(fonts)
@@ -49,7 +50,9 @@ def worker_distribute_jobs(dbOps, queueData, job):
   # FIXME: do something fancy to split this up
   # maybe we can distribute long running tests evenly or such
   # this would require more info of course.
-  jobs = 5  # go with 5 parallel jobs
+  jobs = len(fonts) + 1  # go with number of fonts plus one for not font specific checks parallel jobs
+  logging.info('worker_distribute_jobs: Splitting up into %s jobs.', jobs)
+
   from math import ceil
   job_size = int(ceil(len(full_order) / jobs))
   orders = [full_order[i:i+job_size]
@@ -65,12 +68,12 @@ def worker_distribute_jobs(dbOps, queueData, job):
       # could be helpful, to mark the not finished ones as doomed if the
       # job has an exception and terminates.
     })
+
     jobs.append({
         'docid': job['docid']
-      , 'type': 'distributed'
+      , 'type': '{0}_distributed'.format(job['type'])
       , 'id': jobid
       , 'order': order
-      , 'files': None # will be filled by parse_job
     })
 
   dbOps.update({
@@ -87,21 +90,38 @@ def worker_distribute_jobs(dbOps, queueData, job):
       , 'results': {}
   })
 
+  dispatch(queueData, job, jobs)
+
+def dispatch_collectiontest_jobs(queueData, parent_job,jobs):
   options = pika.BasicProperties(
         # TODO: do we need persistent here?
         delivery_mode=2  # pika.spec.PERSISTENT_DELIVERY_MODE
   )
   # dispatch sub jobs
-  for sub_job in jobs:
-    job_bytes = json.dumps(sub_job)
+  for job in jobs:
+    job['family'] = parent_job['family']
+    content = json.dumps(job)
+    _dispatch(queueData, job, content)
+
+def dispatch_draganddrop_jobs(queueData, parent_job, jobs):
+  # dispatch sub jobs
+  for job in jobs:
+    job_bytes = json.dumps(job)
     content = b''.join([
         struct.pack('I', len(job_bytes))
       , job_bytes
       # this is still packed readily for us
-      , job['files_data']
+      , parent_job['files_data']
     ])
-    logging.debug('dispatching job %s of docid %s', sub_job['id'], sub_job['docid'])
-    queueData.channel.basic_publish(exchange='', routing_key=queueData.name
+    _dispatch(queueData, job, content)
+
+def _dispatch(queueData, job, content):
+  logging.debug('dispatching job %s of docid %s', job['id'], job['docid'])
+  options = pika.BasicProperties(
+        # TODO: do we need persistent here?
+        delivery_mode=2  # pika.spec.PERSISTENT_DELIVERY_MODE
+  )
+  queueData.channel.basic_publish(exchange='', routing_key=queueData.name
                                       , body=content, properties=options)
 
 from fontbakery.reporters import FontbakeryReporter
@@ -182,7 +202,65 @@ def _run_fontbakery(dbOps, job, fonts):
   reporter.run(order)
   dbOps.update({'finished': datetime.now(pytz.utc)})
 
-def prepare_fontbakery(tmpDirectory, job):
+def prepare_collection_fontbakery(tmpDirectory, job):
+  host = os.environ.get("COLLECTIONTEST_DISPATCHER_SERVICE_HOST")
+  port = os.environ.get("COLLECTIONTEST_DISPATCHER_SERVICE_PORT", 3000)
+  server = ''.join(['http://', host, ':', port])
+  if tmpDirectory is None:
+    url = '/'.join([server, 'family', 'filenames' , job['family']])
+    logging.info('Requesting: {}'.format(url))
+    response = requests.get(url)
+    response.raise_for_status()
+    files = [({'filename': f}, None) for f in json.loads(response.text)]
+  else:
+    url = '/'.join([server, 'family', 'files' , job['family']])
+    logging.info('Requesting: {}'.format(url))
+    response = requests.get(url)
+    response.raise_for_status()
+    files = list(_unpack_files(BytesIO(response.content)))
+  logs = []
+  seen = set()
+  fontfiles = []
+  for desc, data in files:
+    filename = desc['filename']
+
+    if not validate_filename(seen, filename):
+      continue
+    seen.add(filename)
+
+    if tmpDirectory is not None:
+      path = os.path.join(tmpDirectory, filename)
+      with open(path, 'wb') as f:
+        f.write(data)
+      logs.append('Added file "{}".'.format(filename))
+    else:
+      path = filename
+
+    if path.endswith('.ttf'):
+      fontfiles.append(path)
+
+  if len(fontfiles) == 0:
+    raise FontbakeryPreparationError('Could not find .ttf files in job.')
+  return logs, fontfiles
+
+def validate_filename(seen, filename):
+  maxfiles = 30
+  # Basic input validation
+  # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
+  if filename in {'', '.', '..'} or '/' in filename:
+    raise FontbakeryPreparationError('Invalid filename: "{0}".'.format(filename))
+
+  if filename in seen:
+    logs.append('Skipping duplicate file name "{0}".'.format(filename))
+    return False
+
+  if len(seen) == maxfiles:
+    logs.append('Skipping file "{0}", max allowed file number {1} reached.'
+                                              .format(filename, maxfiles))
+    return False
+  return True
+
+def prepare_draganddrop_fontbakery(tmpDirectory, job):
   """
     Write job['files'] to tmpDirectory.
 
@@ -203,18 +281,7 @@ def prepare_fontbakery(tmpDirectory, job):
   fontfiles = []
   for desc, data in job['files']:
     filename = desc['filename']
-    # Basic input validation
-    # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
-    if filename in {'', '.', '..'} or '/' in filename:
-      raise FontbakeryPreparationError('Invalid filename: "{0}".'.format(filename))
-
-    if filename in seen:
-      logs.append('Skipping duplicate file name "{0}".'.format(filename))
-      continue
-
-    if len(seen) == maxfiles:
-      logs.append('Skipping file "{0}", max allowed file number {1} reached.'
-                                                .format(filename, maxfiles))
+    if not validate_filename(seen, filename):
       continue
 
     seen.add(filename)
@@ -233,7 +300,7 @@ def prepare_fontbakery(tmpDirectory, job):
     raise FontbakeryPreparationError('Could not find .ttf files in job.')
   return logs, fontfiles
 
-def worker_run_fontbakery(dbOps, queueData, job):   # pylint: disable=unused-argument
+def worker_run_fontbakery(dbOps, queueData, job, prepare):   # pylint: disable=unused-argument
   # TODO: it would be nice to get rid of tmpDirectory, but some tests
   # expect a tmpDirectory. Maybe we can differentiate the jobs in the
   # future, split in those who need a tmpDir and those who don't.
@@ -243,11 +310,11 @@ def worker_run_fontbakery(dbOps, queueData, job):   # pylint: disable=unused-arg
   # again as well, which is not yet supported!
   with tempdir() as tmpDirectory:
     logging.info('Tempdir: %s', tmpDirectory)
-    logs, fonts = prepare_fontbakery(tmpDirectory, job)
+    logs, fonts = prepare(tmpDirectory, job)
     logging.debug('Files in tmp {}'.format(os.listdir(tmpDirectory)))
     logging.info('Starting run_fontbakery ...')
     # got these logs in distribute for the entire doc (a dry run)
-    # but also uses prepare_fontbakery
+    # but also uses prepare
     # this should produce a very similar log.
     # with dbTableContext() as (q, conn):
     #   ATTENTION: this would have to go to the job item at `jobs[job["id"]]`
@@ -275,6 +342,13 @@ def _unpack_files(stream, description_only=False):
     yield (desc, filedata)
 
 def parse_job(stream):
+  try:
+    return json.loads(stream.read())
+  except ValueError:# No JSON object could be decoded
+    stream.seek(0) # reset
+    return parse_draganddrop_style_job(stream)
+
+def parse_draganddrop_style_job(stream):
   # read one Uint32\
   data_len = stream.read(4)
   data_len = struct.unpack('<I', data_len)[0]
@@ -304,7 +378,7 @@ def parse_job(stream):
   stream.seek(cur) # reset
   return {
       'docid': docid
-    , 'type': 'origin'
+    , 'type': 'draganddrop'
     , 'files': list(_unpack_files(stream, description_only=True))
     , 'files_data': files_bytes
   }
@@ -358,19 +432,34 @@ def consume(dbTableContext, queueData, method, properties, body):  # pylint: dis
   logging.info('Consuming ...')
   logging.debug('consuming args: %s %s', method, properties)
   job = None
+  dbOps = None
   try:
     job = parse_job(BytesIO(body))
     if job is not None:
-      logging.debug('Got docid: %s a job of type: $s', job['docid'], job['type'])
-      if job['type'] == 'origin':
-        dbOps = DBOperations(dbTableContext, job['docid'])
-        worker_distribute_jobs(dbOps, queueData, job)
-      elif job['type'] == 'distributed':
-        dbOps = DBOperations(dbTableContext, job['docid'], job['id'])
-        worker_run_fontbakery(dbOps, queueData, job)
+      logging.debug('Got docid: %s a job of type: $s', job.get('docid', None), job.get('type', None))
+      dbOps = DBOperations(dbTableContext, job['docid'], job.get('id', None))
+      moreArgs = None
+      if job['type'] == 'draganddrop':
+        prepare = prepare_draganddrop_fontbakery
+        worker = worker_distribute_jobs
+        dispatch = dispatch_draganddrop_jobs
+        moreArgs = [dispatch]
+      elif job['type'] == 'draganddrop_distributed':
+        prepare = prepare_draganddrop_fontbakery
+        worker = worker_run_fontbakery
+      elif job['type'] == 'collectiontest':
+        prepare = prepare_collection_fontbakery
+        worker = worker_distribute_jobs
+        dispatch = dispatch_collectiontest_jobs
+        moreArgs = [dispatch]
+      elif job['type'] == 'collectiontest_distributed':
+        prepare = prepare_collection_fontbakery
+        worker = worker_run_fontbakery
       else:
-        dbOps = DBOperations(dbTableContext, job['docid'])
         raise FontbakeryWorkerError('Job type has no dispatcher: {}'.format(job['type']))
+
+      queueData.channel.basic_ack(delivery_tag=method.delivery_tag)
+      worker(dbOps, queueData, job, prepare, *(moreArgs or []))
       logging.info('DONE! (job type: %s)', job['type'])
     else:
       logging.warning('Job is None, doing nothing')
@@ -407,9 +496,6 @@ def consume(dbTableContext, queueData, method, properties, body):  # pylint: dis
     # queue, but with an incremented retry count. After {n} retries we could
     # move it to the dead-end. That way, a temporary db failure or such would
     # not be a "job killer".
-
-
-  queueData.channel.basic_ack(delivery_tag=method.delivery_tag)
 
 @contextmanager
 def get_db(host, port, db, table=None):
@@ -452,7 +538,7 @@ def main(queue_name, db_name, db_table, consumefunc):
     db_host = os.environ.get("RETHINKDB_DRIVER_SERVICE_HOST")
     db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", 28015)
 
-  print ('RethinkDB', 'HOST', db_host, 'PORT', db_port)
+  logging.info(' '.join(['RethinkDB', 'HOST', db_host, 'PORT', db_port]))
 
   dbTableContext = partial(get_db, db_host, db_port, db_name, db_table)
 
@@ -471,6 +557,12 @@ def main(queue_name, db_name, db_table, consumefunc):
       logging.info('Waiting for messages in %s...', queue_name)
       # BlockingChannel has a generator
       queue = QueueData(queue_channel, queue_name)
+      # Why `no_ack=True`: A job can run much longer than the broker will
+      # wait for an ack and there's no way to give a good estimate of how
+      # long a job will take. If the ack times out, the job will be
+      # reissued by the broker, creating an infinite loop.
+      # Ack immediately and see how to handle failed jobs at another
+      # point of time.
       for method, properties, body in queue.channel.consume(queue.name):
         consumefunc(dbTableContext, queue, method, properties, body)
     except pika.exceptions.ConnectionClosed:
