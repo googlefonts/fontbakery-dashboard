@@ -55,7 +55,8 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup) {
     this._log = logging;
     this._portNum = portNum;
     this._dbName = rethinkSetup.db;
-    this._dbTable = 'draganddrop';
+    this._dbDNDTable = 'draganddrop';
+    this._dbCollectionTable = 'collectiontests';
     this._app = express();
     this._server = http.createServer(this._app);
     this._sio = socketio(this._server);
@@ -63,11 +64,13 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup) {
     this._r = rethinkdbdash(rethinkSetup);
 
     this._amqpConnection = null;
-    this._queueName = 'drag_and_drop_queue';
+    this._dndQueueName = 'drag_and_drop_queue';
+    this._collectionQueueName = 'init_collecton_test_queue';
+
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
                  this._initDB()
-               , this._initAmqp()
+               , this._initAmqp(amqpSetup)
                ])
     .then(this._listen.bind(this))
     .catch(function(err) {
@@ -75,14 +78,24 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup) {
         process.exit(1);
     }.bind(this));
 
-    this._app.get('/', this.fbDNDIndex.bind(this));
+    this._app.get('/', this.fbIndex.bind(this));
     this._app.use('/static', express.static('lib/static'));
     this._app.get('/report/:docid', this.fbDNDReport.bind(this));
 
     this._app.use('/runchecks', bodyParser.raw(
                     {type: 'application/octet-stream', limit: '15mb'}));
     this._app.post('/runchecks', this.fbDNDReceive.bind(this));
-    this._sio.on('connection', this.fbDNDSocketConnect.bind(this));
+
+    this._app.get('/collection', this.fbIndex.bind(this));
+    // JSON array of collection-test links
+    this._app.get('/collection-reports', this.fbCollectionGetReports.bind(this));
+    // report document
+    this._app.get('/collection-report/:docid', this.fbCollectionReport.bind(this));
+    // start a testrun
+    this._app.use('/runcollectionchecks', bodyParser.json());// understands Content-Type: application/json
+    this._app.post('/runcollectionchecks', this.fbCollectionCreateTest.bind(this));
+
+    this._sio.on('connection', this.fbSocketConnect.bind(this));
 }
 
 var _p = Server.prototype;
@@ -102,8 +115,8 @@ _p._initDB = function() {
 
     }.bind(this);
 
-    createTable = function() {
-        return this._r.tableCreate(this._dbTable)
+    createTable = function(dbTable) {
+        return this._r.tableCreate(dbTable)
             .run()
             //.then(function(response) {/* pass */})
             .error(function(err){
@@ -114,7 +127,18 @@ _p._initDB = function() {
     }.bind(this);
 
     return createDatabase()
-        .then(createTable)
+        .then(createTable.bind(this, this._dbDNDTable))
+        .then(function(){
+            return this._query(this._dbDNDTable)
+                .indexCreate(this._dbCollectionTable + '_id')
+                .run()
+                .error(function(err){
+                    if (err.message.indexOf('already exists') !== -1)
+                        return;
+                    throw err;
+                });
+        }.bind(this))
+        .then(createTable.bind(this, this._dbCollectionTable))
         .error(function(err) {
             // It's not an error if the table already exists
             this._log.warning('Error while initializing database.', err);
@@ -122,11 +146,10 @@ _p._initDB = function() {
         }.bind(this));
 };
 
-_p._initAmqp = function() {
+_p._initAmqp = function(amqpSetup) {
     return amqplib.connect('amqp://' + amqpSetup.host)
             .then(function(connection) {
                 process.once('SIGINT', connection.close.bind(connection));
-
                 this._amqpConnection = connection;
             }.bind(this))
             .catch(function(err) {
@@ -150,11 +173,87 @@ _p._listen = function() {
  *        change url to docid url
  *        init socketio connection for docid (with answer from post)
  */
-_p.fbDNDIndex = function(req, res) {
+_p.fbIndex = function(req, res) {
     return res.sendFile('static/html/drag-and-drop-client.html',
                                                     { root: ROOT_PATH});
 };
 
+/**
+ * GET AJAX
+ *
+ * return a JSON array of collection-test links: {id:, created:, href: }}
+ */
+_p.fbCollectionGetReports = function(req, res) {
+    // query the db
+    // for collection-test-docs
+    this._query(this._dbCollectionTable).pluck('id', 'created')
+        .run()
+        .then(function answer(items) {
+            res.setHeader('Content-Type', 'application/json');
+            items.forEach(function (item){
+                        item.href = 'collection-report/' + item.id;});
+            res.send(JSON.stringify(items));
+        });
+};
+
+
+/**
+ * POST AJAX, the secret
+ *
+ * FIXME: *Unencrypted!* for now, we'll need SSL, and proper authentication/authorization
+ *
+ * SERVER
+ *   : create a collection-test document => docid
+ *   : dispatch job to the job-creating worker
+ *   : return docid and the new URL.
+ */
+_p.fbCollectionCreateTest = function(req, res, next) {
+    this._log.info('fbCollectionCreateTest');
+    var doc = {created: new Date()}
+      , secret = req.body.secret // parsed JSON
+      ;
+
+    res.setHeader('Content-Type', 'application/json');
+
+    // FIXME: this is BAD security! See googlefonts/fontbakery-dashboard#46
+    if(!('COLLECTION_AUTH_SECRET' in process.env))
+        throw new Error ('COLLECTION_AUTH_SECRET is not set');
+    if(secret !== process.env.COLLECTION_AUTH_SECRET) {
+        this._log.debug('Wrong secret.');
+        return res.status(403).send(JSON.stringify(null));
+    }
+
+    function success(docid) {
+        //jshint validthis:true
+        this._log.debug('Sending  rollection-receive response:', docid);
+        res.send(JSON.stringify({docid: docid, url: 'collection-report/' + docid}));
+    }
+
+    function dispatchCollectionJob(dbResponse) {
+        //jshint validthis:true
+        this._log.debug('_onCollectionTestDocCreated','dbResponse', dbResponse);
+        var docid = dbResponse.generated_keys[0]
+          , dispatcher = this._dispatchCollectionJob.bind(this, docid)
+        ;
+        return this._dispatchJob(docid, dispatcher);
+    }
+
+    this._dbInsertDoc(this._dbCollectionTable, doc, next
+            , dispatchCollectionJob.bind(this)
+            , success.bind(this)
+    );
+};
+
+_p._dbInsertDoc = function(dbTable, doc, next, onCreated, success) {
+    this._query(dbTable).insert(doc)
+            .run()
+            .then(onCreated)
+            .then(success)
+            .error(function(err) {
+                this._log.error('Creating a doc failed ', err);
+                next(err);
+            }.bind(this));
+};
 
 /**
  * This is almost a copy of the clients Controller.unpack method
@@ -182,8 +281,23 @@ _p.unpack = function(data) {
     return result;
 };
 
-_p._query = function() {
-    return this._r.table(this._dbTable);
+_p._query = function(dbTable) {
+    return this._r.table(dbTable);
+};
+
+_p._fbCheckDocId = function(dbTable, req, res, next) {
+    var docid = req.param('docid');
+    this._log.debug('_fbCheckDocId:', docid);
+    return this._query(dbTable).getAll(docid).count()
+        .then(function(found) {
+            if(found)
+                // This is the same client as the index page,
+                // after the docid was returned
+                return this.fbIndex(req, res, next);
+            // answer 404: NotFound
+            return res.status(404).send('Not found');
+        }.bind(this))
+        .catch(next);
 };
 
 /**
@@ -194,20 +308,25 @@ _p._query = function() {
  * SERVER
  *   : test if docid exists
  * CLIENT
- *   : same as fbDNDIndex on success
+ *   : same as fbIndex on success
  */
 _p.fbDNDReport = function(req, res, next) {
-    var docid = req.param('docid');
-    return this._query().getAll(docid).count()
-        .then(function(found) {
-            if(found)
-                // This is the same client as the index page,
-                // after the docid was returned
-                return this.fbDNDIndex(req, res, next);
-            // answer 404: NotFound
-            return res.status(404).send('Not found');
-        }.bind(this))
-        .catch(next);
+    return this._fbCheckDocId(this._dbDNDTable, req, res, next);
+};
+
+/**
+ * GET docid
+ *
+ * Loads the collection-wide test report page client, which receives
+ * its information via socket.io
+ *
+ * SERVER
+ *   : test if docid exists
+ * CLIENT
+ *   : same as fbIndex on success
+ */
+_p.fbCollectionReport = function(req, res, next) {
+    return this._fbCheckDocId(this._dbCollectionTable, req, res, next);
 };
 
 /**
@@ -224,14 +343,22 @@ function mergeArrays(arrays) {
     return result;
 }
 
-_p._onCreateAMQPChannel = function  (docid, payload, channel) {
-    this._log.debug('_onCreateAMQPChannel', docid);
-    var options = {
-            // TODO: do we need persistent here?
-            persistent: true // same as deliveryMode: true or deliveryMode: 2
-        }
-        // a buffer
-      , content
+_p._dispatchCollectionJob = function  (docid, channel) {
+     var message = JSON.stringify({docid: docid})
+        // expecting doc id to be only ASCII chars, because serializing
+        // higher unicode is not that straight forward.
+       , messageArray = Uint8Array.from(message,
+                            function(chr){ return chr.charCodeAt(0);})
+       , messageBuffer = new Buffer(messageArray.buffer)
+       ;
+    this._log.debug('_dispatchCollectionJob:', docid);
+    return this._sendAMQPMessage(channel, this._collectionQueueName, messageBuffer);
+};
+
+_p._dispatchDNDJob = function  (docid, payload, channel) {
+    this._log.debug('_dispatchDNDJob:', docid);
+         // a buffer
+    var messageBuffer
         // expecting doc id to be only ASCII chars, because serializing
         // higher unicode is not that straight forward.
       , docidArray = Uint8Array.from(docid,
@@ -242,28 +369,32 @@ _p._onCreateAMQPChannel = function  (docid, payload, channel) {
     this._log.debug('docidLen is', docidArray.byteLength
                                                 , 'for docid:', docid);
 
-    content = mergeArrays([docidLen, docidArray, payload]);
+    messageBuffer = mergeArrays([docidLen, docidArray, payload]);
+
+    return this._sendAMQPMessage(channel, this._dndQueueName, messageBuffer);
+};
+
+_p._sendAMQPMessage = function (channel, queueName, message) {
+    var options = {
+            // TODO: do we need persistent here/always?
+            persistent: true // same as deliveryMode: true or deliveryMode: 2
+        }
+        ;
     function onAssert() {
         // jshint validthis:true
-        this._log.info('sendToQueue doc', docid, 'queue', this._queueName
-                                        , content.byteLength, 'Bytes');
-        return channel.sendToQueue(this._queueName, content, options);
+        this._log.info('sendToQueue: ', queueName);
+        return channel.sendToQueue(queueName, message, options);
     }
-    return channel.assertQueue(this._queueName, {durable: true})
+    return channel.assertQueue(queueName, {durable: true})
            .then(onAssert.bind(this))
            .finally(function(){ channel.close(); })
            ;
 };
 
-_p._onDocCreated = function(req, res, next, dbResponse) {
-    this._log.debug('_onDocCreated','dbResponse', dbResponse);
-    var docid = dbResponse.generated_keys[0]
-      , payload = req.body
-      ;
-
+_p._dispatchJob = function(docid, dispatcher) {
     this._log.debug('creating amqp channel');
     return this._amqpConnection.createChannel()
-        .then(this._onCreateAMQPChannel.bind(this, docid, payload))
+        .then(dispatcher)
         .then(function(){ return docid; })
         .catch(function(err) {
             this._log.warning('Can\'t create channel.', err);
@@ -289,18 +420,25 @@ _p.fbDNDReceive = function(req, res, next) {
     var doc = {created: new Date()};
     function success(docid) {
         //jshint validthis:true
-        this._log.debug('Sending response:', docid);
+        this._log.debug('Sending DND receive response:', docid);
         res.setHeader('Content-Type', 'application/json');
         res.send(JSON.stringify({docid: docid, url: 'report/' + docid}));
     }
-    this._query().insert(doc)
-            .run()
-            .then(this._onDocCreated.bind(this, req, res, next))
-            .then(success.bind(this))
-            .error(function(err) {
-                this._log.error('Creating a doc failed ', err);
-                next(err);
-            }.bind(this));
+
+    function dispatchJob(req, dbResponse) {
+        //jshint validthis:true
+        this._log.debug('dispatchJob','dbResponse', dbResponse);
+        var docid = dbResponse.generated_keys[0]
+          , payload = req.body
+          , dispatcher = this._dispatchDNDJob.bind(this, docid, payload)
+          ;
+        return this._dispatchJob(docid, dispatcher);
+    }
+
+    this._dbInsertDoc(this._dbDNDTable, doc, next
+            , dispatchJob.bind(this, req)
+            , success.bind(this)
+            );
 };
 
 
@@ -320,19 +458,28 @@ _p.fbDNDReceive = function(req, res, next) {
  *
  * wrap in:
  *
- * this._sio.on('connection', this.fbDNDSocketConnect.bind(this));
+ * this._sio.on('connection', this.fbSocketConnect.bind(this));
  *
  */
-_p.fbDNDSocketConnect = function(socket) {
+_p.fbSocketConnect = function(socket) {
     // wait for docid request ...
-    socket.on('subscribe-changes', function (data) {
-        this._log.info('fbDNDSocketConnectchanges subscription requested for', data);
+
+    function onSubscribe(type, data) {
+        //jshint validthis: true
+        this._log.info('fbSocketConnect subscription requested'
+                                                +' for', type, data);
         // simple sanitation, all strings are valid requests so far
         if(typeof data.docid !== 'string')
             // this is actually required
             data.docid = '';
-        this._subscribeToDoc(socket, data);
-    }.bind(this));
+        if(type === 'report')
+            this._subscribeToReportDoc(socket, data);
+        else if(type === 'collection')
+            this._subscribeToCollectionReportsDoc(socket, data);
+    }
+
+    socket.on('subscribe-report', onSubscribe.bind(this, 'report'));
+    socket.on('subscribe-collection', onSubscribe.bind(this, 'collection'));
 };
 
 /**
@@ -349,7 +496,7 @@ _p.fbDNDSocketConnect = function(socket) {
  *      close socket
  *      close changefeed
  */
-_p._fbDNDRethinkChangeFeed = function(cursor, socket, channel, err, data) {
+_p._fbRethinkChangeFeed = function(cursor, socket, channel, err, data) {
     if (err) {
         // TODO: Handle error
         this._log.error('Fail receivng change feed data.', err);
@@ -367,22 +514,44 @@ _p._fbDNDRethinkChangeFeed = function(cursor, socket, channel, err, data) {
 /**
  * data.docid is the rethink db document UUID.
  */
-_p._subscribeToDoc = function(socket, data) {
-    this._query().get(data.docid)
-        .changes({includeInitial: true, squash: 0.3})
-        .run(function(err, cursor) {
+_p._subscribeToReportDoc = function(socket, data) {
+    var query = this._query(this._dbDNDTable).get(data.docid);
+    this._subscribeToQuery(socket, query);
+};
+
+_p._subscribeToCollectionReportsDoc = function(socket, data) {
+    // This would have been nice but it is not currently possible!
+    // var query = this._query(this._dbCollectionTable).get(data.docid).merge({
+    //     reports: this._query(this._dbDNDTable)
+    //         .getAll(this._r.row('id'), {index: this._dbCollectionTable + '_id'})
+    //         .pluck('id', 'created', 'family', 'results').coerceTo('array')
+    // });
+    // Let's for now only get the reports data:
+    // This works, but changes are per document, we'll have to manually
+    // apply them at the right positions, in the client. Will work though.
+    var query = this._query(this._dbCollectionTable).get(data.docid);
+    this._subscribeToQuery(socket, query);
+
+    query = this._query(this._dbDNDTable)
+        .getAll(data.docid, {index: this._dbCollectionTable + '_id'})
+        .pluck('id', 'created', 'family_dir', 'results')
+        ;
+    this._subscribeToQuery(socket, query);
+};
+
+_p._subscribeToQuery = function(socket, query) {
+        query.changes({includeInitial: true, squash: 1})
+            .run(function(err, cursor) {
             if(err) {
                 this._log.error('Can\'t acquire change feed.', err);
                 throw err;
             }
-            cursor.each(this._fbDNDRethinkChangeFeed.bind(this
+            cursor.each(this._fbRethinkChangeFeed.bind(this
                                         , cursor, socket, 'changes'));
         }.bind(this), {cursor: true});
 };
 
-
-if (typeof require != 'undefined' && require.main==module) {
-
+function getSetup() {
     var rethinkSetup = {
             host: null
           , port: null
@@ -398,7 +567,7 @@ if (typeof require != 'undefined' && require.main==module) {
 
     if(process.env.RETHINKDB_PROXY_SERVICE_HOST) {
         // in gcloud, we use a cluster with proxy setup
-        // ther proxy service is called: "rethinkdb-proxy" hence:
+        // the proxy service is called: "rethinkdb-proxy" hence:
         rethinkSetup.host = process.env.RETHINKDB_PROXY_SERVICE_HOST;
         rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
     }
@@ -408,8 +577,23 @@ if (typeof require != 'undefined' && require.main==module) {
         rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
     }
 
-    logging.info('Init server ...');
-    new Server(logging, 3000, amqpSetup, rethinkSetup);
+
+    return {
+        amqp: amqpSetup
+      , rethink: rethinkSetup
+      , logging: logging
+    };
+}
+
+if (typeof require != 'undefined' && require.main==module) {
+    var setup = getSetup();
+    setup.logging.info('Init server ...');
+    new Server(setup.logging, 3000, setup.amqp, setup.rethink);
+}
+else {
+    // FIXME: TEMPORARILY: export usesful things
+    module.exports.getSetup = getSetup;
+    module.exports.mergeArrays = mergeArrays;
 }
 
 
