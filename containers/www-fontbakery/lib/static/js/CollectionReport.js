@@ -73,7 +73,8 @@ define([
             //jshint validthis: true
             var label = this._labels[key];
             if(!label)
-                this._labels[key] = label = dom.createElement('th', null, key);
+                this._labels[key] = label = dom.createElement('th'
+                            , {'class': 'fontbakery_status-' + key}, key);
             // Interesting: this way the inital first-child <th> stays
             // where it is no further action required
             dom.appendChildren(this._head, this._labels[key]);
@@ -105,7 +106,6 @@ define([
     })();
 
     // TODO:
-    // colored table headers
     // results as percentages (better for sorting!) and in parenthesis the actual number
     // plus columns:
     //      `Total` amount of tests
