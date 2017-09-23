@@ -534,7 +534,10 @@ _p._subscribeToCollectionReportsDoc = function(socket, data) {
 
     query = this._query(this._dbDNDTable)
         .getAll(data.docid, {index: this._dbCollectionTable + '_id'})
-        .pluck('id', 'created', 'family_dir', 'results')
+        .map(function (doc) {
+            return doc.merge({total: doc('tests').count()});
+        })
+        .pluck('id', 'created', 'family_dir', 'results', 'total')
         ;
     this._subscribeToQuery(socket, query);
 };
