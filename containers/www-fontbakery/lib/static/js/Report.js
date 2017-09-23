@@ -219,21 +219,6 @@ define([
     return AggregatedResults;
     })();
 
-    function _validateEvent(event, stopElement, searchAttribute) {
-        var elem = event.target;
-        if(event.defaultPrevented) return;
-        while(true) {
-            if(elem === stopElement.parentElement || !elem)
-                return;
-            if(elem.hasAttribute(searchAttribute))
-                // found!
-                break;
-            elem = elem.parentElement;
-        }
-        event.preventDefault();
-        return elem.getAttribute(searchAttribute);
-    }
-
     function _parseTestKey(key) {
         var raw = JSON.parse(key)
           , data = {
@@ -370,7 +355,7 @@ define([
     _p._selectResultTypeHandler = function(event) {
         var searchAttribute = 'data-result-type'
           , stopElement = this._results.container
-          , name = _validateEvent(event, stopElement, searchAttribute)
+          , name = dom.validateChildEvent(event, stopElement, searchAttribute)
           ;
         if(name !== undefined)
             this._toggleResultType(name);
@@ -566,7 +551,7 @@ define([
     _p._selectTabHandler = function(event) {
         var searchAttribute = 'data-tab-key'
           , stopElement = this._tabsContainer
-          , key = _validateEvent(event, stopElement, searchAttribute)
+          , key = dom.validateChildEvent(event, stopElement, searchAttribute)
           ;
         if(key !== undefined)
             this._activateTab(key);

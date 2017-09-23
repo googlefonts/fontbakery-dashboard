@@ -56,7 +56,7 @@ define([
     HasNoChildrenError.prototype = Object.create(Error.prototype);
     HasNoChildrenError.prototype.constructor = HasNoChildrenError;
 
-    function binInsert(value, others, compare) {
+    function binInsert(value, others, compare, allowEqual) {
         var length = others.length
           , start, end, middle, cmp
           ;
@@ -85,6 +85,8 @@ define([
                 end = middle - 1;
             else if(cmp(value, others[middle]) > 0)
                 start = middle + 1;
+            else if(allowEqual)
+                return {index: middle, pos: 'after'};
             else
                 // This should *NEVER* happen!
                 throw new ValueError('An element with value "' + value
@@ -158,16 +160,16 @@ define([
 
     _p.getChild = function(key) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "getChild" getter.');
+        throw new NotImplementedError('You need to implement "getChild".');
     };
     _p._insertChild = function(key, child) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_insertChild" getter.');
+        throw new NotImplementedError('You need to implement "_insertChild".');
     };
 
     _p._deleteChild = function(key) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_deleteChild" getter.');
+        throw new NotImplementedError('You need to implement "_deleteChild".');
     };
 
     /**
@@ -175,7 +177,7 @@ define([
      */
     _p._makeChildContainer = function(key) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_makeChildContainer" getter.');
+        throw new NotImplementedError('You need to implement "_makeChildContainer".');
     };
 
     /**
@@ -183,12 +185,12 @@ define([
      */
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_insertChildContainer" getter.');
+        throw new NotImplementedError('You need to implement "_insertChildContainer".');
     };
 
     _p._eachChild = function(callback, thisval) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_eachChild" getter.');
+        throw new NotImplementedError('You need to implement "_eachChild".');
     };
 
     _p.destroy = function() {
@@ -321,6 +323,10 @@ define([
             callback.call(thisval || null, this._children[key]);
     };
 
+    _p.hasChild = function(key) {
+        return key in this._children;
+    };
+
     _p.getChild = function(key) {
         if(!(key in this._children))
             throw new Error('Child not found "'+key+'" in "'+this+'"');
@@ -353,7 +359,7 @@ define([
      */
     _p._makeChildContainer = function(key) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_makeChildContainer" getter.');
+        throw new NotImplementedError('You need to implement "_makeChildContainer".');
     };
 
     /**
@@ -361,7 +367,7 @@ define([
      */
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_insertChildContainer" getter.');
+        throw new NotImplementedError('You need to implement "_insertChildContainer".');
     };
 
     return DictionaryBlock;
@@ -417,7 +423,7 @@ define([
      */
     _p._makeChildContainer = function(key) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_makeChildContainer" getter.');
+        throw new NotImplementedError('You need to implement "_makeChildContainer".');
     };
 
     /**
@@ -425,7 +431,7 @@ define([
      */
     _p._insertChildContainer = function(key, container) {
         // jshint unused:vars
-        throw new NotImplementedError('You need to implement the "_insertChildContainer" getter.');
+        throw new NotImplementedError('You need to implement "_insertChildContainer".');
     };
 
     return ArrayBlock;
@@ -666,7 +672,8 @@ define([
             container.classList.add.apply(container.classList, spec[''].addClasses(data));
 
         // this should be styled as preformat
-        dom.appendChildren(container, children, false);
+        if(container)
+            dom.appendChildren(container, children, false);
 
         Parent.call(this, supreme, container, key, spec, data);
     }

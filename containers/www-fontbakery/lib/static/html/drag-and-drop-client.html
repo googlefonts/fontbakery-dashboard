@@ -336,6 +336,19 @@
           animation: spinner .6s linear infinite;
         }
 
+        .collection-report_reports-head > th:after {
+            content: '▴';
+            margin-left: .2em;
+            vertical-align: super;
+            opacity: .3;
+        }
+        .collection-report_reports-head.ordering-reversed > th::after {
+            content: '▾';
+        }
+
+        .collection-report_reports-head > th.ordering-column::after {
+           opacity: 1;
+        }
 
     </style>
     <script>
@@ -379,18 +392,9 @@
 
 
     <table class="table_templates">
-    <tr class="collection-report_reports-head">
-        <th>Family</th>
-        <!-- insert: items -->
-    </tr>
+    <tr class="collection-report_reports-head"></tr>
 
-    <tr class="collection-report_reports-results">
-        <th>
-            <!-- insert: label -->
-            <div class="generic-items"></div>
-        </th>
-        <!-- insert: results -->
-    </tr>
+    <tr class="collection-report_reports-results"></tr>
 
     <tbody class="collection-report_reports-children"><!-- insert: children --></tbody>
 

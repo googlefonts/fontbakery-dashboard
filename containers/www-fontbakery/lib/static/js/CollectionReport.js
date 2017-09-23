@@ -8,13 +8,14 @@ define([
   , reporterBlocks
 ) {
     "use strict";
+    /* global setTimeout */
 
     var genericBlockFactory = reporterBlocks.genericBlockFactory
       , Supreme = reporterBlocks.Supreme
       , PrimitiveValueBlock = reporterBlocks.PrimitiveValueBlock
       , FlexibleDocumentBlock = reporterBlocks.FlexibleDocumentBlock
-      , GenericDictionaryBlock = reporterBlocks.GenericDictionaryBlock
       , DictionaryBlock = reporterBlocks.DictionaryBlock
+      , binInsert = reporterBlocks.binInsert
       ;
 
     var CollectionReportDocumentBlock = FlexibleDocumentBlock;
@@ -30,7 +31,26 @@ define([
     return HrefDocumentBlock;
     })();
 
-    //<row>s in the reports table
+    function insertOrdered(parent, lastItem, item) {
+        var pos, elem;
+        if(lastItem && lastItem.parentNode !== parent)
+            throw new Error('lastItem.parentNode !== parent but it must be!');
+        if(!lastItem) {
+            pos = 'prepend';
+            elem = parent;
+            if(elem.firstChild === item)
+                return;
+        }
+        else {
+            pos = 'after';
+            elem = lastItem;
+            if(elem.nextSibling === item)
+                return;
+        }
+        dom.insert(elem, pos, item);
+    }
+
+    // The table controller
     var ReportsDictBlock = (function() {
     var Parent = DictionaryBlock;
     function ReportsDictBlock(supreme, container, key, spec, data) {
@@ -41,7 +61,6 @@ define([
           ;
 
         this._head = getElementFromTemplate(spec[''].headClass, true);
-
         this._childrenContainer = getElementFromTemplate(spec[''].childrenContainerClass, true);
 
         dom.insertAtMarkerComment(container, headMarker, this._head, false);
@@ -50,57 +69,241 @@ define([
         this._childrenInsertMarker = dom.getMarkerComment(this._childrenContainer
                             , spec[''].insertionMarkerPrefix +'children');
 
-
-        this._order =  spec[''].resultVals.slice();
+        this._colOrderSections = [];
+        this._colOrders = Object.create(null);
         this._labels = Object.create(null);
-        this._updateLabels();
-        this._unsubscribeResultsKey = this.supreme.pubSub.subscribe(
-                          'results-new-key' , this._updateOrder.bind(this));
-        this.supreme.pubSub.publish('results-order', this._order.slice());
-        Parent.call(this, supreme, container, key, spec, data);
 
+        this._rowOrderColumn = 'results.FAIL'; //type.key
+        this._rowOrderReversed = true;
+        this._childrenOrder = [];
+        this._head.addEventListener('click'
+                                    , this._setRowOrderHandler.bind(this));
+        this._updateLabelsOrderUI();
+
+        // shadows the prototype with a bound version
+        this._compareChildren = this._compareChildren.bind(this);
+
+        ['pre', 'results', 'after'].forEach(this._addOrderSection, this);
+        Array.prototype.push.apply(this._colOrders['results'], spec[''].resultVals);
+
+        this._updateLabelsColOrder();
+        this._unsubscribeNewKey = this.supreme.pubSub.subscribe(
+                                'new-key', this._updateOrder.bind(this));
+        this._publishOrder('results');
+
+        this._reorderRowsScheduling = null;
+        this.supreme.pubSub.subscribe('changed-row', this._onChangedRow.bind(this));
+
+        Parent.call(this, supreme, container, key, spec, data);
     }
+
     var _p = ReportsDictBlock.prototype = Object.create(Parent.prototype);
     _p.constructor = ReportsDictBlock;
 
+
+    _p._updateLabel = function(label) {
+        var key = label.getAttribute('data-column-key')
+          , isOrdering = key === this._rowOrderColumn
+          ;
+        label.classList[isOrdering ? 'add' : 'remove']('ordering-column');
+    };
+
+    _p._updateLabelsOrderUI = function() {
+        var k
+          , toggle = this._rowOrderReversed ? 'add' : 'remove'
+          ;
+        this._head.classList[toggle]('ordering-reversed');
+        for(k in this._labels)
+           this._updateLabel(this._labels[k]);
+    };
+
+    _p._setRowOrderHandler = function (event) {
+        var searchAttribute = 'data-column-key'
+          , stopElement = this._head
+          , key = dom.validateChildEvent(event, stopElement, searchAttribute)
+          ;
+        if(key === undefined)
+            return;
+        if(key !== this._rowOrderColumn)
+            this._rowOrderColumn = key;
+        else
+            // when the column was already selected, reverse the ordering.
+            this._rowOrderReversed = !this._rowOrderReversed;
+        this._updateLabelsOrderUI();
+        this._scheduleReorderRows();
+    };
+
+
+    _p._reorderRows = function() {
+        var ordered = this._childrenOrder = Object.values(this._children)
+                        .sort(this._compareChildren)
+          , lastItem = null
+          , i, l, item
+          ;
+        for(i=0,l=ordered.length;i<l;i++) {
+            item = ordered[i].container;
+            insertOrdered(this._childrenContainer, lastItem, item);
+            lastItem = item;
+        }
+
+        this._reorderRowsScheduling = null;
+    };
+
+    // Table live reordering
+    _p._scheduleReorderRows = function() {
+        if(this._reorderRowsScheduling)
+            return;
+        this._reorderRowsScheduling = setTimeout(this._reorderRows.bind(this));
+    };
+
+    _p._onChangedRow = function(type, key) {
+        if(this._rowOrderColumn.indexOf(type) !== 0)
+            // a bit quicker than the test below
+            return;
+        if(this._rowOrderColumn !== [type, key].join('.'))
+            return;
+        this._scheduleReorderRows();
+    };
+
+    _p._compareChildren = function(a, b) {
+        var result
+          , valA = this._rowOrderColumn
+                        ? a.getValueFor(this._rowOrderColumn)
+                        : a.key
+          , valB = this._rowOrderColumn
+                        ? b.getValueFor(this._rowOrderColumn)
+                        : b.key
+          ;
+
+        if(valA === valB)
+            return 0;
+
+        // mot defined: always at bottom
+        if(valA === null)
+            return 1;
+        if(valB === null)
+            return -1;
+
+        // normal ordering
+        result = (valA > valB) ? 1 : -1;
+        if(this._rowOrderReversed)
+            result = -result;
+        return result;
+    };
+
+    _p._publishOrder = function() {
+        var fullOrder = [], i, l, j, ll, type, order, key;
+        for(i=0,l=this._colOrderSections.length;i<l;i++) {
+            type = this._colOrderSections[i];
+            order = this._colOrders[type];
+            for(j=0,ll=order.length;j<ll;j++) {
+                key = order[j];
+                fullOrder.push([type, key].join('.'));
+            }
+        }
+        this.supreme.pubSub.publish('order', fullOrder);
+    };
+
+    _p._addOrderSection = function(key) {
+        if(key in this._colOrders)
+            return;
+        this._colOrderSections.push(key);
+        this._colOrders[key] = [];
+    };
+
     _p.destroy = function() {
         Parent.prototype.destroy.call(this);
-        this._unsubscribeResultsKey();
+        this._unsubscribeNewKey();
     };
 
-    _p._updateLabels = function() {
-        this._order.forEach(function(key) {
-            //jshint validthis: true
-            var label = this._labels[key];
-            if(!label)
-                this._labels[key] = label = dom.createElement('th'
-                            , {'class': 'fontbakery_status-' + key}, key);
-            // Interesting: this way the inital first-child <th> stays
-            // where it is no further action required
-            dom.appendChildren(this._head, this._labels[key]);
-        }, this);
+    _p._getLabel = function(type, key) {
+        var labelKey = [type, key].join('.')
+          , labelText = key
+          , label = this._labels[labelKey]
+          , attr
+          ;
+        if(!label) {
+            attr = {'data-column-key': labelKey};
+            // hardcoded yet, needs improvement at some point
+            if(type === 'results')
+                attr['class'] = 'fontbakery_status-' + key;
+            this._labels[labelKey] = label = dom.createElement(
+                                                    'th', attr, labelText);
+            this._updateLabel(label);
+        }
+        return label;
     };
 
-    _p._updateOrder = function(key) {
-        if(this._order.indexOf(key) !== -1)
+    _p._insertLabel = function(lastLabel, type, key) {
+        var label = this._getLabel(type, key);
+        insertOrdered(this._head, lastLabel, label);
+        return label;
+    };
+
+    _p._updateLabelsColOrder = function() {
+        var type, order
+          , i, l, j, ll, key
+          , lastLabel = null
+          ;
+        for(i=0,l=this._colOrderSections.length;i<l;i++) {
+            type = this._colOrderSections[i];
+            order = this._colOrders[type];
+            for(j=0, ll=order.length;j<ll;j++) {
+                key = order[j];
+                lastLabel = this._insertLabel(lastLabel, type, key);
+            }
+        }
+    };
+
+    _p._updateOrder = function(type, key) {
+        var order = this._colOrders[type];
+        if(order.indexOf(key) !== -1)
             return;
         // just append, we have a known order via spec[''].resultVals
         // everything else is undefined an just goes to the end
-        this._order.push(key);
-        this._updateLabels();
+        order.push(key);
+        this._updateLabelsColOrder();
 
         // The children store a reference to order, thus always
-        // publish a copy.
-        this.supreme.pubSub.publish('results-order', this._order.slice());
+        // publish a copy (this is called defensive copying, immutable data is better here)
+        this._publishOrder();
     };
 
     _p._makeChildContainer = function(key) {
         // jshint unused:vars
+        // elem should be a <tr>
         var elem = this._spec[''].getElementFromTemplate(this._spec[''].childClass, true);
         return elem;
     };
 
-    _p._insertChildContainer = GenericDictionaryBlock.prototype._insertChildContainer;
+
+    _p._insertChildContainer = function(key, container) {
+        // jshint unused:vars
+        // pass, see _insertChild
+    };
+    /**
+     *  insert into this._container at the right position
+     */
+    _p._insertChild = function(key, block) {
+        var child = block
+          , position, reference, target, orderIndex
+          ;
+        Parent.prototype._insertChild.call(this, key, block);
+
+        if(!this._childrenOrder.length){
+            reference = this._childrenContainer;
+            position = 'prepend';
+            orderIndex = 0;
+        }
+        else {
+            target = binInsert(child, this._childrenOrder, this._compareChildren, true);
+            reference = this._childrenOrder[target.index].container;
+            position = target.pos;
+            orderIndex = target.index + (target.pos === 'after' ? 1 : 0);
+        }
+        this._childrenOrder.splice(orderIndex, 0, child);
+        dom.insert(reference, position, child.container);
+    };
 
     return ReportsDictBlock;
     })();
@@ -108,8 +311,11 @@ define([
     // TODO:
     // results as percentages (better for sorting!) and in parenthesis the actual number
     // plus columns:
-    //      `Total` amount of tests
-    //      `Result` by order (=weight) worsed result, colored cell + word, order by weight
+    //      `Result` by order (=weight) worse result, colored cell + word, order by weight
+    //               arguably very useful, will probably never be green since we'll always
+    //               have INFO/SKIP/WARN. We could reduce it to ERROR/FAIL/PASS though
+    //               INFO/SKIP/WARN are considered a PASS then. Could be color plus total
+    //               percentage and if finished (== 100%) ERROR|FAIL|PASS
     // Family: with link to full report
     //      clean up how the header and possibly other keys are inserted
     //      no more generic items or such. synthetic columns need a place
@@ -118,28 +324,121 @@ define([
     // indicator if a test isFinished (maybe result has a spinner when not finished ...)
     // OR Total has a percentage, like 100% of {total}
     var ReportDictBlock = (function() {
-    var Parent = FlexibleDocumentBlock;
+    var Parent = DictionaryBlock;
     function ReportDictBlock(supreme, container, key, spec, data) {
-
         this._genericItemsContainer = dom.getChildElementForSelector(
                                     container, '.generic-items', true);
-        Parent.call(this, supreme, container, key, spec, data);
+
+        this._order = [];
+        this._childContainers = Object.create(null);
+
+        // very nasty way to inject into the results block
+        this.supreme = Object.create(supreme);
+        this.supreme.makeResultsChildContainer = this._getChildContainer
+                                                     .bind(this, 'results');
+
+        Parent.call(this, this.supreme, container, key, spec, data);
+        this._unsubscribeOrder = this.supreme.pubSub.subscribe('order'
+                                            , this._updateOrder.bind(this));
     }
 
     var _p = ReportDictBlock.prototype = Object.create(Parent.prototype);
     _p.constructor = ReportDictBlock;
 
+    _p._updateLabels = function() {
+        var type, order
+          , i, l, j, ll, key
+          , lastLabel = null
+          ;
+        for(i=0,l=this._orderSections.length;i<l;i++) {
+            type = this._orderSections[i];
+            order = this._orders[type];
+            for(j=0, ll=order.length;j<ll;j++) {
+                key = order[j];
+                lastLabel = this._insertLabel(lastLabel, type, key);
+            }
+        }
+    };
+
+    _p._insertItem = function(lastItem, type, key) {
+        var item = this._getChildContainer(type, key);
+        insertOrdered(this.container, lastItem, item);
+        return item;
+    };
+
+    _p.getValueFor = function(fullKey) {
+        var dot = fullKey.indexOf('.')
+          , type = fullKey.slice(0, dot)
+          , key = fullKey.slice(dot+1)
+          , block
+          ;
+        if(type === 'results') {
+            if(!this.hasChild(type))
+                return null;
+            block = this.getChild(type);
+        }
+        else
+            block = this;
+
+        return block.hasChild(key) ? block.getChild(key).data : null;
+    };
+
+    _p._updateOrder = function(newOrder) {
+        var i, l, fullKey, dot, type, key, lastItem;
+        if(this._order.join(',') === newOrder.join(','))
+            return;
+
+        this._order = newOrder;
+
+        for(i=0,l=this._order.length;i<l;i++) {
+            fullKey = this._order[i];
+            dot = fullKey.indexOf('.');
+            type = fullKey.slice(0, dot);
+            key = fullKey.slice(dot+1);
+            lastItem = this._insertItem(lastItem, type, key);
+        }
+        // Todo: remove containers from DOM if not in this._order.
+        //       However, does not happen atm.
+        // maybe we could use jiff for this. It should make the dom
+        // manipulation minimal and also deal with removals.
+    };
+
+    _p._insertChild = function(key, child) {
+        Parent.prototype._insertChild.call(this, key, child);
+        // TODO: maybe only send this if the row is interesting
+        // makes up a lot less calls!
+        this.supreme.pubSub.publish('changed-row', 'pre', key);
+    };
+
+    _p._getChildContainer = function(type, key) {
+        var fullKey = [type, key].join('.')
+          , elem = this._childContainers[fullKey]
+          ;
+        if(!elem) {
+            this._childContainers[fullKey] = elem = dom.createElement('td');
+            // register new-key ...
+            this.supreme.pubSub.publish('new-key', type, key);
+        }
+        return elem;
+    };
+
     /**
      * Returns a DOM-Element, that is not yet in the document
      */
     _p._makeChildContainer = function(key) {
-        var insertionMarker;
-        if(key === 'results') {
-            insertionMarker = this._spec[''].insertionMarkerPrefix + key;
-            return dom.getMarkerComment(this.container, insertionMarker);
-        }
-        return Parent.prototype._makeChildContainer.call(this, key);
+        if(key === 'results')
+            return;
+        if(this._spec[''].containerless.has(key))
+            return;
+        return this._getChildContainer('pre', key);
     };
+
+    _p._insertChildContainer = function(key, container) {
+        // jshint unused:vars
+        // pass, done by _updateOrder
+        return;
+    };
+
 
     return ReportDictBlock;
     })();
@@ -153,74 +452,33 @@ define([
     var Parent = DictionaryBlock;
     function ResultsDictionaryBlock(supreme, container, key, spec, data) {
         this.container = container;
-        this._childContainers = Object.create(null);
-        this._order = [];
         this.supreme = supreme;
-        this._unsubscribeOrder = this.supreme.pubSub.subscribe('results-order'
-                                  , this._updateOrder.bind(this));
         Parent.call(this, supreme, container, key, spec, data);
     }
+
     var _p = ResultsDictionaryBlock.prototype = Object.create(Parent.prototype);
     _p.constructor = ResultsDictionaryBlock;
 
-    _p.destroy = function() {
-        Parent.prototype.destroy.call(this);
-        this._unsubscribeOrder();
-    };
-
-    _p._updateOrder = function(newOrder) {
-        console.log('_updateOrder',newOrder.join(','));
-        if(this._order.join(',') === newOrder.join(','))
-            return;
-
-        this._order = newOrder;
-
-        this._order.forEach(function(key) {
-            // jshint validthis:true
-            // create the children of not present yet
-            var container = this._makeChildContainer(key);
-            // (re-)insert the children in the new order
-            this._insertChildAtMark(container);
-        }, this);
-        // Todo: remove containers from DOM if not in this._order.
-        //       However, does not happen atm.
-        // maybe we could use jiff for this. It should make the dom
-        // manipulation minimal and also deal with removals.
-    };
 
     _p._makeChildContainer = function(key) {
         // jshint unused: vars
-        var container = this._childContainers[key];
-        if(!container) {
-            this._childContainers[key] = container = dom.createElement('td');
-            // will call this function to create a container, but we have
-            // it alreadt cached.
-
-            this.supreme.pubSub.publish('results-new-key', key);
-        }
+        var container = this.supreme.makeResultsChildContainer(key);
+        // we reuse this one ...
+        dom.clear(container);
         return container;
     };
 
-    _p._deleteChild = function(key) {
-        delete this._childContainers[key];
-        Parent.prototype._deleteChild.call(this, key);
-    };
-
-    _p._insertChildAtMark = function(container) {
-        dom.insert(this.container, 'before', container);
-    };
-
     _p._insertChildContainer = function(key, container) {
-        if(container.parentNode)
-            // if it has a parentNode, we assume it is alreadt where it should
-            // be, see _p._updateOrder
-            return;
-        console.log('child', key, 'has no parent');
-        // basically, in this case we should almost never get to this
-        // position, because _updateOrder would in all cases execute
-        // before, as long as this.supreme.publish('results-new-key', key);
-        // in _p._makeChildContainer is executed synchronously.
-        this._insertChildAtMark(container);
+        // jshint unused:vars
+        // pass, parent is responsible for this task now!
+        return;
+    };
+
+    _p._insertChild = function(key, child) {
+        Parent.prototype._insertChild.call(this, key, child);
+        // TODO: maybe only send this if the row is interesting
+        // makes up a lot less calls!
+        this.supreme.pubSub.publish('changed-row', 'results', key);
     };
 
     return ResultsDictionaryBlock;
@@ -289,7 +547,7 @@ define([
                   , genericSpec: { // the items that currently go into the
                         '': {
                             skipKey: true
-                          , skipData: true
+                          //, skipData: true
                         }
                     }
                   , containerless: new Set(['created', 'id'])

@@ -182,6 +182,26 @@ define([
             throw new Error('Marker <!-- '+marker+' --> not found');
     }
 
+    function clear(elem) {
+        while(elem.lastChild)
+            removeNode(elem.lastChild);
+    }
+
+    function validateChildEvent(event, stopElement, searchAttribute) {
+        var elem = event.target;
+        if(event.defaultPrevented) return;
+        while(true) {
+            if(elem === stopElement.parentElement || !elem)
+                return;
+            if(elem.hasAttribute(searchAttribute))
+                // found!
+                break;
+            elem = elem.parentElement;
+        }
+        event.preventDefault();
+        return elem.getAttribute(searchAttribute);
+    }
+
     return {
         createElement: createElement
       , createChildElement: createChildElement
@@ -203,6 +223,8 @@ define([
       , getChildElementForSelector: getChildElementForSelector
       , getMarkerComment: getMarkerComment
       , insertAtMarkerComment: insertAtMarkerComment
+      , clear: clear
+      , validateChildEvent: validateChildEvent
       , ValueError: ValueError
     };
 });
