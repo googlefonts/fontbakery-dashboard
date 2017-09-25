@@ -23,11 +23,20 @@ define([
     var HrefDocumentBlock = (function() {
     var Parent = PrimitiveValueBlock;
     function HrefDocumentBlock(supreme, container, key, spec, data) {
-        dom.appendChildren(container,
-            [dom.createElement('a', {href: spec[''].url}, data)]);
+        this._anchor = dom.createElement('a', {}, data);
+        if(spec[''].url)
+            this.url = spec[''].url;
+        dom.appendChildren(container,this._anchor);
         Parent.call(this, supreme, container, key, spec, data);
     }
-    HrefDocumentBlock.prototype = Object.create(Parent.prototype);
+    var _p = HrefDocumentBlock.prototype = Object.create(Parent.prototype);
+
+    Object.defineProperty(_p, 'url', {
+        set: function(url) {
+            this._anchor.setAttribute('href', url);
+        }
+    });
+
     return HrefDocumentBlock;
     })();
 
@@ -409,6 +418,8 @@ define([
 
         if(key === 'total' || key === 'results')
             this._propagateTotal();
+        if(key === 'family_dir')
+            child.url = '/report/' + this.key;
 
         this.supreme.pubSub.publish('changed-row', 'pre', key);
     };
@@ -603,16 +614,6 @@ define([
                     }
                 }
             }
-          , justGenericValueSpec = {
-                // is a genericBlockFactory
-                Type: genericBlockFactory
-              , spec: {
-                    '': {
-                        skipKey: true
-                      , dataUnescaped: true
-                    }
-                }
-            }
           , resultsSpec = {
                 Type: ResultsDictionaryBlock
               , spec: {
@@ -643,7 +644,13 @@ define([
                   , childTag: 'span'
                 }
               , results: resultsSpec
-              , family_dir: justGenericValueSpec
+              , family_dir: {
+                    Type: HrefDocumentBlock
+                  , spec: {
+                        '': {}
+                    }
+                }
+
             }
           , reportsSpec = {
                 Type: ReportsDictBlock
@@ -711,8 +718,9 @@ define([
     var _p = CollectionReport.prototype;
 
     _p._togglePercentagesDisplayHandler = function(event){
+        //jshint unused: vars
         this._togglePercentagesDisplay();
-    }
+    };
     _p._togglePercentagesDisplay = function(forcedVal) {
         var label;
         this._displayPercentages = arguments.length
