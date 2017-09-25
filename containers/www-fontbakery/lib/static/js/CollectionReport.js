@@ -100,7 +100,6 @@ define([
     var _p = ReportsDictBlock.prototype = Object.create(Parent.prototype);
     _p.constructor = ReportsDictBlock;
 
-
     _p._updateLabel = function(label) {
         var key = label.getAttribute('data-column-key')
           , isOrdering = key === this._rowOrderColumn
@@ -132,7 +131,6 @@ define([
         this._updateLabelsOrderUI();
         this._scheduleReorderRows();
     };
-
 
     _p._reorderRows = function() {
         var ordered = this._childrenOrder = Object.values(this._children)
@@ -308,21 +306,13 @@ define([
     return ReportsDictBlock;
     })();
 
-    // TODO:
-    // results as percentages (better for sorting!) and in parenthesis the actual number
-    // plus columns:
-    //      `Result` by order (=weight) worse result, colored cell + word, order by weight
-    //               arguably very useful, will probably never be green since we'll always
-    //               have INFO/SKIP/WARN. We could reduce it to ERROR/FAIL/PASS though
-    //               INFO/SKIP/WARN are considered a PASS then. Could be color plus total
-    //               percentage and if finished (== 100%) ERROR|FAIL|PASS
-    // Family: with link to full report
-    //      clean up how the header and possibly other keys are inserted
-    //      no more generic items or such. synthetic columns need a place
-    //      after th as well
-    // Make
-    // indicator if a test isFinished (maybe result has a spinner when not finished ...)
-    // OR Total has a percentage, like 100% of {total}
+    // Add link to full report to family_dir
+    // Add one result/status derived item displaying % done + result  by order (=weight)
+    //     worse result, colored cell + word, order by weight
+    //     arguably very useful, will probably never be green since we'll always
+    //     have INFO/SKIP/WARN. We could reduce it to ERROR/FAIL/PASS though
+    //     INFO/SKIP/WARN are considered a PASS then. Could be color plus total
+    //     percentage and if finished (== 100%) ERROR|FAIL|PASS
     var ReportDictBlock = (function() {
     var Parent = DictionaryBlock;
     function ReportDictBlock(supreme, container, key, spec, data) {
@@ -403,10 +393,23 @@ define([
         // manipulation minimal and also deal with removals.
     };
 
+    _p._propagateTotal = function() {
+        var total, results;
+        if(!this.hasChild('total') || !this.hasChild('results'))
+            return;
+        results = this.getChild('results');
+        total =  this.getChild('total');
+        results.setTotal(parseInt(total.data, 10));
+    };
+
     _p._insertChild = function(key, child) {
         Parent.prototype._insertChild.call(this, key, child);
         // TODO: maybe only send this if the row is interesting
         // makes up a lot less calls!
+
+        if(key === 'total' || key === 'results')
+            this._propagateTotal();
+
         this.supreme.pubSub.publish('changed-row', 'pre', key);
     };
 
@@ -438,21 +441,16 @@ define([
         // pass, done by _updateOrder
         return;
     };
-
-
     return ReportDictBlock;
+
     })();
-
-
-    // To make all the patching work here, we need the full Tree structure
-    // as Generic Types. The GenericBlockType may be just a dispatcher?
-    // So we need GenericDictBlock, GenericArrayBlock, GenericPrimitiveValueBlock
 
     var ResultsDictionaryBlock = (function() {
     var Parent = DictionaryBlock;
     function ResultsDictionaryBlock(supreme, container, key, spec, data) {
         this.container = container;
         this.supreme = supreme;
+        this._total = null;
         Parent.call(this, supreme, container, key, spec, data);
     }
 
@@ -478,10 +476,99 @@ define([
         Parent.prototype._insertChild.call(this, key, child);
         // TODO: maybe only send this if the row is interesting
         // makes up a lot less calls!
+        if(this._total !== null)
+            child.setTotal(this._total);
         this.supreme.pubSub.publish('changed-row', 'results', key);
     };
 
+    _p.setTotal = function(total) {
+        this._total = total;
+        this._eachChild(function(item){item.setTotal(total);});
+    };
+
     return ResultsDictionaryBlock;
+    })();
+
+    var ResultValueBlock = (function() {
+    var Parent = PrimitiveValueBlock;
+    function ResultValueBlock(supreme, container, key, spec, data) {
+        this._value = parseInt(this._data, 10);
+        Parent.call(this, supreme, container, key, spec, data);
+
+        this._total = null;
+
+        this._showPercentages = true;// default
+        this._unsubscribesSowPercentages = this.supreme.pubSub.subscribe(
+                    'show-percentages', this._setSowPercentages.bind(this));
+
+        this._initialized = true;
+        this._render();
+    }
+
+    var _p = ResultValueBlock.prototype = Object.create(Parent.prototype);
+
+    /**
+     * For simple values this is simply returning the value,
+     * but objects and arrays need to query all their children.
+     */
+    Object.defineProperty(_p, 'data', {
+        get: function() {
+            if(this._total && this._showPercentages)
+                return this._totalRatio();
+            return this._value;
+        }
+    });
+
+    _p.destroy = function() {
+        Parent.prototype.destroy.call(this);
+        this._unsubscribesSowPercentages();
+    };
+
+    _p._totalRatio = function() {
+        return this._data / this._total;
+    };
+
+    _p._render = function() {
+        if(!this._initialized)
+            return;
+        var percent, main, other;
+        if(!this._total)
+            percent = 'N/A';
+        else
+            percent = [Math.round(this._totalRatio() * 10000) / 100
+                                                        , '%'].join('');
+        if(this._total && this._showPercentages) {
+            main = percent;
+            other = this._data;
+        }
+        else {
+            main = this._data;
+            other = percent;
+        }
+
+        dom.clear(this.container);
+        dom.appendChildren(this.container, [main, ' (', other, ')'].join(''));
+    };
+
+    _p.setTotal = function(total) {
+        var old = this._total;
+        this._total = total;
+        this._render();
+        // did the value change? we need to re-order the table...
+        if(old !== this._total)
+            this.supreme.pubSub.publish('changed-row', 'results', this.key);
+
+    };
+    _p._setSowPercentages = function(bool) {
+        var old = this._showPercentages;
+        this._showPercentages = bool;
+        this._render();
+        // did the value change? we need to re-order the table...
+        if(old !== this._showPercentages)
+            this.supreme.pubSub.publish('changed-row', 'results', this.key);
+    };
+
+    return ResultValueBlock;
     })();
 
     function CollectionReport(container, templatesContainer, data) {
@@ -497,7 +584,7 @@ define([
         var getTemplateForSelector = dom.getChildElementForSelector.bind(dom, templatesContainer)
             // this is to define the order of check result values
             // in the interfaces aggregating these.
-          , resultVals = ['ERROR', 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS']
+          , resultVals = ['FAIL', 'WARN', 'SKIP', 'INFO', 'PASS'] // 'ERROR' will only be shown if errors happen
           , datesSpec = {
                 spec: {
                     '': {
@@ -530,11 +617,9 @@ define([
                 Type: ResultsDictionaryBlock
               , spec: {
                     '': {
-                        genericSpec: {
-                            // this spec renders the actual children
+                        GenericType: ResultValueBlock
+                      , genericSpec: {
                             '': {
-                                  skipKey: true
-                                , dataUnescaped:true
                             }
                         }
                     }
@@ -611,8 +696,37 @@ define([
                                    , rootInsertionMarker
                                    , spec
                                    );
+
+        this._switchPercentagesElem = dom.getChildElementForSelector(
+                                    container, '.switch-percentages', true);
+
+        this._displayPercentages = true;
+        if(this._switchPercentagesElem) {
+            this._switchPercentagesElem.addEventListener('click',
+                        this._togglePercentagesDisplayHandler.bind(this));
+            this._togglePercentagesDisplay(this._displayPercentages);
+        }
+
     }
     var _p = CollectionReport.prototype;
+
+    _p._togglePercentagesDisplayHandler = function(event){
+        this._togglePercentagesDisplay();
+    }
+    _p._togglePercentagesDisplay = function(forcedVal) {
+        var label;
+        this._displayPercentages = arguments.length
+                                            ? forcedVal
+                                            : !this._displayPercentages
+                                            ;
+        dom.clear(this._switchPercentagesElem);
+        label = this._displayPercentages
+                        ? 'Show Total Numbers'
+                        : 'Show Percentages'
+                        ;
+        dom.appendChildren(this._switchPercentagesElem, label);
+        this.supreme.pubSub.publish('show-percentages', this._displayPercentages);
+    };
 
     _p.onChange = function (data) {
 
