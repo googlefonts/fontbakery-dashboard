@@ -17,6 +17,10 @@ const rethinkdbdash = require('rethinkdbdash')
   // https://github.com/squaremo/amqp.node
   , amqplib = require('amqplib')
   , serverExports = require('./main.js')
+  // FIXME: make a common codebase for shared code
+  // in this case an author of main.js may change the behavior of these
+  // functions without checking here.
+  // THOUGH: messaging will also change to be ProtoBuf based
   , getSetup = serverExports.getSetup
   , mergeArrays = serverExports.mergeArrays
   , fs = require('fs')
@@ -135,27 +139,34 @@ _p._initAmqp = function(amqpSetup) {
             }.bind(this));
 };
 
+// unused, reminder
 _p._updateGIT = function() {
     // TODO: this is a placehoder to remind us that we should test the
     // requested version of the repository.
 };
 
+// return all family directories in one array
+// eg: [ "apache/droidsans"
+//     , "ofl/merriweather"
+//     , "ofl/nunito"
+//     , "ufl/ubuntu"
+//     , ... etc.
+//     ]
 _p._fetchFamilies = function() {
     var licensdirs = ['ofl', 'apache', 'ufl']
       , i, l, dir
       , promises = []
       ;
-    function addLicenseDir(licenseDir, files) {
-        return files.map(function(file){
-                                return [licenseDir, file].join('/');});
+    function addFamilyDir(licenseDir, familyDirs) {
+        return familyDirs.map(function(familyDir){
+                                return [licenseDir, familyDir].join('/');});
     }
     for(i=0,l=licensdirs.length;i<l;i++) {
         dir = [this._fontsRepositoryPath, licensdirs[i]].join('/');
         promises.push(readdir(dir)
-                        .then(addLicenseDir.bind(null, licensdirs[i])));
+                        .then(addFamilyDir.bind(null, licensdirs[i])));
     }
 
-    // bind an [] Array to the thisval of this
     function reduce(arrays) {
         var result = [], i, l;
         for(i=0,l=arrays.length;i<l;i++)
@@ -165,7 +176,10 @@ _p._fetchFamilies = function() {
     return Promise.all(promises).then(reduce);
 };
 
-
+// GET /family/filenames/:licensedir/:family'
+// returns readdir of familyDir
+// TODO: 404 Not Found: if licensedir/family is not in _fontsRepositoryPath
+//       400 Bad Request: if licensedir or family are not only alphanumeric
 _p.getFamilyFilenames = function(req, res) {
     var path = [this._fontsRepositoryPath, req.params.licensedir
                                             , req.params.family].join('/');
@@ -175,6 +189,10 @@ _p.getFamilyFilenames = function(req, res) {
     });
 };
 
+// GET /family/files/:licensedir/:family
+// returns this.getPayload
+// TODO: 404 Not Found: if licensedir/family is not in _fontsRepositoryPath
+//       400 Bad Request: if licensedir or family are not only alphanumeric
 _p.getFiles = function(req, res) {
     // packs the file part the same as the drag and drop does
     var dir = [req.params.licensedir, req.params.family].join('/');
@@ -191,19 +209,8 @@ function str2Uint8Array(str) {
                             function(chr){ return chr.charCodeAt(0);});
 }
 
-_p._packMessage = function  (docid, payload) {
-    this._log.debug('_packMessage:', docid);
-    var docidArray = str2Uint8Array(docid)
-      , docidLen = new Uint32Array(1)
-      ;
-    docidLen[0] = docidArray.byteLength;
-    this._log.debug('docidLen is', docidArray.byteLength
-                                                , 'for docid:', docid);
-
-    return mergeArrays([docidLen, docidArray, payload]);
-};
-
-function fs2Promise(func/* args */) {
+// Turn node callback style into a promise style
+function nodeCallback2Promise(func/* args */) {
     var args = [], i, l;
     for(i=1,l=arguments.length;i<l;i++)
         args.push(arguments[i]);
@@ -219,9 +226,10 @@ function fs2Promise(func/* args */) {
 }
 
 function readdir(path) {
-    return fs2Promise(fs.readdir.bind(fs), path);
+    return nodeCallback2Promise(fs.readdir.bind(fs), path);
 }
 
+// pack binary data of dir files and filename into a struct
 _p.getPayload = function(dir) {
     this._log.debug('getPayload', dir, 'in', this._fontsRepositoryPath);
     // looks the same in the and as an initial drag'n'drop job
@@ -268,7 +276,7 @@ _p.getPayload = function(dir) {
     var getFileNames = readdir;
 
     function getFileBuffer(path){
-        return fs2Promise(fs.readFile.bind(fs), path);
+        return nodeCallback2Promise(fs.readFile.bind(fs), path);
     }
 
     return getFileNames(path)
@@ -276,6 +284,7 @@ _p.getPayload = function(dir) {
         .then(packJobEntries);
 };
 
+// dispatches message to queueName
 _p._sendAMQPMessage = function (channel, queueName, message) {
     var options = {
             // TODO: do we need persistent here/always?
@@ -293,6 +302,7 @@ _p._sendAMQPMessage = function (channel, queueName, message) {
            ;
 };
 
+// calls _sendAMQPMessage with a job that knows familyDir, docid
 _p._dispatchJob = function(familyDir, dbResponse) {
     var docid = dbResponse.generated_keys[0]
       , job = {
@@ -311,6 +321,22 @@ _p._dispatchJob = function(familyDir, dbResponse) {
         .then(this._sendAMQPMessage.apply.bind(this._sendAMQPMessage, this));
 };
 
+
+// use only by _dispatchDragAndDropStyleJob
+_p._packMessage = function  (docid, payload) {
+    this._log.debug('_packMessage:', docid);
+    var docidArray = str2Uint8Array(docid)
+      , docidLen = new Uint32Array(1)
+      ;
+    docidLen[0] = docidArray.byteLength;
+    this._log.debug('docidLen is', docidArray.byteLength
+                                                , 'for docid:', docid);
+
+    return mergeArrays([docidLen, docidArray, payload]);
+};
+
+// unused:
+// like _dispatchJob but loads ttf files into the message (this.getPayload)
 _p._dispatchDragAndDropStyleJob = function(familyDir, dbResponse) {
     // this is the report docid NOT the collectiontestId
     var docid =  dbResponse.generated_keys[0]
@@ -329,6 +355,7 @@ _p._dispatchDragAndDropStyleJob = function(familyDir, dbResponse) {
 
 };
 
+// prepare the test document
 _p._dbInsertDoc = function(dbTable, doc) {
     return this._query(dbTable).insert(doc)
             .run()
@@ -337,6 +364,8 @@ _p._dbInsertDoc = function(dbTable, doc) {
             }.bind(this));
 };
 
+// creates job-docid (_dbInsertDoc) to prepare the tests
+// calls _dispatchJob with familyDir
 _p._comissionFamily = function(collectiontestId, familyDir) {
     this._log.debug('_comissionFamily', collectiontestId, familyDir);
     var doc = {
@@ -354,6 +383,7 @@ _p._comissionFamily = function(collectiontestId, familyDir) {
         }.bind(this));
 };
 
+// calls _comissionFamily once per family in families
 _p._comissionFamilies = function(collectiontestId, families) {
     this._log.debug('_comissionFamilies', collectiontestId, 'families:', families.length);
     var i, results = []
@@ -376,6 +406,8 @@ _p._comissionFamilies = function(collectiontestId, families) {
     return Promise.all(results);
 };
 
+// get's the target collectiontestId via message
+// calls _comissionFamilies collectiontestId (_fetchFamilies ) =>
 _p._initJob = function(channel, message) {
     var decoder = new StringDecoder('utf8')
       , collectiontestId = JSON.parse(decoder.write(Buffer.from(message.content))).docid
@@ -395,12 +427,14 @@ _p._initJob = function(channel, message) {
         });
 };
 
+// entry point to init collection tests, calls _initJob
 _p._consumeQueue = function(queueName, channel) {
     var consume = channel.consume.bind(channel, queueName
                                     , this._initJob.bind(this, channel));
     return channel.assertQueue(queueName).then(consume);
 };
 
+// start the server
 _p._listen = function() {
     this._log.debug('_listen');
 

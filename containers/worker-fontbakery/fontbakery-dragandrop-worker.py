@@ -201,6 +201,27 @@ def _run_fontbakery(dbOps, job, fonts):
                                       specification=spec, runner=runner)
   reporter.run(order)
   dbOps.update({'finished': datetime.now(pytz.utc)})
+  # TODO: when all jobs are finished, we should have a worker that
+  # is cleaning up ... that could be part of the dispatch worker
+  # initiating and cleaning up would make some sense...
+  # THUS: this would probably dispatch a queue message, that it has finished
+  #       (in any case: successful OR not!)
+  # The dispatch worker would A) mark the whole test documnet as `isFinished`
+  # and, if part of a collection test, dispatch another queue message for
+  # the manifest master (sociopath) to clean up and mark as finished the
+  # test document.
+  #
+  # So TODO here: postmortem messages
+  #    - as sender:  basically the same for checker-worker to dispatcher-worker
+  #                                 and for dispatcher-worker to manifest-sociopath
+  #    - as receiver for: dispatcher-worker from many checker-workers
+  #                   and manifest-sociopath from many dispatcher-worker
+  #    - the manifest-sociopath could be implemented here. CAUTION: the
+  #                   worker that dispatches collection-tests is meant here
+  #                   needs better role description!
+  #                   ALSO, how does a drag and drop job enter the process?
+  #                   someone has to dispatch to a dispatcher-worker and
+  #                   clean up it's answer!
 
 def prepare_collection_fontbakery(tmpDirectory, job):
   host = os.environ.get("COLLECTIONTEST_DISPATCHER_SERVICE_HOST")
