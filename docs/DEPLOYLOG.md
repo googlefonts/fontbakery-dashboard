@@ -215,7 +215,7 @@ May be a good idea, also keep it a bit secret if feasible.
 
 Did so for admin:admin didn't resolve the problem though :-(. Revisiting another time...
 
-# Deploy worker-fontbakery
+# Deploy worker-fontbakery (!now fontbakery-worker-checker)
 
 ```
 $ docker build -t worker-fontbakery:1 containers/worker-fontbakery/

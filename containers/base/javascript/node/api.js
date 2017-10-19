@@ -64,7 +64,7 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup) {
     this._r = rethinkdbdash(rethinkSetup);
 
     this._amqpConnection = null;
-    this._dndQueueName = 'drag_and_drop_queue';
+    this._dndQueueName = 'fontbakery-worker-distributor';
     this._collectionQueueName = 'init_collecton_test_queue';
 
     // Start serving when the database and rabbitmq queue is ready

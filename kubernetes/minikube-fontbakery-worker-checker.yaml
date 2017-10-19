@@ -1,0 +1,20 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-worker-checker
+spec:
+  replicas: 5
+  template:
+    metadata:
+      labels:
+        run: fontbakery-worker-checker
+    spec:
+      containers:
+      - name: fontbakery-worker-checker
+        image: fontbakery/base-python:1
+        env:
+          - name: FONTBAKERY_WORKER_LOG_LEVEL
+            value: "INFO"
+        workingDir: /var/python
+        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+

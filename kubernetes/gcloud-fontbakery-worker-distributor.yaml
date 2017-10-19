@@ -1,0 +1,16 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-worker-distributor
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        run: fontbakery-worker-distributor
+    spec:
+      containers:
+      - name: fontbakery-worker-distributor
+        image: gcr.io/fontbakery-168509/base-python:1.03
+        workingDir: /var/python
+        command: ["python2",  "-u", "fontbakery-worker-distributor.py"]

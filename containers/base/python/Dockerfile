@@ -33,8 +33,8 @@ RUN curl -o /tmp/fontbakery-microsoft-vendorlist.cache https://www.microsoft.com
 RUN pip install lxml==3.5.0
 
 
-ADD requirements.txt /var/worker-fontbakery/requirements.txt
-RUN pip install -r /var/worker-fontbakery/requirements.txt
+ADD requirements.txt /var/python/requirements.txt
+RUN pip install -r /var/python/requirements.txt
 
 RUN touch /tmp/cache_spoof_9
 
@@ -44,4 +44,4 @@ RUN touch /tmp/cache_spoof_9
 RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /tmp/fontbakery;\
     pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
 
-ADD . /var/worker-fontbakery/
+ADD . /var/python/

@@ -42,22 +42,22 @@ $ minikube start
 # use minikubes docker:
 $ . <(minikube docker-env)
 
-# build and tag an image as "fontbakery/worker-fontbakery:1":
-$ docker build -t fontbakery/worker-fontbakery:1 containers/worker-fontbakery/
+# build and tag an image as "fontbakery/base-python:1":
+$ docker build -t fontbakery/base-python:1 containers/base-python/
 
 ```
 
-In the yaml file, the container is referenced directly by its tag `fontbakery/worker-fontbakery:1`:
+In the yaml file, the container is referenced directly by its tag `fontbakery/base-python:1`:
 
 ```yaml
-# minikube-worker-fontbakery.yaml
+# minikube-fontbakery-worker-checker.yaml
 […]
     spec:
       containers:
-      - name: worker-fontbakery
-        image: fontbakery/worker-fontbakery:1
-        workingDir: /var/worker-fontbakery
-        command: ["python2",  "-u", "fontbakery-dragandrop-worker.py"]
+      - name: fontbakery-worker-checker
+        image: fontbakery/base-python:1
+        workingDir: /var/python
+        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
 […]
 ```
 
@@ -65,7 +65,7 @@ This can be applied directly **without** `$ docker push`:
 
 ```
 # NAMESPACE=fontbakery
-$ kubectl -n $NAMESPACE apply -f minikube-worker-fontbakery.yaml
+$ kubectl -n $NAMESPACE apply -f minikube-fontbakery-worker-checker.yaml
 ```
 
 
