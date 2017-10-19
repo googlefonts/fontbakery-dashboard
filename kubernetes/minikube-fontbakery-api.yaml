@@ -1,16 +1,16 @@
 apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
 kind: Deployment
 metadata:
-  name: www-fontbakery
+  name: fontbakery-api
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        run: www-fontbakery
+        run: fontbakery-api
     spec:
       containers:
-      - name: www-fontbakery
+      - name: fontbakery-api
         image: fontbakery/base-javascript:1
         env:
           - name: COLLECTION_AUTH_SECRET
@@ -25,13 +25,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: www-fontbakery
+  name: fontbakery-api
   labels:
-    run: www-fontbakery
+    run: fontbakery-api
 spec:
   type: LoadBalancer
   ports:
     - port: 80
       targetPort: 3000
   selector:
-    run: www-fontbakery
+    run: fontbakery-api

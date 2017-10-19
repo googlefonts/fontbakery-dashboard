@@ -1,28 +1,28 @@
 apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
 kind: Deployment
 metadata:
-  name: www-fontbakery
+  name: fontbakery-api
 spec:
   replicas: 3
   template:
     metadata:
       labels:
-        run: www-fontbakery
+        run: fontbakery-api
     spec:
       containers:
-      - name: www-fontbakery
-        image: gcr.io/fontbakery-168509/www-fontbakery:1.03
+      - name: fontbakery-api
+        image: gcr.io/fontbakery-168509/base-javascript:1
         ports:
         - containerPort: 3000
-        workingDir: /var/www-fontbakery
+        workingDir: /var/javascript
         command: ["npm", "start"]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: www-fontbakery
+  name: fontbakery-api
   labels:
-    run: www-fontbakery
+    run: fontbakery-api
 spec:
   type: LoadBalancer
 # need this for socketIO
@@ -31,4 +31,4 @@ spec:
     - port: 80
       targetPort: 3000
   selector:
-    run: www-fontbakery
+    run: fontbakery-api

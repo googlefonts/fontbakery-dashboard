@@ -20,8 +20,8 @@ spec:
             value: "5"
         ports:
         - containerPort: 3000
-        workingDir: /var/www-fontbakery
-        command: ["node", "lib/server/collectiontests.js"]
+        workingDir: /var/javascript
+        command: ["node", "node/collectiontests.js"]
 ---
 apiVersion: v1
 kind: Service

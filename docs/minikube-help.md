@@ -212,7 +212,7 @@ $ kubectl --namespace=fontbakery get pods
 Get the logs of a pod live:
 
 ```
-kubectl  --namespace=fontbakery  logs -f www-fontbakery-3811584483-6mpgg
+kubectl  --namespace=fontbakery  logs -f fontbakery-api-3811584483-6mpgg
 ```
 
 ---
