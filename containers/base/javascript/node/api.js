@@ -79,7 +79,7 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup) {
     }.bind(this));
 
     this._app.get('/', this.fbIndex.bind(this));
-    this._app.use('/static', express.static('lib/static'));
+    this._app.use('/browser', express.static('browser'));
     this._app.get('/report/:docid', this.fbDNDReport.bind(this));
 
     this._app.use('/runchecks', bodyParser.raw(
@@ -174,7 +174,7 @@ _p._listen = function() {
  *        init socketio connection for docid (with answer from post)
  */
 _p.fbIndex = function(req, res) {
-    return res.sendFile('static/html/drag-and-drop-client.html',
+    return res.sendFile('browser/html/drag-and-drop-client.html',
                                                     { root: ROOT_PATH});
 };
 
