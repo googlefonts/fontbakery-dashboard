@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+import public "shared.proto";
+
+package fontbakery.dashboard;
+
+message FamilyJob {
+    string docid = 1;
+    repeated fontbakery.dashboard.File files = 2;
+    enum JobType {
+       DRAGANDDROP_ORIGIN = 0;
+       DRAGANDDROP_DISTRIBUTED = 1;
+    }
+    JobType type = 3;
+    message DistributedInfo {
+        int32 id = 1;
+        repeated string order = 2;
+    }
+    DistributedInfo distributedInfo = 4;
+}
+

@@ -19,6 +19,7 @@ import rethinkdb as r
 import logging
 from collections import namedtuple
 import requests
+from protocolbuffers.messages_pb2 import FamilyJob
 
 class FontbakeryWorkerError(Exception):
   pass
@@ -58,7 +59,21 @@ def worker_distribute_jobs(dbOps, queueData, job, prepare, dispatch):
   orders = [full_order[i:i+job_size]
                             for i in range(0, len(full_order), job_size)]
   jobs_meta = []
-  jobs = []
+
+  # I figure a generator for this is cheaper on memory, but its effect
+  # is only big if python copies, not references the bytes of
+  # job.files in sub_job.files
+  def jobs_generator(orders):
+    for jobid, order in enumerate(orders):
+      sub_job = FamilyJob()
+      sub_job.docid = job.docid
+      sub_job.files.extend(job.files)
+      sub_job.type = FamilyJob.DRAGANDDROP_DISTRIBUTED
+      sub_job.distributedInfo.id = jobid
+      sub_job.distributedInfo.order.extend(order)
+      yield sub_job
+
+  jobs = jobs_generator(orders)
   for jobid, order in enumerate(orders):
     # if split up in more jobs, these are created multiple times
     jobs_meta.append({
@@ -69,12 +84,6 @@ def worker_distribute_jobs(dbOps, queueData, job, prepare, dispatch):
       # job has an exception and terminates.
     })
 
-    jobs.append({
-        'docid': job['docid']
-      , 'type': '{0}_distributed'.format(job['type'])
-      , 'id': jobid
-      , 'order': order
-    })
 
   dbOps.update({
         'started': datetime.now(pytz.utc)
@@ -89,8 +98,7 @@ def worker_distribute_jobs(dbOps, queueData, job, prepare, dispatch):
       , 'tests': tests
       , 'results': {}
   })
-
-  dispatch(queueData, job, jobs)
+  dispatch(queueData, jobs)
 
 def dispatch_collectiontest_jobs(queueData, parent_job,jobs):
   options = pika.BasicProperties(
@@ -103,26 +111,19 @@ def dispatch_collectiontest_jobs(queueData, parent_job,jobs):
     content = json.dumps(job)
     _dispatch(queueData, job, content)
 
-def dispatch_draganddrop_jobs(queueData, parent_job, jobs):
+def dispatch_draganddrop_jobs(queueData, jobs):
   # dispatch sub jobs
   for job in jobs:
-    job_bytes = json.dumps(job)
-    content = b''.join([
-        struct.pack('I', len(job_bytes))
-      , job_bytes
-      # this is still packed readily for us
-      , parent_job['files_data']
-    ])
-    _dispatch(queueData, job, content)
+    _dispatch(queueData, job)
 
-def _dispatch(queueData, job, content):
-  logging.debug('dispatching job %s of docid %s', job['id'], job['docid'])
+def _dispatch(queueData, job):
+  logging.debug('dispatching job %s of docid %s', job.distributedInfo.id, job.docid)
   options = pika.BasicProperties(
         # TODO: do we need persistent here?
         delivery_mode=2  # pika.spec.PERSISTENT_DELIVERY_MODE
   )
   queueData.channel.basic_publish(exchange='', routing_key=queueData.name
-                                      , body=content, properties=options)
+                                , body=job.SerializeToString(), properties=options)
 
 from fontbakery.reporters import FontbakeryReporter
 from fontbakery.message import Message
@@ -196,8 +197,8 @@ class DashbordWorkerReporter(FontbakeryReporter):
 def _run_fontbakery(dbOps, job, fonts):
   dbOps.update({'started': datetime.now(pytz.utc)})
   runner, spec = get_fontbakery(fonts)
-  order = spec.deserialize_order(job['order'])
-  reporter = DashbordWorkerReporter(dbOps, job['id'],
+  order = spec.deserialize_order(job.distributedInfo.order)
+  reporter = DashbordWorkerReporter(dbOps, job.distributedInfo.id,
                                       specification=spec, runner=runner)
   reporter.run(order)
   dbOps.update({'finished': datetime.now(pytz.utc)})
@@ -283,9 +284,9 @@ def validate_filename(seen, filename):
 
 def prepare_draganddrop_fontbakery(tmpDirectory, job):
   """
-    Write job['files'] to tmpDirectory.
+    Write job.files to tmpDirectory.
 
-    Returns a list of log messages for each file in job['files'], some may
+    Returns a list of log messages for each file in job.files, some may
     be skipped. This is to give the user direct feedback about the request
     made.
 
@@ -300,8 +301,8 @@ def prepare_draganddrop_fontbakery(tmpDirectory, job):
     logs.append('Dry run! tmpDirectory is None.')
   seen = set()
   fontfiles = []
-  for desc, data in job['files']:
-    filename = desc['filename']
+  for jobFile in job.files:
+    filename = jobFile.name
     if not validate_filename(seen, filename):
       continue
 
@@ -309,7 +310,7 @@ def prepare_draganddrop_fontbakery(tmpDirectory, job):
     if tmpDirectory is not None:
       path = os.path.join(tmpDirectory, filename)
       with open(path, 'wb') as f:
-        f.write(data)
+        f.write(jobFile.data)
     else:
       path = filename
 
@@ -329,17 +330,18 @@ def worker_run_fontbakery(dbOps, queueData, job, prepare):   # pylint: disable=u
   # e.g. the ms fontvalidator would require a `directory` and it would be
   # created on the fly. Though, fontbakery would have to clean it up
   # again as well, which is not yet supported!
+  logging.info('worker_run_fontbakery: docid %s jobid %s number of tests %s'
+        , job.docid, job.distributedInfo.id, len(job.distributedInfo.order))
   with tempdir() as tmpDirectory:
     logging.info('Tempdir: %s', tmpDirectory)
     logs, fonts = prepare(tmpDirectory, job)
     logging.debug('Files in tmp {}'.format(os.listdir(tmpDirectory)))
-    logging.info('Starting run_fontbakery ...')
     # got these logs in distribute for the entire doc (a dry run)
     # but also uses prepare
     # this should produce a very similar log.
     # with dbTableContext() as (q, conn):
-    #   ATTENTION: this would have to go to the job item at `jobs[job["id"]]`
-    #   q.get(job['docid']).update({'preparation_logs': logs}).run(conn)
+    #   ATTENTION: this would have to go to the job item at `jobs[job.id]`
+    #   q.get(job.docid).update({'preparation_logs': logs}).run(conn)
     _run_fontbakery(dbOps, job, fonts)
 
 def _unpack_files(stream, description_only=False):
@@ -370,39 +372,9 @@ def parse_job(stream):
     return parse_draganddrop_style_job(stream)
 
 def parse_draganddrop_style_job(stream):
-  # read one Uint32\
-  data_len = stream.read(4)
-  data_len = struct.unpack('<I', data_len)[0]
-  data = stream.read(data_len).decode('utf-8')
-
-  try:
-    job = json.loads(data)
-    is_origin = False
-  except ValueError:# No JSON object could be decoded
-    # This is an assumption about how rethinkdb automatic id's work.
-    # don't expect it to be forever true.
-    # We should json decode it like so: '"{}"'.format(docid), then all
-    # these lengths checks wouldn't really be needed.
-    assert data_len == 36, 'Docid length should be 36 but is {0}.'.format(data_len)
-    if len(data) != data_len:
-      return None
-    docid = data
-    is_origin = True
-
-  if not is_origin:
-    job['files'] = list(_unpack_files(stream))
-    return job
-
-  # originial job
-  cur = stream.tell()
-  files_bytes = stream.read() # all to the end
-  stream.seek(cur) # reset
-  return {
-      'docid': docid
-    , 'type': 'draganddrop'
-    , 'files': list(_unpack_files(stream, description_only=True))
-    , 'files_data': files_bytes
-  }
+  familyJob = FamilyJob()
+  familyJob.ParseFromString(stream.read())
+  return familyJob;
 
 @contextmanager
 def tempdir():
@@ -457,31 +429,34 @@ def consume(dbTableContext, queueData, method, properties, body):  # pylint: dis
   try:
     job = parse_job(BytesIO(body))
     if job is not None:
-      logging.debug('Got docid: %s a job of type: $s', job.get('docid', None), job.get('type', None))
-      dbOps = DBOperations(dbTableContext, job['docid'], job.get('id', None))
+      types = {v:k for k,v in FamilyJob.JobType.items()};
+      jobtype = types[job.type];
+      logging.debug('Got docid: %s a job of type: $s', job.docid, jobtype)
+      jobid = job.distributedInfo.id \
+              if job.type == FamilyJob.DRAGANDDROP_DISTRIBUTED else None
+      dbOps = DBOperations(dbTableContext, job.docid, jobid)
       moreArgs = None
-      if job['type'] == 'draganddrop':
+      if job.type == FamilyJob.DRAGANDDROP_ORIGIN:
         prepare = prepare_draganddrop_fontbakery
         worker = worker_distribute_jobs
         dispatch = dispatch_draganddrop_jobs
         moreArgs = [dispatch]
-      elif job['type'] == 'draganddrop_distributed':
+      elif job.type == FamilyJob.DRAGANDDROP_DISTRIBUTED:
         prepare = prepare_draganddrop_fontbakery
         worker = worker_run_fontbakery
-      elif job['type'] == 'collectiontest':
-        prepare = prepare_collection_fontbakery
-        worker = worker_distribute_jobs
-        dispatch = dispatch_collectiontest_jobs
-        moreArgs = [dispatch]
-      elif job['type'] == 'collectiontest_distributed':
-        prepare = prepare_collection_fontbakery
-        worker = worker_run_fontbakery
+      # Temporarily disabled
+      # elif job['type'] == 'collectiontest':
+      #   prepare = prepare_collection_fontbakery
+      #   worker = worker_distribute_jobs
+      #   dispatch = dispatch_collectiontest_jobs
+      #   moreArgs = [dispatch]
+      # elif job['type'] == 'collectiontest_distributed':
+      #   prepare = prepare_collection_fontbakery
+      #   worker = worker_run_fontbakery
       else:
-        raise FontbakeryWorkerError('Job type has no dispatcher: {}'.format(job['type']))
-
-      queueData.channel.basic_ack(delivery_tag=method.delivery_tag)
+        raise FontbakeryWorkerError('Job type has no dispatcher: {}'.format(jobtype))
       worker(dbOps, queueData, job, prepare, *(moreArgs or []))
-      logging.info('DONE! (job type: %s)', job['type'])
+      logging.info('DONE! (job type: %s)', jobtype)
     else:
       logging.warning('Job is None, doing nothing')
   except Exception as e:
@@ -489,7 +464,7 @@ def consume(dbTableContext, queueData, method, properties, body):  # pylint: dis
     # NOTE: we may have no docid here, if the message was lying or unparsable
     if job is not None and dbOps:
       # Report suppression of the error
-      logging.exception('FAIL docid: %s', job['docid'])
+      logging.exception('FAIL docid: %s', job.docid)
       # It will be handy to know this from the client.
       exception = traceback.format_exc()
       # if there is a jobid, this is reported in the job, otherwise it
@@ -506,6 +481,7 @@ def consume(dbTableContext, queueData, method, properties, body):  # pylint: dis
     # anything else to clean up?
     pass
 
+  queueData.channel.basic_ack(delivery_tag=method.delivery_tag)
     # FIXME: we really shouldn't ack the job if can't even mark it as
     # failed in the RethinkDB-doc.
     # publishing the job again, with increased retry count would be good

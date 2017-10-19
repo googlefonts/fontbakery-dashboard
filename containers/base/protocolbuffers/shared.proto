@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package fontbakery.dashboard;
+
+message File {
+  string name = 1;
+  bytes data = 2;
+};
+
+message Files {
+  repeated File files = 1;
+};
+
+

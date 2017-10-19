@@ -44,4 +44,4 @@ RUN touch /tmp/cache_spoof_9
 RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /tmp/fontbakery;\
     pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
 
-ADD fontbakery-dragandrop-worker.py /var/worker-fontbakery/fontbakery-dragandrop-worker.py
+ADD . /var/worker-fontbakery/

@@ -10,9 +10,9 @@ const express = require('express')
   , rethinkdbdash = require('rethinkdbdash')
   , path = require('path')
   , bodyParser = require('body-parser')
-  , StringDecoder = require('string_decoder').StringDecoder
   // https://github.com/squaremo/amqp.node
   , amqplib = require('amqplib')
+  , messages_pb = require('protocolbuffers/messages_pb')
   ;
 
 var ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep);
@@ -255,32 +255,6 @@ _p._dbInsertDoc = function(dbTable, doc, next, onCreated, success) {
             }.bind(this));
 };
 
-/**
- * This is almost a copy of the clients Controller.unpack method
- */
-_p.unpack = function(data) {
-    var offset = 0, head, json, font, decoder
-        , result = []
-        ;
-
-    while(offset < data.byteLength) {
-        head = new DataView(data.buffer, offset, 8);
-        head = [head.getUint32(0, true), head.getUint32(4, true)];
-        offset += 8;
-
-        json = new Uint8Array(data.buffer, offset, head[0]);
-        offset += json.byteLength;
-        decoder = new StringDecoder('utf8');
-        json = JSON.parse(decoder.write(Buffer.from(json)));
-
-        font = new Uint8Array(data.buffer, offset, head[1]);
-        offset += font.byteLength;
-
-        result.push([json, font]);
-    }
-    return result;
-};
-
 _p._query = function(dbTable) {
     return this._r.table(dbTable);
 };
@@ -357,20 +331,14 @@ _p._dispatchCollectionJob = function  (docid, channel) {
 
 _p._dispatchDNDJob = function  (docid, payload, channel) {
     this._log.debug('_dispatchDNDJob:', docid);
-         // a buffer
-    var messageBuffer
-        // expecting doc id to be only ASCII chars, because serializing
-        // higher unicode is not that straight forward.
-      , docidArray = Uint8Array.from(docid,
-                            function(chr){ return chr.charCodeAt(0);})
-      , docidLen = new Uint32Array(1)
+    var files = messages_pb.Files.deserializeBinary(new Uint8Array(payload.buffer))
+      , job = new messages_pb.FamilyJob()
+      , messageBuffer
       ;
-    docidLen[0] = docidArray.byteLength;
-    this._log.debug('docidLen is', docidArray.byteLength
-                                                , 'for docid:', docid);
-
-    messageBuffer = mergeArrays([docidLen, docidArray, payload]);
-
+    job.setDocid(docid);
+    job.setType(messages_pb.FamilyJob.JobType.DRAGANDDROP_ORIGIN)
+    job.setFilesList(files.getFilesList());
+    messageBuffer = new Buffer(job.serializeBinary());
     return this._sendAMQPMessage(channel, this._dndQueueName, messageBuffer);
 };
 
@@ -416,7 +384,6 @@ _p._dispatchJob = function(docid, dispatcher) {
  */
 _p.fbDNDReceive = function(req, res, next) {
 
-    // var files = this.unpack(req.body)
     var doc = {created: new Date()};
     function success(docid) {
         //jshint validthis:true
