@@ -12,46 +12,21 @@ const express = require('express')
   , bodyParser = require('body-parser')
   // https://github.com/squaremo/amqp.node
   , amqplib = require('amqplib')
+  , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
+  , services_pb = require('protocolbuffers/messages_grpc_pb')
+  , getSetup = require('./util/getSetup').getSetup
   ;
 
 var ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep);
 
-function Logging(loglevel) {
-    this._numericLoglevel = this._levels[loglevel];
-}
-Logging.prototype._levels = {};
-
-([
-  , ['DEBUG', 10, console.info]
-  , ['INFO', 20, console.info]
-  , ['WARNING', 30, console.warn]
-  , ['ERROR', 40, console.error]
-  , ['CRITICAL', 50, console.error]
-]).forEach(function(setup) {
-    // method names: debug, info, warning, etc..
-    var loglevel = setup[0]
-      , method = loglevel.toLowerCase()
-      , numeric = setup[1]
-      , log = setup[2]
-      ;
-    Logging.prototype._levels[loglevel] = numeric;
-    Logging.prototype[method] = function() {
-        if(numeric < this._numericLoglevel)
-            return;
-        var args = [loglevel], i, l;
-        for(i=0,l=arguments.length;i<l;i++)
-            args.push(arguments[i]);
-        log.apply(null, args);
-    };
-});
 
 /**
  * Using a class here, so state variables are managed not on module level
  * Initialization starts the server.
  *
  */
-function Server(logging, portNum,  amqpSetup, rethinkSetup) {
+function Server(logging, portNum,  amqpSetup, rethinkSetup, cacheSetup) {
     this._log = logging;
     this._portNum = portNum;
     this._dbName = rethinkSetup.db;
@@ -60,6 +35,11 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup) {
     this._app = express();
     this._server = http.createServer(this._app);
     this._sio = socketio(this._server);
+
+    this._cacheService = new services_pb.CacheClient(
+                              [cacheSetup.host, cacheSetup.port].join(':')
+                            , grpc.credentials.createInsecure()
+                            );
 
     this._r = rethinkdbdash(rethinkSetup);
 
@@ -303,20 +283,6 @@ _p.fbCollectionReport = function(req, res, next) {
     return this._fbCheckDocId(this._dbCollectionTable, req, res, next);
 };
 
-/**
- * Almost straight copy from the clients Controller.js
- */
-function mergeArrays(arrays) {
-    var jobSize = arrays.reduce(function(prev, cur) {
-                                return prev + cur.byteLength; }, 0)
-      , result, i, l, offset
-      ;
-    result = new Buffer(jobSize);
-    for(i=0,l=arrays.length,offset=0; i<l;offset+=arrays[i].byteLength, i++)
-        result.set(new Buffer(arrays[i].buffer), offset);
-    return result;
-}
-
 _p._dispatchCollectionJob = function  (docid, channel) {
      var message = JSON.stringify({docid: docid})
         // expecting doc id to be only ASCII chars, because serializing
@@ -329,14 +295,89 @@ _p._dispatchCollectionJob = function  (docid, channel) {
     return this._sendAMQPMessage(channel, this._collectionQueueName, messageBuffer);
 };
 
+
+// Turn node callback style into a promise style
+function nodeCallback2Promise(func/* args */) {
+    var args = [], i, l;
+    for(i=1,l=arguments.length;i<l;i++)
+        args.push(arguments[i]);
+
+    return new Promise(function(resolve, reject) {
+        // callback is the last argument
+        args.push(function(err, result) {
+            if(err) reject(err);
+            else resolve(result);
+        });
+        func.apply(null, args);
+    });
+}
+
+// for `purge` and `get` this is OK, but `put` is a duplex stream ;-)
+_p._cachePurge = function(cacheKey) {
+    var func = this._cacheService.purge.bind(this._cacheService);
+    return nodeCallback2Promise(func, cacheKey);
+}
+_p._cacheGet = function(cacheKey) {
+    var func = this._cacheService.get.bind(this._cacheService);
+    return nodeCallback2Promise(func, cacheKey);
+}
+
+_p._cachePut = function(cacheItems) {
+    // TODO: test this interactively before going live
+    // TODO: How can the server inform the client of on error? is it
+    //       the on('error', ...) callback AND how is information transferred
+    //       in that case? There's no error-message-pb
+    var call = this._cacheService.put();
+
+    call.on('data', function(cacheKey) {
+
+        // if all responses where received
+        call.end();
+    });
+    call.on('end', function() {
+        // The server has finished sending
+        call.end();// needed?
+    });
+    call.on('status', function(status) {
+    // process status?
+    });
+
+    call.on('error', ) // exists, it doesn't end the stream though
+
+    for(let cacheItem,i=0,l=cacheItems.length;i<l;i++) {
+        cacheItem = cacheItem[i];
+        cacheItem.setClientid(i);
+        call.write(cacheItem);
+    }
+}
+
+
+var call = client.recordRoute(function(error, stats) {
+  if (error) {
+    callback(error);
+  }
+  console.log('Finished trip with', stats.point_count, 'points');
+  console.log('Passed', stats.feature_count, 'features');
+  console.log('Travelled', stats.distance, 'meters');
+  console.log('It took', stats.elapsed_time, 'seconds');
+});
+
+
 _p._dispatchDNDJob = function  (docid, payload, channel) {
     this._log.debug('_dispatchDNDJob:', docid);
     var files = messages_pb.Files.deserializeBinary(new Uint8Array(payload.buffer))
+      , cacheItem = new messages_pb.CacheItem()
       , job = new messages_pb.FamilyJob()
       , messageBuffer
       ;
+
+    cacheItem.setPayload(files);
+    // omit: cacheItem.setClientid( clientid )
+
+    this._cachePut(cacheItem)
+
     job.setDocid(docid);
-    job.setType(messages_pb.FamilyJob.JobType.DRAGANDDROP_ORIGIN)
+    job.setType(messages_pb.FamilyJob.JobType.DRAGANDDROP_ORIGIN);
     job.setFilesList(files.getFilesList());
     messageBuffer = new Buffer(job.serializeBinary());
     return this._sendAMQPMessage(channel, this._dndQueueName, messageBuffer);
@@ -521,49 +562,8 @@ _p._subscribeToQuery = function(socket, query) {
         }.bind(this), {cursor: true});
 };
 
-function getSetup() {
-    var rethinkSetup = {
-            host: null
-          , port: null
-          , db: 'fontbakery'
-        }
-      , amqpSetup = {
-            host: process.env.RABBITMQ_SERVICE_SERVICE_HOST
-                        || process.env.BROKER
-                        || 'amqp://localhost'
-        }
-      , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
-      ;
-
-    if(process.env.RETHINKDB_PROXY_SERVICE_HOST) {
-        // in gcloud, we use a cluster with proxy setup
-        // the proxy service is called: "rethinkdb-proxy" hence:
-        rethinkSetup.host = process.env.RETHINKDB_PROXY_SERVICE_HOST;
-        rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
-    }
-    else {
-        // Fall back to "rethinkdb-driver"
-        rethinkSetup.host = process.env.RETHINKDB_DRIVER_SERVICE_HOST;
-        rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
-    }
-
-
-    return {
-        amqp: amqpSetup
-      , rethink: rethinkSetup
-      , logging: logging
-    };
-}
-
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.info('Init server ...');
-    new Server(setup.logging, 3000, setup.amqp, setup.rethink);
+    new Server(setup.logging, 3000, setup.amqp, setup.rethink, setup.cache);
 }
-else {
-    // FIXME: TEMPORARILY: export usesful things
-    module.exports.getSetup = getSetup;
-    module.exports.mergeArrays = mergeArrays;
-}
-
-

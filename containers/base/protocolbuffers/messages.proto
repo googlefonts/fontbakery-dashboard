@@ -8,8 +8,9 @@ message FamilyJob {
     string docid = 1;
     repeated fontbakery.dashboard.File files = 2;
     enum JobType {
-       DRAGANDDROP_ORIGIN = 0;
-       DRAGANDDROP_DISTRIBUTED = 1;
+       UNKNOWN = 0;
+       DRAGANDDROP_ORIGIN = 1;
+       DRAGANDDROP_DISTRIBUTED = 2;
     }
     JobType type = 3;
     message DistributedInfo {
@@ -17,5 +18,37 @@ message FamilyJob {
         repeated string order = 2;
     }
     DistributedInfo distributedInfo = 4;
+}
+
+
+// Cache:
+// TODO: if implemented widely, fontbakery.dashboard.Files could be replaced
+// by google.Any, making this a universial protobuf message cache
+// needs testing. (CacheItem expects fontbakery.dashboard.Files as well)
+
+// The greeting service definition.
+service Cache {
+  // Sends a greeting
+  rpc Put (stream CacheItem) returns (stream CacheKey) {};
+  // Sends another greeting
+  rpc Get (CacheKey) returns (fontbakery.dashboard.Files) {};
+  rpc Purge (CacheKey) returns (CacheStatus) {};
+}
+
+// The request message containing the user's name.
+message CacheItem {
+  fontbakery.dashboard.Files payload = 1;
+  string clientid = 2;
+}
+
+message CacheKey {
+    string key = 1;
+    string clientid = 2; // optional, set if CacheItem.clientid was set
+    bool force = 3; // used for purge
+}
+
+message CacheStatus {
+    string key = 1;
+    int32 instances = 2;
 }
 

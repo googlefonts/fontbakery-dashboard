@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='messages.proto',
   package='fontbakery.dashboard',
   syntax='proto3',
-  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x0cshared.proto\"\xb4\x02\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12)\n\x05\x66iles\x18\x02 \x03(\x0b\x32\x1a.fontbakery.dashboard.File\x12\x35\n\x04type\x18\x03 \x01(\x0e\x32\'.fontbakery.dashboard.FamilyJob.JobType\x12H\n\x0f\x64istributedInfo\x18\x04 \x01(\x0b\x32/.fontbakery.dashboard.FamilyJob.DistributedInfo\x1a,\n\x0f\x44istributedInfo\x12\n\n\x02id\x18\x01 \x01(\x05\x12\r\n\x05order\x18\x02 \x03(\t\">\n\x07JobType\x12\x16\n\x12\x44RAGANDDROP_ORIGIN\x10\x00\x12\x1b\n\x17\x44RAGANDDROP_DISTRIBUTED\x10\x01P\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x0cshared.proto\"\xc1\x02\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12)\n\x05\x66iles\x18\x02 \x03(\x0b\x32\x1a.fontbakery.dashboard.File\x12\x35\n\x04type\x18\x03 \x01(\x0e\x32\'.fontbakery.dashboard.FamilyJob.JobType\x12H\n\x0f\x64istributedInfo\x18\x04 \x01(\x0b\x32/.fontbakery.dashboard.FamilyJob.DistributedInfo\x1a,\n\x0f\x44istributedInfo\x12\n\n\x02id\x18\x01 \x01(\x05\x12\r\n\x05order\x18\x02 \x03(\t\"K\n\x07JobType\x12\x0b\n\x07UNKNOWN\x10\x00\x12\x16\n\x12\x44RAGANDDROP_ORIGIN\x10\x01\x12\x1b\n\x17\x44RAGANDDROP_DISTRIBUTED\x10\x02\"K\n\tCacheItem\x12,\n\x07payload\x18\x01 \x01(\x0b\x32\x1b.fontbakery.dashboard.Files\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"8\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\x12\r\n\x05\x66orce\x18\x03 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\x32\xe9\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12\x44\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x1b.fontbakery.dashboard.Files\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00P\x00\x62\x06proto3')
   ,
   dependencies=[shared__pb2.DESCRIPTOR,],
   public_dependencies=[shared__pb2.DESCRIPTOR,])
@@ -35,18 +35,22 @@ _FAMILYJOB_JOBTYPE = _descriptor.EnumDescriptor(
   file=DESCRIPTOR,
   values=[
     _descriptor.EnumValueDescriptor(
-      name='DRAGANDDROP_ORIGIN', index=0, number=0,
+      name='UNKNOWN', index=0, number=0,
       options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
-      name='DRAGANDDROP_DISTRIBUTED', index=1, number=1,
+      name='DRAGANDDROP_ORIGIN', index=1, number=1,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DRAGANDDROP_DISTRIBUTED', index=2, number=2,
       options=None,
       type=None),
   ],
   containing_type=None,
   options=None,
   serialized_start=301,
-  serialized_end=363,
+  serialized_end=376,
 )
 _sym_db.RegisterEnumDescriptor(_FAMILYJOB_JOBTYPE)
 
@@ -137,7 +141,128 @@ _FAMILYJOB = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=55,
-  serialized_end=363,
+  serialized_end=376,
+)
+
+
+_CACHEITEM = _descriptor.Descriptor(
+  name='CacheItem',
+  full_name='fontbakery.dashboard.CacheItem',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='payload', full_name='fontbakery.dashboard.CacheItem.payload', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='clientid', full_name='fontbakery.dashboard.CacheItem.clientid', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=378,
+  serialized_end=453,
+)
+
+
+_CACHEKEY = _descriptor.Descriptor(
+  name='CacheKey',
+  full_name='fontbakery.dashboard.CacheKey',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='fontbakery.dashboard.CacheKey.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='clientid', full_name='fontbakery.dashboard.CacheKey.clientid', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='force', full_name='fontbakery.dashboard.CacheKey.force', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=455,
+  serialized_end=511,
+)
+
+
+_CACHESTATUS = _descriptor.Descriptor(
+  name='CacheStatus',
+  full_name='fontbakery.dashboard.CacheStatus',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='fontbakery.dashboard.CacheStatus.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='instances', full_name='fontbakery.dashboard.CacheStatus.instances', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=513,
+  serialized_end=558,
 )
 
 _FAMILYJOB_DISTRIBUTEDINFO.containing_type = _FAMILYJOB
@@ -145,7 +270,11 @@ _FAMILYJOB.fields_by_name['files'].message_type = shared__pb2._FILE
 _FAMILYJOB.fields_by_name['type'].enum_type = _FAMILYJOB_JOBTYPE
 _FAMILYJOB.fields_by_name['distributedInfo'].message_type = _FAMILYJOB_DISTRIBUTEDINFO
 _FAMILYJOB_JOBTYPE.containing_type = _FAMILYJOB
+_CACHEITEM.fields_by_name['payload'].message_type = shared__pb2._FILES
 DESCRIPTOR.message_types_by_name['FamilyJob'] = _FAMILYJOB
+DESCRIPTOR.message_types_by_name['CacheItem'] = _CACHEITEM
+DESCRIPTOR.message_types_by_name['CacheKey'] = _CACHEKEY
+DESCRIPTOR.message_types_by_name['CacheStatus'] = _CACHESTATUS
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 FamilyJob = _reflection.GeneratedProtocolMessageType('FamilyJob', (_message.Message,), dict(
@@ -162,6 +291,27 @@ FamilyJob = _reflection.GeneratedProtocolMessageType('FamilyJob', (_message.Mess
   ))
 _sym_db.RegisterMessage(FamilyJob)
 _sym_db.RegisterMessage(FamilyJob.DistributedInfo)
+
+CacheItem = _reflection.GeneratedProtocolMessageType('CacheItem', (_message.Message,), dict(
+  DESCRIPTOR = _CACHEITEM,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CacheItem)
+  ))
+_sym_db.RegisterMessage(CacheItem)
+
+CacheKey = _reflection.GeneratedProtocolMessageType('CacheKey', (_message.Message,), dict(
+  DESCRIPTOR = _CACHEKEY,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CacheKey)
+  ))
+_sym_db.RegisterMessage(CacheKey)
+
+CacheStatus = _reflection.GeneratedProtocolMessageType('CacheStatus', (_message.Message,), dict(
+  DESCRIPTOR = _CACHESTATUS,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CacheStatus)
+  ))
+_sym_db.RegisterMessage(CacheStatus)
 
 
 # @@protoc_insertion_point(module_scope)

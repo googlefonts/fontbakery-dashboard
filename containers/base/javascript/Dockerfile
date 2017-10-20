@@ -7,7 +7,8 @@ ADD ./.bowerrc ./bower.json ./package.json /var/javascript/
 ADD ./generated_modules/protocolbuffers /var/javascript/node_modules/protocolbuffers
 
 # will also invoke bower install etc.
-RUN cd /var/javascript && npm install --unsafe-perm
+# --production: don't install dev-dependencies
+RUN cd /var/javascript && npm install --unsafe-perm  --production
 
 # TODO: install with bower when:
 # https://github.com/drudru/ansi_up/issues/39 is resolved
