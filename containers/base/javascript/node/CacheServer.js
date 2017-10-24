@@ -63,16 +63,22 @@ _p.decrement = function() {
     return this._instances;
 };
 
-Object.defineProperty(_p, 'instances',{
+Object.defineProperty(_p, 'instances', {
     get: function() {
         return this._instances;
+    }
+});
+
+Object.defineProperty(_p, 'data', {
+    get: function() {
+        return this._data;
     }
 });
 
 return CacheItem;
 })();
 
-function Cache(logging, port) {
+function CacheServer(logging, port) {
     this._logging = logging;
     this._data = new Map();
     this._server = new grpc.Server();
@@ -80,7 +86,7 @@ function Cache(logging, port) {
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 }
 
-var _p = Cache.prototype;
+var _p = CacheServer.prototype;
 
 _p.serve =  function(){
     this._server.start();
@@ -120,75 +126,88 @@ _p._purge = function(key, force) {
 };
 
 _p._get = function(key) {
-    return this._data.get(key);
+    var item = this._data.get(key);
+    return item ? item.data : undefined;
 };
 
 // Cache.service implementation (public methods ... do we need to .bind(this)?):
 
 _p.put = function(call) {
-    this._logging.debug('put started');
     call.on('data', function(cacheItem) {
-        this._logging.debug('put on:data', cacheItem.toObject());
         var message = cacheItem.getPayload() // a CacheItemMessage
           , key = this._put(message)
           , cacheKey = new CacheKeyMessage()
           , clientId = cacheItem.getClientid()
           ;
+        this._logging.debug('[PUT] on:data key', key, 'is a', message.getTypeUrl());
+        // this kills the server!
+        // so how would we handle an error properly? i.e.
+        // catch it, send an error message to the client then hang up
+        // throw  new Error('Generic error in put on:data');
+
+        // this is a good way to do it, terminates the call, notices the client:
+        // call.emit('error',  new Error('Generic error in put on:data'));
 
         cacheKey.setKey(key);
         if(clientId)
             cacheKey.setClientid(clientId);
-        this._logging.debug('put on:data response', cacheKey.toObject());
         call.write(cacheKey);
     }.bind(this));
+
     call.on('end', function() {
         // client stopped sending.
-        this._logging.debug('put on:end');
+        this._logging.debug('[PUT] on:end');
         call.end();
-    });
+    }.bind(this));
 };
 
 _p.get = function(call, callback) {
-    this._logging.debug('get', call.request.toObject());
-    var key = call.request.key // call.request is a CacheKey
-      , response = this._get(key) || null
+
+    var key = call.request.getKey() // call.request is a CacheKey
+      , message = this._get(key) || null
       , err = null
       ;
-    if(!response) {
-        err = new Error('Can\'t find key "' + key + '".');
+    if(!message) {
+        err = new Error('Can\'t find key ' + key + '.');
         err.name = 'NOT_FOUND';
-        this._logging.debug('get', err);
+        // This is either a problem with the client implementation
+        // or the cache was down and lost it's internal state.
+        // state is not persistent yet
+        this._logging.error('[GET]', err);
     }
-    callback(err, response);
+    else
+        this._logging.debug('[GET] key', key, 'is a',  message.getTypeUrl());
+    callback(err, message);
 };
 
 _p.purge = function(call, callback) {
-    this._logging.debug('purge', call.request.toObject());
     var key = call.request.getKey() // call.request is a CacheKey
       , force = call.request.getForce()
       , instances = this._purge(key, force)
-      , response = new CacheStatusMessage()
+      , cachStatus = new CacheStatusMessage()
       ;
-    response.setKey(key);
-    response.setInstances(instances);
-    this._logging.debug('purge response:', response.toObject());
-    callback(null, response);
+    this._logging.debug('[PURGE] key', key, 'force', force
+                                            , 'instances', instances);
+    cachStatus.setKey(key);
+    cachStatus.setInstances(instances);
+    callback(null, cachStatus);
 };
 
+exports.CacheServer = CacheServer;
+
 if (typeof require != 'undefined' && require.main==module) {
-    var setup = getSetup(), cache, port=50051;
+    var setup = getSetup(), cacheServer, port=50051;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
         if(process.argv[i] === '-p' && i+1<l) {
             let foundPort = parseInt(process.argv[i+1], 10);
             if(foundPort >= 0) // not NaN or negative
-                port = foundPort
+                port = foundPort;
             break;
         }
     }
-
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.debug('Loglevel DEBUG');
-    cache = new Cache(setup.logging, port);
-    cache.serve();
+    cacheServer = new CacheServer(setup.logging, port);
+    cacheServer.serve();
 }

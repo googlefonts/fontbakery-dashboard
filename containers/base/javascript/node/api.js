@@ -12,10 +12,9 @@ const express = require('express')
   , bodyParser = require('body-parser')
   // https://github.com/squaremo/amqp.node
   , amqplib = require('amqplib')
-  , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , services_pb = require('protocolbuffers/messages_grpc_pb')
-  , getSetup = require('./util/getSetup').getSetup
+  , { getSetup } = require('./util/getSetup')
+  , { CacheClient }  = require('./CacheClient')
   ;
 
 var ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep);
@@ -36,10 +35,8 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup, cacheSetup) {
     this._server = http.createServer(this._app);
     this._sio = socketio(this._server);
 
-    this._cacheService = new services_pb.CacheClient(
-                              [cacheSetup.host, cacheSetup.port].join(':')
-                            , grpc.credentials.createInsecure()
-                            );
+    this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
+                            , messages_pb, 'proto.fontbakery.dashboard');
 
     this._r = rethinkdbdash(rethinkSetup);
 
@@ -295,92 +292,24 @@ _p._dispatchCollectionJob = function  (docid, channel) {
     return this._sendAMQPMessage(channel, this._collectionQueueName, messageBuffer);
 };
 
-
-// Turn node callback style into a promise style
-function nodeCallback2Promise(func/* args */) {
-    var args = [], i, l;
-    for(i=1,l=arguments.length;i<l;i++)
-        args.push(arguments[i]);
-
-    return new Promise(function(resolve, reject) {
-        // callback is the last argument
-        args.push(function(err, result) {
-            if(err) reject(err);
-            else resolve(result);
-        });
-        func.apply(null, args);
-    });
-}
-
-// for `purge` and `get` this is OK, but `put` is a duplex stream ;-)
-_p._cachePurge = function(cacheKey) {
-    var func = this._cacheService.purge.bind(this._cacheService);
-    return nodeCallback2Promise(func, cacheKey);
-}
-_p._cacheGet = function(cacheKey) {
-    var func = this._cacheService.get.bind(this._cacheService);
-    return nodeCallback2Promise(func, cacheKey);
-}
-
-_p._cachePut = function(cacheItems) {
-    // TODO: test this interactively before going live
-    // TODO: How can the server inform the client of on error? is it
-    //       the on('error', ...) callback AND how is information transferred
-    //       in that case? There's no error-message-pb
-    var call = this._cacheService.put();
-
-    call.on('data', function(cacheKey) {
-
-        // if all responses where received
-        call.end();
-    });
-    call.on('end', function() {
-        // The server has finished sending
-        call.end();// needed?
-    });
-    call.on('status', function(status) {
-    // process status?
-    });
-
-    call.on('error', ) // exists, it doesn't end the stream though
-
-    for(let cacheItem,i=0,l=cacheItems.length;i<l;i++) {
-        cacheItem = cacheItem[i];
-        cacheItem.setClientid(i);
-        call.write(cacheItem);
-    }
-}
-
-
-var call = client.recordRoute(function(error, stats) {
-  if (error) {
-    callback(error);
-  }
-  console.log('Finished trip with', stats.point_count, 'points');
-  console.log('Passed', stats.feature_count, 'features');
-  console.log('Travelled', stats.distance, 'meters');
-  console.log('It took', stats.elapsed_time, 'seconds');
-});
-
-
 _p._dispatchDNDJob = function  (docid, payload, channel) {
     this._log.debug('_dispatchDNDJob:', docid);
-    var files = messages_pb.Files.deserializeBinary(new Uint8Array(payload.buffer))
-      , cacheItem = new messages_pb.CacheItem()
-      , job = new messages_pb.FamilyJob()
-      , messageBuffer
-      ;
+    var files = messages_pb.Files.deserializeBinary(
+                                        new Uint8Array(payload.buffer));
+    function getMessageBuffer(cacheKey) {
+        var job = new messages_pb.FamilyJob();
+        job.setDocid(docid);
+        job.setType(messages_pb.FamilyJob.JobType.ORIGIN);
+        job.setCacheKey(cacheKey);
+        return new Buffer(job.serializeBinary());
+    }
 
-    cacheItem.setPayload(files);
-    // omit: cacheItem.setClientid( clientid )
-
-    this._cachePut(cacheItem)
-
-    job.setDocid(docid);
-    job.setType(messages_pb.FamilyJob.JobType.DRAGANDDROP_ORIGIN);
-    job.setFilesList(files.getFilesList());
-    messageBuffer = new Buffer(job.serializeBinary());
-    return this._sendAMQPMessage(channel, this._dndQueueName, messageBuffer);
+    return this._cache.put([files])
+             // only the first item is interesting/present
+            .then(Array.prototype.shift.call.bind(Array.prototype.shift))
+            .then(getMessageBuffer)
+            .then(this._sendAMQPMessage.bind(this, channel, this._dndQueueName))
+            ;
 };
 
 _p._sendAMQPMessage = function (channel, queueName, message) {

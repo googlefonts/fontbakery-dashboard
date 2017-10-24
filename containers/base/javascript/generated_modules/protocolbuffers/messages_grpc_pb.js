@@ -3,6 +3,7 @@
 'use strict';
 var grpc = require('grpc');
 var messages_pb = require('./messages_pb.js');
+var google_protobuf_any_pb = require('google-protobuf/google/protobuf/any_pb.js');
 var shared_pb = require('./shared_pb.js');
 
 function serialize_fontbakery_dashboard_CacheItem(arg) {
@@ -38,23 +39,18 @@ function deserialize_fontbakery_dashboard_CacheStatus(buffer_arg) {
   return messages_pb.CacheStatus.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_fontbakery_dashboard_Files(arg) {
-  if (!(arg instanceof shared_pb.Files)) {
-    throw new Error('Expected argument of type fontbakery.dashboard.Files');
+function serialize_google_protobuf_Any(arg) {
+  if (!(arg instanceof google_protobuf_any_pb.Any)) {
+    throw new Error('Expected argument of type google.protobuf.Any');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_fontbakery_dashboard_Files(buffer_arg) {
-  return shared_pb.Files.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_google_protobuf_Any(buffer_arg) {
+  return google_protobuf_any_pb.Any.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
-// Cache:
-// TODO: if implemented widely, fontbakery.dashboard.Files could be replaced
-// by google.Any, making this a universial protobuf message cache
-// needs testing. (CacheItem expects fontbakery.dashboard.Files as well)
-//
 // The greeting service definition.
 var CacheService = exports.CacheService = {
   // Sends a greeting
@@ -75,11 +71,11 @@ var CacheService = exports.CacheService = {
     requestStream: false,
     responseStream: false,
     requestType: messages_pb.CacheKey,
-    responseType: shared_pb.Files,
+    responseType: google_protobuf_any_pb.Any,
     requestSerialize: serialize_fontbakery_dashboard_CacheKey,
     requestDeserialize: deserialize_fontbakery_dashboard_CacheKey,
-    responseSerialize: serialize_fontbakery_dashboard_Files,
-    responseDeserialize: deserialize_fontbakery_dashboard_Files,
+    responseSerialize: serialize_google_protobuf_Any,
+    responseDeserialize: deserialize_google_protobuf_Any,
   },
   purge: {
     path: '/fontbakery.dashboard.Cache/Purge',
