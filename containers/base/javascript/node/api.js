@@ -299,7 +299,6 @@ _p._dispatchDNDJob = function  (docid, payload, channel) {
     function getMessageBuffer(cacheKey) {
         var job = new messages_pb.FamilyJob();
         job.setDocid(docid);
-        job.setType(messages_pb.FamilyJob.JobType.ORIGIN);
         job.setCacheKey(cacheKey);
         return new Buffer(job.serializeBinary());
     }

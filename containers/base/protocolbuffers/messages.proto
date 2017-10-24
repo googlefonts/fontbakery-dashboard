@@ -7,25 +7,15 @@ package fontbakery.dashboard;
 
 message FamilyJob {
     string docid = 1;
-    repeated fontbakery.dashboard.File files = 2;
-    enum JobType {
-       UNKNOWN = 0;
-       DRAGANDDROP_ORIGIN = 1;
-       DRAGANDDROP_DISTRIBUTED = 2;
-    }
-    JobType type = 3;
-    message DistributedInfo {
-        int32 id = 1;
-        repeated string order = 2;
-    }
-    DistributedInfo distributedInfo = 4;
+    CacheKey cacheKey = 2;
 }
 
-
-// Cache:
-// TODO: if implemented widely, fontbakery.dashboard.Files could be replaced
-// by google.Any, making this a universial protobuf message cache
-// needs testing. (CacheItem expects fontbakery.dashboard.Files as well)
+message DistributedFamilyJob {
+    string docid = 1;
+    CacheKey cacheKey = 2;
+    int32 jobid = 3;
+    repeated string order = 4;
+}
 
 // The greeting service definition.
 service Cache {
