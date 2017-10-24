@@ -1,5 +1,6 @@
 syntax = "proto3";
 
+import "google/protobuf/any.proto";
 import public "shared.proto";
 
 package fontbakery.dashboard;
@@ -31,13 +32,13 @@ service Cache {
   // Sends a greeting
   rpc Put (stream CacheItem) returns (stream CacheKey) {};
   // Sends another greeting
-  rpc Get (CacheKey) returns (fontbakery.dashboard.Files) {};
+  rpc Get (CacheKey) returns (google.protobuf.Any) {};
   rpc Purge (CacheKey) returns (CacheStatus) {};
 }
 
 // The request message containing the user's name.
 message CacheItem {
-  fontbakery.dashboard.Files payload = 1;
+  google.protobuf.Any payload = 1;
   string clientid = 2;
 }
 
