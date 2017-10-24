@@ -147,7 +147,7 @@ exports.CacheClient = CacheClient;
 if (typeof require != 'undefined' && require.main==module) {
     var { logging } = require('./getSetup').getSetup()
       , client = new CacheClient(logging, 'localhost', 50051
-                            , messages_pb, 'proto.fontbakery.dashboard')
+                            , messages_pb, 'fontbakery.dashboard')
       , messages = []
       ;
     for(let i=0;i<10;i++) {
@@ -155,7 +155,7 @@ if (typeof require != 'undefined' && require.main==module) {
         , files = new messages_pb.Files()
         ;
       file.setName('Hello_' + i +'.ttf');
-      file.setData('My Data');
+      file.setData(new Uint8Array(Buffer.from('My Data ' + i + ' äöÄ€»«', 'utf8')));
       files.addFiles(file);
       messages.push(files);
     }
