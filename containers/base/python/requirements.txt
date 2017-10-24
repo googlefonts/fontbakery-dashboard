@@ -3,3 +3,4 @@ rethinkdb
 pytz
 requests
 protobuf
+grpcio
