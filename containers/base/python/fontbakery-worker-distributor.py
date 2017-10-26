@@ -79,25 +79,11 @@ class WorkerDistributor(Worker)
         , 'results': {}
     })
     for job in jobs:
-      self._dispatch(job)
+      logging.debug('dispatching job %s of docid %s', job.jobid, job.docid)
+      self._queue_out(job)
 
-  def _dispatch(self, job):
-    logging.debug('dispatching job %s of docid %s', job.jobid, job.docid)
-    options = pika.BasicProperties(
-          # TODO: do we need persistent here?
-          delivery_mode=2  # pika.spec.PERSISTENT_DELIVERY_MODE
-    )
-    # Default exchange
-    # The default exchange is a pre-declared direct exchange with no name,
-    # usually referred by the empty string "". When you use the default exchange,
-    # your message will be delivered to the queue with a name equal to the routing
-    # key of the message. Every queue is automatically bound to the default exchange
-    # with a routing key which is the same as the queue name.
-    channel,routing_key = (self._queueData.channel, self._queueData.distribute_name)
-    channel.basic_publish(exchange=''
-                        , routing_key=routing_key
-                        , body=job.SerializeToString()
-                        , properties=options)
-
-main(queue_in_name='fontbakery-worker-distributor', db_name='fontbakery', db_table='draganddrop'
-     , Worker=WorkerDistributor, queue_out_name='fontbakery-worker-checker')
+main(queue_in_name='fontbakery-worker-distributor'
+   , queue_out_name='fontbakery-worker-checker'
+   , db_name='fontbakery', db_table='familytests'
+   , Worker=WorkerDistributor
+   )

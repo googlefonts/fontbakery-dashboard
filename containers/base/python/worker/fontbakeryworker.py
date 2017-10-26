@@ -144,68 +144,14 @@ class FontbakeryWorker(object):
                   , 'exception': exception
                   })
       logging.exception('Document closed exceptionally. %s', e)
-
     self._finalize()
 
   def _finalize():
-    """
-    FIXME: when all jobs are finished, we need a worker that
-    is cleaning up ... that could be part of the dispatch-worker/manifest-master
-    initiating and cleaning up would make some sense there...
-
-    We need this especially to purge the cacheKey when not used anymore
-    but also to eventually set the correct "finished" date and flag to
-    the family/collection job.
-
-    THUS: this would dispatch a queue message, that it has finished this
-          job when _run ran to the end (when it fails the job won't be
-          acked and will re-run)
-    The dispatch worker would A) mark the whole test document as `isFinished`
-    and, if part of a collection test, dispatch another queue message for
-    the manifest master (sociopath) to clean up and mark as finished the
-    test document.
-
-    So TODO here: postmortem messages
-      - as sender:  basically the same for checker-worker to dispatcher-worker
-                                    and for dispatcher-worker to manifest-sociopath
-      - as receiver for: dispatcher-worker from many checker-workers
-                      and manifest-sociopath from many dispatcher-worker
-      - the manifest-sociopath could be implemented here. CAUTION: the
-                      worker that dispatches collection-tests is meant here
-                      needs better role description!
-                      ALSO, how does a drag and drop job enter the process?
-                      someone has to dispatch to a dispatcher-worker and
-                      clean up it's answer!
-    """
-    # good case:
-    #   The finishedMessage is queued for each checker worker that's not
-    #   in pod restart back-off loop i.e. where _run could write `finished`
-    #   to a job.
-    #
-    #   assert finishedMessage.jobid has a finished field
-    #                 OR set it yourself and put a warning message there.
-    #                 "Did not finish itself, this should be highly irregular."
-    #
-    #   Eventually all checker workers have a `finished` field.
-    #   Then (all not in a particular order)
-    #       * the family test can write it's finished field and isFinished=True
-    #       * if it has a collectionTest, dispatch a finishedMessage for that
-    #       * purge the cache
-    #   Then ack the queue message
-    #
-    # bad case:
-    #   some/one worker checkers don't ever emit the finishedMessage
-    #   The worst thing here is that the cache will keep the data forever
-    #   so maybe we can add a mechanism to eventually end a job and purge
-    #   all caches. It's not so bad when we don't get the appropriate finished
-    #   fields set, but that would be done in the same run.
-    #   see: Scheduling Messages with RabbitMQ
-    #       https://www.rabbitmq.com/blog/2015/04/16/scheduling-messages-with-rabbitmq/
-    #   also: RabbitMQ Delayed Message Plugin
-    #       https://github.com/rabbitmq/rabbitmq-delayed-message-exchange/
-    #   But probably, some kind of cron pod would also work.
-    #   https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/
-    #   NOTE Cron Job Limitations: "... Therefore, jobs should be idempotent."
+    # FIXME: if the worker-distributor fails in _run (except Exception as e:)
+    # it also MUST finalize like the worker checker, but not necessarily when
+    # _run succeeds. In any way, the CleanupJobs service wouldn't close
+    # a job without good reason.
+    pass
 
   @contextmanager
   def _parse_job(self, body):
@@ -246,6 +192,23 @@ class FontbakeryWorker(object):
     # queue, but with an incremented retry count. After {n} retries we could
     # move it to the dead-end. That way, a temporary db failure or such would
     # not be a "job killer".
+
+  def _queue_out(self, message):
+    options = pika.BasicProperties(
+          # TODO: do we need persistent here?
+          delivery_mode=2  # pika.spec.PERSISTENT_DELIVERY_MODE
+    )
+    # Default exchange
+    # The default exchange is a pre-declared direct exchange with no name,
+    # usually referred by the empty string "". When you use the default exchange,
+    # your message will be delivered to the queue with a name equal to the routing
+    # key of the message. Every queue is automatically bound to the default exchange
+    # with a routing key which is the same as the queue name.
+    channel,routing_key = (self._queueData.channel, self._queueData.out_name)
+    channel.basic_publish(exchange=''
+                        , routing_key=routing_key
+                        , body=message.SerializeToString()
+                        , properties=options)
 
 class DBOperations(object):
   def __init__(self, dbTableContext, job):
@@ -320,7 +283,7 @@ def setLoglevel(loglevel):
     raise ValueError('Invalid log level: %s' % loglevel)
   logging.basicConfig(level=numeric_level)
 
-QueueData = namedtuple('QueueData', ['channel', 'name', 'distribute_name'])
+QueueData = namedtuple('QueueData', ['channel', 'in_name', 'out_name'])
 Setup = namedtuple('Setup', ['log_level', 'db_host', 'db_port'
                            , 'msgqueue_host', 'cache_host', 'cache_port'])
 
@@ -343,7 +306,7 @@ def getSetup():
 
   return Setup(log_level, db_host, db_port, msgqueue_host, cache_host, cache_port)
 
-def main(queue_in_name, db_name, db_table, Worker, queue_out_name=None):
+def main(queue_in_name, queue_out_name, db_name, db_table, Worker):
   """
     We don't handle uncaught exceptions here. If this fails kubernetes
     will restart the pod and take care that the times between restarts
@@ -356,7 +319,8 @@ def main(queue_in_name, db_name, db_table, Worker, queue_out_name=None):
   dbTableContext = partial(get_db, setup.db_host, setup.db_port, db_name, db_table)
   cache = CacheClient(setup.cache_host, setup.cache_port, Files)
 
-  connection = pika.BlockingConnection(pika.ConnectionParameters(host=setup.msgqueue_host))
+  connection = pika.BlockingConnection(
+                    pika.ConnectionParameters(host=setup.msgqueue_host))
   queue_channel = connection.channel()
   queue_channel.basic_qos(prefetch_count=1)
   queue_channel.queue_declare(queue=queue_in_name, durable=True)
@@ -371,6 +335,6 @@ def main(queue_in_name, db_name, db_table, Worker, queue_out_name=None):
   # reissued by the broker, creating an infinite loop.
   # Ack immediately and see how to handle failed jobs at another
   # point of time.
-  for method, properties, body in queue.channel.consume(queue.name):
+  for method, properties, body in queue.channel.consume(queue.in_name):
     worker = Worker(dbTableContext, queue, cache)
     worker.consume(method, properties, body)
