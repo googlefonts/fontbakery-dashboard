@@ -13,10 +13,10 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
 
 /**
  * knownTypes: i.e. require('protocolbuffers/messages_pb')
- * typesNamespace: i.e. 'proto.fontbakery.dashboard'
+ * typesNamespace: i.e. 'fontbakery.dashboard'
  *
  *
- * new CacheClient(logging, 'localhost', 1234, messages_pb, 'proto.fontbakery.dashboard')
+ * new CacheClient(logging, 'localhost', 1234, messages_pb, 'fontbakery.dashboard')
  */
 function CacheClient(logging, host, port, knownTypes, typesNamespace, credentials) {
     this._logging = logging;
@@ -24,8 +24,8 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
                           [host, port].join(':')
                         , credentials || grpc.credentials.createInsecure()
                         );
-    this._knownTypes = knownTypes;
-    this._typesNamespace = typesNamespace.slice(-1) === '.'
+    this._knownTypes = knownTypes || {};
+    this._typesNamespace = typesNamespace && typesNamespace.slice(-1) === '.'
                 ? typesNamespace.slice(0, -1)
                 : typesNamespace
                 ;
@@ -84,7 +84,7 @@ _p.put = function (payloads) {
     function sendMessage(call, result, payload, index) {
         /*jshint validthis: true*/
         var any = new any_pb.Any()
-          , typeName = this._getTypeNameForMessage(payload) // 'proto.fontbakery.dashboard.Files'
+          , typeName = this._getTypeNameForMessage(payload) // 'fontbakery.dashboard.Files'
           , cacheItem = new messages_pb.CacheItem()
           , clientid = '' + index // must be a string for message
           ;

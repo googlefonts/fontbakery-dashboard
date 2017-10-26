@@ -13,15 +13,12 @@
  */
 
 
-const rethinkdbdash = require('rethinkdbdash')
-  // https://github.com/squaremo/amqp.node
-  , amqplib = require('amqplib')
-  , serverExports = require('./main.js')
+const serverExports = require('./main.js')
   // FIXME: make a common codebase for shared code
   // in this case an author of main.js may change the behavior of these
   // functions without checking here.
   // THOUGH: messaging will also change to be ProtoBuf based
-  , getSetup = serverExports.getSetup
+  , { getSetup, initDB, initAmqp } = require('./util/getSetup')
   , mergeArrays = serverExports.mergeArrays
   , fs = require('fs')
   , StringDecoder = require('string_decoder').StringDecoder
@@ -29,21 +26,15 @@ const rethinkdbdash = require('rethinkdbdash')
   , http = require('http')
   ;
 
-function Collectiontester(logging, portNum, amqpSetup, rethinkSetup) {
+function Collectiontester(logging, portNum, amqpSetup, dbSetup) {
     this._log = logging;
     this._portNum = portNum;
-    this._dbName = rethinkSetup.db;
 
-    // FIXME: needs a new name, we use it for all reports!
-    this._dbDNDTable = 'draganddrop';
-    this._dbCollectionTable = 'collectiontests';
-    this._amqpConnection = null;
+    this._dbSetup = dbSetup;
+    this._r = null;
+    this._amqp = null;
     // this requests to start a collection wide test run.
     this._initQueueName = 'init_collecton_test_queue';
-
-    this._app = express();
-    this._server = http.createServer(this._app);
-
     // use this to shamelessly reuse the existing workers
     // NOTE: one problem could become that we'll have like up to
     // 6 times of the collections font size on the amqp queue, this will
@@ -51,18 +42,26 @@ function Collectiontester(logging, portNum, amqpSetup, rethinkSetup) {
     // but it is the fastest way to proceed. I thought about a kind of
     // file service where we can get the files directly, that should help
     // keep the queues working.
-    this._dispatchQueueName = 'drag_and_drop_queue';
+    this._dispatchQueueName = 'fontbakery-worker-distributor';
+
+    this._app = express();
+    this._server = http.createServer(this._app);
+
+
 
     // I'll copy this from my harddrive and don't do any updates now.
     // I'm on an airplane, data is expensive!
     this._fontsRepositoryPath = '/var/fonts';
 
-    this._r = rethinkdbdash(rethinkSetup);
     // Start serving when the database and rabbitmq queue is ready
-    Promise.all([
-                 this._initDB()
-               , this._initAmqp(amqpSetup)
+        Promise.all([
+                 initDB(this._log,dbSetup)
+               , initAmqp(this._log, amqpSetup)
                ])
+    .then(function(resources){
+        this._r = resources[0];
+        this._amqp = resources[1];
+    }.bind(this))
     .then(this._listen.bind(this))
     .catch(function(err) {
         this._log.error('Can\'t initialize.', err);
@@ -77,66 +76,6 @@ var _p = Collectiontester.prototype;
 
 _p._query = function(dbTable) {
     return this._r.table(dbTable);
-};
-
-// copypasta from server.js
-_p._initDB = function() {
-    var createDatabase, createTable;
-
-    createDatabase = function() {
-        return this._r.dbCreate(this._dbName)
-            .run()
-            //.then(function(response) {/* pass */})
-            .error(function(err){
-                if (err.message.indexOf('already exists') !== -1)
-                    return;
-                throw err;
-            });
-
-    }.bind(this);
-
-    createTable = function(dbTable) {
-        return this._r.tableCreate(dbTable)
-            .run()
-            //.then(function(response) {/* pass */})
-            .error(function(err){
-            if (err.message.indexOf('already exists') !== -1)
-                return;
-            throw err;
-        });
-    }.bind(this);
-
-    return createDatabase()
-        .then(createTable.bind(this, this._dbDNDTable))
-        .then(function(){
-            return this._query(this._dbDNDTable)
-                .indexCreate(this._dbCollectionTable + '_id')
-                .run()
-                .error(function(err){
-                    if (err.message.indexOf('already exists') !== -1)
-                        return;
-                    throw err;
-                });
-        }.bind(this))
-        .then(createTable.bind(this, this._dbCollectionTable))
-        .catch(function(err) {
-            // It's not an error if the table already exists
-            this._log.warning('Error while initializing database.', err);
-            throw err;
-        }.bind(this));
-};
-
-// copypasta from server.js
-_p._initAmqp = function(amqpSetup) {
-    return amqplib.connect('amqp://' + amqpSetup.host)
-            .then(function(connection) {
-                process.once('SIGINT', connection.close.bind(connection));
-                this._amqpConnection = connection;
-            }.bind(this))
-            .catch(function(err) {
-                this._log.error('Error while connecting to queue.', err);
-                throw err;
-            }.bind(this));
 };
 
 // unused, reminder
@@ -285,20 +224,19 @@ _p.getPayload = function(dir) {
 };
 
 // dispatches message to queueName
-_p._sendAMQPMessage = function (channel, queueName, message) {
+_p._sendAMQPMessage = function (queueName, message) {
     var options = {
             // TODO: do we need persistent here/always?
             persistent: true // same as deliveryMode: true or deliveryMode: 2
         }
         ;
-    function onAssert() {
-        // jshint validthis:true
+    function sendMessage(ok) {
+        // jshint validthis:true, unused:vars
         this._log.info('sendToQueue: ', queueName);
-        return channel.sendToQueue(queueName, message, options);
+        return this.amqp.channel.sendToQueue(queueName, message, options);
     }
-    return channel.assertQueue(queueName, {durable: true})
-           .then(onAssert.bind(this))
-           .finally(function(){ channel.close(); })
+    return this.amqp.channel.assertQueue(queueName, {durable: true})
+           .then(sendMessage.bind(this))
            ;
 };
 
@@ -313,12 +251,9 @@ _p._dispatchJob = function(familyDir, dbResponse) {
           , type: 'collectiontest'
         }
       , message = Buffer.from(JSON.stringify(job), 'utf8')
-      , channelPromise = this._amqpConnection.createChannel()
       ;
 
-    return Promise.all([channelPromise, this._dispatchQueueName, message])
-         // like: this._sendAMQPMessage.apply(this, [channel, queueName, message])
-        .then(this._sendAMQPMessage.apply.bind(this._sendAMQPMessage, this));
+    return this._sendAMQPMessage(this._dispatchQueueName, message);
 };
 
 
@@ -345,12 +280,10 @@ _p._dispatchDragAndDropStyleJob = function(familyDir, dbResponse) {
           , this.getPayload(familyDir)
            // args = [docid, payload]
         ]).then(this._packMessage.apply.bind(this._packMessage, this))
-      , channelPromise = this._amqpConnection.createChannel()
       ;
     this._log.debug('_dispatchJob', familyDir, 'job docid:', docid);
-
-    return Promise.all([channelPromise, this._dispatchQueueName, messagePromise])
-         // like: this._sendAMQPMessage.apply(this, [channel, queueName, message])
+    return Promise.all([this._dispatchQueueName, messagePromise])
+         // like: this._sendAMQPMessage.apply(this, [queueName, message])
         .then(this._sendAMQPMessage.apply.bind(this._sendAMQPMessage, this));
 
 };
@@ -373,9 +306,9 @@ _p._comissionFamily = function(collectiontestId, familyDir) {
       , family_dir: familyDir
     };
     // very important
-    doc[this._dbCollectionTable + '_id'] = collectiontestId;
+    doc[this._dbSetup.tables.collection + '_id'] = collectiontestId;
 
-    return this._dbInsertDoc(this._dbDNDTable, doc)
+    return this._dbInsertDoc(this._dbSetup.tables.family, doc)
         .then(this._dispatchJob.bind(this, familyDir))
         // needs .error if dispatchJob fails?
         .catch(function(err) {
@@ -408,12 +341,12 @@ _p._comissionFamilies = function(collectiontestId, families) {
 
 // get's the target collectiontestId via message
 // calls _comissionFamilies collectiontestId (_fetchFamilies ) =>
-_p._initJob = function(channel, message) {
+_p._consumeQueue = function(message) {
     var decoder = new StringDecoder('utf8')
       , collectiontestId = JSON.parse(decoder.write(Buffer.from(message.content))).docid
       ;
     this._log.debug('_initJob', collectiontestId);
-    channel.ack(message);
+    this._amqp.channel.ack(message);
     // update git
     this._updateGIT();
     // get all family directories:
@@ -427,13 +360,6 @@ _p._initJob = function(channel, message) {
         });
 };
 
-// entry point to init collection tests, calls _initJob
-_p._consumeQueue = function(queueName, channel) {
-    var consume = channel.consume.bind(channel, queueName
-                                    , this._initJob.bind(this, channel));
-    return channel.assertQueue(queueName).then(consume);
-};
-
 // start the server
 _p._listen = function() {
     this._log.debug('_listen');
@@ -441,12 +367,19 @@ _p._listen = function() {
     this._server.listen(this._portNum);
     this._log.info('Listening to port', this._portNum);
 
-    this._amqpConnection.createChannel()
-           .then(this._consumeQueue.bind(this, this._initQueueName));
+
+    function consume(reply) {
+        // jshint validthis:true
+        return this._amqp.channel.consume(reply.queue, this._consumeQueue.bind(this));
+    }
+    return this._amqp.channel.assertQueue(this._cleanupQueueName)
+        .then(consume.bind(this))
+        ;
 };
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.info('Init server ...');
-    new Collectiontester(setup.logging, 3000, setup.amqp, setup.rethink);
+    setup.logging.log('Loglevel', setup.logging.loglevel);
+    new Collectiontester(setup.logging, 3000, setup.amqp, setup.db);
 }

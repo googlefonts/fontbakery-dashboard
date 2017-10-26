@@ -5,12 +5,22 @@
 
 
 function Logging(loglevel) {
-    this._numericLoglevel = this._levels[loglevel];
+    this._numericLoglevel = this._levels[loglevel] || 0;
+    this._loglevel = loglevel;
 }
-Logging.prototype._levels = {};
+
+var _p = Logging.prototype;
+
+Object.defineProperty(_p, 'loglevel', {
+    get: function() {
+      return this._loglevel;
+    }
+});
+
+_p.log = console.log;
 
 ([
-  , ['DEBUG', 10, console.info]
+    ['DEBUG', 10, console.info]
   , ['INFO', 20, console.info]
   , ['WARNING', 30, console.warn]
   , ['ERROR', 40, console.error]
@@ -22,8 +32,8 @@ Logging.prototype._levels = {};
       , numeric = setup[1]
       , log = setup[2]
       ;
-    Logging.prototype._levels[loglevel] = numeric;
-    Logging.prototype[method] = function() {
+    _p._levels[loglevel] = numeric;
+    _p[method] = function() {
         if(numeric < this._numericLoglevel)
             return;
         var args = [loglevel], i, l;

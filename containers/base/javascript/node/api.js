@@ -7,13 +7,10 @@
 const express = require('express')
   , http = require('http')
   , socketio = require('socket.io')
-  , rethinkdbdash = require('rethinkdbdash')
   , path = require('path')
   , bodyParser = require('body-parser')
-  // https://github.com/squaremo/amqp.node
-  , amqplib = require('amqplib')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , { getSetup } = require('./util/getSetup')
+  , { getSetup, initDB, initAmqp } = require('./util/getSetup')
   , { CacheClient }  = require('./CacheClient')
   ;
 
@@ -25,30 +22,35 @@ var ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep);
  * Initialization starts the server.
  *
  */
-function Server(logging, portNum,  amqpSetup, rethinkSetup, cacheSetup) {
+function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     this._log = logging;
     this._portNum = portNum;
-    this._dbName = rethinkSetup.db;
-    this._dbDNDTable = 'draganddrop';
-    this._dbCollectionTable = 'collectiontests';
+
+
+
     this._app = express();
     this._server = http.createServer(this._app);
     this._sio = socketio(this._server);
 
     this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
-                            , messages_pb, 'proto.fontbakery.dashboard');
+                            , messages_pb, 'fontbakery.dashboard');
 
-    this._r = rethinkdbdash(rethinkSetup);
 
-    this._amqpConnection = null;
+    this._dbSetup = dbSetup;
+    this._r = null;
+    this._amqp = null;
     this._dndQueueName = 'fontbakery-worker-distributor';
     this._collectionQueueName = 'init_collecton_test_queue';
 
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
-                 this._initDB()
-               , this._initAmqp(amqpSetup)
+                 initDB(this._log,dbSetup)
+               , initAmqp(this._log, amqpSetup)
                ])
+    .then(function(resources){
+        this._r = resources[0];
+        this._amqp = resources[1];
+    }.bind(this))
     .then(this._listen.bind(this))
     .catch(function(err) {
         this._log.error('Can\'t initialize server.', err);
@@ -57,7 +59,7 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup, cacheSetup) {
 
     this._app.get('/', this.fbIndex.bind(this));
     this._app.use('/browser', express.static('browser'));
-    this._app.get('/report/:docid', this.fbDNDReport.bind(this));
+    this._app.get('/report/:docid', this.fbFamilyReport.bind(this));
 
     this._app.use('/runchecks', bodyParser.raw(
                     {type: 'application/octet-stream', limit: '15mb'}));
@@ -76,64 +78,6 @@ function Server(logging, portNum,  amqpSetup, rethinkSetup, cacheSetup) {
 }
 
 var _p = Server.prototype;
-
-_p._initDB = function() {
-    var createDatabase, createTable;
-
-    createDatabase = function() {
-        return this._r.dbCreate(this._dbName)
-            .run()
-            //.then(function(response) {/* pass */})
-            .error(function(err){
-                if (err.message.indexOf('already exists') !== -1)
-                    return;
-                throw err;
-            });
-
-    }.bind(this);
-
-    createTable = function(dbTable) {
-        return this._r.tableCreate(dbTable)
-            .run()
-            //.then(function(response) {/* pass */})
-            .error(function(err){
-            if (err.message.indexOf('already exists') !== -1)
-                return;
-            throw err;
-        });
-    }.bind(this);
-
-    return createDatabase()
-        .then(createTable.bind(this, this._dbDNDTable))
-        .then(function(){
-            return this._query(this._dbDNDTable)
-                .indexCreate(this._dbCollectionTable + '_id')
-                .run()
-                .error(function(err){
-                    if (err.message.indexOf('already exists') !== -1)
-                        return;
-                    throw err;
-                });
-        }.bind(this))
-        .then(createTable.bind(this, this._dbCollectionTable))
-        .error(function(err) {
-            // It's not an error if the table already exists
-            this._log.warning('Error while initializing database.', err);
-            throw err;
-        }.bind(this));
-};
-
-_p._initAmqp = function(amqpSetup) {
-    return amqplib.connect('amqp://' + amqpSetup.host)
-            .then(function(connection) {
-                process.once('SIGINT', connection.close.bind(connection));
-                this._amqpConnection = connection;
-            }.bind(this))
-            .catch(function(err) {
-                this._log.error('Error while connecting to queue.', err);
-                throw err;
-            }.bind(this));
-};
 
 _p._listen = function() {
     this._server.listen(this._portNum);
@@ -163,7 +107,7 @@ _p.fbIndex = function(req, res) {
 _p.fbCollectionGetReports = function(req, res) {
     // query the db
     // for collection-test-docs
-    this._query(this._dbCollectionTable).pluck('id', 'created')
+    this._query(this._dbSetup.tables.collection).pluck('id', 'created')
         .run()
         .then(function answer(items) {
             res.setHeader('Content-Type', 'application/json');
@@ -209,13 +153,12 @@ _p.fbCollectionCreateTest = function(req, res, next) {
     function dispatchCollectionJob(dbResponse) {
         //jshint validthis:true
         this._log.debug('_onCollectionTestDocCreated','dbResponse', dbResponse);
-        var docid = dbResponse.generated_keys[0]
-          , dispatcher = this._dispatchCollectionJob.bind(this, docid)
-        ;
-        return this._dispatchJob(docid, dispatcher);
+        var docid = dbResponse.generated_keys[0];
+
+        return this._dispatchCollectionJob.bind(this, docid);
     }
 
-    this._dbInsertDoc(this._dbCollectionTable, doc, next
+    this._dbInsertDoc(this._dbSetup.tables.collection, doc, next
             , dispatchCollectionJob.bind(this)
             , success.bind(this)
     );
@@ -261,8 +204,8 @@ _p._fbCheckDocId = function(dbTable, req, res, next) {
  * CLIENT
  *   : same as fbIndex on success
  */
-_p.fbDNDReport = function(req, res, next) {
-    return this._fbCheckDocId(this._dbDNDTable, req, res, next);
+_p.fbFamilyReport = function(req, res, next) {
+    return this._fbCheckDocId(this._dbSetup.tables.family, req, res, next);
 };
 
 /**
@@ -277,10 +220,10 @@ _p.fbDNDReport = function(req, res, next) {
  *   : same as fbIndex on success
  */
 _p.fbCollectionReport = function(req, res, next) {
-    return this._fbCheckDocId(this._dbCollectionTable, req, res, next);
+    return this._fbCheckDocId(this._dbSetup.tables.collection, req, res, next);
 };
 
-_p._dispatchCollectionJob = function  (docid, channel) {
+_p._dispatchCollectionJob = function  (docid) {
      var message = JSON.stringify({docid: docid})
         // expecting doc id to be only ASCII chars, because serializing
         // higher unicode is not that straight forward.
@@ -289,13 +232,11 @@ _p._dispatchCollectionJob = function  (docid, channel) {
        , messageBuffer = new Buffer(messageArray.buffer)
        ;
     this._log.debug('_dispatchCollectionJob:', docid);
-    return this._sendAMQPMessage(channel, this._collectionQueueName, messageBuffer);
+    return this._sendAMQPMessage(this._collectionQueueName, messageBuffer);
 };
 
-_p._dispatchDNDJob = function  (docid, payload, channel) {
-    this._log.debug('_dispatchDNDJob:', docid);
-    var files = messages_pb.Files.deserializeBinary(
-                                        new Uint8Array(payload.buffer));
+_p._dispatchFamilyJob = function  (docid, filesMessage) {
+    this._log.debug('_dispatchFamilyJob:', docid);
     function getMessageBuffer(cacheKey) {
         var job = new messages_pb.FamilyJob();
         job.setDocid(docid);
@@ -303,40 +244,28 @@ _p._dispatchDNDJob = function  (docid, payload, channel) {
         return new Buffer(job.serializeBinary());
     }
 
-    return this._cache.put([files])
+    return this._cache.put([filesMessage])
              // only the first item is interesting/present
             .then(Array.prototype.shift.call.bind(Array.prototype.shift))
             .then(getMessageBuffer)
-            .then(this._sendAMQPMessage.bind(this, channel, this._dndQueueName))
+            .then(this._sendAMQPMessage.bind(this, this._dndQueueName))
             ;
 };
 
-_p._sendAMQPMessage = function (channel, queueName, message) {
+_p._sendAMQPMessage = function (queueName, message) {
     var options = {
             // TODO: do we need persistent here/always?
             persistent: true // same as deliveryMode: true or deliveryMode: 2
         }
         ;
-    function onAssert() {
+    function sendMessage() {
         // jshint validthis:true
         this._log.info('sendToQueue: ', queueName);
-        return channel.sendToQueue(queueName, message, options);
+        return this.amqp.channel.sendToQueue(queueName, message, options);
     }
-    return channel.assertQueue(queueName, {durable: true})
-           .then(onAssert.bind(this))
-           .finally(function(){ channel.close(); })
+    return this.amqp.channel.assertQueue(queueName, {durable: true})
+           .then(sendMessage.bind(this))
            ;
-};
-
-_p._dispatchJob = function(docid, dispatcher) {
-    this._log.debug('creating amqp channel');
-    return this._amqpConnection.createChannel()
-        .then(dispatcher)
-        .then(function(){ return docid; })
-        .catch(function(err) {
-            this._log.warning('Can\'t create channel.', err);
-            throw err;
-        }.bind(this));
 };
 
 /**
@@ -365,13 +294,12 @@ _p.fbDNDReceive = function(req, res, next) {
         //jshint validthis:true
         this._log.debug('dispatchJob','dbResponse', dbResponse);
         var docid = dbResponse.generated_keys[0]
-          , payload = req.body
-          , dispatcher = this._dispatchDNDJob.bind(this, docid, payload)
-          ;
-        return this._dispatchJob(docid, dispatcher);
+          , filesMessage = messages_pb.Files.deserializeBinary(
+                                        new Uint8Array(req.body.buffer));
+        return this._dispatchFamilyJob.bind(this, docid, filesMessage);
     }
 
-    this._dbInsertDoc(this._dbDNDTable, doc, next
+    this._dbInsertDoc(this._dbSetup.tables.family, doc, next
             , dispatchJob.bind(this, req)
             , success.bind(this)
             );
@@ -451,25 +379,25 @@ _p._fbRethinkChangeFeed = function(cursor, socket, channel, err, data) {
  * data.docid is the rethink db document UUID.
  */
 _p._subscribeToReportDoc = function(socket, data) {
-    var query = this._query(this._dbDNDTable).get(data.docid);
+    var query = this._query(this._dbSetup.tables.family).get(data.docid);
     this._subscribeToQuery(socket, query);
 };
 
 _p._subscribeToCollectionReportsDoc = function(socket, data) {
     // This would have been nice but it is not currently possible!
-    // var query = this._query(this._dbCollectionTable).get(data.docid).merge({
-    //     reports: this._query(this._dbDNDTable)
-    //         .getAll(this._r.row('id'), {index: this._dbCollectionTable + '_id'})
+    // var query = this._query(this._dbSetup.tables.collection).get(data.docid).merge({
+    //     reports: this._query(this._dbSetup.tables.family)
+    //         .getAll(this._r.row('id'), {index: this._dbSetup.tables.collection + '_id'})
     //         .pluck('id', 'created', 'family', 'results').coerceTo('array')
     // });
     // Let's for now only get the reports data:
     // This works, but changes are per document, we'll have to manually
     // apply them at the right positions, in the client. Will work though.
-    var query = this._query(this._dbCollectionTable).get(data.docid);
+    var query = this._query(this._dbSetup.tables.collection).get(data.docid);
     this._subscribeToQuery(socket, query);
 
-    query = this._query(this._dbDNDTable)
-        .getAll(data.docid, {index: this._dbCollectionTable + '_id'})
+    query = this._query(this._dbSetup.tables.family)
+        .getAll(data.docid, {index: this._dbSetup.tables.collection + '_id'})
         .map(function (doc) {
             return doc.merge({total: doc('tests').count()});
         })
@@ -493,5 +421,6 @@ _p._subscribeToQuery = function(socket, query) {
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.info('Init server ...');
-    new Server(setup.logging, 3000, setup.amqp, setup.rethink, setup.cache);
+    setup.logging.log('Loglevel', setup.logging.loglevel);
+    new Server(setup.logging, 3000, setup.amqp, setup.db, setup.cache);
 }

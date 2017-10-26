@@ -207,7 +207,7 @@ if (typeof require != 'undefined' && require.main==module) {
         }
     }
     setup.logging.info('Init server, port: '+ port +' ...');
-    setup.logging.debug('Loglevel DEBUG');
+    setup.logging.log('Loglevel', setup.logging.loglevel);
     cacheServer = new CacheServer(setup.logging, port);
     cacheServer.serve();
 }
