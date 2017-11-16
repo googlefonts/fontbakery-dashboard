@@ -48,8 +48,20 @@ define([
                                                     + channelName.slice(1)
           , dispatch = '_dispatch' + _ChannelName
           , on = 'on' + _ChannelName
-          , lastMessage = null
           ;
+
+        function _setLastMessage(message) {
+            //jshint validthis:true
+            if(!this._$lastMessages)
+                this._$lastMessages = new Map();
+            this._$lastMessages.set('channelName', message);
+        }
+        function _getLastMessage() {
+            //jshint validthis:true
+            if(!this._$lastMessages)
+                return null;
+            return this._$lastMessages.get('channelName') || null;
+        }
         _p[dispatch] = function(/* message1, ..., message2 */) {
             var i, l, message = [];
             for(i=0,l=arguments.length;i<l;i++)
@@ -57,7 +69,7 @@ define([
             for(i=0,l=this[subscriptions].length;i<l;i++)
                 _publish(false, this[subscriptions][i], message, this);
             if(initialMessages)
-                lastMessage = message;
+                _setLastMessage.call(this, message);
         };
 
         function _publish(async, subscription, message, thisVal) {
@@ -74,13 +86,16 @@ define([
         }
 
         _p[on] = function (callback) {
-            var args = [], i, l, subscription;
+            var args = [], i, l, subscription, lastMessage;
             for(i=1,l=arguments.length;i<l;i++)
                 args.push(arguments[i]);
             subscription = [callback, args];
             this[subscriptions].push(subscription);
-            if(initialMessages && lastMessage)
-                _publish(false, subscription, lastMessage, this);
+            if(initialMessages) {
+                lastMessage = _getLastMessage.call(this);
+                if(lastMessage)
+                    _publish(false, subscription, lastMessage, this);
+            }
         };
     }
 
@@ -614,7 +629,7 @@ define([
 
         var parts = name.slice(0, -4).split('-')
           , fontName = parts[0]
-          , weightName = parts[1].toLowerCase() || ''
+          , weightName = parts[1] ? parts[1].toLowerCase() : ''
           , weights = {
                 'thin': 100
               , 'hairline': 100
@@ -1066,6 +1081,18 @@ define([
           , spec = { // ReportDocumentBlock is a FlexibleDocumentBlock
                 '': {
                     GenericType: genericBlockFactory
+                  , genericSpec: {
+                      '': {
+                            GenericType: genericBlockFactory
+                          , genericSpec: {
+                                // the jobs key has these fields as well
+                                exception: preformatedTextSpec
+                              , created: datesSpec
+                              , started: datesSpec
+                              , finished: datesSpec
+                            }
+                        }
+                    }
                   , classPrefix: 'report-container_'
                   , insertionMarkerPrefix: 'insert: '
                   , getElementFromTemplate: getElementFromTemplate
