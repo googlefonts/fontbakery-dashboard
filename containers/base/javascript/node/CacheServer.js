@@ -46,31 +46,38 @@ TODO: some form of persistence, if the pod dies, so that the cache still
 const CacheItem = (function() {
 function CacheItem(data) {
     this._data = data;
-    this._instances = 1;
+    this._counter = 0;
+    this._subKeys = new Set();
+    this._reads = 0;
 }
 var _p = CacheItem.prototype;
 
-_p.increment = function() {
-    this._instances += 1;
-    return this._instances;
+_p.createSubKey = function() {
+    var subKey = (this._counter++).toString(16);
+    this._subKeys.add(subKey);
+    return subKey;
 };
 
-_p.decrement = function() {
-    if(this._instances > 0)
-        this._instances -= 1;
-    else
-        this._instances = 0;
-    return this._instances;
+_p.destroySubKey = function(subKey) {
+    this._subKeys.delete(subKey);
+    return this._subKeys.size;
 };
 
 Object.defineProperty(_p, 'instances', {
     get: function() {
-        return this._instances;
+        return this._subKeys.size;
+    }
+});
+
+Object.defineProperty(_p, 'reads', {
+    get: function() {
+        return this._reads;
     }
 });
 
 Object.defineProperty(_p, 'data', {
     get: function() {
+        this._reads += 1;
         return this._data;
     }
 });
@@ -88,7 +95,7 @@ function CacheServer(logging, port) {
 
 var _p = CacheServer.prototype;
 
-_p.serve =  function(){
+_p.serve =  function() {
     this._server.start();
 };
 
@@ -99,34 +106,47 @@ _p._hash = function(data) {
 };
 
 _p._put = function(pb_message) {
-    var key = this._hash(pb_message.serializeBinary())
-      , item = this._data.get(key)
+    var hash = this._hash(pb_message.serializeBinary())
+      , key_ = hash
+      , item = this._data.get(key_)
+      , subKey
       ;
     if(!item) {
         item = new CacheItem(pb_message);
-        this._data.set(key, item);
+        this._data.set(key_, item);
     }
-    else
-        item.increment();
-    return key;
+    subKey = item.createSubKey();
+    return [[key_, subKey].join(':'), hash];
 };
 
 _p._purge = function(key, force) {
-    var item = this._data.get(key)
+    var keys = key.split(':')
+      , key_ = keys[0]
+      , subKey = keys[1]
+      , item = this._data.get(key_)
       , instances
       ;
     if(!item) return 0;
     if(!force) {
-      instances = item.decrement();
+      instances = item.destroySubKey(subKey);
       if (instances)
         return instances;
     }
-    this._data.delete(key);
+    this._data.delete(key_);
     return 0;
 };
 
 _p._get = function(key) {
-    var item = this._data.get(key);
+    var key_ = key.split(':')[0]
+      , item = this._data.get(key_)
+      ;
+    //if(item && item.reads >= 3) {
+    //    // simulate a cleanupjob, that purged the cache before
+    //    // all subjobs could run.
+    //    // produces an exception in the report "Can't find key AB123..."
+    //    this._purge(key);
+    //    item = undefined;
+    //}
     return item ? item.data : undefined;
 };
 
@@ -135,20 +155,20 @@ _p._get = function(key) {
 _p.put = function(call) {
     call.on('data', function(cacheItem) {
         var message = cacheItem.getPayload() // a CacheItemMessage
-          , key = this._put(message)
+          , [key, hash] = this._put(message)
           , cacheKey = new CacheKeyMessage()
           , clientId = cacheItem.getClientid()
           ;
         this._logging.debug('[PUT] on:data key', key, 'is a', message.getTypeUrl());
-        // this kills the server!
-        // so how would we handle an error properly? i.e.
+        // How to handle an error properly? i.e.
         // catch it, send an error message to the client then hang up
+        // this kills the server:
         // throw  new Error('Generic error in put on:data');
-
         // this is a good way to do it, terminates the call, notices the client:
         // call.emit('error',  new Error('Generic error in put on:data'));
 
         cacheKey.setKey(key);
+        cacheKey.setHash(hash);
         if(clientId)
             cacheKey.setClientid(clientId);
         call.write(cacheKey);
@@ -162,7 +182,6 @@ _p.put = function(call) {
 };
 
 _p.get = function(call, callback) {
-
     var key = call.request.getKey() // call.request is a CacheKey
       , message = this._get(key) || null
       , err = null
