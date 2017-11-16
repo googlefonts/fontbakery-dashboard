@@ -17,8 +17,9 @@ Object.defineProperty(_p, 'loglevel', {
     }
 });
 
-_p.log = console.log;
 
+_p.log = console.log;
+_p._levels = {};
 ([
     ['DEBUG', 10, console.info]
   , ['INFO', 20, console.info]

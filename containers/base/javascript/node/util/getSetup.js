@@ -86,13 +86,21 @@ function initDB(log, dbSetup) {
     }
 
     function createTableIndex(tableName, index) {
-        return r.table(tableName)
-            .indexCreate(index)
+        var query = r.table(tableName)
+          , index_ =  index instanceof Array ? index : [index]
+          ;
+        return query.indexCreate.apply(query, index_)
             .run()
-            .error(function(err){
+            .error(function(err) {
                 if (err.message.indexOf('already exists') !== -1)
                     return;
                 throw err;
+            })
+            // Wait for the index to be ready to use
+            .then(function(){
+                return r.table(tableName)
+                        .indexWait(index_[0])
+                        .run();
             });
     }
 
@@ -102,8 +110,28 @@ function initDB(log, dbSetup) {
             return Promise.all(Object.values(dbSetup.tables).map(createTable));
         })
         .then(function() {
-            return createTableIndex(dbSetup.tables.family
-                                  , dbSetup.tables.collection + '_id');
+            // create a compound index in dbSetup.tables.family:
+            // [environment_version, test_data_hash]
+            var index = [
+                    'env_hash'
+                  , [r.row('environment_version'), r.row('test_data_hash')]
+                ];
+            return createTableIndex(dbSetup.tables.family, index);
+        })
+        .then(function() {
+            // TODO: dbSetup.tables.collection needs probably some more indexes!
+            return Promise.all([
+                // collection_id
+                createTableIndex(dbSetup.tables.collection, 'collection_id')
+                // collection_id | family_name
+              , createTableIndex(dbSetup.tables.collection, ['collection_family'
+                        , [r.row('collection_id'), r.row('family_name')]])
+                // familytests_id
+              , createTableIndex(dbSetup.tables.collection
+                                        , dbSetup.tables.family + '_id')
+                // date
+              , createTableIndex(dbSetup.tables.collection, 'date')
+            ]);
         })
         .then(function(){return r;})
         .catch(function(err) {
