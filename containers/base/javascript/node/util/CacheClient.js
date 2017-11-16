@@ -19,9 +19,13 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
  * new CacheClient(logging, 'localhost', 1234, messages_pb, 'fontbakery.dashboard')
  */
 function CacheClient(logging, host, port, knownTypes, typesNamespace, credentials) {
+    var address = [host, port].join(':');
     this._logging = logging;
+    // in seconds, we use this to get an error when the channel is broken
+    this._deadline = 5;
+    this._logging.info('CacheClient at:', address);
     this._client = new services_pb.CacheClient(
-                          [host, port].join(':')
+                          address
                         , credentials || grpc.credentials.createInsecure()
                         );
     this._knownTypes = knownTypes || {};
@@ -50,7 +54,16 @@ _p._getTypeForTypeName = function(typeName) {
     throw new Error('Can\'t find type for type name,');
 };
 
+Object.defineProperty(_p, 'deadline', {
+    get: function(){
+       var deadline = new Date();
+       deadline.setSeconds(deadline.getSeconds() + this._deadline);
+       return deadline;
+    }
+});
+
 _p.put = function (payloads) {
+    this._logging.debug('cache [PUT] with', payloads.length, 'payloads');
     function onData(call, promiseAPI, result, cacheKey) {
         /*jshint validthis: true*/
         result[cacheKey.getClientid()] = cacheKey;
@@ -96,7 +109,7 @@ _p.put = function (payloads) {
     }
 
     return new Promise(function(resolve, reject) {
-        var call = this._client.put()
+        var call = this._client.put({deadline: this.deadline})
           , promiseAPI = {resolve: resolve, reject: reject}
           , result = []
           ;
@@ -104,8 +117,12 @@ _p.put = function (payloads) {
         call.on('end', onEnd.bind(this, call, promiseAPI, result));
         call.on('status', onStatus.bind(this, call, promiseAPI));
         call.on('error', onError.bind(this, call, promiseAPI));
-
-        payloads.forEach(sendMessage.bind(this, call, result));
+        try {
+            payloads.forEach(sendMessage.bind(this, call, result));
+        }
+        catch(err) {
+            reject(err);
+        }
         call.end();
     }.bind(this));
 };
@@ -119,13 +136,23 @@ _p._getMessageFromAny = function(any) {
 
 _p.get = function(cacheKey) {
     var func = this._client.get.bind(this._client);
-    return nodeCallback2Promise(func, cacheKey)
+    return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline})
            .then(this._getMessageFromAny.bind(this));
 };
 
 _p.purge = function(cacheKey) {
     var func = this._client.purge.bind(this._client);
-    return nodeCallback2Promise(func, cacheKey);
+    return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline});
+};
+
+_p.waitForReady = function() {
+    return new Promise(function(resolve, reject) {
+        function cb(error) {
+            if(error) reject(error);
+            else resolve();
+        }
+        this._client.waitForReady(this.deadline, cb);
+    }.bind(this));
 };
 
 exports.CacheClient = CacheClient;
@@ -150,28 +177,28 @@ if (typeof require != 'undefined' && require.main==module) {
                             , messages_pb, 'fontbakery.dashboard')
       , messages = []
       ;
-    for(let i=0;i<10;i++) {
-      let file = new messages_pb.File()
-        , files = new messages_pb.Files()
-        ;
-      file.setName('Hello_' + i +'.ttf');
-      file.setData(new Uint8Array(Buffer.from('My Data ' + i + ' äöÄ€»«', 'utf8')));
-      files.addFiles(file);
-      messages.push(files);
-    }
+     for(let i=0;i<10;i++) {
+       let file = new messages_pb.File()
+         , files = new messages_pb.Files()
+         ;
+       file.setName('Hello_' + i +'.ttf');
+       file.setData(new Uint8Array(Buffer.from('My Data ' + i + ' äöÄ€»«', 'utf8')));
+       files.addFiles(file);
+       messages.push(files);
+     }
 
-    client.put(messages)
-        //.then(function(cacheKeys) {
-        //    return Promise.all(cacheKeys.map(client.purge, client));
-        //})
-        //.then(function(responses) {
-        //    return responses.map(response => response.toObject());
-        //})
-        .then(function(cacheKeys) {
-            return Promise.all(cacheKeys.map(client.get, client));
-        })
-        .then(function(messages) {
-            return messages.map(message => message.getFilesList().map(file => file.toObject()));
-        })
-        .then(console.log.bind(console, 'Success'), console.error.bind(console, 'Errrrrr'));
+     client.put(messages)
+         //.then(function(cacheKeys) {
+         //    return Promise.all(cacheKeys.map(client.purge, client));
+         //})
+         //.then(function(responses) {
+         //    return responses.map(response => response.toObject());
+         //})
+         .then(function(cacheKeys) {
+             return Promise.all(cacheKeys.map(client.get, client));
+         })
+         .then(function(messages) {
+             return messages.map(message => message.getFilesList().map(file => file.toObject()));
+         })
+         .then(console.log.bind(console, 'Success'), console.error.bind(console, 'Errrrrr'));
 }
