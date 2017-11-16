@@ -10,11 +10,11 @@ const express = require('express')
   , path = require('path')
   , bodyParser = require('body-parser')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , { getSetup, initDB, initAmqp } = require('./util/getSetup')
-  , { CacheClient }  = require('./CacheClient')
+  , { getSetup } = require('./util/getSetup')
+  , { IOOperations } = require('./util/IOOperations')
+  , { CacheClient }  = require('./util/CacheClient')
+  , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   ;
-
-var ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep);
 
 
 /**
@@ -26,7 +26,12 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     this._log = logging;
     this._portNum = portNum;
 
-
+    // familytests_id => data
+    this._collectionFamilyDocs = new Map();
+    // collectionId => data
+    this._collectionSubscriptions = new Map();
+    // socket.id => data
+    this._collectionConsumers = new Map();
 
     this._app = express();
     this._server = http.createServer(this._app);
@@ -37,42 +42,43 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
 
 
     this._dbSetup = dbSetup;
-    this._r = null;
-    this._amqp = null;
-    this._dndQueueName = 'fontbakery-worker-distributor';
+
+    this._io = new IOOperations(logging, dbSetup, amqpSetup);
+
     this._collectionQueueName = 'init_collecton_test_queue';
 
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
-                 initDB(this._log,dbSetup)
-               , initAmqp(this._log, amqpSetup)
+                 this._io.init()
+               , this._cache.waitForReady()
                ])
-    .then(function(resources){
-        this._r = resources[0];
-        this._amqp = resources[1];
-    }.bind(this))
+    //.then(function(resources) {
+    //    // [r, amqp] = resources[0] ;
+    //}.bind(this))
     .then(this._listen.bind(this))
     .catch(function(err) {
         this._log.error('Can\'t initialize server.', err);
         process.exit(1);
     }.bind(this));
 
-    this._app.get('/', this.fbIndex.bind(this));
+    var serveStandardClient = this.fbIndex.bind(this);
+    this._app.get('/', serveStandardClient);
+    // this._app.get('/collections', serveStandardClient); // currently index "mode"
+    // probably dashboard is later index, or a more general landing page
+    this._app.get('/drag-and-drop', serveStandardClient);
+
     this._app.use('/browser', express.static('browser'));
-    this._app.get('/report/:docid', this.fbFamilyReport.bind(this));
+    this._app.get('/report/:id', this.fbFamilyReport.bind(this));
 
     this._app.use('/runchecks', bodyParser.raw(
                     {type: 'application/octet-stream', limit: '15mb'}));
     this._app.post('/runchecks', this.fbDNDReceive.bind(this));
 
-    this._app.get('/collection', this.fbIndex.bind(this));
-    // JSON array of collection-test links
-    this._app.get('/collection-reports', this.fbCollectionGetReports.bind(this));
+    // AJAX returns JSON array of collection-test links
+    this._app.get('/collection-reports', this.fbCollectionsGetLinks.bind(this));
+
     // report document
-    this._app.get('/collection-report/:docid', this.fbCollectionReport.bind(this));
-    // start a testrun
-    this._app.use('/runcollectionchecks', bodyParser.json());// understands Content-Type: application/json
-    this._app.post('/runcollectionchecks', this.fbCollectionCreateTest.bind(this));
+    this._app.get('/collection-report/:id', this.fbCollectionReport.bind(this));
 
     this._sio.on('connection', this.fbSocketConnect.bind(this));
 }
@@ -95,8 +101,8 @@ _p._listen = function() {
  *        init socketio connection for docid (with answer from post)
  */
 _p.fbIndex = function(req, res) {
-    return res.sendFile('browser/html/drag-and-drop-client.html',
-                                                    { root: ROOT_PATH});
+    return res.sendFile('browser/html/client.html',
+                                                    {root: ROOT_PATH});
 };
 
 /**
@@ -104,93 +110,42 @@ _p.fbIndex = function(req, res) {
  *
  * return a JSON array of collection-test links: {id:, created:, href: }}
  */
-_p.fbCollectionGetReports = function(req, res) {
+_p.fbCollectionsGetLinks = function(req, res) {
     // query the db
     // for collection-test-docs
-    this._query(this._dbSetup.tables.collection).pluck('id', 'created')
+    this._io.query(this._dbSetup.tables.collection)
+        .group('collection_id')
+        .max('date')
+        .ungroup()
+        .merge(row => {
+            return {
+                date: row('reduction')('date')
+              , collection_id: row('reduction')('collection_id')
+            };
+        })
+        .without('group', 'reduction')
         .run()
         .then(function answer(items) {
             res.setHeader('Content-Type', 'application/json');
-            items.forEach(function (item){
-                        item.href = 'collection-report/' + item.id;});
+            items.forEach(function (item) {
+                        item.href = 'collection-report/' + encodeURIComponent(item.collection_id);});
             res.send(JSON.stringify(items));
         });
 };
 
-
-/**
- * POST AJAX, the secret
- *
- * FIXME: *Unencrypted!* for now, we'll need SSL, and proper authentication/authorization
- *
- * SERVER
- *   : create a collection-test document => docid
- *   : dispatch job to the job-creating worker
- *   : return docid and the new URL.
- */
-_p.fbCollectionCreateTest = function(req, res, next) {
-    this._log.info('fbCollectionCreateTest');
-    var doc = {created: new Date()}
-      , secret = req.body.secret // parsed JSON
-      ;
-
-    res.setHeader('Content-Type', 'application/json');
-
-    // FIXME: this is BAD security! See googlefonts/fontbakery-dashboard#46
-    if(!('COLLECTION_AUTH_SECRET' in process.env))
-        throw new Error ('COLLECTION_AUTH_SECRET is not set');
-    if(secret !== process.env.COLLECTION_AUTH_SECRET) {
-        this._log.debug('Wrong secret.');
-        return res.status(403).send(JSON.stringify(null));
-    }
-
-    function success(docid) {
-        //jshint validthis:true
-        this._log.debug('Sending  rollection-receive response:', docid);
-        res.send(JSON.stringify({docid: docid, url: 'collection-report/' + docid}));
-    }
-
-    function dispatchCollectionJob(dbResponse) {
-        //jshint validthis:true
-        this._log.debug('_onCollectionTestDocCreated','dbResponse', dbResponse);
-        var docid = dbResponse.generated_keys[0];
-
-        return this._dispatchCollectionJob.bind(this, docid);
-    }
-
-    this._dbInsertDoc(this._dbSetup.tables.collection, doc, next
-            , dispatchCollectionJob.bind(this)
-            , success.bind(this)
-    );
-};
-
-_p._dbInsertDoc = function(dbTable, doc, next, onCreated, success) {
-    this._query(dbTable).insert(doc)
-            .run()
-            .then(onCreated)
-            .then(success)
-            .error(function(err) {
-                this._log.error('Creating a doc failed ', err);
-                next(err);
-            }.bind(this));
-};
-
-_p._query = function(dbTable) {
-    return this._r.table(dbTable);
-};
-
-_p._fbCheckDocId = function(dbTable, req, res, next) {
-    var docid = req.param('docid');
-    this._log.debug('_fbCheckDocId:', docid);
-    return this._query(dbTable).getAll(docid).count()
+_p._fbCheckIndexExists = function(dbTable, indexName, req, res, next) {
+    var id = decodeURIComponent(req.param('id'));
+    this._log.debug('_fbCheckIndexExists:', id);
+    return this._io.query(dbTable).getAll(id, {index: indexName}).count()
         .then(function(found) {
             if(found)
                 // This is the same client as the index page,
-                // after the docid was returned
+                // after the id was returned
                 return this.fbIndex(req, res, next);
             // answer 404: NotFound
             return res.status(404).send('Not found');
-        }.bind(this))
+        }
+        .bind(this))
         .catch(next);
 };
 
@@ -205,7 +160,7 @@ _p._fbCheckDocId = function(dbTable, req, res, next) {
  *   : same as fbIndex on success
  */
 _p.fbFamilyReport = function(req, res, next) {
-    return this._fbCheckDocId(this._dbSetup.tables.family, req, res, next);
+    return this._fbCheckIndexExists(this._dbSetup.tables.family, 'id', req, res, next);
 };
 
 /**
@@ -220,52 +175,42 @@ _p.fbFamilyReport = function(req, res, next) {
  *   : same as fbIndex on success
  */
 _p.fbCollectionReport = function(req, res, next) {
-    return this._fbCheckDocId(this._dbSetup.tables.collection, req, res, next);
+    return this._fbCheckIndexExists(this._dbSetup.tables.collection, 'collection_id', req, res, next);
 };
 
-_p._dispatchCollectionJob = function  (docid) {
-     var message = JSON.stringify({docid: docid})
-        // expecting doc id to be only ASCII chars, because serializing
-        // higher unicode is not that straight forward.
-       , messageArray = Uint8Array.from(message,
-                            function(chr){ return chr.charCodeAt(0);})
-       , messageBuffer = new Buffer(messageArray.buffer)
-       ;
-    this._log.debug('_dispatchCollectionJob:', docid);
-    return this._sendAMQPMessage(this._collectionQueueName, messageBuffer);
-};
-
-_p._dispatchFamilyJob = function  (docid, filesMessage) {
-    this._log.debug('_dispatchFamilyJob:', docid);
-    function getMessageBuffer(cacheKey) {
-        var job = new messages_pb.FamilyJob();
-        job.setDocid(docid);
-        job.setCacheKey(cacheKey);
-        return new Buffer(job.serializeBinary());
-    }
-
-    return this._cache.put([filesMessage])
-             // only the first item is interesting/present
-            .then(Array.prototype.shift.call.bind(Array.prototype.shift))
-            .then(getMessageBuffer)
-            .then(this._sendAMQPMessage.bind(this, this._dndQueueName))
-            ;
-};
-
-_p._sendAMQPMessage = function (queueName, message) {
-    var options = {
-            // TODO: do we need persistent here/always?
-            persistent: true // same as deliveryMode: true or deliveryMode: 2
+_p._getFilesMessage = function(buffer) {
+    var filesMessage = messages_pb.Files.deserializeBinary(
+                                                new Uint8Array(buffer))
+        // reconstruct the filesMessage to have all files sorted by name
+        // and to discard duplicates (which is possible with this message
+        // format
+      , newMessage = new messages_pb.Files()
+      , i, l, file, seen = new Set()
+      , files = filesMessage.getFilesList()
+      , newFilesList = []
+      ;
+    for(i=0,l=files.length;i<l;i++) {
+        file = files[i];
+        if(seen.has(file.getName())) {
+            // either our client is broken OR another bogus client sends
+            // messages. The second case could also be a malicious pen
+            // test style request. Hence, a warning that we shouldn't see
+            // if everything is fine.
+            this._log.warning('Incoming filesMessage had a duplicate entry "'
+                                + file.getName() +'"');
+            continue;
         }
-        ;
-    function sendMessage() {
-        // jshint validthis:true
-        this._log.info('sendToQueue: ', queueName);
-        return this.amqp.channel.sendToQueue(queueName, message, options);
+        newFilesList.push(file);
     }
-    return this.amqp.channel.assertQueue(queueName, {durable: true})
-           .then(sendMessage.bind(this))
-           ;
+    newFilesList.sort((fileA, fileB)=> {
+        var a=fileA.getName()
+          , b=fileB.getName()
+          ;
+        if(a === b) return 0;
+        return a > b ? 1 : -1;
+    });
+    newMessage.setFilesList(newFilesList);
+    return newMessage;
 };
 
 /**
@@ -282,27 +227,46 @@ _p._sendAMQPMessage = function (queueName, message) {
  */
 _p.fbDNDReceive = function(req, res, next) {
 
-    var doc = {created: new Date()};
-    function success(docid) {
+    function dispatchJob(cacheKey, docid) {
+        //jshint validthis:true
+        return this._io.dispatchFamilyJob(cacheKey, docid)
+            .then(() => {
+                this._log.debug('did dispatchFamilyJob, returning ', docid);
+                return docid;
+            });
+    }
+
+    function onSuccess(docid) {
         //jshint validthis:true
         this._log.debug('Sending DND receive response:', docid);
         res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify({docid: docid, url: 'report/' + docid}));
+        res.send(JSON.stringify({docid: docid, url: 'report/' + encodeURIComponent(docid)}));
     }
 
-    function dispatchJob(req, dbResponse) {
-        //jshint validthis:true
-        this._log.debug('dispatchJob','dbResponse', dbResponse);
-        var docid = dbResponse.generated_keys[0]
-          , filesMessage = messages_pb.Files.deserializeBinary(
-                                        new Uint8Array(req.body.buffer));
-        return this._dispatchFamilyJob.bind(this, docid, filesMessage);
+    function makeDoc(cacheKey) {
+        // jshint validthis:true
+        return this._io.getDocId(cacheKey.getHash())// cacheKey => [created, docid]
+            .then(created_docid => { // [created, docid] => docid
+                var [created, docid] = created_docid;
+                if(created)
+                    return dispatchJob.call(this, cacheKey, docid); // cacheKey, docid => docid
+                // no need to dispatch, does already exist!
+                // but cache needs cleaning!
+                return this._cache.purge(cacheKey).then(()=> docid); // => docid
+            })
+            .then(onSuccess.bind(this)) // onSuccess: docid => nothing
+            .error(next)
+            ;
     }
 
-    this._dbInsertDoc(this._dbSetup.tables.family, doc, next
-            , dispatchJob.bind(this, req)
-            , success.bind(this)
-            );
+    var filesMessage = this._getFilesMessage(req.body.buffer);
+    // get the cache key and create the doc:
+    return this._cache.put([filesMessage]) // => [cacheKey]
+        // only the first item is interesting/present because we only
+        // put one message into: `[filesMessage]`
+        .then(cacheKeys=>cacheKeys[0])// [cacheKey] => cacheKey
+        .then(makeDoc.bind(this))
+        ;
 };
 
 
@@ -327,23 +291,28 @@ _p.fbDNDReceive = function(req, res, next) {
  */
 _p.fbSocketConnect = function(socket) {
     // wait for docid request ...
-
     function onSubscribe(type, data) {
         //jshint validthis: true
-        this._log.info('fbSocketConnect subscription requested'
-                                                +' for', type, data);
-        // simple sanitation, all strings are valid requests so far
-        if(typeof data.docid !== 'string')
+        this._log.info('fbSocketConnect socket', socket.id ,'subscription '
+                                            + 'requested for', type, data);
+
+        if(typeof data.id !== 'string')
             // this is actually required
             data.docid = '';
         if(type === 'report')
-            this._subscribeToReportDoc(socket, data);
-        else if(type === 'collection')
-            this._subscribeToCollectionReportsDoc(socket, data);
+            this._subscribeToFamilytestReport(socket, data);
+        else if(type === 'collection') {
+            this._subscribeToCollectionReport(socket, data);
+            // do this only once on connect.
+            socket.on('disconnecting', (reason) => {
+                // jshint unused:vars
+                this._log.debug('socket', socket.id ,'disconnecting');
+                this._unsubscribeFromCollections(socket.id);
+            });
+        }
     }
-
-    socket.on('subscribe-report', onSubscribe.bind(this, 'report'));
-    socket.on('subscribe-collection', onSubscribe.bind(this, 'collection'));
+    socket.on('subscribe-report', data => onSubscribe.call(this, 'report', data));
+    socket.on('subscribe-collection', data => onSubscribe.call(this, 'collection', data));
 };
 
 /**
@@ -360,16 +329,17 @@ _p.fbSocketConnect = function(socket) {
  *      close socket
  *      close changefeed
  */
-_p._fbRethinkChangeFeed = function(cursor, socket, channel, err, data) {
-    if (err) {
-        // TODO: Handle error
-        this._log.error('Fail receivng change feed data.', err);
-        return;
-    }
+_p._updateFamilytestReport = function(cursor, socket, data) {
+    var channel = 'changes';
     socket.emit(channel, data);
-    if(data.newVal && data.newVal.isFinished) {
-        // don't use close=true if only the namespace needs closing
-        cursor.close(this._log.error.bind(this._log));
+    // This is a simple familytest subscription, we don't organize these
+    // to talk to multiple sockets yet. Even if we did, the reason for
+    // closing here is sufficient (but then not the means).
+    if(data.new_val && data.new_val.finished) {
+         // don't use close=true if only the namespace needs closing
+         // but currentltly the client is only subscribed to one of
+         // this kind at a time.
+        this._closeCursor(cursor);
         var close=true;
         socket.disconnect(close);
     }
@@ -378,49 +348,395 @@ _p._fbRethinkChangeFeed = function(cursor, socket, channel, err, data) {
 /**
  * data.docid is the rethink db document UUID.
  */
-_p._subscribeToReportDoc = function(socket, data) {
-    var query = this._query(this._dbSetup.tables.family).get(data.docid);
-    this._subscribeToQuery(socket, query);
+_p._subscribeToFamilytestReport = function(socket, data) {
+    return this._io.query(this._dbSetup.tables.family)
+        .get(data.id)
+        .changes({includeInitial: true, squash: 1})
+        .run((err, cursor) => {
+            if(err)
+                this._reportUnhandledError('Can\'t acquire change feed.', err);
+            cursor.each((err, data) => {
+                if(err)
+                    this._reportUnhandledError('Change feed cursor error:', err);
+                this._updateFamilytestReport(cursor, socket, data);
+            });
+        }, {cursor: true});
 };
 
-_p._subscribeToCollectionReportsDoc = function(socket, data) {
-    // This would have been nice but it is not currently possible!
-    // var query = this._query(this._dbSetup.tables.collection).get(data.docid).merge({
-    //     reports: this._query(this._dbSetup.tables.family)
-    //         .getAll(this._r.row('id'), {index: this._dbSetup.tables.collection + '_id'})
-    //         .pluck('id', 'created', 'family', 'results').coerceTo('array')
-    // });
-    // Let's for now only get the reports data:
-    // This works, but changes are per document, we'll have to manually
-    // apply them at the right positions, in the client. Will work though.
-    var query = this._query(this._dbSetup.tables.collection).get(data.docid);
-    this._subscribeToQuery(socket, query);
+_p._makeCollectionSubscription = function(collectionId) {
+    var collectionSubscription = this._collectionSubscriptions.get(collectionId);
+    if(!collectionSubscription) {
+        collectionSubscription = {
+            consumers: new Set() // [socket.id, ...]
+          , documents: new Map() // key (family_name?) : {new_val: data}
+          , collectionCursor: null
+        };
+        // It's important to set this synchronous now
+        this._collectionSubscriptions.set(collectionId, collectionSubscription);
+        // This returns a promise, but we don't have a use for
+        // it here. Sending the initial data will not fail if there's
+        // nothing yet to send!
+        this._initCollectionSubscriptions(collectionId);
+    }
+    return collectionSubscription;
+};
 
-    query = this._query(this._dbSetup.tables.family)
-        .getAll(data.docid, {index: this._dbSetup.tables.collection + '_id'})
-        .map(function (doc) {
-            return doc.merge({total: doc('tests').count()});
+_p._updateCollectionFamilyDoc = function(familytests_id, data) {
+    var doc = this._collectionFamilyDocs.get(familytests_id);
+    doc.data = data;
+    for(let [collectionId, family_names] of doc.subscriptions) {
+        for(let family_name of family_names) {
+            this._mergeFamilyDocIntoCollectionDoc(collectionId, family_name, doc.data);
+            // and update the clients
+            this._sendCollectionDocChange(collectionId, family_name);
+        }
+    }
+};
+
+_p._unsubscribeFromCollectionFamilyDoc = function(familytests_id, collectionId, family_name) {
+    var doc = this._collectionFamilyDocs.get(familytests_id)
+     , family_names = doc.subscriptions.get(collectionId)
+     ;
+
+    family_names.delete(family_name);
+    if(!family_names.size || !this._collectionSubscriptions.has(collectionId))
+        doc.subscriptions.delete(collectionId);
+    if(!doc.subscriptions.size) {
+        if(doc.cursor)
+            this._closeCursor(doc.cursor);
+        this._collectionFamilyDocs.delete(familytests_id);
+    }
+};
+
+// this subscribes to merge the changed results into the
+// collectionId.documents.get(family_name)
+// also, close the cursor if familytests_id.finished is set!
+_p._subscribeToCollectionFamilyDoc = function(familytests_id, collectionId
+                                                        , family_name) {
+    var doc = this._collectionFamilyDocs.get(familytests_id);
+    if(!doc) {
+        doc = {
+            cursor: null
+          , subscriptions: new Map() // collectionId: Set([family_name, ...])
+          , data: null
+        };
+        this._collectionFamilyDocs.set(familytests_id, doc);
+
+        this._io.query(this._dbSetup.tables.family)
+            // getAll and pluck are possible if we use getAll here instead of get
+            .getAll(familytests_id)
+            // if total is falsy we don't use it and print "N/A" in the client
+            .merge(doc => {return { total: doc('tests').count().default(null)};})
+            // more? maybe exception
+            .pluck("results", "finished", "created", "started", "total")
+            .changes({includeInitial: true, squash: 2 /* updates in 2 seconds intervals */})
+            .run((err, cursor) => {
+                if(err)
+                    this._reportUnhandledError('Can\'t acquire change feed.', err);
+                // i'd rather prefer to have just cursor for the complete
+                // table, but I don't want to download the vast
+                // includeInitial data of this table and then keep it in
+                // memory forever. We could maybe fetch initial data on
+                // request, and at the same time start to record the
+                // change notifications for these docks, until no longer
+                // needed. But, it can still be complicated in a race between
+                // these versions to determine which is the more current
+                // one.
+                doc.cursor = cursor;
+                cursor.each((err, data) => {
+                    if(err)
+                        this._reportUnhandledError('Change feed cursor error:', err);
+                    // this._log.debug('familytests_id', familytests_id, 'change:', data );
+                    this._updateCollectionFamilyDoc(familytests_id, data);
+                    if(data.new_val && data.new_val.finished && doc.cursor) {
+                        this._closeCursor(doc.cursor);
+                        doc.cursor = null;
+                    }
+                });
+
+            }, {cursor: true});
+    }
+
+    // change will be triggered by the caller of this function
+    if(doc.data !== null)
+        this._mergeFamilyDocIntoCollectionDoc(collectionId, family_name
+                                                            , doc.data);
+
+    if(!doc.subscriptions.has(collectionId))
+        doc.subscriptions.set(collectionId, new Set());
+    doc.subscriptions.get(collectionId).add(family_name);
+};
+
+// This triggers no change notifications itself, but it implies that
+// change notifications are needed!
+_p._mergeFamilyDocIntoCollectionDoc = function(collectionId, family_name
+                                                                , data) {
+     var collectionSubscription = this._collectionSubscriptions.get(collectionId)
+       , doc = collectionSubscription.documents.get(family_name)
+       ;
+    if(!doc.new_val)
+        doc.new_val = {};
+
+    for(let k in data.new_val) {
+        if(k === 'id') continue; // don't override the CollectionDoc.id
+        doc.new_val[k] = data.new_val[k];
+    }
+};
+
+_p._updateCollectionDoc = function(collectionId, data_new_val) {
+    // data is a collectiontests row
+    // this collection *MAY* have documents already
+    var collectionSubscription = this._collectionSubscriptions.get(collectionId)
+      , family_name = data_new_val.family_name
+      , familytests_id = data_new_val.familytests_id
+      , doc, changed = false
+      , old_familytests_id
+      ;
+    doc = collectionSubscription.documents.get(family_name);
+    if(!doc) {
+        // this is initial, an insert
+        changed = true;
+        collectionSubscription.documents.set(family_name, {
+            new_val: data_new_val
+        });
+    }
+    else if(doc.new_val.familytests_id !== familytests_id
+                && doc.new_val.date < data_new_val.date) {
+        // is an update
+        // new data has another familytests_id and an older date!
+        // the collection doc is never changed itself ATM, so just
+        // checking for doc.new_val.id !=data_new_val.id should also
+        // suffice, heh? the date check is to make a good guess in race
+        // conditions
+        changed = true;
+        old_familytests_id = doc.new_val.familytests_id;
+        doc.new_val = data_new_val;
+        this._unsubscribeFromCollectionFamilyDoc(old_familytests_id
+                                            , collectionId, family_name);
+    }
+    // when familytests_id "id" for this family changes we
+    // need to unsubscribe and resubscribe to a new id
+    if(changed) {
+        // now subscribe this to familytests_id
+        // this may also merge into the doc now
+        this._subscribeToCollectionFamilyDoc(familytests_id
+                                            , collectionId, family_name);
+        // and update the clients
+        this._sendCollectionDocChange(collectionId, family_name);
+    }
+};
+
+_p._reportUnhandledError = function(message, err) {
+    this._log.error(message, err);
+    throw err;
+};
+
+_p._subscribeCollectiontestsChanges = function(collectionId) {
+    var collectionSubscriptions = this._collectionSubscriptions.get(collectionId);
+
+    return this._io.query(this._dbSetup.tables.collection)
+        .getAll(collectionId, {index: 'collection_id'})
+        .changes({squash: 1})
+        .run((err, cursor) => {
+            if(err)
+                this._reportUnhandledError('Can\'t acquire change feed.', err);
+            collectionSubscriptions.collectionCursor = cursor;
+            cursor.each((err, data) => {
+                if(err)
+                    this._reportUnhandledError('Change feed cursor error:', err);
+                this._updateCollectionDoc(collectionId, data.new_val);
+            });
+        }, {cursor: true});
+};
+
+_p._primeCollectionSubscription = function(collectionId) {
+    return this._io.query(this._dbSetup.tables.collection)
+        .getAll(collectionId, {index: 'collection_id'})
+        .group('family_name')
+        // use this for "time travelling". Each group will skip(n)
+        // the latest n items. Which should make the time travelling
+        // change a lot (all families) per skip. Maybe not optimal
+        // when getting to the "end of time", but we'll see how it feels.
+        // .orderBy(r.desc('date')).skip(0)
+        .max('date') // only the most current entries in each group
+        .run()
+        .then(collectionRows => {
+            collectionRows.forEach((row) => {
+                this._updateCollectionDoc(collectionId, row.reduction);
+            });
         })
-        .pluck('id', 'created', 'family_dir', 'results', 'total')
         ;
-    this._subscribeToQuery(socket, query);
 };
 
-_p._subscribeToQuery = function(socket, query) {
-        query.changes({includeInitial: true, squash: 1})
-            .run(function(err, cursor) {
-            if(err) {
-                this._log.error('Can\'t acquire change feed.', err);
-                throw err;
-            }
-            cursor.each(this._fbRethinkChangeFeed.bind(this
-                                        , cursor, socket, 'changes'));
-        }.bind(this), {cursor: true});
+_p._sendCollectionDocChange = function(collectionId, family_name) {
+    var collectionSubscription = this._collectionSubscriptions.get(collectionId)
+      , doc = collectionSubscription.documents.get(family_name)
+      , channel = 'changes'
+      ;
+    collectionSubscription.consumers.forEach(socketId => {
+        let consumer = this._collectionConsumers.get(socketId);
+        consumer.socket.emit(channel, doc);
+    });
+};
+
+_p._sendInitialCollectionSubscription = function(collectionId, socketId) {
+    var collectionSubscription = this._collectionSubscriptions.get(collectionId)
+      , consumer = this._collectionConsumers.get(socketId)
+      , channel = 'changes'
+      ;
+    // if there is any data, it is ready to emit!
+    for(let [/*family_name*/, doc] of collectionSubscription.documents)
+        // jshint unused:vars
+        consumer.socket.emit(channel, {new_val: doc.new_val});
+
+};
+
+_p._initCollectionSubscriptions = function(collectionId) {
+    // First subscribe to the change feed and then prime the collection
+    // Handling either case must be graceful then if the doc already exists.
+    // Otherwise we may miss some updates!
+    return this._subscribeCollectiontestsChanges(collectionId)
+        .then(() => this._primeCollectionSubscription(collectionId))
+        ;
+};
+
+    // A) let's get a head start with a none change feed traditional query
+    //      and merge in the familytest data -> that stuff does change, so
+    //      we can't merge it as a head start and have to get a change feed
+    //      for each, then we can hand-merge and send updates
+
+    // B) fill the state for the collectionId
+
+    // C) start monitoring for changes for collectionId, but only upate
+    //    the collection state when necessary
+
+
+
+
+_p._makeCollectionConsumer = function(socket) {
+    var consumer = this._collectionConsumers.get(socket.id);
+    if(!consumer) {
+        consumer = {
+            socket: socket
+          , subscriptions: new Set()
+        };
+        this._collectionConsumers.set(socket.id, consumer);
+    }
+    return consumer;
+};
+
+/**
+ * This must to unsubscribe the socket from the collectionSubscription
+ * and if the collectionSubscription has no consumers anymore,
+ *      unsubscribe it from its collectionests change feed
+ *      and unsubscribe from all of its CollectionFamilyDoc subscriptions
+ *          if one of these has no consumers anymore
+ *              unsubscribe it from its familytests change feed
+ *              and then delete it
+ *      and then delete it
+ */
+_p._unsubscribeFromCollections = function(socketId) {
+    var consumer = this._collectionConsumers.get(socketId);
+    for(let collectionId of consumer.subscriptions)
+        this._unsubscribeFromCollection(socketId, collectionId);
+};
+
+_p._clearCollectionConsumers = function(collectionId) {
+    // assert !this._collectionSubscriptions.has(collectionId);
+    for(let [socketId, consumer] in this._collectionConsumers)
+        if(consumer.subscriptions.has(collectionId))
+            this._unsubscribeFromCollection(socketId, collectionId);
+};
+
+_p._unsubscribeFromCollection = function(socketId, collectionId) {
+    var consumer = this._collectionConsumers.get(socketId)
+      , collectionSubscription = this._collectionSubscriptions.get(collectionId)
+      ;
+    consumer.subscriptions.delete(collectionId);
+    // delete the subscriber from the collection change feed
+    collectionSubscription.consumers.delete(socketId);
+    if(!collectionSubscription.consumers.size) {
+        // if no consumers are left, close the change feeds
+        this._closeCursor(collectionSubscription.collectionCursor);
+        this._collectionSubscriptions.delete(collectionId);
+        for(let [family_name, doc] in collectionSubscription.documents)
+            this._unsubscribeFromCollectionFamilyDoc(doc.new_val.familytests_id
+                                            , collectionId, family_name);
+        // NOTE: this is important, otherwise the recursive call never ends:
+        // assert !consumer.subscriptions.has(collectionId)
+        this._clearCollectionConsumers(collectionId);
+    }
+    if(!consumer.subscriptions.size)
+        this._collectionConsumers.delete(socketId);
+};
+
+_p._closeCursor = function(cursor) {
+    if(cursor)
+        cursor.close()
+        .then(()=>this._log.debug('A cursor has been closed.'))
+        .catch(this._io.r.Error.ReqlDriverError, (err) => {
+            this._log.error('An error occurred on cursor close', err);
+        });
+};
+
+_p._subscribeToCollectionReport = function(socket, data) {
+    // TODO: clean this up and describe what happens here!
+    //       there are no super easy al-in-one change feeds ...
+    // NOTE: we can't do a changes on the query above, because of the
+    // group, but it should be possible to do a changes like this:
+    //     this._io.query(this._dbSetup.tables.collection)
+    //         .getAll(collectionId, {index: 'collection_id'})
+    //         .changes({include_initial: true})
+    // And then always react when new items are created: `item.type === "add"`
+    // we would receive the full table for the family_name and would
+    // have to do the .group('family_name').max('date') on our own :-/
+    // e.g. cancel the old changes subscription and make a new one
+    // It's important to note that in this table items are always only created,
+    // never updated or deleted
+    // This has *many* indications:
+    // a) we would have a real live-collection view. Without changes
+    //       on collectiontests we only get the latest docs on load time
+    //       which might be a bit unexpected when everything else is live
+    // b) we should probably subscribe on changes of the familytests docs
+    //    one by one, not all at once, then we can swap out the stream when
+    //    a newer doc for a particular `family_name` comes in (`item.type === "add"`)
+    // c) additionally, we may still need a way to pin a collectiontest to a
+    //    fixed version. Maybe we must add some sort of "tags" or "named_collection"
+    //    feature. That can be done with a "multiple" index AFAIK. But that
+    //    would also potentially grow over time. Since we already have a
+    //    specific collectionId index, it wouldn't be too bad, probably.
+    //    We could add to it, when the collection requests a new check
+    //    (we dismiss this now when the doc exists). Or, make it an explicit
+    //    feature (add this to a "named collection" ...), so a user can pin
+    //    a collection when time-traveling and revisit this later.
+    var collectionId = data.id
+      , consumer, collectionSubscription
+      ;
+
+    // Can be subscribed to other collections as well
+    // and most probably will be in the future, for the full dashboard!
+    consumer = this._makeCollectionConsumer(socket);
+    if(consumer.subscriptions.has(collectionId))
+        // just a small sanity test, we may eventually just return here.
+        // Could be a client bug/feature thing but right now it seems
+        // just wrong.
+        throw new Error('Assertion failed socket.id: '+socket.id+' has '
+                        + 'already subscribed to collectionId: '
+                        + collectionId);
+
+    consumer.subscriptions.add(collectionId);
+    collectionSubscription = this._makeCollectionSubscription(collectionId);
+    collectionSubscription.consumers.add(socket.id);
+    // won't send if there's nothing yet to send
+    this._sendInitialCollectionSubscription(collectionId, socket.id);
 };
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.info('Init server ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    new Server(setup.logging, 3000, setup.amqp, setup.db, setup.cache);
+    setup.logging.debug('Loglevel', setup.logging.loglevel);
+    // storing in global scope, to make it available for inspection
+    // in the debugger.
+    global.server = new Server(setup.logging, 3000, setup.amqp, setup.db, setup.cache);
 }
