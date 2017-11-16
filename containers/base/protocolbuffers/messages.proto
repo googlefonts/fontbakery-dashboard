@@ -1,6 +1,7 @@
 syntax = "proto3";
 
 import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
 import public "shared.proto";
 
 package fontbakery.dashboard;
@@ -8,16 +9,20 @@ package fontbakery.dashboard;
 message FamilyJob {
     string docid = 1;
     CacheKey cacheKey = 2;
-}
-
-message DistributedFamilyJob {
-    string docid = 1;
-    CacheKey cacheKey = 2;
-    int32 jobid = 3;
+    //
+    // START distributed job fields
+    //
+    // used to be int32, but the default of that is 0 which also can be
+    // a valid jobid. The default of string is an empty string, better to
+    // distinguish
+    string jobid = 3;
     repeated string order = 4;
+    //
+    // END distributed job fields
+    //
 }
 
-// The greeting service definition.
+// The Cache service
 service Cache {
   // Sends a greeting
   rpc Put (stream CacheItem) returns (stream CacheKey) {};
@@ -34,8 +39,9 @@ message CacheItem {
 
 message CacheKey {
     string key = 1;
-    string clientid = 2; // optional, set if CacheItem.clientid was set
-    bool force = 3; // used for purge
+    string hash = 2; // hash of the binary payload data
+    string clientid = 3; // optional, set if CacheItem.clientid was set
+    bool force = 4; // used for purge
 }
 
 message CacheStatus {
@@ -43,3 +49,58 @@ message CacheStatus {
     int32 instances = 2;
 }
 
+// The Manifest service
+
+service Manifest {
+  // FIXME: this is outdated but may have some good bits!
+  // check for updates and emit a notice if since the last poke families
+  // were updated
+  // so if there's a change, we'll download it directly and put the files
+  // ordered into a Files message. The sha256 hash is what we emit as
+  // a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
+  // PokeResponse, is basically nothing, just a OK message ... how to do this
+  // best with grpc?
+  // Maybe we could directly send this to the cache?
+  // If we need to re-run an entiren Collection, because Font Bakery changed,
+  // we still need the latest versions of the collection on disk.
+  // so, it would be nice to have some form of atomicity between asking the
+  // informing the ManifestMaster and running the tests. Therefore, we could
+  // just put the entire current state into the cache and then let the
+  // ManifestMaster decide which ones to keep and which ones to drop.
+  // The Manifest itselt can in the meantime update itself etc.
+  // I.e. We create a "Snapshot" of the manifest in the cache, then
+  // we can forget about it
+  rpc Poke (PokeRequest) returns (GenericResponse) {};
+}
+
+message PokeRequest {
+    string sourceid = 1; // '' === default/not set for all
+     // True=force update, False=update only if it looks changed for the source
+     // force is good if i.e. fontbakery was updated and all tests must re-run
+     // we could also just restart the source pods, same result but a bigger
+     // hammer for some sources (e.g. if a git repo can be kept between
+     // updates but is lost between restarts)
+    bool force = 2;
+}
+
+// use this if ther's not really an answer expected;
+// if `ok` is false, the other fields should explain why the request failed
+message GenericResponse {
+    bool ok = 1; // required default:false, must set ok explicitly
+    string code = 2; // optional, generic response code/error code if applicable
+    string error = 3; // Error name
+    string message = 4;// Error message
+}
+
+message CollectionFamilyJob {
+    string collectionid = 1; // the name that identifies the collection
+    string familyName = 2; // the name that identifies the family
+    CacheKey cacheKey = 3;
+    google.protobuf.Timestamp date = 4; // when the job was created
+    // We'll have more information about the job eventually
+    // i.e. a "Upstream" or "PullRequests" source will likely be created
+    // from different repositories. The information from what repository
+    // the family actually comes is very interesting and should be included
+    // This is a metadata dict stored as JSON
+    string metadata = 5;
+}

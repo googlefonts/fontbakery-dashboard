@@ -14,6 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 from google.protobuf import any_pb2 as google_dot_protobuf_dot_any__pb2
+from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 import shared_pb2 as shared__pb2
 
 from shared_pb2 import *
@@ -22,9 +23,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='messages.proto',
   package='fontbakery.dashboard',
   syntax='proto3',
-  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x0cshared.proto\"L\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x30\n\x08\x63\x61\x63heKey\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\"u\n\x14\x44istributedFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x30\n\x08\x63\x61\x63heKey\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12\r\n\x05jobid\x18\x03 \x01(\x05\x12\r\n\x05order\x18\x04 \x03(\t\"D\n\tCacheItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"8\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\x12\r\n\x05\x66orce\x18\x03 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\x32\xe2\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12=\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x14.google.protobuf.Any\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00P\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x0cshared.proto\"j\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x30\n\x08\x63\x61\x63heKey\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"D\n\tCacheItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"F\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\".\n\x0bPokeRequest\x12\x10\n\x08sourceid\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"K\n\x0fGenericResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0c\n\x04\x63ode\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\"\xad\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x12\n\nfamilyName\x18\x02 \x01(\t\x12\x30\n\x08\x63\x61\x63heKey\x18\x03 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t2\xe2\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12=\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x14.google.protobuf.Any\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00\x32^\n\x08Manifest\x12R\n\x04Poke\x12!.fontbakery.dashboard.PokeRequest\x1a%.fontbakery.dashboard.GenericResponse\"\x00P\x02\x62\x06proto3')
   ,
-  dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,shared__pb2.DESCRIPTOR,],
+  dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,shared__pb2.DESCRIPTOR,],
   public_dependencies=[shared__pb2.DESCRIPTOR,])
 
 
@@ -51,53 +52,15 @@ _FAMILYJOB = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=81,
-  serialized_end=157,
-)
-
-
-_DISTRIBUTEDFAMILYJOB = _descriptor.Descriptor(
-  name='DistributedFamilyJob',
-  full_name='fontbakery.dashboard.DistributedFamilyJob',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
     _descriptor.FieldDescriptor(
-      name='docid', full_name='fontbakery.dashboard.DistributedFamilyJob.docid', index=0,
-      number=1, type=9, cpp_type=9, label=1,
+      name='jobid', full_name='fontbakery.dashboard.FamilyJob.jobid', index=2,
+      number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cacheKey', full_name='fontbakery.dashboard.DistributedFamilyJob.cacheKey', index=1,
-      number=2, type=11, cpp_type=10, label=1,
-      has_default_value=False, default_value=None,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='jobid', full_name='fontbakery.dashboard.DistributedFamilyJob.jobid', index=2,
-      number=3, type=5, cpp_type=1, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='order', full_name='fontbakery.dashboard.DistributedFamilyJob.order', index=3,
+      name='order', full_name='fontbakery.dashboard.FamilyJob.order', index=3,
       number=4, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -115,8 +78,8 @@ _DISTRIBUTEDFAMILYJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=159,
-  serialized_end=276,
+  serialized_start=114,
+  serialized_end=220,
 )
 
 
@@ -153,8 +116,8 @@ _CACHEITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=278,
-  serialized_end=346,
+  serialized_start=222,
+  serialized_end=290,
 )
 
 
@@ -173,15 +136,22 @@ _CACHEKEY = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='clientid', full_name='fontbakery.dashboard.CacheKey.clientid', index=1,
+      name='hash', full_name='fontbakery.dashboard.CacheKey.hash', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='force', full_name='fontbakery.dashboard.CacheKey.force', index=2,
-      number=3, type=8, cpp_type=7, label=1,
+      name='clientid', full_name='fontbakery.dashboard.CacheKey.clientid', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='force', full_name='fontbakery.dashboard.CacheKey.force', index=3,
+      number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -198,8 +168,8 @@ _CACHEKEY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=348,
-  serialized_end=404,
+  serialized_start=292,
+  serialized_end=362,
 )
 
 
@@ -236,18 +206,170 @@ _CACHESTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=406,
-  serialized_end=451,
+  serialized_start=364,
+  serialized_end=409,
+)
+
+
+_POKEREQUEST = _descriptor.Descriptor(
+  name='PokeRequest',
+  full_name='fontbakery.dashboard.PokeRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='sourceid', full_name='fontbakery.dashboard.PokeRequest.sourceid', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='force', full_name='fontbakery.dashboard.PokeRequest.force', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=411,
+  serialized_end=457,
+)
+
+
+_GENERICRESPONSE = _descriptor.Descriptor(
+  name='GenericResponse',
+  full_name='fontbakery.dashboard.GenericResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='ok', full_name='fontbakery.dashboard.GenericResponse.ok', index=0,
+      number=1, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='code', full_name='fontbakery.dashboard.GenericResponse.code', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='error', full_name='fontbakery.dashboard.GenericResponse.error', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='message', full_name='fontbakery.dashboard.GenericResponse.message', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=459,
+  serialized_end=534,
+)
+
+
+_COLLECTIONFAMILYJOB = _descriptor.Descriptor(
+  name='CollectionFamilyJob',
+  full_name='fontbakery.dashboard.CollectionFamilyJob',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='collectionid', full_name='fontbakery.dashboard.CollectionFamilyJob.collectionid', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='familyName', full_name='fontbakery.dashboard.CollectionFamilyJob.familyName', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='cacheKey', full_name='fontbakery.dashboard.CollectionFamilyJob.cacheKey', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='date', full_name='fontbakery.dashboard.CollectionFamilyJob.date', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='metadata', full_name='fontbakery.dashboard.CollectionFamilyJob.metadata', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=537,
+  serialized_end=710,
 )
 
 _FAMILYJOB.fields_by_name['cacheKey'].message_type = _CACHEKEY
-_DISTRIBUTEDFAMILYJOB.fields_by_name['cacheKey'].message_type = _CACHEKEY
 _CACHEITEM.fields_by_name['payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_COLLECTIONFAMILYJOB.fields_by_name['cacheKey'].message_type = _CACHEKEY
+_COLLECTIONFAMILYJOB.fields_by_name['date'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 DESCRIPTOR.message_types_by_name['FamilyJob'] = _FAMILYJOB
-DESCRIPTOR.message_types_by_name['DistributedFamilyJob'] = _DISTRIBUTEDFAMILYJOB
 DESCRIPTOR.message_types_by_name['CacheItem'] = _CACHEITEM
 DESCRIPTOR.message_types_by_name['CacheKey'] = _CACHEKEY
 DESCRIPTOR.message_types_by_name['CacheStatus'] = _CACHESTATUS
+DESCRIPTOR.message_types_by_name['PokeRequest'] = _POKEREQUEST
+DESCRIPTOR.message_types_by_name['GenericResponse'] = _GENERICRESPONSE
+DESCRIPTOR.message_types_by_name['CollectionFamilyJob'] = _COLLECTIONFAMILYJOB
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 FamilyJob = _reflection.GeneratedProtocolMessageType('FamilyJob', (_message.Message,), dict(
@@ -256,13 +378,6 @@ FamilyJob = _reflection.GeneratedProtocolMessageType('FamilyJob', (_message.Mess
   # @@protoc_insertion_point(class_scope:fontbakery.dashboard.FamilyJob)
   ))
 _sym_db.RegisterMessage(FamilyJob)
-
-DistributedFamilyJob = _reflection.GeneratedProtocolMessageType('DistributedFamilyJob', (_message.Message,), dict(
-  DESCRIPTOR = _DISTRIBUTEDFAMILYJOB,
-  __module__ = 'messages_pb2'
-  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.DistributedFamilyJob)
-  ))
-_sym_db.RegisterMessage(DistributedFamilyJob)
 
 CacheItem = _reflection.GeneratedProtocolMessageType('CacheItem', (_message.Message,), dict(
   DESCRIPTOR = _CACHEITEM,
@@ -285,6 +400,27 @@ CacheStatus = _reflection.GeneratedProtocolMessageType('CacheStatus', (_message.
   ))
 _sym_db.RegisterMessage(CacheStatus)
 
+PokeRequest = _reflection.GeneratedProtocolMessageType('PokeRequest', (_message.Message,), dict(
+  DESCRIPTOR = _POKEREQUEST,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.PokeRequest)
+  ))
+_sym_db.RegisterMessage(PokeRequest)
+
+GenericResponse = _reflection.GeneratedProtocolMessageType('GenericResponse', (_message.Message,), dict(
+  DESCRIPTOR = _GENERICRESPONSE,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.GenericResponse)
+  ))
+_sym_db.RegisterMessage(GenericResponse)
+
+CollectionFamilyJob = _reflection.GeneratedProtocolMessageType('CollectionFamilyJob', (_message.Message,), dict(
+  DESCRIPTOR = _COLLECTIONFAMILYJOB,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CollectionFamilyJob)
+  ))
+_sym_db.RegisterMessage(CollectionFamilyJob)
+
 
 
 _CACHE = _descriptor.ServiceDescriptor(
@@ -293,8 +429,8 @@ _CACHE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=454,
-  serialized_end=680,
+  serialized_start=713,
+  serialized_end=939,
   methods=[
   _descriptor.MethodDescriptor(
     name='Put',
@@ -328,6 +464,30 @@ _sym_db.RegisterServiceDescriptor(_CACHE)
 
 DESCRIPTOR.services_by_name['Cache'] = _CACHE
 
+
+_MANIFEST = _descriptor.ServiceDescriptor(
+  name='Manifest',
+  full_name='fontbakery.dashboard.Manifest',
+  file=DESCRIPTOR,
+  index=1,
+  options=None,
+  serialized_start=941,
+  serialized_end=1035,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='Poke',
+    full_name='fontbakery.dashboard.Manifest.Poke',
+    index=0,
+    containing_service=None,
+    input_type=_POKEREQUEST,
+    output_type=_GENERICRESPONSE,
+    options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_MANIFEST)
+
+DESCRIPTOR.services_by_name['Manifest'] = _MANIFEST
+
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
   # Please use the generated *_pb2_grpc.py files instead.
@@ -339,7 +499,7 @@ try:
 
 
   class CacheStub(object):
-    """The greeting service definition.
+    """The Cache service
     """
 
     def __init__(self, channel):
@@ -366,7 +526,7 @@ try:
 
 
   class CacheServicer(object):
-    """The greeting service definition.
+    """The Cache service
     """
 
     def Put(self, request_iterator, context):
@@ -414,13 +574,74 @@ try:
     server.add_generic_rpc_handlers((generic_handler,))
 
 
+  class ManifestStub(object):
+    """The Manifest service
+
+    """
+
+    def __init__(self, channel):
+      """Constructor.
+
+      Args:
+        channel: A grpc.Channel.
+      """
+      self.Poke = channel.unary_unary(
+          '/fontbakery.dashboard.Manifest/Poke',
+          request_serializer=PokeRequest.SerializeToString,
+          response_deserializer=GenericResponse.FromString,
+          )
+
+
+  class ManifestServicer(object):
+    """The Manifest service
+
+    """
+
+    def Poke(self, request, context):
+      """FIXME: this is outdated but may have some good bits!
+      check for updates and emit a notice if since the last poke families
+      were updated
+      so if there's a change, we'll download it directly and put the files
+      ordered into a Files message. The sha256 hash is what we emit as
+      a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
+      PokeResponse, is basically nothing, just a OK message ... how to do this
+      best with grpc?
+      Maybe we could directly send this to the cache?
+      If we need to re-run an entiren Collection, because Font Bakery changed,
+      we still need the latest versions of the collection on disk.
+      so, it would be nice to have some form of atomicity between asking the
+      informing the ManifestMaster and running the tests. Therefore, we could
+      just put the entire current state into the cache and then let the
+      ManifestMaster decide which ones to keep and which ones to drop.
+      The Manifest itselt can in the meantime update itself etc.
+      I.e. We create a "Snapshot" of the manifest in the cache, then
+      we can forget about it
+      """
+      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+      context.set_details('Method not implemented!')
+      raise NotImplementedError('Method not implemented!')
+
+
+  def add_ManifestServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+        'Poke': grpc.unary_unary_rpc_method_handler(
+            servicer.Poke,
+            request_deserializer=PokeRequest.FromString,
+            response_serializer=GenericResponse.SerializeToString,
+        ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+        'fontbakery.dashboard.Manifest', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
   class BetaCacheServicer(object):
     """The Beta API is deprecated for 0.15.0 and later.
 
     It is recommended to use the GA API (classes and functions in this
     file not marked beta) for all further purposes. This class was generated
     only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The greeting service definition.
+    """The Cache service
     """
     def Put(self, request_iterator, context):
       """Sends a greeting
@@ -442,7 +663,7 @@ try:
     It is recommended to use the GA API (classes and functions in this
     file not marked beta) for all further purposes. This class was generated
     only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The greeting service definition.
+    """The Cache service
     """
     def Put(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
       """Sends a greeting
@@ -508,6 +729,109 @@ try:
     }
     stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
     return beta_implementations.dynamic_stub(channel, 'fontbakery.dashboard.Cache', cardinalities, options=stub_options)
+
+
+  class BetaManifestServicer(object):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This class was generated
+    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
+    """The Manifest service
+
+    """
+    def Poke(self, request, context):
+      """FIXME: this is outdated but may have some good bits!
+      check for updates and emit a notice if since the last poke families
+      were updated
+      so if there's a change, we'll download it directly and put the files
+      ordered into a Files message. The sha256 hash is what we emit as
+      a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
+      PokeResponse, is basically nothing, just a OK message ... how to do this
+      best with grpc?
+      Maybe we could directly send this to the cache?
+      If we need to re-run an entiren Collection, because Font Bakery changed,
+      we still need the latest versions of the collection on disk.
+      so, it would be nice to have some form of atomicity between asking the
+      informing the ManifestMaster and running the tests. Therefore, we could
+      just put the entire current state into the cache and then let the
+      ManifestMaster decide which ones to keep and which ones to drop.
+      The Manifest itselt can in the meantime update itself etc.
+      I.e. We create a "Snapshot" of the manifest in the cache, then
+      we can forget about it
+      """
+      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+
+
+  class BetaManifestStub(object):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This class was generated
+    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
+    """The Manifest service
+
+    """
+    def Poke(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+      """FIXME: this is outdated but may have some good bits!
+      check for updates and emit a notice if since the last poke families
+      were updated
+      so if there's a change, we'll download it directly and put the files
+      ordered into a Files message. The sha256 hash is what we emit as
+      a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
+      PokeResponse, is basically nothing, just a OK message ... how to do this
+      best with grpc?
+      Maybe we could directly send this to the cache?
+      If we need to re-run an entiren Collection, because Font Bakery changed,
+      we still need the latest versions of the collection on disk.
+      so, it would be nice to have some form of atomicity between asking the
+      informing the ManifestMaster and running the tests. Therefore, we could
+      just put the entire current state into the cache and then let the
+      ManifestMaster decide which ones to keep and which ones to drop.
+      The Manifest itselt can in the meantime update itself etc.
+      I.e. We create a "Snapshot" of the manifest in the cache, then
+      we can forget about it
+      """
+      raise NotImplementedError()
+    Poke.future = None
+
+
+  def beta_create_Manifest_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This function was
+    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
+    request_deserializers = {
+      ('fontbakery.dashboard.Manifest', 'Poke'): PokeRequest.FromString,
+    }
+    response_serializers = {
+      ('fontbakery.dashboard.Manifest', 'Poke'): GenericResponse.SerializeToString,
+    }
+    method_implementations = {
+      ('fontbakery.dashboard.Manifest', 'Poke'): face_utilities.unary_unary_inline(servicer.Poke),
+    }
+    server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
+    return beta_implementations.server(method_implementations, options=server_options)
+
+
+  def beta_create_Manifest_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This function was
+    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
+    request_serializers = {
+      ('fontbakery.dashboard.Manifest', 'Poke'): PokeRequest.SerializeToString,
+    }
+    response_deserializers = {
+      ('fontbakery.dashboard.Manifest', 'Poke'): GenericResponse.FromString,
+    }
+    cardinalities = {
+      'Poke': cardinality.Cardinality.UNARY_UNARY,
+    }
+    stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
+    return beta_implementations.dynamic_stub(channel, 'fontbakery.dashboard.Manifest', cardinalities, options=stub_options)
 except ImportError:
   pass
 # @@protoc_insertion_point(module_scope)
