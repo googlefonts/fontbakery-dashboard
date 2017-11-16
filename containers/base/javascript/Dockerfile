@@ -4,6 +4,8 @@ RUN npm install -g bower browserify requirejs;
 
 
 ADD ./.bowerrc ./bower.json ./package.json /var/javascript/
+
+RUN touch /tmp/cache_spoof_0
 ADD ./generated_modules/protocolbuffers /var/javascript/node_modules/protocolbuffers
 
 # will also invoke bower install etc.
@@ -18,4 +20,5 @@ RUN mkdir -p /var/javascript/browser/js/bower_components/ansi_up/ \
 
 # This way we only need to rebuild the last intermediate container when
 # code changed, especially the npm install can be skipped!
-ADD . /var/javascript
+ADD ./browser /var/javascript/browser
+ADD ./node /var/javascript/node
