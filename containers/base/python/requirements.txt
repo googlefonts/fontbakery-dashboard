@@ -2,5 +2,5 @@ pika
 rethinkdb
 pytz
 requests
-protobuf
+protobuf>=3.4.0
 grpcio

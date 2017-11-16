@@ -3,25 +3,17 @@ from __future__ import print_function, division, unicode_literals
 
 import pytz
 from datetime import datetime
-import traceback
-import pika
-import logging
-from protocolbuffers.messages_pb2 import FamilyJob, DistributedFamilyJob
+from protocolbuffers.messages_pb2 import FamilyJob
 
-from worker import (
-                  FontbakeryWorkerError
-                , FontbakeryPreparationError
+from worker.fontbakeryworker import (
+                  FontbakeryWorker
                 , main
-                , DBOperations
-                , tempdir
                 , logging
                 , get_fontbakery
-                , prepare_draganddrop_fontbakery
-                , prepare_collection_fontbakery
                 )
 
-class WorkerDistributor(Worker)
-  def __init__(dbTableContext, queue, cache):
+class WorkerDistributor(FontbakeryWorker):
+  def __init__(self, dbTableContext, queue, cache):
       super(WorkerDistributor, self).__init__(dbTableContext, queue, cache)
       self._save_preparation_logs = True
       self._JobType = FamilyJob
@@ -46,21 +38,24 @@ class WorkerDistributor(Worker)
     orders = [full_order[i:i+job_size]
                               for i in range(0, len(full_order), job_size)]
 
-    jobs_meta = []
+    jobs_meta = {}
     jobs = []
     for jobid, order in enumerate(orders):
       # if split up in more jobs, these are created multiple times
-      jobs_meta.append({
+      jobid = '{}'.format(jobid) # must be string
+      jobs_meta[jobid] = {
           'id': jobid
         , 'created': datetime.now(pytz.utc)
         # the indexes in full_order of the tests this job is supposed to run
         # could be helpful, to mark the not finished ones as doomed if the
         # job has an exception and terminates.
-      })
+      }
 
-      sub_job = DistributedFamilyJob()
+      sub_job = FamilyJob()
       sub_job.docid = self._job.docid
-      sub_job.cacheKey = self._job.cacheKey
+      # this is not possible
+      # sub_job.cacheKey = self._job.cacheKey
+      sub_job.cacheKey.CopyFrom(self._job.cacheKey)
       sub_job.jobid = jobid
       sub_job.order.extend(order)
       jobs.append(sub_job)

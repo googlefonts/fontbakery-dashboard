@@ -4,11 +4,12 @@ from __future__ import print_function, division, unicode_literals
 import pytz
 from datetime import datetime
 from copy import deepcopy
-from protocolbuffers.messages_pb2 import DistributedFamilyJob
+from protocolbuffers.messages_pb2 import FamilyJob
 from worker.fontbakeryworker import (
-                , main
+                  main
                 , get_fontbakery
                 , FontbakeryWorker
+                , logging
                 )
 from fontbakery.reporters import FontbakeryReporter
 from fontbakery.message import Message
@@ -82,22 +83,21 @@ class DashbordWorkerReporter(FontbakeryReporter):
 
 
 class WorkerChecker(FontbakeryWorker):
-  def __init__(dbTableContext, queue, cache):
-      super(WorkerDistributor, self).__init__(dbTableContext, queue, cache)
+  def __init__(self, dbTableContext, queue, cache):
+      super(WorkerChecker, self).__init__(dbTableContext, queue, cache)
       self._with_tempdir = True
-      self._JobType = DistributedFamilyJob
+      self._JobType = FamilyJob
 
   def _work(self, fonts):
     self._dbOps.update({'started': datetime.now(pytz.utc)})
     runner, spec = get_fontbakery(fonts)
-    order = spec.deserialize_order(job.order)
-    reporter = DashbordWorkerReporter(self._dbOps, job.jobid,
+    order = spec.deserialize_order(self._job.order)
+    reporter = DashbordWorkerReporter(self._dbOps, self._job.jobid,
                                         specification=spec, runner=runner)
     reporter.run(order)
     self._dbOps.update({'finished': datetime.now(pytz.utc)})
 
-
-  def _finalize():
+  def _finalize(self):
     """
     FIXME: when all jobs are finished, we need a worker that
     is cleaning up ... that could be part of the dispatch-worker/manifest-master
@@ -110,7 +110,7 @@ class WorkerChecker(FontbakeryWorker):
     THUS: this would dispatch a queue message, that it has finished this
           job when _run ran to the end (when it fails the job won't be
           acked and will re-run)
-    The dispatch worker would A) mark the whole test document as `isFinished`
+    The dispatch worker would A) mark the whole test document as `finished`
     and, if part of a collection test, dispatch another queue message for
     the manifest master (sociopath) to clean up and mark as finished the
     test document.
@@ -137,7 +137,7 @@ class WorkerChecker(FontbakeryWorker):
 
       Eventually all checker workers have a `finished` field.
       Then (all not in a particular order)
-          * the family test can write it's finished field and isFinished=True
+          * the family test can write it's `finished` field
           * if it has a collectionTest, dispatch a finishedMessage for that
           * purge the cache
       Then ack the queue message
@@ -157,11 +157,13 @@ class WorkerChecker(FontbakeryWorker):
       NOTE Cron Job Limitations: "... Therefore, jobs should be idempotent."
     """
 
-    # For the time being just send a DistributedFamilyJob just like the
+    # For the time being just send a FamilyJob just like the
     # one that is self._job, but leave out the job.order, because that is
     # not interesting anymore.
     message = deepcopy(self._job)
-    message.ClearField('order')
+    # In py 2.7 got an TypeError: field name must be a string
+    # if using u'order', which is the default, we import unicode_literals
+    message.ClearField(b'order')
     #logging.debug('dispatching job %s of docid %s', job.jobid, job.docid)
     self._queue_out(message)
 

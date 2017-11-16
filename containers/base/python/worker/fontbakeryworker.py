@@ -9,6 +9,9 @@ import shutil
 import pika
 import rethinkdb as r
 import logging
+import traceback
+import pytz
+from datetime import datetime
 from collections import namedtuple
 
 from worker.cacheclient import CacheClient
@@ -26,7 +29,7 @@ def get_fontbakery(fonts):
   spec = runner.specification
   return runner, spec
 
-def validate_filename(seen, filename):
+def validate_filename(logs, seen, filename):
   maxfiles = 30
   # Basic input validation
   # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
@@ -56,7 +59,7 @@ class FontbakeryWorker(object):
     self._save_preparation_logs = False
     self._with_tempdir = False
 
-  def _prepare():
+  def _prepare(self, tmpDirectory):
     """
       Write files from the grpc.CacheServe to tmpDirectory.
 
@@ -69,8 +72,7 @@ class FontbakeryWorker(object):
     # `maxfiles` files should be small enough to not totally DOS us easily.
     # And big enough for all of our jobs, otherwise, change ;-)
     job = self._job
-    tmpDirectory = self._tmpDirectory
-    files = self._cache.get(job.cacheKey)
+    files = self._cache.get(job.cacheKey).files
     maxfiles = 25
     logs = []
     if tmpDirectory is not None:
@@ -80,7 +82,7 @@ class FontbakeryWorker(object):
     fontfiles = []
     for jobFile in files:
       filename = jobFile.name
-      if not validate_filename(seen, filename):
+      if not validate_filename(logs, seen, filename):
         continue
 
       seen.add(filename)
@@ -94,6 +96,10 @@ class FontbakeryWorker(object):
       logs.append('Added file "{}".'.format(filename))
       if path.endswith('.ttf'):
         fontfiles.append(path)
+
+    if len(fontfiles) > maxfiles:
+      raise FontbakeryPreparationError('Found {} font files, but maximu '
+                      'is limiting to {}.'.format(len(fontfiles), maxfiles))
 
     if len(fontfiles) == 0:
       raise FontbakeryPreparationError('Could not find .ttf files in job.')
@@ -125,7 +131,7 @@ class FontbakeryWorker(object):
       # A checker-worker *MUST* write the correct 'finished' field for it's docid/jobid
       # A distributor-worker can not write finished in here.
       self._work(fonts)
-      logging.info('DONE! (job type: %s)', jobtype)
+      logging.info('DONE! docid: %s', self._job.docid)
     except Exception as e:
       # FIXME: raise if the cause of the error is a resource that got lost
       #        i.e. database, cache, queue because then kubernetes can
@@ -146,7 +152,7 @@ class FontbakeryWorker(object):
       logging.exception('Document closed exceptionally. %s', e)
     self._finalize()
 
-  def _finalize():
+  def _finalize(self):
     # FIXME: if the worker-distributor fails in _run (except Exception as e:)
     # it also MUST finalize like the worker checker, but not necessarily when
     # _run succeeds. In any way, the CleanupJobs service wouldn't close
@@ -174,13 +180,13 @@ class FontbakeryWorker(object):
     logging.info('Consuming ...')
     logging.debug('consuming args: %s %s', method, properties)
     if self._with_tempdir:
-      with self._load_job(body), tempdir() as tmpDirectory:
+      with self._parse_job(body), tempdir() as tmpDirectory:
         self._run(tmpDirectory)
     else:
-      with self._load_job(body):
+      with self._parse_job(body):
         self._run()
     # this will only be acked if self._load_job was succesful
-    self._queueData.channel.basic_ack(delivery_tag=method.delivery_tag)
+    self._queue.channel.basic_ack(delivery_tag=method.delivery_tag)
     # FIXME: we really shouldn't ack the job if can't even mark it as
     # failed in the RethinkDB-doc (AND WE DON'T DO SO CURENTLY)
     # publishing the job again, with increased retry count would be good
@@ -204,7 +210,7 @@ class FontbakeryWorker(object):
     # your message will be delivered to the queue with a name equal to the routing
     # key of the message. Every queue is automatically bound to the default exchange
     # with a routing key which is the same as the queue name.
-    channel,routing_key = (self._queueData.channel, self._queueData.out_name)
+    channel, routing_key = (self._queue.channel, self._queue.out_name)
     channel.basic_publish(exchange=''
                         , routing_key=routing_key
                         , body=message.SerializeToString()
@@ -215,8 +221,7 @@ class DBOperations(object):
     self.dbTableContext = dbTableContext
 
     self._docid = job.docid
-    self._jobid = job.jobid if 'jobid' in dj.DESCRIPTOR.fields_by_name \
-                            else None
+    self._jobid = job.jobid or None
 
   @property
   def has_job(self):
@@ -226,8 +231,8 @@ class DBOperations(object):
     if self.has_job:
       # even for this, `update` is supposed to be atomic.
       _doc = {
-        'jobs': r.row['jobs'].change_at(self._jobid
-                            , r.row['jobs'].nth(self._jobid).merge(doc))}
+          'jobs': r.row['jobs'].merge({self._jobid: doc})
+        }
     else:
       _doc = doc
     with self.dbTableContext() as (q, conn):
@@ -242,6 +247,9 @@ class DBOperations(object):
       # This is mainly useful for the collection-wide test results view.
       # Maybe an on-the-fly created results object is fast enough. After all,
       # this is a classical case for an SQL database query.
+      # ALSO, if the worker is in a crashback loop and the same tests are
+      # executed multiple times, the result fields will grow bigger than
+      #  their actual number, yet we may not be finished with all tests.
       , 'results': r.row['results'].merge(lambda results: {
           test_result['result']: results[test_result['result']].default(0).add(1)
       })

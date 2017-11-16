@@ -4,10 +4,14 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y software-properties-common \
     && add-apt-repository ppa:fontforge/fontforge \
     && apt-get update \
-    && apt-get install -y python-pip curl mono-complete libicu-dev \
+    && apt-get install -y curl mono-complete libicu-dev \
                           fontforge-nox python-fontforge git build-essential \
                           libssl-dev libffi-dev python-dev libxmlsec1-dev \
                           libxml2 libxml2-dev;
+
+RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
+
+run pip install --upgrade pip
 
 # FIXME!
 # Also, fontbakery should come with all requirements in it's setup.py
@@ -41,7 +45,11 @@ RUN touch /tmp/cache_spoof_9
 # FIXME: doesn't install all dependencies!
 # RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
 
-RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /tmp/fontbakery;\
+# FIXME: upstream changes to googlefonts/fontbakery master
+RUN git clone --depth 1 -b bump_protobuf_version git://github.com/graphicore/fontbakery /tmp/fontbakery;\
     pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
+
+#RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /tmp/fontbakery;\
+#    pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
 
 ADD . /var/python/
