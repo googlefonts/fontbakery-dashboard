@@ -94,16 +94,20 @@ define([
         return node && node.nodeType && node.nodeType === 1;
     }
 
-    function replaceNode(newNode, oldNode){
-        oldNode.parentNode.replaceChild(newNode, oldNode);
+    function replaceNode(newNode, oldNode) {
+        if(oldNode.parentNode) // replace has no effect if oldNode has no place
+            oldNode.parentNode.replaceChild(newNode, oldNode);
     }
 
-    function removeNode(node){
-        node.parentNode.removeChild(node);
+    function removeNode(node) {
+        if(node.parentNode)
+            node.parentNode.removeChild(node);
     }
 
     function insertBefore(newElement, referenceElement) {
-        referenceElement.parentElement.insertBefore(newElement, referenceElement);
+        if(referenceElement.parentElement)
+            referenceElement.parentElement.insertBefore(newElement
+                                                      , referenceElement);
     }
 
     function insertAfter(newElement, referenceElement) {
@@ -148,10 +152,9 @@ define([
     }
 
     function getMarkerComment(element, marker) {
-        var frames = [[element.childNodes, 0]]
+        var frames = [[element && element.childNodes, 0]]
           , frame, nodelist, i, l, childNode
           ;
-
         main:
         while((frame = frames.pop()) !== undefined){
             nodelist = frame[0];

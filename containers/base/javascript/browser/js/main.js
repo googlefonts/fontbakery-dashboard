@@ -76,7 +76,6 @@ define([
           , target = document.getElementsByClassName('active-interface')[0]
           , activatedElement
           ;
-
         while(target.lastChild)
             target.removeChild(target.lastChild);
         activatedElement = template.cloneNode(true);
@@ -95,7 +94,6 @@ define([
         ctrl.onResponse(initReportingInterface);
     }
 
-
     function initReportingInterface(data) {
         var container = activateTemplate('reporting-interface')
           , templatesContainer = getTemplatesContainer('report-templates')
@@ -104,15 +102,15 @@ define([
           ;
 
         socket.on('changes', report.onChange.bind(report));
-        socket.emit('subscribe-report', { docid: data.docid });
+        socket.emit('subscribe-report', { id: data.id });
     }
 
-    function initCollectionInterface() {
+    function _initCollectionsInterface() {
         var container = activateTemplate('collection-landing-page')
           , ctrl = new CollectionController(container)
           ;
-        ctrl.onResponse(initCollectionReportInterface);
     }
+
     function initCollectionReportInterface(data) {
         var container = activateTemplate('collection-report-interface')
           , templatesContainer = getTemplatesContainer('collection-report-templates')
@@ -121,44 +119,55 @@ define([
           ;
 
         socket.on('changes', report.onChange.bind(report));
-        socket.emit('subscribe-collection', { docid: data.docid });
+        socket.emit('subscribe-collection', { id: data.id });
     }
 
     function getInterfaceMode() {
-
         var data = null
-          , mode = 'dnd-sending'
+          , defaultMode = 'collections'
+          , defaultData = null
+          , mode, init
           , pathparts = window.location.pathname.split('/')
           , i, l
-          , reportMarker = 'report' // yes, hard coded for now.
-          , collectionMarker = 'collection'
-          , collectionReportMarker = 'collection-report'
+          , modes = {
+                // path-marker: "mode"
+                // We use a mapping here for historical reasons.
+                // Could maybe get rid of it.
+                report:  initReportingInterface
+              , collections: _initCollectionsInterface
+              , 'collection-report': initCollectionReportInterface
+              , 'drag-and-drop': initDNDSendingInterface
+            }
           ;
+        mode = defaultMode;
+        // change mode?
         for(i=0,l=pathparts.length;i<l;i++) {
-            if(pathparts[i] === reportMarker) {
-                // if 'reporting/' in url
-                // docid is at reporting/{id}
-                mode = 'reporting';
-                data = {
-                    docid: pathparts[i+1]
-                  , url:  window.location.pathname
-                };
-                break;
-            }
-            if(pathparts[i] === collectionMarker) {
-                mode = 'collection';
-                break;
-            }
-            if(pathparts[i] === collectionReportMarker) {
-                mode = 'collection-report';
-                data = {
-                    docid: pathparts[i+1]
-                  , url:  window.location.pathname
-                };
+            if(pathparts[i] in modes) {
+                mode = pathparts[i];
                 break;
             }
         }
-        return [mode, data];
+        init = modes[mode];
+        // extra data for mode?
+        switch(mode) {
+            case('collection-report'):
+            // falls through
+            // behaves exactly like report, but `id` is for collection_id
+            case('report'):
+                // if 'reporting/' in url
+                // familytests_id is at reporting/{id}
+                data = {
+                    id: decodeURIComponent(pathparts[i+1])
+                  , url:  window.location.pathname
+                };
+                break;
+            //case('collection'):
+            //case('drag-and-drop')
+            default:
+                data = defaultData;
+            break;
+        }
+        return [data, init];
     }
 
     return function main() {
@@ -167,16 +176,11 @@ define([
         // reporting interface.
         // The sending interface will also transform into the reporting interface.
 
-        var interfaceMode = getInterfaceMode();
-        if(interfaceMode[0] === 'dnd-sending')
-            initDNDSendingInterface();
-        else if(interfaceMode[0] === 'reporting')
-            initReportingInterface(interfaceMode[1]);
-        else if(interfaceMode[0] === 'collection')
-            initCollectionInterface(interfaceMode[1]);
-        else if(interfaceMode[0] === 'collection-report')
-            initCollectionReportInterface(interfaceMode[1]);
-
+        var interfaceMode = getInterfaceMode()
+          , data = interfaceMode[0]
+          , init = interfaceMode[1]
+          ;
+        init(data);
         // Using pushstate changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushstate was not used.
         window.onpopstate = function(e) {

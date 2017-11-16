@@ -24,8 +24,11 @@ define([
     var Parent = PrimitiveValueBlock;
     function HrefDocumentBlock(supreme, container, key, spec, data) {
         this._anchor = dom.createElement('a', {}, data);
-        if(spec[''].url)
+        if(typeof spec[''].url === 'string')
             this.url = spec[''].url;
+        else if(typeof spec[''].url === 'function')
+            this.url = spec[''].url(data);
+
         dom.appendChildren(container,this._anchor);
         Parent.call(this, supreme, container, key, spec, data);
     }
@@ -336,28 +339,14 @@ define([
         this.supreme.makeResultsChildContainer = this._getChildContainer
                                                      .bind(this, 'results');
 
-        Parent.call(this, this.supreme, container, key, spec, data);
         this._unsubscribeOrder = this.supreme.pubSub.subscribe('order'
                                             , this._updateOrder.bind(this));
+        Parent.call(this, this.supreme, container, key, spec, data);
+        this._applyOrder(); // needs this.container
     }
 
     var _p = ReportDictBlock.prototype = Object.create(Parent.prototype);
     _p.constructor = ReportDictBlock;
-
-    _p._updateLabels = function() {
-        var type, order
-          , i, l, j, ll, key
-          , lastLabel = null
-          ;
-        for(i=0,l=this._orderSections.length;i<l;i++) {
-            type = this._orderSections[i];
-            order = this._orders[type];
-            for(j=0, ll=order.length;j<ll;j++) {
-                key = order[j];
-                lastLabel = this._insertLabel(lastLabel, type, key);
-            }
-        }
-    };
 
     _p._insertItem = function(lastItem, type, key) {
         var item = this._getChildContainer(type, key);
@@ -383,12 +372,18 @@ define([
     };
 
     _p._updateOrder = function(newOrder) {
-        var i, l, fullKey, dot, type, key, lastItem;
+
         if(this._order.join(',') === newOrder.join(','))
             return;
 
         this._order = newOrder;
+        this._applyOrder();
+    };
 
+    _p._applyOrder =function() {
+        var i, l, fullKey, dot, type, key, lastItem;
+        if(!this.container)
+            return;
         for(i=0,l=this._order.length;i<l;i++) {
             fullKey = this._order[i];
             dot = fullKey.indexOf('.');
@@ -418,8 +413,9 @@ define([
 
         if(key === 'total' || key === 'results')
             this._propagateTotal();
-        if(key === 'family_dir')
-            child.url = '/report/' + this.key;
+        if(key === 'familytests_id' || key === 'family_name' &&
+                (this._children.family_name && this._children.familytests_id))
+            this._children.family_name.url = '/report/' + this._children.familytests_id.data;
 
         this.supreme.pubSub.publish('changed-row', 'pre', key);
     };
@@ -440,11 +436,14 @@ define([
      * Returns a DOM-Element, that is not yet in the document
      */
     _p._makeChildContainer = function(key) {
+        var elem;
         if(key === 'results')
             return;
         if(this._spec[''].containerless.has(key))
             return;
-        return this._getChildContainer('pre', key);
+        elem = this._getChildContainer('pre', key);
+        dom.clear(elem);
+        return elem;
     };
 
     _p._insertChildContainer = function(key, container) {
@@ -503,7 +502,7 @@ define([
     var ResultValueBlock = (function() {
     var Parent = PrimitiveValueBlock;
     function ResultValueBlock(supreme, container, key, spec, data) {
-        this._value = parseInt(this._data, 10);
+        this._value = parseInt(data, 10);
         Parent.call(this, supreme, container, key, spec, data);
 
         this._total = null;
@@ -558,7 +557,8 @@ define([
         }
 
         dom.clear(this.container);
-        dom.appendChildren(this.container, [main, ' (', other, ')'].join(''));
+                                                  // \xa0 == nbsp
+        dom.appendChildren(this.container, [main, '\xa0(', other, ')'].join(''));
     };
 
     _p.setTotal = function(total) {
@@ -585,7 +585,9 @@ define([
     function CollectionReport(container, templatesContainer, data) {
         this.container = container;
         this._docid = data.docid;
-        this._data = null;
+        this._reports = new Map();
+        this._slots = new Map();
+
         function getElementFromTemplate(klass, deep) {
             var template = getTemplateForSelector('.' + klass, deep);
             return template ? template.cloneNode(true) : null;
@@ -599,7 +601,8 @@ define([
           , datesSpec = {
                 spec: {
                     '': {
-                        dataFormater: function(data){
+                        skipKey: true
+                      , dataFormater: function(data){
                             return (new Date(data)).toLocaleString();
                         }
                     }
@@ -636,7 +639,8 @@ define([
                           //, skipData: true
                         }
                     }
-                  , containerless: new Set(['created', 'id'])
+                  , containerless: new Set(['created', 'id', 'date'
+                                        , 'metadata', 'familytests_id'])
                   , classPrefix: 'collection-report_'
                   , insertionMarkerPrefix: 'insert: '
                   , getElementFromTemplate: getElementFromTemplate
@@ -644,13 +648,18 @@ define([
                   , childTag: 'span'
                 }
               , results: resultsSpec
-              , family_dir: {
+              , family_name: {
                     Type: HrefDocumentBlock
                   , spec: {
-                        '': {}
+                        '': {
+                        }
                     }
                 }
-
+              , exception: preformatedTextSpec
+              , started: datesSpec
+              , finished: datesSpec
+              , created: datesSpec
+              , date: datesSpec
             }
           , reportsSpec = {
                 Type: ReportsDictBlock
@@ -687,10 +696,6 @@ define([
                     }
                 }
               , reports: reportsSpec
-              , exception: preformatedTextSpec
-              , created: datesSpec
-              , started: datesSpec
-              , finished: datesSpec
             }
           , rootTemplateElement = getTemplateForSelector('.report-root')
           , rootInsertionMarker = 'insert: report-root'
@@ -737,46 +742,61 @@ define([
     };
 
     _p.onChange = function (data) {
-
-        // FIXME: this all scales bad, make reports as separate
-        // roots somehow. Then, calculating  diffs will be much faster!
+        // ALL `data` represents always a family-report never a `collection-report`
+        // Eventually, ReportsDictBlock should be the root block
+        // and CollectionReportDocumentBlock should be separated, if we need
+        // to display more Collection metadata.
+        // But, *maybe*, we can also just do selective updates for the
+        // collection-report data (omitting the contents of `reports`
+        // and thus not creating any diffs for it. would be bad though
+        // if the differ decides to replace the whole doc.
 
         console.log(new Date(), 'got change data:', data);
-        var oldVal, patches;
-        if(this._data === null) {
-            // it's possible that a report comes first, this prepares the
-            // document.
-            this._data = {reports: {}};
-            patches = jiff.diff({}, this._data);
-            this.supreme.applyPatches(patches);
-        }
+        var newReport = data.new_val
+          , oldVal, newVal, patches
+          , slotKey = 'family_name'
+          , idKey = 'id'
+          , reportId = newReport[idKey]
+          , slot = newReport[slotKey]
+          , oldSlotId = this._slots.get(slot)
+          ;
 
-        // if data.oldVal is null this is the initial change.
-        oldVal = Object.assign({}, this._data);
+        oldVal = {};
+        // initially oldVal has no reports
+        if(this._reports.size !== 0)
+            oldVal.reports = {};
 
-        if(data.new_val && data.new_val.id === this._docid) {
-            // this is the collection wide document
-            this._data = data.new_val;
-            this._data.reports = oldVal.reports || {};
+        // replace and update cases should be mutually exclusive!
+        // Let's make sure they are.
+        if(oldSlotId !== reportId && this._reports.has(oldSlotId)
+                                  && this._reports.has(reportId))
+            throw new Error('Assertion failed: replace and update cases '
+                            + 'should be mutually exclusive! '
+                            + 'oldSlotId: "' + oldSlotId + '"'
+                            + 'reportId: "' + reportId + '"'
+                            );
+        // replace case
+        // oldSlotId !== newReportID
+        if(oldSlotId && oldSlotId !== reportId) {
+            oldVal.reports[oldSlotId] = this._reports.get(oldSlotId);
+            this._reports.delete(oldSlotId);
         }
-        else if(data.new_val) {
-            // this is a report
-            if(!this._data) this._data = {reports: {}};
-            oldVal.reports = Object.assign({}, this._data.reports);
-            this._data.reports[data.new_val.id] = data.new_val;
-        }
-        else if(!this._data.new_val && oldVal.id in this._data.reports) {
-            // a report was deleted
-            oldVal.reports = Object.assign({}, this._data.reports);
-            delete this._data.reports[oldVal.id];
-        }
-        else {
-            // !data.new_val && this._docid === oldVal.id
-            // kind of the minimum that we expect
-            this._data = {};
-        }
+        // standard update case
+        // slotId === newReportID
+        if(this._reports.has(reportId))
+             oldVal.reports[reportId] = this._reports.get(reportId);
 
-        patches = jiff.diff(oldVal, this._data);
+
+        // insert case
+        // !this._reports.has(newReportID) &&
+        newVal = {reports: {}};
+        newVal.reports[reportId] = newReport;
+
+        // update store everything for the next patching
+        this._reports.set(reportId, newReport);
+        this._slots.set(slot, reportId);
+
+        patches = jiff.diff(oldVal, newVal);
 
         // The api understands full JSONPAtch
         // there are generic renderers for unspecified data

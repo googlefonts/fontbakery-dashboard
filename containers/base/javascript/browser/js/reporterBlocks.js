@@ -279,7 +279,8 @@ define([
         var block = this.getChild(key);
         block.destroy();
         this._deleteChild(key);
-        dom.removeNode(block.container);
+        if(block.container)
+            dom.removeNode(block.container);
     };
 
     _p.replace = function(key, data) {
@@ -295,8 +296,7 @@ define([
           ;
         oldBlock.destroy();
         this._deleteChild(key);
-        if(oldBlock.container)
-            // some blocks don't have containers
+        if(oldBlock.container && container)// some blocks don't have containers
             dom.replaceNode(container, oldBlock.container);
         this._create(container, key, data);
     };
@@ -505,21 +505,25 @@ define([
     var GenericDictionaryBlock = (function() {
     var Parent = DictionaryBlock;
     function GenericDictionaryBlock(supreme, container, key, spec, data) {
+        // container may be null, to make this Dictionary "hidden"
         var children = [], keyMarker;
         if(!spec[''].skipKey) {
-            keyMarker = dom.getMarkerComment(container, 'insert: key');
+            if(container)
+                keyMarker = dom.getMarkerComment(container, 'insert: key');
             if(keyMarker)
                 dom.insert(keyMarker, 'after', dom.createTextNode(key));
             else
                 children.push(dom.createElement(
                             spec[''].keyTag || 'strong', {}, key, false));
         }
-        this._childrenInsertMarker = dom.getMarkerComment(container, 'insert: children');
+        if(container)
+            this._childrenInsertMarker = dom.getMarkerComment(
+                                          container, 'insert: children');
         if(!this._childrenInsertMarker) {
             this._container = dom.createElement(spec[''].conatinerTag || 'ul');
             children.push(this._container);
         }
-        if(children.length)
+        if(children.length && container)
             dom.appendChildren(container, children, false);
         Parent.call(this, supreme, container, key, spec, data);
     }
