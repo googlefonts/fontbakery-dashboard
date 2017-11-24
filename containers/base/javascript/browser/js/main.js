@@ -5,6 +5,7 @@ define([
   , 'Report'
   , 'CollectionController'
   , 'CollectionReport'
+  , 'DashboardController'
 ], function(
     dom
   , socketio
@@ -12,6 +13,7 @@ define([
   , Report
   , CollectionController
   , CollectionReport
+  , DashboardController
 ) {
     "use strict";
     /*global document, window, FileReader*/
@@ -76,8 +78,7 @@ define([
           , target = document.getElementsByClassName('active-interface')[0]
           , activatedElement
           ;
-        while(target.lastChild)
-            target.removeChild(target.lastChild);
+        dom.clear(target);
         activatedElement = template.cloneNode(true);
         target.appendChild(activatedElement);
         return activatedElement;
@@ -122,6 +123,17 @@ define([
         socket.emit('subscribe-collection', { id: data.id });
     }
 
+    function initDashboard(data) {
+        var container = activateTemplate('dashboard-interface')
+         , templatesContainer = getTemplatesContainer('dashboard-templates')
+         , socket = socketio('/')
+         , dashboard = new DashboardController(container, templatesContainer, data)
+         ;
+        socket.on('changes', dashboard.onChange.bind(dashboard));
+        console.log('subscribe-dashboard');
+        socket.emit('subscribe-dashboard', {});
+    }
+
     function getInterfaceMode() {
         var data = null
           , defaultMode = 'collections'
@@ -137,6 +149,7 @@ define([
               , collections: _initCollectionsInterface
               , 'collection-report': initCollectionReportInterface
               , 'drag-and-drop': initDNDSendingInterface
+              , 'dashboard': initDashboard
             }
           ;
         mode = defaultMode;
@@ -162,7 +175,8 @@ define([
                 };
                 break;
             //case('collection'):
-            //case('drag-and-drop')
+            //case('drag-and-drop'):
+            //case('dashboard'):
             default:
                 data = defaultData;
             break;
