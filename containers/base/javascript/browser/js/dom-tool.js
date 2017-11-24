@@ -21,9 +21,9 @@ define([
             _contents = [];
         else
             _contents = contents instanceof Array ? contents : [contents];
-        if(_contents) for(i=0,l=_contents.length;i<l;i++) {
+        for(i=0,l=_contents.length;i<l;i++) {
             child = _contents[i];
-            if(typeof child.nodeType !== 'number')
+            if(!child || typeof child.nodeType !== 'number')
                 child = createTextNode(child);
             else if(cloneChildNodes)
                 child = child.cloneNode(true);//always a deep clone
@@ -105,7 +105,7 @@ define([
     }
 
     function insertBefore(newElement, referenceElement) {
-        if(referenceElement.parentElement)
+        if(referenceElement.parentElement && newElement !== referenceElement)
             referenceElement.parentElement.insertBefore(newElement
                                                       , referenceElement);
     }
@@ -114,7 +114,8 @@ define([
         // there is no element.insertAfter() in the DOM
         if(!referenceElement.nextSibling)
             referenceElement.parentElement.appendChild(newElement);
-        insertBefore(newElement, referenceElement.nextSibling);
+        else
+            insertBefore(newElement, referenceElement.nextSibling);
     }
 
     function insert(element, position, child) {
