@@ -1,9 +1,11 @@
 define([
     'dom-tool'
+  , 'isEqual'
   , 'jsonPointer'
   , 'PubSub'
 ], function(
     dom
+  , isEqual
   , jsonPointer
   , PubSub
 ) {
@@ -924,38 +926,6 @@ define([
         this.remove(from);
         this.add(path, data);
     };
-
-    function isEqual(a, b) {
-        // this only works for objects that can come from JSON:
-        // string, number, object, array, true, false, null
-        // where `object` must be vanilla js objects no types etc.
-        var i, l, k;
-        if(a === b)
-            return true;
-        if(a instanceof Array) {
-            if(!(b instanceof Array))
-                return false;
-            if(a.length != b.length)
-                return false;
-            for(i=0,l=a.length;i<l;i++) {
-                if(!isEqual(a[i], b[i]))
-                    return false;
-            }
-            return true;
-        }
-        if(typeof a === 'object') {
-            if(typeof b !== 'object')
-                return false;
-            for(k in a) {
-                if(!(k in b))
-                    return false;
-                if(!isEqual(a[k], b[k]))
-                    return false;
-            }
-            return true;
-        }
-        return false;
-    }
 
     _p.test = function(path, value) {
         var data = this._getBlock(path).data;
