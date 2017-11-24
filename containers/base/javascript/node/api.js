@@ -32,6 +32,11 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     this._collectionSubscriptions = new Map();
     // socket.id => data
     this._collectionConsumers = new Map();
+    // familytests_id => familyDoc
+    this._familyDocs = new Map();
+    this._dashboardSubscription = null; // an object if there are consumers
+
+    this.__updateCollectionFamilyDoc = this._updateCollectionFamilyDoc.bind(this);
 
     this._app = express();
     this._server = http.createServer(this._app);
@@ -66,6 +71,7 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     // this._app.get('/collections', serveStandardClient); // currently index "mode"
     // probably dashboard is later index, or a more general landing page
     this._app.get('/drag-and-drop', serveStandardClient);
+    this._app.get('/dashboard', serveStandardClient);
 
     this._app.use('/browser', express.static('browser'));
     this._app.get('/report/:id', this.fbFamilyReport.bind(this));
@@ -306,13 +312,22 @@ _p.fbSocketConnect = function(socket) {
             // do this only once on connect.
             socket.on('disconnecting', (reason) => {
                 // jshint unused:vars
-                this._log.debug('socket', socket.id ,'disconnecting');
+                this._log.debug('socket', socket.id ,'disconnecting from collections');
                 this._unsubscribeFromCollections(socket.id);
+            });
+        }
+        else if(type === 'dashboard') {
+            this._subscribeToDashboard(socket, data);
+            socket.on('disconnecting', (reason) => {
+                // jshint unused:vars
+                this._log.debug('socket', socket.id ,'disconnecting from dashboard');
+                this._unsubscribeFromDashboard(socket.id);
             });
         }
     }
     socket.on('subscribe-report', data => onSubscribe.call(this, 'report', data));
     socket.on('subscribe-collection', data => onSubscribe.call(this, 'collection', data));
+    socket.on('subscribe-dashboard', data => onSubscribe.call(this, 'dashboard', data));
 };
 
 /**
@@ -354,10 +369,10 @@ _p._subscribeToFamilytestReport = function(socket, data) {
         .changes({includeInitial: true, squash: 1})
         .run((err, cursor) => {
             if(err)
-                this._reportUnhandledError('Can\'t acquire change feed.', err);
+                this._raiseUnhandledError('Can\'t acquire change feed.', err);
             cursor.each((err, data) => {
                 if(err)
-                    this._reportUnhandledError('Change feed cursor error:', err);
+                    this._raiseUnhandledError('Change feed cursor error:', err);
                 this._updateFamilytestReport(cursor, socket, data);
             });
         }, {cursor: true});
@@ -402,11 +417,12 @@ _p._unsubscribeFromCollectionFamilyDoc = function(familytests_id, collectionId, 
     if(!family_names.size || !this._collectionSubscriptions.has(collectionId))
         doc.subscriptions.delete(collectionId);
     if(!doc.subscriptions.size) {
-        if(doc.cursor)
-            this._closeCursor(doc.cursor);
+        doc.unsubscribe();
         this._collectionFamilyDocs.delete(familytests_id);
     }
 };
+
+
 
 // this subscribes to merge the changed results into the
 // collectionId.documents.get(family_name)
@@ -416,23 +432,78 @@ _p._subscribeToCollectionFamilyDoc = function(familytests_id, collectionId
     var doc = this._collectionFamilyDocs.get(familytests_id);
     if(!doc) {
         doc = {
-            cursor: null
+            unsubscribe: null
           , subscriptions: new Map() // collectionId: Set([family_name, ...])
-          , data: null
         };
         this._collectionFamilyDocs.set(familytests_id, doc);
+    }
+
+    if(!doc.subscriptions.has(collectionId))
+        doc.subscriptions.set(collectionId, new Set());
+    doc.subscriptions.get(collectionId).add(family_name);
+
+    if(!doc.unsubscribe) {
+        // called immediately if there is already data
+        let callback = this.__updateCollectionFamilyDoc;
+        doc.unsubscribe = this._subscribeToFamilyDoc(familytests_id
+                                            , callback, familytests_id);
+    }
+};
+
+_p._unsubscribeFromFamilyDoc = function(subscription) {
+    var familytests_id = subscription.familytests_id
+      , familyDoc = this._familyDocs.get(familytests_id)
+      ;
+    familyDoc.subscriptions.delete(subscription);
+    if(!familyDoc.subscriptions.size) {
+        if(familyDoc.cursor) {
+           this._closeCursor(familyDoc.cursor);
+           familyDoc.cursor = null;
+        }
+        this._familyDocs.delete(familytests_id);
+    }
+};
+
+function _callbackFamilyDocSubscubscriber(subscription, data) {
+    var args = subscription.args.slice();
+    args.push(data);
+    subscription.callback.apply(null, args);
+}
+
+_p._subscribeToFamilyDoc = function(familytests_id, callback/*, args ... */) {
+    var familyDoc = this._familyDocs.get(familytests_id)
+      , subscription = {
+            familytests_id: familytests_id
+          , callback: callback
+          , args: []
+        }
+        , subscriptions
+        , args = subscription.args, i, l
+        ;
+    for(i=2,l=arguments.length;i<l;i++)
+        args.push(arguments[i]);
+
+    if(!familyDoc) {
+        familyDoc = {
+            subscriptions: subscriptions = new Set()
+          , cursor: null
+          , data: null
+        };
+
+        this._familyDocs.set(familytests_id, familyDoc);
 
         this._io.query(this._dbSetup.tables.family)
-            // getAll and pluck are possible if we use getAll here instead of get
+            // getAll and pluck are possible: use getAll here instead of get!
             .getAll(familytests_id)
             // if total is falsy we don't use it and print "N/A" in the client
             .merge(doc => {return { total: doc('tests').count().default(null)};})
-            // more? maybe exception
-            .pluck("results", "finished", "created", "started", "total")
+            // more?
+            .pluck("id", "results", "finished", "created", "started", "exception", "total")
+            .merge({type: 'familytest'})
             .changes({includeInitial: true, squash: 2 /* updates in 2 seconds intervals */})
             .run((err, cursor) => {
                 if(err)
-                    this._reportUnhandledError('Can\'t acquire change feed.', err);
+                    this._raiseUnhandledError('Can\'t acquire change feed.', err);
                 // i'd rather prefer to have just cursor for the complete
                 // table, but I don't want to download the vast
                 // includeInitial data of this table and then keep it in
@@ -442,29 +513,30 @@ _p._subscribeToCollectionFamilyDoc = function(familytests_id, collectionId
                 // needed. But, it can still be complicated in a race between
                 // these versions to determine which is the more current
                 // one.
-                doc.cursor = cursor;
+                familyDoc.cursor = cursor;
                 cursor.each((err, data) => {
                     if(err)
-                        this._reportUnhandledError('Change feed cursor error:', err);
+                        this._raiseUnhandledError('Change feed cursor error:', err);
                     // this._log.debug('familytests_id', familytests_id, 'change:', data );
-                    this._updateCollectionFamilyDoc(familytests_id, data);
-                    if(data.new_val && data.new_val.finished && doc.cursor) {
-                        this._closeCursor(doc.cursor);
-                        doc.cursor = null;
+                    familyDoc.data = data;
+                    subscriptions.forEach(subscription => {
+                        _callbackFamilyDocSubscubscriber(subscription, familyDoc.data);
+                    });
+
+                    if(data.new_val && data.new_val.finished && familyDoc.cursor) {
+                        if(familyDoc.cursor) {
+                            this._closeCursor(familyDoc.cursor);
+                            familyDoc.cursor = null;
+                        }
                     }
                 });
 
             }, {cursor: true});
     }
-
-    // change will be triggered by the caller of this function
-    if(doc.data !== null)
-        this._mergeFamilyDocIntoCollectionDoc(collectionId, family_name
-                                                            , doc.data);
-
-    if(!doc.subscriptions.has(collectionId))
-        doc.subscriptions.set(collectionId, new Set());
-    doc.subscriptions.get(collectionId).add(family_name);
+    familyDoc.subscriptions.add(subscription);
+    if(familyDoc.data)
+        _callbackFamilyDocSubscubscriber(subscription, familyDoc.data);
+    return this._unsubscribeFromFamilyDoc.bind(this, subscription);
 };
 
 // This triggers no change notifications itself, but it implies that
@@ -526,12 +598,12 @@ _p._updateCollectionDoc = function(collectionId, data_new_val) {
     }
 };
 
-_p._reportUnhandledError = function(message, err) {
+_p._raiseUnhandledError = function(message, err) {
     this._log.error(message, err);
     throw err;
 };
 
-_p._subscribeCollectiontestsChanges = function(collectionId) {
+_p.subscribeCollectionChanges = function(collectionId) {
     var collectionSubscriptions = this._collectionSubscriptions.get(collectionId);
 
     return this._io.query(this._dbSetup.tables.collection)
@@ -539,11 +611,11 @@ _p._subscribeCollectiontestsChanges = function(collectionId) {
         .changes({squash: 1})
         .run((err, cursor) => {
             if(err)
-                this._reportUnhandledError('Can\'t acquire change feed.', err);
+                this._raiseUnhandledError('Can\'t acquire change feed.', err);
             collectionSubscriptions.collectionCursor = cursor;
             cursor.each((err, data) => {
                 if(err)
-                    this._reportUnhandledError('Change feed cursor error:', err);
+                    this._raiseUnhandledError('Change feed cursor error:', err);
                 this._updateCollectionDoc(collectionId, data.new_val);
             });
         }, {cursor: true});
@@ -595,7 +667,7 @@ _p._initCollectionSubscriptions = function(collectionId) {
     // First subscribe to the change feed and then prime the collection
     // Handling either case must be graceful then if the doc already exists.
     // Otherwise we may miss some updates!
-    return this._subscribeCollectiontestsChanges(collectionId)
+    return this.subscribeCollectionChanges(collectionId)
         .then(() => this._primeCollectionSubscription(collectionId))
         ;
 };
@@ -609,9 +681,6 @@ _p._initCollectionSubscriptions = function(collectionId) {
 
     // C) start monitoring for changes for collectionId, but only upate
     //    the collection state when necessary
-
-
-
 
 _p._makeCollectionConsumer = function(socket) {
     var consumer = this._collectionConsumers.get(socket.id);
@@ -729,6 +798,122 @@ _p._subscribeToCollectionReport = function(socket, data) {
     collectionSubscription.consumers.add(socket.id);
     // won't send if there's nothing yet to send
     this._sendInitialCollectionSubscription(collectionId, socket.id);
+};
+
+
+_p._unsubscribeFromDashboard = function(socketId) {
+    var consumers = this._dashboardSubscription.consumers
+      , consumer = consumers.get(socketId)
+      ;
+    consumer.unsubscribe_callbacks.forEach(unsubscribe => unsubscribe());
+    consumers.delete(socketId);
+
+    if(!consumers.length) {
+        this._closeCursor(this._dashboardSubscription.cursor);
+        this._dashboardSubscription = null;
+    }
+};
+
+_p._updateDashboardCollectionDoc = function(doc) {
+    var collectionDocs = this._dashboardSubscription.collectionDocs
+      , consumers = this._dashboardSubscription.consumers
+      , key = [doc.collection_id, doc.family_name].join('...')
+      , current = collectionDocs.get(key)
+      ;
+    // Do this check, because of us not using includeInitial
+    // and the "priming" request
+    if(current && current.date >= doc.date)
+        // this is old
+        return;
+
+    collectionDocs.set(key, doc);
+    // send updates to each consumers;
+    consumers.forEach((consumer) => {
+        this._sendToDashboardConsumer(consumer, doc);
+    });
+};
+
+_p._sendToDashboardConsumer = function(consumer, collectiontest_data) {
+    var channel = 'changes'
+      , familytests_id = collectiontest_data.familytests_id
+      ;
+
+    this._log.debug('_sendToDashboardConsumer collectiontest_data'
+        , collectiontest_data.collection_id, collectiontest_data.family_name);
+    consumer.socket.emit(channel, collectiontest_data);
+
+    if(!(consumer.unsubscribe_callbacks.has(familytests_id))) {
+        // callback: called immediately if there is already data
+        let callback = data => {
+                this._log.debug('send familytests', data.new_val.id);
+                consumer.socket.emit(channel, data.new_val)
+            }
+            // will send cached docs immediately
+          , unsubscribe = this._subscribeToFamilyDoc(familytests_id, callback)
+          ;
+        consumer.unsubscribe_callbacks.set(familytests_id, unsubscribe);
+    }
+};
+
+_p._subscribeToDashboard = function(socket, data) {
+    var consumer;
+    if(!this._dashboardSubscription) {
+        this._dashboardSubscription = {
+            cursor: null
+          , consumers: new Map()
+          , collectionDocs: new Map()
+        };
+        // init the cursor
+        this._io.query(this._dbSetup.tables.collection)
+        .merge({type: 'collectiontests'})
+        .changes({squash: 1})
+        .run((err, cursor) => {
+            if(err)
+                this._raiseUnhandledError('Can\'t acquire change feed.', err);
+            this._dashboardSubscription.cursor = cursor;
+            cursor.each((err, data) => {
+                if(err)
+                    this._raiseUnhandledError('Change feed cursor error:', err);
+                this._updateDashboardCollectionDoc(data.new_val);
+            });
+        }, {cursor: true})
+        .then(() => {
+            // prime the cache
+            return this._io.query(this._dbSetup.tables.collection)
+                .group({index: 'collection_family'})
+                .max('date')// only the most current entries in each group
+                .merge({type: 'collectiontest'})
+                .run()
+                .then(collectionRows => {
+                    collectionRows.forEach((row) => {
+                        this._updateDashboardCollectionDoc(row.reduction);
+                    });
+                });
+        })
+        ;
+    }
+
+    consumer = this._dashboardSubscription.consumers.get(socket.id);
+    if(consumer) {
+        // is already subscribed ... ?
+        // reset the consumer: unsbscribe all
+        // also this is what we to do on a hang up, see _unsubscribeFromDashboard
+        consumer.unsubscribe_callbacks.forEach(unsubscribe => unsubscribe());
+        consumer.unsubscribe_callbacks = new Map();
+    }
+    else {
+        consumer = {
+            socket: socket
+          , unsubscribe_callbacks: new Map()
+        };
+        this._dashboardSubscription.consumers.set(socket.id, consumer);
+    }
+
+    // send all existing, cached collection docs to the new consumer
+    // and set up familytest subscriptions
+    this._dashboardSubscription.collectionDocs.forEach(data => {
+        this._sendToDashboardConsumer(consumer, data);
+    });
 };
 
 if (typeof require != 'undefined' && require.main==module) {
