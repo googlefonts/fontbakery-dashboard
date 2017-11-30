@@ -143,35 +143,11 @@ define([
     _p._getField = function(selector) {
         // NOTE how this injects the location information
         // for collection and row.
-        var collection, row, name, dependencies;
-
-        if(typeof selector === 'string') {
-            collection = this.collection;
-            row = this;
-            name = selector;
-        }
-        else {
-            collection = selector[0];
-            row = selector[1];
-            name = selector[2];
-
-            // Collection fields:
-            // Currently this is a [this.collection, '*', 'FAIL-ratio']
-            // description, but: the asterisk could be used in all of
-            // the selector fields. We need to init the field in here
-            // because it is not a directly named field anywhere (can't
-            // be, because directly named fields are not capable of bearing
-            // a custom selector, just a name.
-            if(selector.indexOf('*') !== -1) {
-                // dependencies are collected dynamically, so this is
-                // more expensive than the pre-collected dependencies
-                // of normal fields.
-                dependencies = this.global.selectAll.bind(this.global, selector);
-                // ends like: new Field(collection, row, name, dependencies, valueFunc);
-                this.global.initField(collection, row, name, dependencies, collectArgs);
-            }
-        }
-        return this.global.getRegisteredField(collection, row, name);
+        var selector_ = (typeof selector === 'string')
+                                    ? [this.collection, this, selector]
+                                    : selector
+            ;
+        return this.global.getField(selector_);
     };
 
     _p._getFields = function(selectors) {
@@ -181,8 +157,9 @@ define([
     _p._initField = function(name, definition) {
         var valueFunc = definition[definition.length-1]
           , dependencies = this._getFields(definition.slice(0, -1))
+          , selector = [this.collection, this, name]
           ;
-        this.global.initField(this.collection, this, name, dependencies, valueFunc);
+        this.global.initField(selector, dependencies, valueFunc);
     };
 
     _p._initRepresentation = function(name, definition) {
@@ -435,6 +412,11 @@ define([
   , SummaryRow = (function() {
     function SummaryRow(global, collection, slot, domMarker) {
         _BaseRow.call(this, global, collection, slot, domMarker);
+
+         // don't call these field like their conterparts in the
+         // data-rows, or a '*' selector for rows will also include
+         // the fields of this row.
+
          this._initFields({
             'total-fail-ratio': [[this.collection, '*', 'FAIL-ratio']
                 , function(values) {
@@ -516,8 +498,9 @@ define([
 
 
   , _BaseCollection = (function() {
-    function _BaseCollection(id) {
+    function _BaseCollection(global, id) {
         // jshint validthis:true
+        this.global = global;
         this.id = id;
         this.rowMarkerStr = 'collection: ' + id;
         this._rows = new Map(); // slotValue => row
@@ -558,8 +541,8 @@ define([
 
 
   , Collection = (function() {
-    function Collection(id) {
-        _BaseCollection.call(this, id);
+    function Collection(global, id) {
+        _BaseCollection.call(this, global, id);
         this._cellName2SortField = {
             slot: 'slot'
           , total: 'total'
@@ -575,18 +558,51 @@ define([
         // so, showing it only when something is really wrong makes it
         // really stand out. Could also be an "optional" in the reduced
         // fields
+                // make a mechanism for an on-demand-field
+        // depending on the value of one or more fields
+        // (that must be updated when needed watched)
+        // so, that "cells" render() would probably have to call setCells()
+        // and then this._update(undefined, newCells);
+        // thus, the change action can't happen within this._update, but
+        // must be scheduled after OR be included.
+        // a field could be like:
+
+        this._blacklistedFields = new Set(['ERROR']);
         this._fieldOrders = {
-            reduced: ['fail']
+            reduced: ['fail', 'ERROR']
           , expanded: ['fail', 'pass', '# fonts', 'total'
                         , 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS', 'ERROR']
         };
         this._expanded = false;
         this._fieldsInOrder = null;
         this._setFieldsInOrder();
-
+        this._initNotifications();
     }
 
     var _p = Collection.prototype = Object.create(_BaseCollection.prototype);
+
+    function sumHasAny(values){ return !!arraySum(values);}
+
+    _p._initNotifications = function() {
+        // right now: only has-ERRORS
+        // that's the field:
+        var selectorAllErrors = [this, '*', 'ERROR']
+          , selectorHasErrors = [this, null, 'has-ERRORS']
+          ,  hasErrorsField = this.global.initField(
+                  selectorHasErrors
+                  //dependenc(y)ies
+                  // could also reference the summary row field
+                  // total-ERROR. On the other hand, both have this
+                  // field defined
+                , [this.global.getField(selectorAllErrors)]
+                , sumHasAny
+            )
+          , repr = new Representation(
+                  [hasErrorsField]
+                , this._hasErrorChanged.bind(this)
+            );
+        this.global.setListener(repr);
+    };
 
     _p.getSortField = function(cellName) {
         if(cellName in this._cellName2SortField)
@@ -615,8 +631,10 @@ define([
         var old = this._fieldsInOrder
           , key = this._expanded ? 'expanded' : 'reduced'
           ;
-        this._fieldsInOrder = this._fieldOrders[key];
-        return old !== this._fieldsInOrder;
+
+        this._fieldsInOrder = this._fieldOrders[key]
+                                  .filter(this._isAllowedField, this);
+        return !isEqual(old, this._fieldsInOrder);
     };
 
     _p.toggleExpand = function() {
@@ -626,6 +644,26 @@ define([
 
     _p.hasCell = function(cellName) {
         return this._fieldsInOrder.indexOf(cellName) !== -1;
+    };
+
+    _p._hasErrorChanged = function(displayError) {
+        var size = this._blacklistedFields.size;
+
+        if(displayError)
+            this._blacklistedFields.delete('ERROR');
+        else
+            this._blacklistedFields.add('ERROR');
+
+        if(size === this._blacklistedFields.size)
+            // no change
+            return;
+
+        if(this._setFieldsInOrder())
+            this.setCells();
+    };
+
+    _p._isAllowedField = function(field) {
+        return !this._blacklistedFields.has(field);
     };
 
     // after this, we must also update the fields contents
@@ -649,8 +687,8 @@ define([
     })()
 
   , LabelsCollection = (function(){
-    function LabelsCollection(id) {
-        _BaseCollection.call(this, id);
+    function LabelsCollection(global, id) {
+        _BaseCollection.call(this, global, id);
         // IMPORTANT: the rows must define this field
         // FIXME: make a central field definiton for data fields
         // hardcoding this will not suffice.
@@ -691,10 +729,11 @@ define([
 
     // IMPORTANT: see DashboardController.fieldFactory
     // which defines the `value` getter of the field
-    function Field(collection, row, name, dependencies, valueFunc) {
-        this.collection = collection;
-        this.row = row;
-        this.name = name;
+    function Field(selector, dependencies, valueFunc) {
+        this.collection = selector[0];
+        this.row = selector[1];
+        this.name = selector[2];
+        this.selector = selector;
         this.hasBeenEvaluated = false;
 
         var depsDescriptor = {enumerable: true};
@@ -738,6 +777,7 @@ define([
   , Global = (function(){
     function Global() {
         this._fields = new Map();
+
         Object.defineProperties(this, {
             valuesCache: {
                 value: new Map()
@@ -747,12 +787,22 @@ define([
                 value: new Set()
               , enumerable: true
             }
+            // listeners have the same interface as cells and representations:
+            // a getter: `dependencies` returns an array of Fields
+            // a method: render()
+          , listeners: {
+                value: new Set()
+              , enumerable: true
+            }
         });
     }
     _p = Global.prototype;
 
-    function getKey(collection, row, name) {
-        var c = collection === null ? '*null' : collection.id
+    function getKey(selector) {
+        var collection = selector[0]
+          , row = selector[1]
+          , name = selector[2]
+          , c = collection === null ? '*null' : collection.id
           , r = row === null ? '*null' : row.slot
           ;
         return [c, r, name].join(':::');
@@ -769,13 +819,13 @@ define([
 
     };
 
-    _p.hasRegisteredField = function(collection, row, name) {
-        var key = getKey(collection, row, name);
+    _p.hasRegisteredField = function(selector) {
+        var key = getKey(selector);
         return this._fields.has(key);
     };
 
-    _p.getRegisteredField = function(collection, row, name) {
-        var key = getKey(collection, row, name)
+    _p.getRegisteredField = function(selector) {
+        var key = getKey(selector)
           , field = this._fields.get(key)
           ;
         if(!field) {
@@ -787,20 +837,40 @@ define([
         return field;
     };
 
-    _p._initField = function(field, collection, row, name, dependencies, valueFunc) {
+    _p._initField = function(field, selector, dependencies, valueFunc) {
         if(field.hasOwnProperty('value'))
             // has already been initialized
             return;
         Object.defineProperty(field, 'value', {
             get: this.valuesCache.get.bind(this.valuesCache, field)
         });
-        Field.call(field, collection, row, name, dependencies, valueFunc);
+        Field.call(field, selector, dependencies, valueFunc);
     };
 
-    _p.initField = function(collection, row, name, dependencies, valueFunc) {
-        var field = this.getRegisteredField(collection, row, name);
-        this._initField(field, collection, row, name, dependencies, valueFunc);
+    _p.initField = function(selector, dependencies, valueFunc) {
+        var field = this.getRegisteredField(selector);
+        this._initField(field, selector, dependencies, valueFunc);
         return field;
+    };
+
+    _p.getField = function(selector) {
+        var dependencies;
+        // Collection fields:
+        // Lija a [this.collection, '*', 'FAIL-ratio']
+        // description, but: the asterisk could be used in all of
+        // the selector fields. We need to init the field in here
+        // because it is not a directly named field anywhere (can't
+        // be, because directly named fields are not capable of bearing
+        // a custom selector, just a name.
+        if(selector.indexOf('*') !== -1) {
+            // dependencies are collected dynamically, so this is
+            // more expensive than the pre-collected dependencies
+            // of normal fields.
+            dependencies = this.selectAll.bind(this, selector);
+                // ends like: new Field(collection, row, name, dependencies, valueFunc);
+            this.initField(selector, dependencies, collectArgs);
+        }
+        return this.getRegisteredField(selector);
     };
 
     _p.setCell = function(cell){
@@ -809,6 +879,10 @@ define([
 
     _p.deleteCell = function(cell){
         this.activeCells.delete(cell);
+    };
+
+    _p.setListener = function(representation) {
+        this.listeners.add(representation);
     };
 
     return Global;
@@ -1012,7 +1086,7 @@ define([
         function or (a, b){ return a || b; }
 
         var state = {
-                visited:  new Set()
+                  visited: new Set()
                 , visiting: new Set() // detect recursion
                 , changed: new Set()
                 , visit: visit
@@ -1023,6 +1097,12 @@ define([
                         .reduce(or, false)
                         ;
                 }
+                , check: function(representation) {
+                    var changed = this.visitAll(representation.dependencies);
+                    if(changed)
+                        representation.render();
+                    return changed;
+                }
             }
           , cells
           ;
@@ -1031,19 +1111,17 @@ define([
             // checkCells is used when new cells is added, but no data
             // was changed. I.E. when a collection was expanded
             cells = checkCells;
-        else if(changedSelectors && changedSelectors.length)
+        else if(changedSelectors && changedSelectors.length) {
+            // these listeners can change this._global.activeCells
+            this._global.listeners.forEach(state.check, state);
             cells = this._global.activeCells;
+        }
 
         if(cells)
-            cells.forEach(function(cell) {
-                var changed = state.visitAll(cell.dependencies);
-                if(changed)
-                   cell.render();
-            });
+            cells.forEach(state.check, state);
 
         // don't run just for new cells, expand doesn't change ordering
         if(!checkCells) {
-
             var sortDependencies = this._global.selectAll(
                                 [this._sortCollection, '*', this._sortField]);
             if(state.visitAll(sortDependencies))
@@ -1067,7 +1145,7 @@ define([
             this._collectionOrder.push(collectionId);
 
         // init collection
-        collection = new CollectionCtor(collectionId);
+        collection = new CollectionCtor(this._global, collectionId);
         this._collections.set(collectionId, collection);
 
         function init(type, rowElement, slot) {
@@ -1189,12 +1267,13 @@ define([
         //         re-ordering so I think we are good here);
         var row = collection.getRow(slot)
           , value
+          , selector = [collection, row, name]
           ;
-        if(!this._global.hasRegisteredField(collection, row, name))
+        if(!this._global.hasRegisteredField(selector))
             throw new Error('Missing field: ['
                         + [collection.id,  slot, name].join(',') + ']');
 
-        value = this._global.getRegisteredField(collection, row, name).value;
+        value = this._global.getRegisteredField([collection, row, name]).value;
         if(value === undefined)
             value = null;
         return value;
