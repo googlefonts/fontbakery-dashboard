@@ -58,6 +58,12 @@ define([
     HasNoChildrenError.prototype = Object.create(Error.prototype);
     HasNoChildrenError.prototype.constructor = HasNoChildrenError;
 
+    /**
+     * returns a dict like: {index: 0, pos: 'prepend'};
+     * where index is an index within others when pos is not "prepend".
+     * pos is one of: "after", "before" or "prepend"
+     * When pos is "prepend", index is 0.
+     */
     function binInsert(value, others, compare, allowEqual) {
         var length = others.length
           , start, end, middle, cmp
