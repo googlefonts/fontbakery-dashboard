@@ -266,7 +266,7 @@
         .result-value_indicator-button.active.result-value-ERROR,
         .result-value_indicator-button.inactive.result-value-ERROR:hover,
         .result-value_indicator.result-value-ERROR,
-        .dashboard-table .row_field-ERROR
+        .dashboard-table th.row_field-ERROR
         {
 
             background: crimson;
@@ -277,7 +277,7 @@
         .result-value_indicator-button.active.result-value-FAIL,
         .result-value_indicator-button.inactive.result-value-FAIL:hover,
         .result-value_indicator.result-value-FAIL,
-        .dashboard-table .row_field-FAIL
+        .dashboard-table th.row_field-FAIL
         {
             background: tomato;
         }
@@ -286,7 +286,7 @@
         .result-value_indicator-button.active.result-value-WARN,
         .result-value_indicator-button.inactive.result-value-WARN:hover,
         .result-value_indicator.result-value-WARN,
-        .dashboard-table .row_field-WARN
+        .dashboard-table th.row_field-WARN
         {
             background: darkorange;
         }
@@ -295,7 +295,7 @@
         .result-value_indicator-button.active.result-value-SKIP,
         .result-value_indicator-button.inactive.result-value-SKIP:hover,
         .result-value_indicator.result-value-SKIP,
-        .dashboard-table .row_field-SKIP
+        .dashboard-table th.row_field-SKIP
         {
             background: LemonChiffon;
         }
@@ -304,7 +304,7 @@
         .result-value_indicator-button.active.result-value-INFO,
         .result-value_indicator-button.inactive.result-value-INFO:hover,
         .result-value_indicator.result-value-INFO,
-        .dashboard-table .row_field-INFO
+        .dashboard-table th.row_field-INFO
         {
             background: #b3eeff;
         }
@@ -313,7 +313,7 @@
         .result-value_indicator-button.active.result-value-PASS,
         .result-value_indicator-button.inactive.result-value-PASS:hover,
         .result-value_indicator.result-value-PASS,
-        .dashboard-table .row_field-PASS
+        .dashboard-table th.row_field-PASS
         {
             background: greenyellow;
         }
@@ -322,7 +322,7 @@
         .result-value_indicator-button.active.result-value-DEBUG,
         .result-value_indicator-button.inactive.result-value-DEBUG:hover,
         .result-value_indicator.result-value-DEBUG,
-        .dashboard-table .row_field-DEBUG
+        .dashboard-table th.row_field-DEBUG
         {
             background: lavender ;
         }
@@ -370,10 +370,10 @@
         }
 
         .dashboard-table .slot_collection-names > th::before{
-            content: '◂ ';
+            content: '◂\a0';
         }
         .dashboard-table .slot_collection-names > th.collection-expanded::before{
-            content: '▸ ';
+            content: '▸\a0';
         }
 
         /* quick and dirty for this exception */
@@ -414,6 +414,7 @@
     </div>
 
     <div class="dashboard-interface">
+    <!-- insert: toggle-percentages -->
     <!-- insert: dashboard -->
     </div>
 

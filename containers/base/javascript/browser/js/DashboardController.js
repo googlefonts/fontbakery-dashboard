@@ -200,6 +200,10 @@ define([
           , familytest: null
         };
 
+        var showPercentagesSelector = [null, null, 'show-percentages'];
+        function percentagesSort(showPercentages, ratio, absolute) {
+            return showPercentages ? ratio : absolute;
+        }
         // make this configurable?
         // how to fill a field with content
         // always, if one dependency is null, the dependant is also
@@ -209,12 +213,12 @@ define([
         this._initFields({
                     // when it starts with data I'll look in here
                     // name.split('.') => go digging
-            FAIL: ['*origin.familytest.results.FAIL', identity]
+            ERROR: ['*origin.familytest.results.ERROR', identity]
+          , FAIL: ['*origin.familytest.results.FAIL', identity]
           , WARN: ['*origin.familytest.results.WARN', identity]
           , SKIP: ['*origin.familytest.results.SKIP', identity]
           , INFO: ['*origin.familytest.results.INFO', identity]
           , PASS: ['*origin.familytest.results.PASS', identity]
-          , ERROR: ['*origin.familytest.results.ERROR', identity]
           , results: ['*origin.familytest.results', identity]
           , '#fonts': ['*origin.familytest.#fonts', identity]
           , reported: ['results', function(results) {
@@ -234,23 +238,39 @@ define([
           // FAIL and total here are actually:
           // [this.collection, this, 'FAIL']
           // [this.collection, this, 'total']
+          , 'ERROR-ratio': ['ERROR', 'total', ratio]
           , 'FAIL-ratio': ['FAIL', 'total', ratio]
+          , 'WARN-ratio': ['WARN', 'total', ratio]
+          , 'SKIP-ratio': ['SKIP', 'total', ratio]
+          , 'INFO-ratio': ['INFO', 'total', ratio]
+          , 'PASS-ratio': ['PASS', 'total', ratio]
           , 'passing-ratio': ['passing', 'total', ratio]
+          , 'ERROR-sort': [showPercentagesSelector, 'ERROR-ratio', 'ERROR', percentagesSort]
+          , 'FAIL-sort': [showPercentagesSelector, 'FAIL-ratio', 'FAIL', percentagesSort]
+          , 'WARN-sort': [showPercentagesSelector, 'WARN-ratio', 'WARN', percentagesSort]
+          , 'SKIP-sort': [showPercentagesSelector, 'SKIP-ratio', 'SKIP', percentagesSort]
+          , 'INFO-sort': [showPercentagesSelector, 'INFO-ratio', 'INFO', percentagesSort]
+          , 'PASS-sort': [showPercentagesSelector, 'PASS-ratio', 'FAIL', percentagesSort]
+          , 'passing-sort': [showPercentagesSelector, 'passing-ratio', 'passing', percentagesSort]
           , slot: [function(slot){ return slot;}.bind(null, this.slot)]
         });
 
-        function renderRatio(ratio, part) {
+        function renderRatio(showPercentages, ratio, absolute) {
+            var percentages, major, minor;
+
             if(isNaN(ratio) || ratio === null)
                 return null;
-            return [
-                (Math.round(ratio * 10000)/100), '%',
-                , ' (' , part , ')'
-            ].join('');
+
+            percentages = (Math.round(ratio * 10000)/100) + '%';
+            major = showPercentages ? percentages : absolute;
+            minor = showPercentages ? absolute : percentages;
+                         // \xa0 == nbsp
+            return [major, '\xa0', '(' , minor , ')'].join('');
         }
 
-        function renderRatioAndLink(ratio, part, familytests_id) {
+        function renderRatioAndLink(showPercentages, ratio, part, familytests_id) {
             var result = []
-              , ratioRendered = renderRatio(ratio, part)
+              , ratioRendered = renderRatio(showPercentages, ratio, part)
               , link
               ;
             if(ratioRendered !== null)
@@ -262,27 +282,27 @@ define([
                   , target: '_blank'
                   , title: 'Open font family report.'
                 }, '🔗');
-                result.push(' ', link);
+                if(result.length) result.unshift('\xa0');
+                result.unshift(link);
             }
 
             return result.length ? result : null;
         }
 
         this._initRepresentations({
-            fail: ['FAIL-ratio', 'FAIL', '*origin.familytest.id', renderRatioAndLink]
-          , pass: ['passing-ratio', 'passing', renderRatio ]
-          // this can also read directly from this._data
-          , total: ['*origin.familytest.total', identity]
-          , fr: ['FAIL-ratio', identity]
-          , 'Font Family': ['slot', identity]
-          , FAIL: ['FAIL', identity]
-          , WARN: ['WARN', identity]
-          , SKIP: ['SKIP', identity]
-          , INFO: ['INFO', identity]
-          , PASS: ['PASS', identity]
-          , ERROR: ['ERROR', identity]
+            'Font Family': ['slot', identity]
+          , ERROR: [showPercentagesSelector, 'ERROR-ratio', 'ERROR', renderRatio]
+          , FAIL: [showPercentagesSelector, 'FAIL-ratio', 'FAIL', '*origin.familytest.id', renderRatioAndLink]
+          , WARN: [showPercentagesSelector, 'WARN-ratio', 'WARN', renderRatio]
+          , SKIP: [showPercentagesSelector, 'SKIP-ratio', 'SKIP', renderRatio]
+          , INFO: [showPercentagesSelector, 'INFO-ratio', 'INFO', renderRatio]
+          , PASS: [showPercentagesSelector, 'PASS-ratio', 'PASS', renderRatio]
+          , 'all passing': [showPercentagesSelector, 'passing-ratio', 'passing', renderRatio ]
+          , total: ['total', identity]
           , '# fonts': ['#fonts', identity]
         });
+
+
     }
     var _p = DataRow.prototype = Object.create(_BaseRow.prototype);
 
@@ -353,7 +373,7 @@ define([
             event.stopPropagation();
         });
 
-        return [this.collection.id, ' ', link];
+        return [this.collection.id, '\xa0', link];
     };
 
     _p.setCells = function(namesInOrder) {
@@ -398,10 +418,17 @@ define([
     _p.setCells = function(namesInOrder) {
         // create fields/representations on demand!
         var i, l , name;
+
+        function noBreakingSpaces(val) {
+            if(val === null)
+                return null;
+            return (val + '').replace(/ /g, '\xa0');
+        }
+
         for(i=0,l=namesInOrder.length;i<l;i++) {
             name = namesInOrder[i];
             if(!this._representations.has(name))
-                this._initRepresentation(name, [identity.bind(null, name)]);
+                this._initRepresentation(name, [noBreakingSpaces.bind(null, name)]);
         }
         return _BaseRow.prototype.setCells.call(this, namesInOrder);
     };
@@ -417,32 +444,50 @@ define([
          // data-rows, or a '*' selector for rows will also include
          // the fields of this row.
 
+        function average(values) {
+            var values_ = values || []
+              , vals = values_.filter(function(value) {
+                    return value !== null;
+                })
+              , sum = arraySum(vals)
+              , result = sum / vals.length
+              ;
+            return vals.length ? result : null;
+        }
+
+        function percent(ratio) {
+            return ratio !== null
+                    ? Math.round(ratio * 10000)/100 + '%'
+                    : null
+                    ;
+        }
+
          this._initFields({
-            'total-fail-ratio': [[this.collection, '*', 'FAIL-ratio']
-                , function(values) {
-                    var values_ = values || []
-                      , vals = values_.filter(function(value) {
-                            return value !== null && !isNaN(value);
-                        })
-                      , sum = arraySum(vals)
-                      , result = sum / vals.length
-                      ;
-                    return vals.length ? result : null;
-                }
-            ]
+            'total-ERROR-ratio': [[this.collection, '*', 'ERROR-ratio'], average]
+          , 'total-FAIL-ratio': [[this.collection, '*', 'FAIL-ratio'], average]
+          , 'total-WARN-ratio': [[this.collection, '*', 'WARN-ratio'], average]
+          , 'total-SKIP-ratio': [[this.collection, '*', 'SKIP-ratio'], average]
+          , 'total-INFO-ratio': [[this.collection, '*', 'INFO-ratio'], average]
+          , 'total-PASS-ratio': [[this.collection, '*', 'PASS-ratio'], average]
+          , 'total-passing-ratio': [[this.collection, '*', 'passing-ratio'], average]
           , '# total-fonts': [[this.collection, '*', '#fonts'], arraySum]
+          , '# total-tests': [[this.collection, '*', 'total'], arraySum]
         });
 
         this._initRepresentations({
-            'fail': ['total-fail-ratio', function(tfr) {
-                return tfr !== null ? Math.round(tfr * 10000)/100 + '%' : null;
-            }]
+            'ERROR': ['total-ERROR-ratio', percent]
+          , 'FAIL': ['total-FAIL-ratio', percent]
+          , 'WARN': ['total-WARN-ratio', percent]
+          , 'SKIP': ['total-SKIP-ratio', percent]
+          , 'INFO': ['total-INFO-ratio', percent]
+          , 'PASS': ['total-PASS-ratio', percent]
+          , 'all passing': ['total-passing-ratio', percent]
           , '# fonts': ['# total-fonts', identity]
+          , 'total': ['# total-tests', identity]
           , 'Font Family': [function(){ return 'Summaries'; }]
         });
     }
 
-    // var _p =
     SummaryRow.prototype = Object.create(_BaseRow.prototype);
 
     return SummaryRow;
@@ -545,10 +590,15 @@ define([
         _BaseCollection.call(this, global, id);
         this._cellName2SortField = {
             slot: 'slot'
-          , total: 'total'
-          , FAIL: 'FAIL'
-          , fail: 'FAIL-ratio'
+          , ERROR: 'ERROR-sort'
+          , FAIL: 'FAIL-sort'
+          , WARN: 'WARN-sort'
+          , SKIP: 'SKIP-sort'
+          , INFO: 'INFO-sort'
+          , PASS: 'PASS-sort'
+          , 'all passing': 'passing-sort'
           , '# fonts': '#fonts'
+          , total: 'total'
         };
 
         // TODO: if there's at least one ERROR in the collection
@@ -569,9 +619,9 @@ define([
 
         this._blacklistedFields = new Set(['ERROR']);
         this._fieldOrders = {
-            reduced: ['fail', 'ERROR']
-          , expanded: ['fail', 'pass', '# fonts', 'total'
-                        , 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS', 'ERROR']
+            reduced:  ['ERROR', 'FAIL']
+          , expanded: ['ERROR', 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS'
+                     , 'all passing', '# fonts', 'total',]
         };
         this._expanded = false;
         this._fieldsInOrder = null;
@@ -930,8 +980,14 @@ define([
 
         this._table = dom.createElement('table', {class: 'dashboard-table'}
                                 , [this._thead, this._tbody, this._tfoot]);
-        dom.insertAtMarkerComment(this.container, 'insert: dashboard', this._table);
+        dom.insertAtMarkerComment(this.container, 'insert: dashboard'
+                                                            , this._table);
         this._collectionOrder.forEach(this._initCollection.bind(this));
+
+        this._showPercentages = true;
+        var showPercentagesButton = this._initTogglePercentages();
+        dom.insertAtMarkerComment(this.container, 'insert: toggle-percentages'
+                                                , showPercentagesButton);
 
         // sort by slot name initially!
         this._tBodySlotOrder = [];
@@ -961,6 +1017,35 @@ define([
         get: function(){ return this._rowElements.data; }
       , enumerable: true
     });
+
+    _p._initTogglePercentages = function() {
+        // right now: only has-ERRORS
+        // that's the field:
+        var button = dom.createElement('button')
+          , selectorShowPercentages = [null, null, 'show-percentages']
+          , showPercentagesField = this._global.initField(
+                  selectorShowPercentages
+                , []
+                , function(){ return this._showPercentages; }.bind(this)
+            )
+          , repr = new Representation(
+                  [showPercentagesField]
+                , function(showPercentages) {
+                        button.textContent = showPercentages
+                                ? 'Show Absolute Numbers'
+                                : 'Show Percentages'
+                                ;
+                }
+            )
+          ;
+        repr.render();
+        button.addEventListener('click', function() {
+            this._showPercentages = !this._showPercentages;
+            this._update([selectorShowPercentages]);
+        }.bind(this));
+        this._global.setCell(repr);
+        return button;
+    };
 
     _p._updateSortIndicators = function() {
         function markCell(collection, cell, name) {

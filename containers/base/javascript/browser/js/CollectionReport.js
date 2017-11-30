@@ -734,7 +734,7 @@ define([
                                             ;
         dom.clear(this._switchPercentagesElem);
         label = this._displayPercentages
-                        ? 'Show Total Numbers'
+                        ? 'Show Absolute Numbers'
                         : 'Show Percentages'
                         ;
         dom.appendChildren(this._switchPercentagesElem, label);
