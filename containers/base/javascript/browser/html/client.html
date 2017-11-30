@@ -265,7 +265,10 @@
         .report-container_tests .status-value-ERROR,
         .result-value_indicator-button.active.result-value-ERROR,
         .result-value_indicator-button.inactive.result-value-ERROR:hover,
-        .result-value_indicator.result-value-ERROR {
+        .result-value_indicator.result-value-ERROR,
+        .dashboard-table .row_field-ERROR
+        {
+
             background: crimson;
             color: white;
         }
@@ -273,42 +276,54 @@
         .report-container_tests .status-value-FAIL,
         .result-value_indicator-button.active.result-value-FAIL,
         .result-value_indicator-button.inactive.result-value-FAIL:hover,
-        .result-value_indicator.result-value-FAIL {
+        .result-value_indicator.result-value-FAIL,
+        .dashboard-table .row_field-FAIL
+        {
             background: tomato;
         }
         .fontbakery_status-WARN,
         .report-container_tests .status-value-WARN,
         .result-value_indicator-button.active.result-value-WARN,
         .result-value_indicator-button.inactive.result-value-WARN:hover,
-        .result-value_indicator.result-value-WARN {
+        .result-value_indicator.result-value-WARN,
+        .dashboard-table .row_field-WARN
+        {
             background: darkorange;
         }
         .fontbakery_status-SKIP,
         .report-container_tests .status-value-SKIP,
         .result-value_indicator-button.active.result-value-SKIP,
         .result-value_indicator-button.inactive.result-value-SKIP:hover,
-        .result-value_indicator.result-value-SKIP {
+        .result-value_indicator.result-value-SKIP,
+        .dashboard-table .row_field-SKIP
+        {
             background: LemonChiffon;
         }
         .fontbakery_status-INFO,
         .report-container_tests .status-value-INFO,
         .result-value_indicator-button.active.result-value-INFO,
         .result-value_indicator-button.inactive.result-value-INFO:hover,
-        .result-value_indicator.result-value-INFO {
+        .result-value_indicator.result-value-INFO,
+        .dashboard-table .row_field-INFO
+        {
             background: #b3eeff;
         }
         .fontbakery_status-PASS,
         .report-container_tests .status-value-PASS,
         .result-value_indicator-button.active.result-value-PASS,
         .result-value_indicator-button.inactive.result-value-PASS:hover,
-        .result-value_indicator.result-value-PASS {
+        .result-value_indicator.result-value-PASS,
+        .dashboard-table .row_field-PASS
+        {
             background: greenyellow;
         }
         .fontbakery_status-DEBUG,
         .report-container_tests .status-value-DEBUG,
         .result-value_indicator-button.active.result-value-DEBUG,
         .result-value_indicator-button.inactive.result-value-DEBUG:hover,
-        .result-value_indicator.result-value-DEBUG {
+        .result-value_indicator.result-value-DEBUG,
+        .dashboard-table .row_field-DEBUG
+        {
             background: lavender ;
         }
 
@@ -336,20 +351,44 @@
           animation: spinner .6s linear infinite;
         }
 
-        .collection-report_reports-head > th:after {
+        .dashboard-table .slot_column-names  > th::after,
+        .collection-report_reports-head > th::after {
             content: '▴';
             margin-left: .2em;
             vertical-align: super;
             opacity: .3;
         }
+
+        .dashboard-table .slot_column-names.sort-desc  > th::after,
         .collection-report_reports-head.ordering-reversed > th::after {
             content: '▾';
         }
 
+        .dashboard-table .slot_column-names > th.sort-active::after,
         .collection-report_reports-head > th.ordering-column::after {
            opacity: 1;
         }
 
+        .dashboard-table .slot_collection-names > th::before{
+            content: '◂ ';
+        }
+        .dashboard-table .slot_collection-names > th.collection-expanded::before{
+            content: '▸ ';
+        }
+
+        /* quick and dirty for this exception */
+        .dashboard-table .slot_collection-names
+                > th.row_field-collectionid[data-collection="fontnames"]::before{
+            content: '';
+        }
+        .dashboard-table .slot_collection-names
+                > th.row_field-collectionid[data-collection="fontnames"] {
+            visibility: hidden;
+        }
+
+        .dashboard-table tfoot {
+            border-top: 3px solid grey;
+        }
     </style>
     <script>
     require(['/browser/js/bootstrap.js'], function(require) {
