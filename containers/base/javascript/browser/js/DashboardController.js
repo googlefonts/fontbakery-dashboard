@@ -271,8 +271,28 @@ define([
             ].join('');
         }
 
+        function renderRatioAndLink(ratio, part, familytests_id) {
+            var result = []
+              , ratioRendered = renderRatio(ratio, part)
+              , link
+              ;
+            if(ratioRendered !== null)
+                result.push(ratioRendered);
+
+            if(familytests_id !== null) {
+                link = dom.createElement('a', {
+                    href: 'report/' + encodeURIComponent(familytests_id)
+                  , target: '_blank'
+                  , title: 'Open font family report.'
+                }, '🔗');
+                result.push(' ', link);
+            }
+
+            return result.length ? result : null;
+        }
+
         this._initRepresentations({
-            fail: ['FAIL-ratio', 'FAIL', renderRatio ]
+            fail: ['FAIL-ratio', 'FAIL', '*origin.familytest.id', renderRatioAndLink]
           , pass: ['passing-ratio', 'passing', renderRatio ]
           // this can also read directly from this._data
           , total: ['*origin.familytest.total', identity]
@@ -344,6 +364,21 @@ define([
 
     var _p = CollectionNamesRow.prototype = Object.create(_BaseRow.prototype);
 
+
+    _p._renderCollectionidCell = function() {
+        var link = dom.createElement('a', {
+                href: 'collection-report/' + encodeURIComponent(this.collection.id)
+              , target: '_blank'
+              , title: 'Open collection report.'
+            }, '🔗');
+
+        link.addEventListener('click', function(event){
+            event.stopPropagation();
+        });
+
+        return [this.collection.id, ' ', link];
+    };
+
     _p.setCells = function(namesInOrder) {
         var name =  'collectionid'
           , cell = this._cells.get(name)
@@ -351,7 +386,7 @@ define([
           ;
         if(!cell) {
             if(!this._representations.has(name))
-                this._initRepresentation(name, [identity.bind(null, this.collection.id)]);
+                this._initRepresentation(name, [this._renderCollectionidCell.bind(this)]);
             cell = new Cell(
                     dom.createElement(this.cellTag, {'class': 'row_field-' +  name})
                   , this._representations.get(name)
