@@ -496,9 +496,14 @@ _p._subscribeToFamilyDoc = function(familytests_id, callback/*, args ... */) {
             // getAll and pluck are possible: use getAll here instead of get!
             .getAll(familytests_id)
             // if total is falsy we don't use it and print "N/A" in the client
-            .merge(doc => {return { total: doc('tests').count().default(null)};})
+            .merge(doc => {return {
+                    total: doc('tests').count().default(null)
+                  , '#fonts': doc('iterargs')('font').count().default(null)
+                };
+            })
             // more?
-            .pluck("id", "results", "finished", "created", "started", "exception", "total")
+            .pluck('id', 'results', 'finished', 'created', 'started'
+                 , 'exception', 'total' , '#fonts')
             .merge({type: 'familytest'})
             .changes({includeInitial: true, squash: 2 /* updates in 2 seconds intervals */})
             .run((err, cursor) => {
@@ -846,7 +851,7 @@ _p._sendToDashboardConsumer = function(consumer, collectiontest_data) {
         // callback: called immediately if there is already data
         let callback = data => {
                 this._log.debug('send familytests', data.new_val.id);
-                consumer.socket.emit(channel, data.new_val)
+                consumer.socket.emit(channel, data.new_val);
             }
             // will send cached docs immediately
           , unsubscribe = this._subscribeToFamilyDoc(familytests_id, callback)
