@@ -192,8 +192,14 @@ define([
     }
 
     function validateChildEvent(event, stopElement, searchAttribute) {
-        var elem = event.target;
+        var elem = event.target
+          , searchAttributes = [searchAttribute]
+          , i, l, results
+          ;
         if(event.defaultPrevented) return;
+
+        for(i=3,l=arguments.length;i<l;i++)
+            searchAttributes.push(arguments[i]);
         while(true) {
             if(elem === stopElement.parentElement || !elem)
                 return;
@@ -203,7 +209,15 @@ define([
             elem = elem.parentElement;
         }
         event.preventDefault();
-        return elem.getAttribute(searchAttribute);
+
+
+        if(searchAttributes.length === 1)
+            return elem.getAttribute(searchAttribute);
+
+        results = {};
+        for(i=0,l=searchAttributes.length;i<l;i++)
+            results[searchAttributes[i]] = elem.getAttribute(searchAttributes[i]);
+        return results;
     }
 
     return {
