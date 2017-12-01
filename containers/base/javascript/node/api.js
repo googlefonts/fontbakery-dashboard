@@ -870,7 +870,7 @@ _p._subscribeToDashboard = function(socket, data) {
         };
         // init the cursor
         this._io.query(this._dbSetup.tables.collection)
-        .merge({type: 'collectiontests'})
+        .merge({type: 'collectiontest'})
         .changes({squash: 1})
         .run((err, cursor) => {
             if(err)

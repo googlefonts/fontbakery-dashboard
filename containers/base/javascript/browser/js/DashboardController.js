@@ -45,11 +45,24 @@ define([
     function arraySum(values) {
         return values.reduce(function(sum, a) { return sum + a; }, 0);
     }
-    function ratio (part, total) {
-        return total ? part/total : null;
+    function ratio (absolute, total) {
+        return total && absolute !== null ? absolute/total : null;
     }
     function identity(value) {
         return value;
+    }
+
+    function resultIdentity(hasResults, value) {
+        if (hasResults)
+            return value === null ? 0 : value;
+        return value; // may be null in this case
+    }
+
+    function percent(ratio) {
+        return ratio !== null
+                ? Math.round(ratio * 10000)/100 + '%'
+                : null
+                ;
     }
 
     function collectArgs(/* args */) {
@@ -213,27 +226,37 @@ define([
         this._initFields({
                     // when it starts with data I'll look in here
                     // name.split('.') => go digging
-            ERROR: ['*origin.familytest.results.ERROR', identity]
-          , FAIL: ['*origin.familytest.results.FAIL', identity]
-          , WARN: ['*origin.familytest.results.WARN', identity]
-          , SKIP: ['*origin.familytest.results.SKIP', identity]
-          , INFO: ['*origin.familytest.results.INFO', identity]
-          , PASS: ['*origin.familytest.results.PASS', identity]
+            ERROR: ['hasResults', '*origin.familytest.results.ERROR', resultIdentity]
+          , FAIL: ['hasResults', '*origin.familytest.results.FAIL', resultIdentity]
+          , WARN: ['hasResults', '*origin.familytest.results.WARN', resultIdentity]
+          , SKIP: ['hasResults', '*origin.familytest.results.SKIP', resultIdentity]
+          , INFO: ['hasResults', '*origin.familytest.results.INFO', resultIdentity]
+          , PASS: ['hasResults', '*origin.familytest.results.PASS', resultIdentity]
           , results: ['*origin.familytest.results', identity]
+          , hasResults: ['results', function(results) {
+                var key;
+                if(!results)
+                    return false;
+                for(key in results)
+                    // true if there is at least one key
+                    return true;
+                return false;
+            }]
           , '#fonts': ['*origin.familytest.#fonts', identity]
           , reported: ['results', function(results) {
-                return arraySum(Object.values(results));
+                return results === null ? null : arraySum(Object.values(results));
             }]
-          , passing: ['*origin.familytest.results', function(results) {
+          , passing: ['results', function(results) {
                 var failing = new Set(['ERROR', 'FAIL'])
                   , results_ = results || {}
                   , values = Object.keys(results_)
                       .filter(function(key){ return !failing.has(key); })
-                      .map(function(key){ return this[key]; }, results)
+                      .map(function(key){ return this[key]; }, results_)
                   ;
-                return arraySum(values);
+                return values.length ? arraySum(values) : null;
 
             }]
+          , progress: ['reported', 'total', ratio]
           , total: ['*origin.familytest.total', identity]
           // FAIL and total here are actually:
           // [this.collection, this, 'FAIL']
@@ -258,7 +281,7 @@ define([
         function renderRatio(showPercentages, ratio, absolute) {
             var percentages, major, minor;
 
-            if(isNaN(ratio) || ratio === null)
+            if(isNaN(ratio) || ratio === null || absolute === null)
                 return null;
 
             percentages = (Math.round(ratio * 10000)/100) + '%';
@@ -297,16 +320,14 @@ define([
           , SKIP: [showPercentagesSelector, 'SKIP-ratio', 'SKIP', renderRatio]
           , INFO: [showPercentagesSelector, 'INFO-ratio', 'INFO', renderRatio]
           , PASS: [showPercentagesSelector, 'PASS-ratio', 'PASS', renderRatio]
-          , 'all passing': [showPercentagesSelector, 'passing-ratio', 'passing', renderRatio ]
+          , 'all passing': [showPercentagesSelector, 'passing-ratio', 'passing', renderRatio]
+          , progress: [showPercentagesSelector, 'progress', 'reported', renderRatio]
           , total: ['total', identity]
           , '# fonts': ['#fonts', identity]
         });
-
-
     }
     var _p = DataRow.prototype = Object.create(_BaseRow.prototype);
 
-    // interfaces used by the controller (just the setters to be precise)
     Object.defineProperties(_p, {
         collectiontest: {
             get: function(){return this._data.collectiontest;}
@@ -455,13 +476,6 @@ define([
             return vals.length ? result : null;
         }
 
-        function percent(ratio) {
-            return ratio !== null
-                    ? Math.round(ratio * 10000)/100 + '%'
-                    : null
-                    ;
-        }
-
          this._initFields({
             'total-ERROR-ratio': [[this.collection, '*', 'ERROR-ratio'], average]
           , 'total-FAIL-ratio': [[this.collection, '*', 'FAIL-ratio'], average]
@@ -472,6 +486,8 @@ define([
           , 'total-passing-ratio': [[this.collection, '*', 'passing-ratio'], average]
           , '# total-fonts': [[this.collection, '*', '#fonts'], arraySum]
           , '# total-tests': [[this.collection, '*', 'total'], arraySum]
+          , 'total-progress': [[this.collection, '*', 'progress'], average]
+
         });
 
         this._initRepresentations({
@@ -485,6 +501,7 @@ define([
           , '# fonts': ['# total-fonts', identity]
           , 'total': ['# total-tests', identity]
           , 'Font Family': [function(){ return 'Summaries'; }]
+          , 'progress': ['total-progress', percent]
         });
     }
 
@@ -599,6 +616,7 @@ define([
           , 'all passing': 'passing-sort'
           , '# fonts': '#fonts'
           , total: 'total'
+          , progress: 'progress'
         };
 
         // TODO: if there's at least one ERROR in the collection
@@ -619,9 +637,9 @@ define([
 
         this._blacklistedFields = new Set(['ERROR']);
         this._fieldOrders = {
-            reduced:  ['ERROR', 'FAIL']
+            reduced:  ['ERROR', 'FAIL', 'progress']
           , expanded: ['ERROR', 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS'
-                     , 'all passing', '# fonts', 'total',]
+                     , 'all passing', 'progress', 'total', '# fonts']
         };
         this._expanded = false;
         this._fieldsInOrder = null;
@@ -971,7 +989,7 @@ define([
         this._reorderRowsScheduling = null;
         this._sortField = null;
         this._sortCollection = null;
-        this._sortColumnName = 'slot';
+        this._sortColumnName = 'Font Family';
         this._sortReversed = false;
 
         this._thead = dom.createElement('thead', []);
@@ -1145,6 +1163,10 @@ define([
             var needsReEvaluate = (
                            !subject.hasBeenEvaluated
                         || (!dependencies.length
+                            // maybe we can remove this optimization
+                            // pulling these values shouldn't be so
+                            // expensive and running `selects` is also
+                            // not for free.
                             && changedSelectors
                             && selects(changedSelectors, subject)
                         )
@@ -1205,18 +1227,17 @@ define([
         if(cells)
             cells.forEach(state.check, state);
 
-        // don't run just for new cells, expand doesn't change ordering
-        if(!checkCells) {
-            var sortDependencies = this._global.selectAll(
-                                [this._sortCollection, '*', this._sortField]);
-            if(state.visitAll(sortDependencies))
-                // since we do cell.render in here, to schedule a reorder
-                // seem OK here too. BUT: if _sortCollection or _sortField
-                // itself changed, but not the field values, we still need to
-                // _scheduleReorderRows but outside of this function.
-                // good thing that _scheduleReorderRows is timeout throttled.
-                this._scheduleReorderRows();
-        }
+        // if(checkCells) ? => if checkCells is set, this shouldn't change
+        // at all, so why run it?
+        var sortDependencies = this._global.selectAll(
+                            [this._sortCollection, '*', this._sortField]);
+        if(state.visitAll(sortDependencies))
+            // since we do cell.render in here, to schedule a reorder
+            // seem OK here too. BUT: if _sortCollection or _sortField
+            // itself changed, but not the field values, we still need to
+            // _scheduleReorderRows but outside of this function.
+            // good thing that _scheduleReorderRows is timeout throttled.
+            this._scheduleReorderRows();
     };
 
     _p._initCollection = function(collectionId) {
@@ -1340,9 +1361,8 @@ define([
         this._update();
         // _update schedules this only if the field values have actually
         // changed
-        this._scheduleReorderRows();
+        this._scheduleReorderRows(true);
     };
-
 
     _p._getFieldValue = function(collection, slot, name) {
         // hmm, these fields need to be freshly evaluated at this point
@@ -1515,15 +1535,19 @@ define([
 
     _p.onChange = function(data) {
         console.log('received', data.type, data);
+        var func;
         // data.type = collectiontest || familytest
         switch(data.type) {
             case('collectiontest'):
-                this._changeCollectiontest(data);
+                func = this._changeCollectiontest;
             break;
             case('familytest'):
-                this._changeFamilytest(data);
+                func = this._changeFamilytest;
             break;
+            default:
+                throw new Error('Unknown data.type: "' + data.type + '".');
         }
+        func.call(this, data);
     };
 
     _p._changeFamilytest = function(data) {
@@ -1554,12 +1578,10 @@ define([
 
     _p._updateRows = function(changedRows) {
         var changedSelectors = [];
-
         changedRows.forEach(function(row) {
-            changedSelectors.push([row.collection, row, '*']);
+            return changedSelectors.push([row.collection, row, '*']);
         });
         this._update(changedSelectors);
-
     };
 
     _p._changeCollectiontest = function(data) {
@@ -1573,7 +1595,6 @@ define([
         // if the collection does not exist: create it
         if(!collection)
             collection = this._initCollection(collectionId);
-
 
         if(!(type in this._rowElements) || !this._rowElements[type].has(slot))
             this._initSlot(type, slot);
@@ -1594,7 +1615,7 @@ define([
 
         if(old && old.familytests_id !== data.familytests_id) {
             this._familytest2collectiontests.get(old.familytests_id)
-                        .delete([old.collection_id, old[this._slotKey]].join(':::'));
+                        .delete([collectionId, slot].join(':::'));
         }
         this._updateRows([row]);
     };
