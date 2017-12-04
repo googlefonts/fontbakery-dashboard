@@ -58,11 +58,17 @@ define([
         return value; // may be null in this case
     }
 
+    function percentIndicator(percent) {
+        var elem = dom.createElement('div', {class:'percent-indicator'});
+        elem.style.width = percent;
+        return elem;
+    }
+
     function percent(ratio) {
-        return ratio !== null
-                ? Math.round(ratio * 10000)/100 + '%'
-                : null
-                ;
+        if(ratio === null)
+            return null;
+        var percentStr = Math.round(ratio * 10000)/100 + '%';
+        return [percentStr, percentIndicator(percentStr)];
     }
 
     function collectArgs(/* args */) {
@@ -279,16 +285,21 @@ define([
         });
 
         function renderRatio(showPercentages, ratio, absolute) {
-            var percentages, major, minor;
+            var percentStr, major, minor;
 
             if(isNaN(ratio) || ratio === null || absolute === null)
                 return null;
 
-            percentages = (Math.round(ratio * 10000)/100) + '%';
-            major = showPercentages ? percentages : absolute;
-            minor = showPercentages ? absolute : percentages;
+            percentStr = (Math.round(ratio * 10000)/100) + '%';
+            major = showPercentages ? percentStr : absolute;
+            minor = showPercentages ? absolute : percentStr;
                          // \xa0 == nbsp
-            return [major, '\xa0', '(' , minor , ')'].join('');
+
+
+            return [
+                [major, '\xa0', '(' , minor , ')'].join('')
+              , percentIndicator(percentStr)
+            ];
         }
 
         function renderRatioAndLink(showPercentages, ratio, part, familytests_id) {
@@ -297,7 +308,7 @@ define([
               , link
               ;
             if(ratioRendered !== null)
-                result.push(ratioRendered);
+                Array.prototype.push.apply(result, ratioRendered);
 
             if(familytests_id !== null) {
                 link = dom.createElement('a', {

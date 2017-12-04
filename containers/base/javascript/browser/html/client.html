@@ -389,6 +389,25 @@
         .dashboard-table tfoot {
             border-top: 3px solid grey;
         }
+
+        .dashboard-table tbody th:first-child {
+            white-space: nowrap;
+        }
+
+        .dashboard-table th,
+        .dashboard-table td {
+            position: relative;
+        }
+
+        .dashboard-table .percent-indicator {
+            display: block;
+            height: 100%;
+            background-color: #efefefef;
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            z-index: -1;
+        }
     </style>
     <script>
     require(['/browser/js/bootstrap.js'], function(require) {
