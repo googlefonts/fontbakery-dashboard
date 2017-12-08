@@ -109,13 +109,13 @@ _p._consumeQueue = function(message) {
                 promise = this._cache.purge(cacheKey);
             }
             else
+                // dispatch to worker-distributor
                 promise = this._io.dispatchFamilyJob(cacheKey, docid);
 
-            // dispatch to worker-distributor
             return promise.then(()=>this._createCollectionEntry(job, docid));
 
         })
-        .then(this._io.ackQueueMessage(message))
+        .then(() => this._io.ackQueueMessage(message))
         .catch(err=>this._log.error(err)) // die now?
         ;
 };
