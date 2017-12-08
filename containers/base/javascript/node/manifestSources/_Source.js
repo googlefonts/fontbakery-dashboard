@@ -58,10 +58,16 @@ _p.schedule = function(taskName /* args */) {
 };
 
 // Runs immediately on init. Then it's called via the poke interface.
-// There's no cron/scheduling in the ManifesrSource itself.
+// There's no cron/scheduling in the ManifestSource itself.
 _p.update = function(forceUpdate) {
     // jshint unused:vars
     throw new Error('Not Implemented "update".');
 };
+
+_p.init = function() {
+    // may return a promise if the source needs to set up its own resources.
+    // promise exceptions will be handled as well (= end the server).
+    return null;
+}
 
 exports._Source = _Source;

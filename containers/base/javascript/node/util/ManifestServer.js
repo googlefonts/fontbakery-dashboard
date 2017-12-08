@@ -21,7 +21,7 @@ const { initAmqp }= require('./getSetup')
 function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._log = logging;
     this._id = id;
-
+    this._ready = false;
     this._server = new grpc.Server();
     this._server.addService(ManifestService, this);
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
@@ -36,29 +36,35 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     // incoming queues or such.
     // this._manifestMasterRegisterSourceQueueName = 'fontbakery-manifest-master-register-source';
 
+    this._sources = Object.create(null);
+
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
                  initAmqp(this._log, amqpSetup)
                , this._cache.waitForReady()
+               , this._addSources(sources)
                ])
-    .then(function(resources) {
+    .then(resources => {
         this._amqp = resources[0];
-    }.bind(this))
+    })
     // default on startup
+    .then(()=>{
+        this._ready = true;
+        this._log.info('Ready now!');
+    })
     .then(this.updateAll.bind(this))
     .catch(function(err) {
         this._log.error('Can\'t initialize server.', err);
         process.exit(1);
-    }.bind(this));
-
-    this._sources = Object.create(null);
-    this._addSources(sources);
+    }.bind(this))
+   ;
 }
 
 var _p = ManifestServer.prototype;
 
 _p._addSources = function(sources) {
-    sources.forEach(this._addSource, this);
+    return Promise.all(sources.map(this._addSource, this)
+                              .filter(promise=>!!promise));
 };
 
 
@@ -75,6 +81,7 @@ _p._addSource = function(source) {
     source.setDispatchFamily(this._dispatchFamily.bind(this, source.id));
     this._sources[source.id] = source;
     this._registerSource(source.id);
+    return source.init();
 };
 
 _p.updateAll = function(force) {
@@ -170,11 +177,10 @@ _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
     return this._sendAMQPMessage(this._manifestMasterJobQueueName, buffer);
 };
 
-_p._dispatchFamily = function(sourceid, familyName, filesData) {
+_p._dispatchFamily = function(sourceid, familyName, filesData, metadata) {
     var filesMessage = this._wrapFamilyData(filesData); // => filesMessage
     return this._cacheFamily(filesMessage) // => cacheKey
                     .then(cacheKey => {
-                        var metadata = null; //TODO?
                         return this._dispatchFamilyJob(sourceid, familyName, cacheKey, metadata);
                     })
                     ;
@@ -183,6 +189,8 @@ _p._dispatchFamily = function(sourceid, familyName, filesData) {
 // ManifestService implementation
 // rpc Poke (PokeRequest) returns (GenericResponse) {};
 _p.poke = function(call, callback) {
+    if(!this._ready)
+        callback(new Error('Not ready yet'));
     var sourceId = call.request.getSource() // call.request is a PokeRequest
       , force = call.request.getForce()
       , response = new messages_pb.GenericResponse()
