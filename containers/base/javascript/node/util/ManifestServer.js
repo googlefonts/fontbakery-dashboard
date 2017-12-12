@@ -39,7 +39,7 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._sources = Object.create(null);
 
     // Start serving when the database and rabbitmq queue is ready
-    Promise.all([
+   Promise.all([
                  initAmqp(this._log, amqpSetup)
                , this._cache.waitForReady()
                , this._addSources(sources)

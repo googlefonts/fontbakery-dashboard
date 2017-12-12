@@ -5,20 +5,47 @@
 /* jshint esnext:true */
 
 const { _Source } = require('./_Source')
-  , Parent = _Source
-  , { ManifestServer } = require('../util/ManifestServer')
-  , { getSetup } = require('../util/getSetup')
-  , NodeGit = require('nodegit')
-  ;
+    , Parent = _Source
+    , { ManifestServer } = require('../util/ManifestServer')
+    , { getSetup } = require('../util/getSetup')
+    , NodeGit = require('nodegit')
+    , https = require('https')
+    ;
+
+const GITHUB_HTTPS_GIT_URL = 'https://github.com/{remoteName}.git'
+    , GITHUB_API_HOST = 'api.github.com'
+    , GITHUB_API_PATH = '/graphql'
+    ;
 
 const GitBase = (function() {
-function GitBase(logging, id, familyWhitelist) {
+
+/**
+ * the sources are different implementations, but both run on the
+ * same ManifestServer, because they share the google/fonts repository.
+ * Thus, many git objects will be shared between both, which will make
+ * us inherit a lot of gits own optimizations.
+ *
+ * The two sources should get initialized serially, the first one
+ * (whichever it is) will load the  google/fonts:master tree
+ * the second one will only see see that it is already loaded (for the
+ * sake of simplicity probably even call git fetch, but without any download
+ * action following).
+ */
+
+function GitBase(logging, id, repoPath, baseReference, familyWhitelist) {
     this._log = logging;
     this.id = id;
+    this._baseRef = {
+        repoOwner: baseReference.repoOwner
+      , repoName: baseReference.repoName
+        // e.g. "google/fonts"
+      , remoteName: [baseReference.repoOwner, baseReference.repoName].join('/')
+      , name: baseReference.name
+    };
     this._familyWhitelist = familyWhitelist;
 
     this._licenseDirs = new Set(['apache', 'ofl', 'ufl']);
-    this._repoPath = '/tmp/fontsgit';
+    this._repoPath = repoPath;
     this._repo = null;
 
     Parent.call(this);
@@ -47,7 +74,7 @@ _p._getRemote = function(remoteName) {
     // remoteName = github.resourcePath.slice(1)
     // var remoteUrl = ['git@github.com:', remoteName, '.git'].join('');
     // Use https for now, it is easier because it doesn't need ssh credentials!
-    var remoteUrl = ['https://github.com/', remoteName, '.git'].join('');
+    var remoteUrl = GITHUB_HTTPS_GIT_URL.replace('{remoteName}', remoteName);
     NodeGit.Remote.create(this._repo, remoteName, remoteUrl).then(null, err => {
         if(err.errno === NodeGit.Error.CODE.EEXISTS)
             // NOTE: the remote returned by Repository.getRemote has
@@ -93,6 +120,10 @@ _p._fetchRef = function(remoteName, referenceName) {
                                 + remoteName + ':' + referenceName + '"');
             throw err;
         });
+};
+
+_p.fetchBaseRef = function() {
+    return this._fetchRef(this._baseRef.remoteName, this._baseRef.name);
 };
 
 // this is a *good to know how* interface, we don't actually use it
@@ -173,10 +204,10 @@ _p._dirsToCheckFromDiff = function (newTree, changedNamesDiff ) {
       ;
     for(let fileName of fileNames) {
         if(!fileName.length)
-            // last line is empty afaik
+            // last line is empty, only case afaik
             continue;
         let parts = fileName.split('/');
-        if(!this._licenseDirs.has(parts[0]) || parts.length >= 2)
+        if(!this._licenseDirs.has(parts[0]) || parts.length < 2)
             continue;
         // 3 parts is the usual, e.g: ['ofl', 'abbeezee', 'Abeezee-Regular.ttf']
         let familyDir = parts.slice(0, 2).join('/');
@@ -288,13 +319,16 @@ _p._updateTreeEntry = function(treeEntry, metadata) {
 };
 
 this.init = function() {
-    return this._initRepo.then(
-        repo => this._repo = repo
-      , err => {
-          this._log.error('Can\'t init git reporsitory: ', err);
-          throw err;
-        }
-    );
+    return this._repo
+            ? Promise.resolve(this._repo)
+            : this._initRepo.then(
+                  repo => this._repo = repo
+                , err => {
+                    this._log.error('Can\'t init git reporsitory: ', err);
+                    throw err;
+                  }
+              )
+            ;
 };
 
 return GitBase;
@@ -302,29 +336,44 @@ return GitBase;
 
 const GitBranch = (function() {
 
-function GitBranch(logging, id, ...  setup, baseRef, familyWhitelist) {
-    GitBase.call(this, logging, id, familyWhitelist);
-
-    this._baseRef = baseRef;
+// google/fonts:master -> monitored branch
+//            -> checks differences between last check and current
+//              `if families in the branch changed`
+//            -> to check if there was an actual change, we
+//               keep the last checked tree-id for each font family directory
+// uses one old_tree and a "list" of one "new_trees"
+// "old_tree" => tree of last checked commit.
+//               if no old_tree is available, we check
+//               the full collection, i.e. the tree of the current commit.
+// "new_tree" => current google/fonts/master
+function GitBranch(logging, id, repoPath, baseReference, familyWhitelist) {
+    GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist);
     this._lastChecked = new Map();
     this._oldCommit = null;
-
 }
+
 var _p = GitBranch.prototype = Object.create(GitBase.prototype);
 
+/**
+ * if there is no state information about the last update,
+ * all of the fonts must be dispatched
+ * if there is state information about the last update
+ * dispatch only fonts with another tree object id than the state knows
+ * don't fetch files in subdirectories, we want a flat dir here
+ * besides, at the moment, fontbakery-worker rejects sub directories
+ */
 _p._update = function(forceUpdate, currentCommit) {
     let currentCommitTreePromise = currentCommit.getTree()
       , dirsPromise = this._oldCommit
             // based on diff
             ? Promise.all([this._oldCommit.getTree(), currentCommitTreePromise])
-                     .then(trees => this._dirsToCheck(trees[0], trees[1]))
+                     .then(([oldTree, newTree]) => this._dirsToCheck(oldTree, newTree))
             // all families
             : this._getRootTreeFamilies(currentCommit)
       ;
     this._oldCommit = currentCommit;
     Promise.all([currentCommitTreePromise, dirsPromise])
-    .then(resources => {
-        let [currentCommitTree, dirs] = resources;
+    .then(([currentCommitTree, dirs]) => {
         return Promise.all(dirs.map(dir=>currentCommitTree.getEntry(dir)));
     })
     .then(treeEntries => {
@@ -340,7 +389,7 @@ _p._update = function(forceUpdate, currentCommit) {
               , familyTree: treeEntry.sha()
               , familyPath: treeEntry.path()
               , repository: this._baseRef.remoteName
-              , branch: this._baseRef.referenceName
+              , branch: this._baseRef.name
             };
             promises.push(this._updateTreeEntry(treeEntry, metadata));
         }
@@ -351,19 +400,11 @@ _p._update = function(forceUpdate, currentCommit) {
     });
 };
 
-_p._fetchBaseRef = function() {
-    return this._fetchRef(this._baseRef.remoteName, this._baseRef.referenceName);
-
-    // only check PRs targeted at baseRef
-    this._baseRef = baseRef;
-
-};
-
 // Runs immediately on init. Then it's called via the poke interface.
 // There's no scheduling in the ManifestSource itself.
 _p.update = function(forceUpdate) {
-    // update the baseRef
-    return this._fetchBaseRef()
+    // update the baseRef => can take really long the first time
+    return this.fetchBaseRef()
         .then(reference => this._getCommit(reference))
         .then(currentCommit => this._update(forceUpdate, currentCommit))
         ;
@@ -373,372 +414,289 @@ return GitBranch;
 })();
 
 
+
+
 const GitBranchGithubPRs = (function() {
-function GitBranchGithubPRs(logging, id, ... setup, familyWhitelist) {
-    GitBase.call(this, logging, id, familyWhitelist);
+
+//     google/fonts:master/pull-requests -> via github api!
+//              -> fetches PRs from github for the monitored branch
+//              -> so this is ONLY PRs to master (===baseRefName)
+//              -> and also uses only the latest commit that is
+//                           adressed to master.
+//             uses one "old_tree" and many "new_trees"
+//             old_tree => current google/fonts/master (baseRefName)
+
+function GitBranchGithubPRs(logging, id, repoPath, baseReference
+                                    , gitHubAPIToken, familyWhitelist) {
+    GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist);
+    this._lastChecked = new Map();
 }
 
 
 var _p = GitBranchGithubPRs.prototype = Object.create(GitBase.prototype);
+
+const QUERY = `
+query($repoOwner: String!, $repoName: String!, $baseRefName: String, $cursor: String )
+{
+  repository(owner: $repoOwner, name: $repoName) {
+    nameWithOwner
+    homepageUrl
+    pullRequests(
+          first: 45, states: OPEN
+        , baseRefName: $baseRefName
+        , after: $cursor
+        , orderBy: {field: CREATED_AT, direction: DESC}
+    ) {
+      totalCount
+      pageInfo {
+        endCursor
+      }
+      nodes {
+        id
+        url
+        createdAt
+        updatedAt
+        baseRefName
+        resourcePath
+        title
+        mergeable
+        headRefName
+        headRepository {
+          nameWithOwner
+        }
+      }
+    }
+  }
+}`;
+
+_p._makeGrapQlQueryBody = function(cursor) {
+    return JSON.stringify({
+        query: QUERY
+      , variables: {
+              repoOwner: this._baseRef.repoOwner
+            , repoName: this._baseRef.repoName
+            , baseRefName: this._baseRef.name // only fetch PRs to baseRefName
+              // when in the responese endCursor === null all items have been fetched!
+              // when here cursor === null: fetches the beginning of the list
+            , cursor:  cursor || null // data.repository.pullRequests.pageInfo.endCursor
+        }
+    });
+};
+
+_p._sendRequest = function(cursor) {
+    var body = this._makeGrapQlQueryBody(cursor)
+      , options = {
+            hostname: GITHUB_API_HOST
+          , path: GITHUB_API_PATH
+          , method: 'POST'
+          , port: 443
+          , headers: {
+                'Content-Type': 'application/json'
+              , 'Content-Length': body.length
+              , Authorization: 'bearer ' + this._gitHubAPIToken
+              , 'User-Agent': 'Font Bakery: GitHub GraphQL Client'
+           }
+        }
+      ;
+
+    function onResult(resolve, reject, res) {
+        var data = [ ];
+        res.setEncoding('utf8');
+        res.on('data', function(chunk) {
+            data.push(chunk);
+        });
+        res.on('end', function() {
+            try {
+                resolve(JSON.parse(data.join('')));
+            }
+            catch(err) {
+                reject(err);
+            }
+        });
+        res.on('error', reject);
+    }
+
+    return new Promise(function(resolve, reject) {
+        var req = https.request(options, onResult.bind(null, resolve, reject));
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+};
+
+_p._queryPullRequestsData = function() {
+    var prs = null
+      , recursiveFetch = data_ => {
+        var data = data_.data
+          , pullRequests = data.repository.pullRequests
+          , cursor = data.repository.pullRequests.pageInfo.endCursor
+          ;
+        if(prs === null)
+            prs = pullRequests.nodes;
+        else
+            Array.prototype.push.apply(prs, pullRequests.nodes);
+
+        if(cursor !== null)
+            return this._sendRequest(cursor).then(recursiveFetch);
+        else {
+            if(prs.length !== data.repository.pullRequests.totalCount)
+                // This assertion should hold because it is documented
+                // in the API, but it is no hard reason to fail.
+                this._log.warning('Assertion failed: expected totalCount ('
+                                + data.repository.pullRequests.totalCount+') '
+                                + 'PullRequest items, but got ' + prs.length);
+            return prs;// next step
+        }
+    };
+    return this._sendRequest(null).then(recursiveFetch);
+};
+
+_p._getReferenceResources = function(reference) {
+    var result = {
+        reference: reference
+      , commit: null
+      , commitTree: null
+    };
+
+    return this._getCommit(reference)
+        .then(commit => {
+            result.commit = commit;
+            return commit.getTree();
+        })
+        .then(commitTree => {
+            result.commitTree = commitTree;
+        })
+        .then(() => result)
+        ;
+};
+
+/**
+ * prData = [{
+ *     "id": "MDExOlB1bGxSZXF1ZXN0MTU3MjIyNTc3",
+ *     "url": "https://github.com/google/fonts/pull/1385",
+ *     "createdAt": "2017-12-08T11:34:02Z",
+ *     "updatedAt": "2017-12-08T12:24:06Z",
+ *     "baseRefName": "master",
+ *     "resourcePath": "/google/fonts/pull/1385",
+ *     "title": "nunito: v3.500 added",
+ *     "mergeable": "MERGEABLE",
+ *     "headRefName": "nunito",
+ *     "headRepository": {
+ *         "nameWithOwner": "m4rc1e/fonts"
+ * }]
+ */
+_p._fetchPullRequests = function(prsData) {
+    return Promise.all(prsData.map(prData => {
+        return this._fetchRef(
+            prData.headRepository.nameWithOwner
+          , prData.headRefName
+        )
+        .then(reference => this._getReferenceResources(reference))
+        .then(referenceResources => ({
+            data: prData
+          , reference: referenceResources.reference
+          , commit: referenceResources.commit
+          , commitTree: referenceResources.commitTree
+        }));
+    }));
+};
+
+_p._getPullRequests = function() {
+    return this._queryPullRequestsData
+        .then(this._fetchPullRequests);
+};
+
+_p._getBaseResources = function() {
+    return this.fetchBaseRef()
+               .then(reference => this._getReferenceResources(reference));
+};
+
+// see _fetchPullRequests for pr data format
+// prsData => [{data: prData, reference: reference, commit: commit, commitTree:commitTree}]
+_p._getPRchangedFamilies = function([baseData, prsData]) {
+    return Promise.all(prsData.map(prData => {
+        var oldTree = baseData.commitTree
+          , newTree = prData.commitTree
+          ;
+          return this._dirsToCheck(oldTree, newTree)
+                .then(changedFamilies => {
+                    prData.changedFamilies = changedFamilies;
+                });
+    })).then(prsData => {
+        let checkFamilies = new Map();
+        // only do the "latest" commit for each family.
+        // prsData is still ordered by {field: CREATED_AT, direction: DESC}
+        // from the original github graphQL query.
+        for(let i=0,l=prsData.length;i<l;i++) {
+            let changedFamilies = prsData[i].changedFamilies;
+            for(let j=0,ll=changedFamilies.length;j<ll;j++) {
+                let family = changedFamilies[j];
+                if(checkFamilies.has(family))
+                    continue;
+                checkFamilies.set(family, prsData[i]);
+            }
+        }
+        return checkFamilies;
+    });
+};
+
+_p._update = function(forceUpdate, checkFamilies) {
+    var promises = [];
+    checkFamilies.forEach((prData, dir) => {
+        let promise = prData.commitTree.getEntry(dir)
+            .then(treeEntry => {
+                if(!forceUpdate && this._lastChecked.get(treeEntry.path())
+                                                        === treeEntry.oid())
+                    // needs no update
+                    return null;
+                this._lastChecked.set(treeEntry.path(), treeEntry.oid());
+                let metadata = {
+                        commit: prData.commit.sha()
+                      , commitDate: prData.commit.date()
+                      , familyTree: treeEntry.sha()
+                      , familyPath: treeEntry.path()
+                      , repository: prData.data.headRepository.nameWithOwner
+                      , branch: prData.data.headRefName
+                      , prUrl: prData.url
+                      , prTitle: prData.title
+                };
+                return this._updateTreeEntry(treeEntry, metadata);
+            });
+        promises.push(promise);
+    });
+    // some will resolve to null if there's a hit in this._familyWhitelist
+    // or this._lastChecked though, at this point, error reporting may be
+    // the only thing left to do.
+    return Promise.all(promises);
+};
+
+/**
+ * check all the diffs and collect affected font families.
+ * if a font family is affected by many PRs, the youngest PR is chosen
+ * i.e. skip families that have been looked at before in this run
+ * mark the font-family version for the next run, could use all file-object
+ * ids, as that won't even change between rebasing. still, it is probably
+ * to just use the HEAD commit as mark.
+ */
+_p.update = function(forceUpdate) {
+    // update the baseRef => can take really long the first time
+    return Promise.all([
+            this._getBaseResources()
+          , this._getPullRequests()
+        ])
+       .then(this._getPRchangedFamilies.bind(this))
+       .then(checkFamilies => this._update(forceUpdate, checkFamilies))
+       ;
+};
+
 return GitBranchGithubPRs;
 })();
 
 
-function download(fileUrl) {
-    function onResult(resolve, reject, res) {
-        var data = [ ];
-        res.on('data', function(chunkBuffer) {
-            data.push(chunkBuffer);
-        });
-        res.on('end', function() {
-            var binary = Buffer.concat(data);
-            resolve(new Uint8Array(binary.buffer));
-        });
-        res.on('error', function(err) {
-            reject(err);
-        });
-    }
-    return new Promise(function(resolve, reject) {
-        var http_ = fileUrl.indexOf('https') === 0 ? https : http;
-        http_.get(url.parse(fileUrl)
-                                , onResult.bind(null, resolve, reject));
-    });
-}
-
-function download2JSON(uint8arr) {
-    return JSON.parse(new Buffer(uint8arr).toString());
-}
-
-function apiData2Map(data) {
-    var i, l, family
-      , items = data.items
-      , result = new Map()
-      ;
-    for(i=0,l=items.length;i<l;i++) {
-        family = items[i].family;
-        if(result.has(family))
-            throw new Error('Assertion failed: Family is multiple times '
-                            + 'in API data "' + family + '".');
-        result.set(family, items[i]);
-    }
-    return result;
-}
-
-
-
-
-function downloadAPIData(url) {
-    return download(url)
-            .then(download2JSON)
-            .then(apiData2Map)
-            ;
-}
-
-
-
-
-
-
-
-_p._needsUpdate = function (familyData) {
-    var familyName = familyData.family
-      , oldFamilyData, variant, fileName
-      ;
-
-    if(!this._lastAPIData || !this._lastAPIData.has(familyName))
-        // there's no API data yet, this is initial
-        // or this is a new family
-        return true;
-    oldFamilyData = this._lastAPIData.get(familyName);
-    if(familyData.lastModified !== oldFamilyData.lastModified
-        || familyData.version !== oldFamilyData.version
-        // this is essentially redundant data to familyData.files.keys()
-        // despite of the order in variants which is not guaranteed in the
-        // dictionary familyData.files
-        || familyData.variants.length !== oldFamilyData.variants.length
-    )
-        return true;
-    for(variant in familyData.files) {
-        fileName = familyData.files[variant];
-        if(!(variant in oldFamilyData.files))
-            return true;
-        if(fileName !== oldFamilyData.files[variant])
-            return true;
-    }
-    // no indication for an update found
-    return false;
-};
-
-
-
-
-
-_p._loadFamily = function(familyData) {
-    var files = []
-      , variant, fileUrl, fileName
-      ;
-    // download the files
-
-    function onDownload(fileName, blob){
-        return [fileName, blob];
-    }
-    for(variant in familyData.files) {
-        fileUrl = familyData.files[variant];
-        // make proper file names
-        fileName = makeFontFileName(familyData.family, variant);
-        // Bind fileName, it changes in the loop, so bind is good, closure
-        // and scope are bad.
-        files.push(download(fileUrl)
-                    .then(onDownload.bind(null, fileName /* => blob */)));
-    }
-
-    return Promise.all(files);
-};
-
-// Runs immediately on init. Then it's called via the poke interface.
-// There's no scheduling in the ManifesrSource itself.
-_p.update = function(forceUpdate) {
-    // download the API JSON file
-
-    return downloadAPIData(this._apiAPIDataUrl)
-        .then(this._update.bind(this, forceUpdate /* Map apiData */ ))
-        ;
-};
-
-_p._update = function(forceUpdate, apiData) {
-    var dispatchFamily, updating = [];
-
-    for(let familyData  ) {
-
-        let familyName = familyData.family
-        if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
-            continue;
-
-        if(!(forceUpdate || this._needsUpdate(familyData)))
-            continue;
-        dispatchFamily = this._dispatchFamily.bind(this, familyName);
-        updating.push(this._loadFamily(familyData).then(dispatchFamily));
-    }
-    this._lastAPIData = apiData;
-    return Promise.all(updating);
-};
-
-
-
-
-
-
-
 if (typeof require != 'undefined' && require.main==module) {
 
-    // ensure a repository is available
-    if (!repo)
-        repo = new empy repo at var/fontsgit //a bare git
-
-
-
-    // fetch all refs for constant monitoring
-    // that is google/fonts:master
-    //    we can keep this a remote ref as well, no need for local monitoring
-    //    fetch is also not affected by conflicts e.g. in a case of a rollback or such
-
-    for id, reponame, url, branch in monitored:
-        // Git. Remote.create(repo, "m4rc1e", "https://github.com/m4rc1e/fonts")
-        if (!has remote)
-            Remote.create(repo, reponame, url)
-        else
-            // do we need to remeber the current tree-oid here?
-            // I guess that's done somewhere else
-            repo.getRemote(reponame).then()
-
-        remote.fetch(branch).then(...)
-
-    => we'll have to create remotes a lot and fetch referenced trees
-       but, google/fonts:master is basically a default case
-
-
-    google/fonts:master -> monitored branch
-                        -> checks differences between last check and current
-                           `if families in the branch changed`
-                           -> to check if there was an actual change, we
-                              keep the last checked commit-id for each font family
-                              (or the tree-oid? more exact probably)
-                           -> if the files are still identical, the ManifestMaster
-                              will take care of this
-                uses one old_tree and a list of one "new_trees"
-                "old_tree" => oid of last checked "new_tree"
-                              if no old_tree is available, we need to check
-                              the full collection, i.e. the tree of the first commit?
-                              maybe we can bypass and just send all entries of
-                              new_tree that are in the target directories
-                "new_tree" => current google/fonts/master
-
-
-    google/fonts:master/pull-requests -> via github api!
-                        -> fetches PRs from github for the monitored branch
-                        -> so this is ONLY PRs to master
-                        -> and also uses only the latest commit that is
-                           adressed to master.
-                uses one "old_tree" and many "new_trees"
-                old_tree => current google/fonts/master (or rather the tree referenced by the commit)
-
-    the sources are different implementations, but both run on the
-    same ManifestServer, because they share the google/fonts repository.
-    Thus, many git objects will be shared between both, which will make
-    us inherit a lot of gits own optimizations.
-
-    Thus, the two sources will be initialized serially, the first one
-    (whichever it is) will load the  google/fonts:master tree
-    the second one will only see see that it is already loaded (for the
-    sake of simplicity probably even call git fetch, but without any download
-    action following).
-
-
-
-    function check_trees(old_tree, new_trees_in_order) {
-        checks_to_do = new Map()
-        for(new_tree in new_trees)
-            changed_files = diff(repo, old_tree, new_tree)
-            family_dirs_to_check = get_font_family_trees(changed_files, new_tree)
-            for(family_dir of family_dirs_to_check) {
-                if(checks_to_do.has(family_dir))
-                    // a newer PR adressed this family
-                    continue;
-                // new_tree is the root directory
-                // we could get here the actual root directory tree of the
-                // font_dir and use its oid, then:
-                //if(old_checks.get(font_dir) === oid)
-                //    skip the check
-                get_actual_id_for_cache(family_dir, new_tree)
-                checks_to_do.set(family_dir, new_tree);
-            }
-    }
-
-    // on update:
-
-    // if there is no state information about the last update,
-    // all of the fonts must be dispatched
-
-    // if there is state information about the last update
-    // dispatch only fonts with another tree object id than the state knows
-
-    // dispatch: download the font dir
-    // don't fetch files in subdirectories, we want a flat dir here
-    // besides, at the moment, fontbakery-worker rejects sub directories
-    //make and array:
-    files = []
-    files.push(fileName, [new Uint8Array(binary.buffer)])
-
-
-
-
-
-
-    // This needs the github api first ...
-    // for PR's
-    // get all PRs from github.com/google/fonts
-    //    this is possible, but we don't get the ssh-url nor the real git url:
-    //          https://platform.github.community/t/ssh-url-of-repositories/3736
-    //      repository.url: "https://github.com/google/fonts"
-    //      reporsitory.resourcePath: "/google/fonts"
-    //
-    //       pullRequests.nodes[i].headRefName: "pacifico"
-    //       pullRequests.nodes[i].headRef: {
-    //            "id": "MDM6UmVmNjQyMTg3MjE6cGFjaWZpY28=",
-    //            "name": "pacifico",
-    //            "prefix": "refs/heads/",
-    //            "repository": {
-    //                  "id": "MDEwOlJlcG9zaXRvcnk2NDIxODcyMQ==",
-    //                  "resourcePath": "/m4rc1e/fonts",
-    //                  "url": "https://github.com/m4rc1e/fonts"
-    //             }
-    //
-    // https: https://github.com/google/fonts.git
-    //              either: "{url}.git"
-    //                  or: "https://github.com{resourcePath}.git"
-    //                  or: "https://github.com/{resourcePath.slice(1)}.git"
-    //   ssh: git@github.com:google/fonts.git
-    //                  "git@github.com:{resourcePath.slice(1)}.git"
-    //
-    //
-    //
-    // nodegit.Remote.create(repo, 'm4rc1e/fonts', "https://github.com/m4rc1e/fonts")
-    //
-    // > p = Git.Remote.create(repo, "m4rc1e", "https://github.com/m4rc1e/fonts").then(rem=>this.remote=rem)
-    // > p.getReason()
-    // { Error: remote 'm4rc1e' already exists
-    // at Error (native) errno: -4 }
-    //
-    // var Git = require('nodegit')
-    // > Git.Repository.open("../../../../fonts/").then(repo => this.repo=repo)
-
-    // > repo.getRemote('m4rc1e').then(remote=>this.remote=remote).then(null, console.log)
-    // > remote.fetch('pacifico').then(...)
-    // p = repo.getReference('m4rc1e/pacifico').then(reference=>this.reference=reference)
-
-
-todo: paginate github queries for PRs
-      filter by pr's that go to master
-      order by age
-
-      -> this is basically the same for diffs between the last master commit
-         and the current master commit
-      check all the diffs and collect affected font families.
-      if a font family is affected by many PRs, the youngest PR is chosen
-      i.e. skip families that have been looked at before in this run
-      mark the font-family versionfor the next run, could use all file-object
-      ids, as that won't even change between rebasing. still, it is probably
-      to just use the HEAD commit as mark.
-
-var NodeGit = require('nodegit')
-NodeGitGit.Repository.open("../../../../fonts/").then(repo => this.repo=repo)
-p = repo.getReference('m4rc1e/pacifico').then(r=>this.reference=r)
-NodeGit.Commit.lookup(repo, reference.target()).then(commit => this.commit=commit)
-// only monitor the PR if it's going into master!
-repo.getReference('master').then(masterRef=>this.masterRef=masterRef)
-NodeGit.Commit.lookup(repo, masterRef.target()).then(masterCommit=>this.masterCommit=masterCommit)
-masterCommit.getTree().then(m=>this.old_tree=m)
-commit.getTree().then(m=>this.new_tree=m)
-diffOptions = new NodeGit.DiffOptions();
-NodeGit.Diff.treeToTree(repo, old_tree, new_tree, diffOptions).then(d=>this.diff=d)
-diff.toBuf(NodeGit.Diff.FORMAT.NAME_ONLY).then(names=>this.names=names)
-> names
-'ofl/pacifico/METADATA.pb\nofl/pacifico/Pacifico-Regular.ttf\n'
-> names.split('\n')
-[ 'ofl/pacifico/METADATA.pb',
-  'ofl/pacifico/Pacifico-Regular.ttf',
-  '' ]
-
-
-new_tree.getEntry('ofl/pacifico/METADATA.pb').then(treeEntry=>thistreeEntry=treeEntry)
-treeEntry.getBlob().then(b=>b.toString()).then(console.log)
-//  b.content() === <Buffer 12 34 ...>
-
-new_tree.getEntry('ofl/pacifico').then(t=>this.ptreeEntry=t) // TreeEntry; ptree.dirtoparent => 'ofl'
-
-ptreeEntry.getTree(t=>this.ptree = t);
-ptree.entries().map(e=>e.name());
-
-
-new_tree.getEntry('ofl/removed_font').then(null, console.error)
-Promise { _55: 0, _87: null, _28: [] }
-> { Error: the path 'removedFont' does not exist in the given tree
-    at Error (native) errno: -3 }
-
-
-    // use only the latest PR that changes a font family <= which font familie (subdirectories) are changed?
-    //          the "files-changed" info is sufficient for this!
-    // if a PR changes many families it's still only the latest that we
-    // use
-    // check the update state and fetch all those PR trees
-    // that are newer/others than in the update state
-    // dispatch the files and update the update state
-    // update the
-
-
     var setup = getSetup(), sources = [], server
-       , apiDataBaseUrl = 'https://www.googleapis.com/webfonts/v1/webfonts?key='
-       , apiDataUrl = apiDataBaseUrl + process.env.GOOGLE_API_KEY
+       , repoPath = '/var/fontsgit'
        , familyWhitelist = null
        , grpcPort=50051
        ;
@@ -752,15 +710,14 @@ Promise { _55: 0, _87: null, _28: [] }
         }
     }
 
-    if(!process.env.GOOGLE_API_KEY)
+    if(!process.env.GITHUB_API_TOKEN)
         // see: Using Secrets as Environment Variables
         // in:  https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables
         // and: https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure
-        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=google-api-key=$GOOGLE_API_KEY
-        throw new Error('MISSING: process.env.GOOGLE_API_KEY');
+        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=github-api-token=$GITHUB_API_TOKEN
+        throw new Error('MISSING: process.env.GITHUB_API_TOKEN');
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    // the prod api
 
     if(process.env.DEVEL_FAMILY_WHITELIST) {
         familyWhitelist = new Set(JSON.parse(process.env.DEVEL_FAMILY_WHITELIST));
@@ -769,17 +726,42 @@ Promise { _55: 0, _87: null, _28: [] }
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
     }
 
-    sources.push(new GoogleFonts(setup.logging, 'production', apiDataUrl, familyWhitelist));
-    // the devel api
-    //sources.push(new GoogleFonts('sandbox'/* setup.logging, setup.amqp, setup.db, setup.cache */));
-    // FIXME: Lots of setup arguments missing
+    var baseReference = {
+            repoOwner: 'google'
+          , repoName: 'fonts'
+          , name: 'master'
+    };
 
-    server = new ManifestServer(
-            setup.logging
-          , 'GoogleFontsAPI'
-          , sources
-          , grpcPort
-          , setup.cache
-          , setup.amqp
-    );
+    sources.push(new GitBranch(
+            setup.logging, 'master', repoPath, baseReference, familyWhitelist
+    ));
+    sources.push(new GitBranchGithubPRs(
+            setup.logging, 'pulls', repoPath, baseReference
+          , process.env.GITHUB_API_TOKEN, familyWhitelist
+    ));
+
+    var server = null;
+
+    // an initial fetch of our repository can take a while
+    // hence we do it very controlled at the beginning and get better
+    // log output.
+    setup.logging.info('Fetching git base reference:', baseReference);
+    sources[0].init()
+        .then(() => sources[0].fetchBaseRef())
+        .then(() => {
+            setup.logging.info('Done fetching git base reference!');
+            setup.logging.info('Starting manifest server');
+            server = new ManifestServer(
+                setup.logging
+              , 'GitHub-GoogleFonts'
+              , sources
+              , grpcPort
+              , setup.cache
+              , setup.amqp
+            );
+            return server.initPromise;
+        }, err => {
+            setup.logging.error('Can\'t fetch base reference:', err);
+            process.exit(1);
+        });
 }
