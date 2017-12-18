@@ -6,8 +6,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node node/api.js",
-    "prepare": "bower install --allow-root && browserify ./browser/js/bower_components/jiff/jiff.js -s jiff -o ./browser/js/bower_components/jiff/jiff.umd.js && browserify ./browser/js/bower_components/jiff/lib/jsonPointer -s jsonPointer -o ./browser/js/bower_components/jiff/jsonPointer.umd.js && mkdir -p ./browser/js/bower_components/protocolbuffers && browserify ./node_modules/protocolbuffers/shared_pb.js -s  protocolbuffers/shared_pb -o ./browser/js/bower_components/protocolbuffers/shared_pb.js"
+    "start": "node node/api.js"
   },
   "keywords": [
     "font",
