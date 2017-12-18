@@ -237,7 +237,7 @@ define([
     function _parseTestKey(key) {
         var raw = JSON.parse(key)
           , data = {
-              test: raw.test
+              check: raw.check
             , section: raw.section
             , iterargs: {}
            }
@@ -724,12 +724,12 @@ define([
 
         this._keyData = _parseTestKey(this.key);
 
-        var channel = 'change:/test_descriptions/' + this._keyData.test
+        var channel = 'change:/test_descriptions/' + this._keyData.check
           , markerPrefix = this._spec[''].insertionMarkerPrefix
           ;
         this._descriptionNode = dom.createTextNode();
         dom.insertAtMarkerComment(container, markerPrefix + 'test-key'
-                        , dom.createTextNode(this._keyData.test), false);
+                        , dom.createTextNode(this._keyData.check), false);
         dom.insertAtMarkerComment(container, markerPrefix + 'description'
                                         , this._descriptionNode, false);
         this.unsubscribeDesc = this.supreme.pubSub.subscribe(channel
