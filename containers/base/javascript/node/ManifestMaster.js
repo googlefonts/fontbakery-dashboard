@@ -139,7 +139,7 @@ _p._createCollectionEntry = function(job, familytests_id) {
       , family_name: family_name
       , familytests_id: familytests_id
       , date: job.getDate().toDate()
-      , metadata: metadata ? JSON.parse() : {}
+      , metadata: metadata ? JSON.parse(metadata) : {}
     }
     ;
 

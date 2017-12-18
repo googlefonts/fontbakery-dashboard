@@ -143,7 +143,7 @@ _p._consumeQueue = function(channel, message) {
     this._queryFamilyTestDoc(job.getDocid())
         .then(this._checkFamilyDoc.bind(this, job /* -> doc */))
         // when finishing without errors
-        .then(channel.ack.bind(channel, message))
+        .then(()=>channel.ack(message))
         .catch(function(error) {
             this._log.error(error);
             // re-raise => makes it unhandled, but better than stopping it,
