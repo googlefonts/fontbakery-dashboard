@@ -65,8 +65,7 @@ function download(fileUrl) {
             data.push(chunkBuffer);
         });
         res.on('end', function() {
-            var binary = Buffer.concat(data);
-            resolve(new Uint8Array(binary.buffer));
+            resolve(new Uint8Array(Buffer.concat(data)));
         });
         res.on('error', function(err) {
             reject(err);
