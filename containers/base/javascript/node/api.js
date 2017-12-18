@@ -35,6 +35,7 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     // familytests_id => familyDoc
     this._familyDocs = new Map();
     this._dashboardSubscription = null; // an object if there are consumers
+    this._familyDocsSubscriptionCursor = null;
 
     this.__updateCollectionFamilyDoc = this._updateCollectionFamilyDoc.bind(this);
 
@@ -246,7 +247,7 @@ _p.fbDNDReceive = function(req, res, next) {
         //jshint validthis:true
         this._log.debug('Sending DND receive response:', docid);
         res.setHeader('Content-Type', 'application/json');
-        res.send(JSON.stringify({docid: docid, url: 'report/' + encodeURIComponent(docid)}));
+        res.send(JSON.stringify({id: docid, url: 'report/' + encodeURIComponent(docid)}));
     }
 
     function makeDoc(cacheKey) {
@@ -304,7 +305,7 @@ _p.fbSocketConnect = function(socket) {
 
         if(typeof data.id !== 'string')
             // this is actually required
-            data.docid = '';
+            data.id = '';
         if(type === 'report')
             this._subscribeToFamilytestReport(socket, data);
         else if(type === 'collection') {
@@ -365,7 +366,7 @@ _p._updateFamilytestReport = function(cursor, socket, data) {
  */
 _p._subscribeToFamilytestReport = function(socket, data) {
     return this._io.query(this._dbSetup.tables.family)
-        .get(data.id)
+        .get(data.id + '')
         .changes({includeInitial: true, squash: 1})
         .run((err, cursor) => {
             if(err)
@@ -456,11 +457,13 @@ _p._unsubscribeFromFamilyDoc = function(subscription) {
       ;
     familyDoc.subscriptions.delete(subscription);
     if(!familyDoc.subscriptions.size) {
-        if(familyDoc.cursor) {
-           this._closeCursor(familyDoc.cursor);
-           familyDoc.cursor = null;
-        }
         this._familyDocs.delete(familytests_id);
+
+        if(!this._familyDocs.size) {
+            // close the change feed if there are no more subscribers
+            this._closeCursor(this._familyDocsSubscriptionCursor);
+            this._familyDocsSubscriptionCursor = null;
+        }
     }
 };
 
@@ -469,6 +472,67 @@ function _callbackFamilyDocSubscubscriber(subscription, data) {
     args.push(data);
     subscription.callback.apply(null, args);
 }
+
+
+_p._getDashboardFamilytestQuery = function(familytests_id) {
+    var query = this._io.query(this._dbSetup.tables.family);
+    // this way we can create a changefeed for the whole table
+    // and have a single point of truth for the query
+    if(familytests_id)
+        query = query.get(familytests_id);
+
+    return query.merge(doc => {return {
+                total: doc('tests').count().default(null)
+              , '#fonts': doc('iterargs')('font').count().default(null)
+            };
+        })
+        // more?
+        .pluck('id', 'results', 'finished', 'created', 'started'
+             , 'exception', 'total' , '#fonts')
+        .merge({type: 'familytest'})
+        ;
+};
+
+_p._updateFamilytestDoc = function(isPriming, data) {
+    var familyDoc = this._familyDocs.get(data.new_val.id);
+
+    if(!familyDoc)
+        // we are not listening to this doc
+        return;
+
+    if(familyDoc.data && isPriming)
+        // needs no priming anymore, change feed was first.
+        return;
+
+    familyDoc.data = data;
+    familyDoc.subscriptions.forEach(subscription => {
+        _callbackFamilyDocSubscubscriber(subscription, familyDoc.data);
+    });
+};
+
+_p._subscribeToFamilyDocChanges = function() {
+    return this._getDashboardFamilytestQuery()
+        .changes({includeInitial: false, squash: 1})
+        .run((err, cursor) => {
+            if(err)
+                this._raiseUnhandledError('Can\'t acquire change feed.', err);
+
+            if(!this._familyDocs.size)
+                // everybody has left! Close the change feed there are no more subscribers
+                this._closeCursor(cursor);
+
+            this._familyDocsSubscriptionCursor = cursor;
+            cursor.each((err, data) => {
+                if(err)
+                    this._raiseUnhandledError('Change feed cursor error:', err);
+
+                if(data.new_val)
+                    this._updateFamilytestDoc(false, data);
+                // else: it is a delete, not yet supported
+            });
+
+        }, {cursor: true});
+};
 
 _p._subscribeToFamilyDoc = function(familytests_id, callback/*, args ... */) {
     var familyDoc = this._familyDocs.get(familytests_id)
@@ -483,61 +547,27 @@ _p._subscribeToFamilyDoc = function(familytests_id, callback/*, args ... */) {
     for(i=2,l=arguments.length;i<l;i++)
         args.push(arguments[i]);
 
+    if(this._familyDocsSubscriptionCursor === null) {
+        this._familyDocsSubscriptionCursor = 'pending';
+        this._subscribeToFamilyDocChanges();
+    }
+
     if(!familyDoc) {
         familyDoc = {
             subscriptions: subscriptions = new Set()
-          , cursor: null
           , data: null
         };
-
+        // at this point we start to record changes for this familytests_id
         this._familyDocs.set(familytests_id, familyDoc);
 
-        this._io.query(this._dbSetup.tables.family)
-            // getAll and pluck are possible: use getAll here instead of get!
-            .getAll(familytests_id)
-            // if total is falsy we don't use it and print "N/A" in the client
-            .merge(doc => {return {
-                    total: doc('tests').count().default(null)
-                  , '#fonts': doc('iterargs')('font').count().default(null)
-                };
-            })
-            // more?
-            .pluck('id', 'results', 'finished', 'created', 'started'
-                 , 'exception', 'total' , '#fonts')
-            .merge({type: 'familytest'})
-            .changes({includeInitial: true, squash: 2 /* updates in 2 seconds intervals */})
-            .run((err, cursor) => {
-                if(err)
-                    this._raiseUnhandledError('Can\'t acquire change feed.', err);
-                // i'd rather prefer to have just cursor for the complete
-                // table, but I don't want to download the vast
-                // includeInitial data of this table and then keep it in
-                // memory forever. We could maybe fetch initial data on
-                // request, and at the same time start to record the
-                // change notifications for these docks, until no longer
-                // needed. But, it can still be complicated in a race between
-                // these versions to determine which is the more current
-                // one.
-                familyDoc.cursor = cursor;
-                cursor.each((err, data) => {
-                    if(err)
-                        this._raiseUnhandledError('Change feed cursor error:', err);
-                    // this._log.debug('familytests_id', familytests_id, 'change:', data );
-                    familyDoc.data = data;
-                    subscriptions.forEach(subscription => {
-                        _callbackFamilyDocSubscubscriber(subscription, familyDoc.data);
-                    });
-
-                    if(data.new_val && data.new_val.finished && familyDoc.cursor) {
-                        if(familyDoc.cursor) {
-                            this._closeCursor(familyDoc.cursor);
-                            familyDoc.cursor = null;
-                        }
-                    }
-                });
-
-            }, {cursor: true});
+        // This may need priming, but also maybe the change feed is faster.
+        // if there's data when this request returns then the changefeed
+        // has won.
+        this._getDashboardFamilytestQuery(familytests_id)
+            .run()
+            .then(data => this._updateFamilytestDoc(true, {new_val: data}));
     }
+
     familyDoc.subscriptions.add(subscription);
     if(familyDoc.data)
         _callbackFamilyDocSubscubscriber(subscription, familyDoc.data);
@@ -819,7 +849,7 @@ _p._unsubscribeFromDashboard = function(socketId) {
     }
 };
 
-_p._updateDashboardCollectionDoc = function(doc) {
+_p._updateDashboardCollectionDoc = function(isPriming, doc) {
     var collectionDocs = this._dashboardSubscription.collectionDocs
       , consumers = this._dashboardSubscription.consumers
       , key = [doc.collection_id, doc.family_name].join('...')
@@ -827,8 +857,8 @@ _p._updateDashboardCollectionDoc = function(doc) {
       ;
     // Do this check, because of us not using includeInitial
     // and the "priming" request
-    if(current && current.date >= doc.date)
-        // this is old
+    if(isPriming && current)
+        // the change feed was faster
         return;
 
     collectionDocs.set(key, doc);
@@ -879,7 +909,7 @@ _p._subscribeToDashboard = function(socket, data) {
             cursor.each((err, data) => {
                 if(err)
                     this._raiseUnhandledError('Change feed cursor error:', err);
-                this._updateDashboardCollectionDoc(data.new_val);
+                this._updateDashboardCollectionDoc(false, data.new_val);
             });
         }, {cursor: true})
         .then(() => {
@@ -891,7 +921,7 @@ _p._subscribeToDashboard = function(socket, data) {
                 .run()
                 .then(collectionRows => {
                     collectionRows.forEach((row) => {
-                        this._updateDashboardCollectionDoc(row.reduction);
+                        this._updateDashboardCollectionDoc(true, row.reduction);
                     });
                 });
         })
