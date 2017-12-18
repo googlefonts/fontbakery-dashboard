@@ -247,12 +247,24 @@ class DBOperations(object):
       # This is mainly useful for the collection-wide test results view.
       # Maybe an on-the-fly created results object is fast enough. After all,
       # this is a classical case for an SQL database query.
-      # ALSO, if the worker is in a crashback loop and the same tests are
-      # executed multiple times, the result fields will grow bigger than
-      #  their actual number, yet we may not be finished with all tests.
-      , 'results': r.row['results'].merge(lambda results: {
-          test_result['result']: results[test_result['result']].default(0).add(1)
-      })
+
+      # This was the first version with the following problem:
+      # if the worker is in a crashback loop and the same tests are
+      # executed multiple times, the result fields can grow bigger than
+      # their actual number i.e. total > len(tests), yet we may not be
+      # finished with all tests.
+      #, 'results': r.row['results'].merge(lambda results: {
+      #    test_result['result']: results[test_result['result']].default(0).add(1)
+      #})
+      # this recreates the results dict on each insert
+      # to avoid the race condition, the r.row['tests'] is recreated
+      # here on the fly
+        , 'results': r.row['tests'].merge({key: test_result})
+                    .values()
+                    .filter(lambda item: item.has_fields('result'))
+                    .map(lambda item: item['result'])
+                    .fold({}, lambda acc, result: acc.merge(
+                        r.object(result, acc[result].default(0).add(1))))
     }
 
     with self.dbTableContext() as (q, conn):
