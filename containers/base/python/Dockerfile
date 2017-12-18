@@ -40,16 +40,27 @@ RUN pip install lxml==3.5.0
 ADD requirements.txt /var/python/requirements.txt
 RUN pip install -r /var/python/requirements.txt
 
-RUN touch /tmp/cache_spoof_9
+RUN touch /tmp/cache_spoof_17
 
 # FIXME: doesn't install all dependencies!
 # RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
 
 # FIXME: upstream changes to googlefonts/fontbakery master
-RUN git clone --depth 1 -b bump_protobuf_version git://github.com/graphicore/fontbakery /tmp/fontbakery;\
+RUN git clone --depth 1 -b util_fix_import git://github.com/graphicore/fontbakery /tmp/fontbakery;\
     pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
+
+RUN cp -r /tmp/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \
+    echo "#! /bin/bash"  > /bin/ftxvalidator; \
+    echo ">&2 echo 'ftxvalidator is not available!'; exit 1" >> /bin/ftxvalidator; \
+    chmod +x /bin/ftxvalidator; \
+    echo "#! /bin/bash"  > /bin/FontValidator.exe; \
+    echo "mono /tmp/fontbakery/prebuilt/fval/FontValidator.exe \$@" >> /bin/FontValidator.exe; \
+    chmod +x /bin/FontValidator.exe; \
+    echo 'export LD_PRELOAD=/tmp/fontbakery/prebuilt/custom_freetype/lib/libfreetype.so' >> ~/.bashrc;
 
 #RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /tmp/fontbakery;\
 #    pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
+
+
 
 ADD . /var/python/
