@@ -75,7 +75,7 @@ _p._getRemote = function(remoteName) {
     // var remoteUrl = ['git@github.com:', remoteName, '.git'].join('');
     // Use https for now, it is easier because it doesn't need ssh credentials!
     var remoteUrl = GITHUB_HTTPS_GIT_URL.replace('{remoteName}', remoteName);
-    NodeGit.Remote.create(this._repo, remoteName, remoteUrl).then(null, err => {
+    return NodeGit.Remote.create(this._repo, remoteName, remoteUrl).then(null, err => {
         if(err.errno === NodeGit.Error.CODE.EEXISTS)
             // NOTE: the remote returned by Repository.getRemote has
             // a reference to the repository:
@@ -94,10 +94,40 @@ _p._getRef = function(remoteName, referenceName) {
     return this._repo.getReference(fullReferenceName);
 };
 
-_p._fetchRef = function(remoteName, referenceName) {
+// This is to not fetch if we already have the reference
+// note that oid here and a freshly fetched oid can still differ
+// due to race conditions. But the freshly fetched oid likely is
+// more up to date then.
+_p._getOrfetchRef = function(remoteName, referenceName, oid) {
+    return this._getRef(remoteName, referenceName)
+        .then(ref => {
+            let targetOid = ref.target().toString();
+            if(targetOid === oid) {
+                // the existing reference is sufficient
+                this._log.debug(remoteName + ':' + referenceName
+                            , 'pointing at ', oid, 'is already fetched.');
+                return ref;
+            }
+            let message = 'Found reference but has an insufficient '
+                        + 'OID: ' + targetOid
+                        + ' expected: ' + oid
+              , error = new Error(message)
+              ;
+            // the error handler will _fetchRef with this error code
+            error.errno = NodeGit.Error.CODE.ENOTFOUND;
+            throw error;
+        })
+        .then(null, err => {
+            if(err.errno === NodeGit.Error.CODE.ENOTFOUND)
+                return this._fetchRef(remoteName, referenceName);
+            throw err;
+        });
+};
+
+_p.__fetchRef = function(remoteName, referenceName) {
     return this._getRemote(remoteName)
         .then(remote => {
-           this._log.info('Started fetching remote "'
+           this._log.info(this.id + ': Started fetching remote "'
                                 + remoteName + ':' + referenceName + '"');
             // this may take a while!
             // E.g. initially fetching google/fonts:master
@@ -109,17 +139,22 @@ _p._fetchRef = function(remoteName, referenceName) {
         .then(() => this._getRef(remoteName, referenceName))
         .then(ref => {
             // this does not mean the remote reference exists now
-            this._log.info('Finished fetching remote "'
-                                + remoteName + ':' + referenceName + '"');
+            this._log.info(this.id + ': Finished fetching remote "'
+                                + remoteName + ':' + referenceName + '"', ref.target());
             return ref;
         }, err => {
             if(err.errno === NodeGit.Error.CODE.ENOTFOUND)
             // message: no reference found for shorthand '{fullReferenceName}'
             // errno: -3
-                this._log.error('FAILED: Fetching remote "'
+                this._log.error(this.id + ': FAILED: Fetching remote "'
                                 + remoteName + ':' + referenceName + '"');
             throw err;
         });
+};
+
+_p._fetchRef = function(remoteName, referenceName) {
+    return this._queue('git.lock'
+                    , () => this.__fetchRef(remoteName, referenceName));
 };
 
 _p.fetchBaseRef = function() {
@@ -150,8 +185,8 @@ _p._getReferencedType = function(reference) {
     return this._getOidType(reference.target());
 };
 
-_p._getCommit = function(reference) {
-    return NodeGit.Commit.lookup(this._repo, reference.target())
+_p._getCommit = function(commitOid) {
+    return NodeGit.Commit.lookup(this._repo, commitOid)
         .then(null, err => {
             // if reference target is something else
             // message the requested type does not match the type in ODB
@@ -179,22 +214,19 @@ function _arrayFlatten(arrayOfArrays) {
     return arrayOfArrays.reduce(reducer, []);
 }
 
-_p._getRootTreeFamilies = function(commit) {
-    commit.getTree()
-          .then(tree => {
-            let treeFamiliesPromises = [];
-            for(let licensDir of this._licenseDirs) {
-                // the underscore version returns Null if entry is not found
-                // it's in the official api docs. But we can't use it further.
-                // tree.entryByName(licensDir) would throw however.
-                if(!tree._entryByName(licensDir))
-                    // not found
-                    continue;
-                let treeEntry = tree.entryByName(licensDir);
-                treeFamiliesPromises.push(treeEntry.getTree().then(_getChildDirPaths));
-            }
-            return Promise.all(treeFamiliesPromises).then(_arrayFlatten);
-        });
+_p._getRootTreeFamilies = function(tree) {
+    let treeFamiliesPromises = [];
+    for(let licensDir of this._licenseDirs) {
+        // the underscore version returns Null if entry is not found
+        // it's in the official api docs. But we can't use it further.
+        // tree.entryByName(licensDir) would throw however.
+        if(!tree._entryByName(licensDir))
+            // not found
+            continue;
+        let treeEntry = tree.entryByName(licensDir);
+        treeFamiliesPromises.push(treeEntry.getTree().then(_getChildDirPaths));
+    }
+    return Promise.all(treeFamiliesPromises).then(_arrayFlatten);
 };
 
 _p._dirsToCheckFromDiff = function (newTree, changedNamesDiff ) {
@@ -242,7 +274,7 @@ _p._dirsToCheck = function(oldTree, newTree) {
 
 
 const _FAMILY_WEIGHT_REGEX = /([^/-]+)-(\w+)\.ttf$/;
-function familyNameFromFilename(filename) {
+_p._familyNameFromFilename = function (filename) {
   /**
    * Ported partially from Python gftools.util.google_fonts.FileFamilyStyleWeight
    * https://github.com/googlefonts/tools/blob/master/Lib/gftools/util/google_fonts.py#L449
@@ -253,11 +285,18 @@ function familyNameFromFilename(filename) {
    * 'Libre Barcode 39 Extended Text'
    */
 
-  var m = filename.match(_FAMILY_WEIGHT_REGEX);
-  if(!m)
-    throw Error('Could not parse ' + filename);
-  return familyName(m[1]);
-}
+  var m = filename.match(_FAMILY_WEIGHT_REGEX), name;
+  if(!m) {
+    name = filename.slice(0,-4);// remove .ttf;
+    this._log.info('Cannot not parse ' + filename
+                                    + ' (usually because it misses a '
+                                    + '"-{WeightStyle}" part) '
+                                    + 'using: ' + name);
+  }
+  else
+    name = m[1];
+  return familyName(name);
+};
 
 function familyName(fontname) {
   /**
@@ -279,10 +318,10 @@ function familyName(fontname) {
   return fontname.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
-_p._updateTreeEntry = function(treeEntry, metadata) {
+_p._dispatchTreeEntry = function(treeEntry, metadata) {
     function treeEntryToFileData(treeEntry) {
         return treeEntry.getBlob()
-                .then(blob => new Uint8Array(blob.content().buffer))
+                .then(blob => new Uint8Array(blob.content()))
                 .then(data => [treeEntry.name(), data])
                 ;
     }
@@ -299,7 +338,7 @@ _p._updateTreeEntry = function(treeEntry, metadata) {
         for(let fileData of filesData) {
             let fileName = fileData[0];
             if(fileName.slice(-4) === '.ttf') {
-                familyName = familyNameFromFilename(fileName);
+                familyName = this._familyNameFromFilename(fileName);
                 break;
             }
         }
@@ -309,7 +348,8 @@ _p._updateTreeEntry = function(treeEntry, metadata) {
 
         if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
             return null;
-
+        this._log.debug(this.id+':', 'dispatching family', familyName
+                        , 'of', metadata.repository + ':' + metadata.branch);
         return this._dispatchFamily(familyName, filesData, metadata);
     };
     return treeEntry.getTree()
@@ -318,10 +358,10 @@ _p._updateTreeEntry = function(treeEntry, metadata) {
                     ;
 };
 
-this.init = function() {
+_p.init = function() {
     return this._repo
             ? Promise.resolve(this._repo)
-            : this._initRepo.then(
+            : this._initRepo().then(
                   repo => this._repo = repo
                 , err => {
                     this._log.error('Can\'t init git reporsitory: ', err);
@@ -369,19 +409,24 @@ _p._update = function(forceUpdate, currentCommit) {
             ? Promise.all([this._oldCommit.getTree(), currentCommitTreePromise])
                      .then(([oldTree, newTree]) => this._dirsToCheck(oldTree, newTree))
             // all families
-            : this._getRootTreeFamilies(currentCommit)
+            : currentCommitTreePromise.then(tree => this._getRootTreeFamilies(tree))
       ;
     this._oldCommit = currentCommit;
+
     Promise.all([currentCommitTreePromise, dirsPromise])
     .then(([currentCommitTree, dirs]) => {
         return Promise.all(dirs.map(dir=>currentCommitTree.getEntry(dir)));
     })
     .then(treeEntries => {
-        let promises = [];
-        for(let treeEntry of treeEntries) {
-            if(!forceUpdate && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
+        // some will resolve to null if there's a hit in this._familyWhitelist
+        // though, at this point, error reporting may be the only thing left to
+        // do.
+
+        return Promise.all(treeEntries.map(treeEntry => {
+            if(!forceUpdate
+                    && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
                 // needs no update
-                continue;
+                return null;
             this._lastChecked.set(treeEntry.path(), treeEntry.oid());
             let metadata = {
                 commit: currentCommit.sha()
@@ -391,12 +436,8 @@ _p._update = function(forceUpdate, currentCommit) {
               , repository: this._baseRef.remoteName
               , branch: this._baseRef.name
             };
-            promises.push(this._updateTreeEntry(treeEntry, metadata));
-        }
-        // some will resolve to null if there's a hit in this._familyWhitelist
-        // though, at this point, error reporting may be the only thing left to
-        // do.
-        return Promise.all(promises);
+            return this._dispatchTreeEntry(treeEntry, metadata);
+        }));
     });
 };
 
@@ -405,16 +446,13 @@ _p._update = function(forceUpdate, currentCommit) {
 _p.update = function(forceUpdate) {
     // update the baseRef => can take really long the first time
     return this.fetchBaseRef()
-        .then(reference => this._getCommit(reference))
+        .then(reference => this._getCommit(reference.target()))
         .then(currentCommit => this._update(forceUpdate, currentCommit))
         ;
 };
 
 return GitBranch;
 })();
-
-
-
 
 const GitBranchGithubPRs = (function() {
 
@@ -426,9 +464,12 @@ const GitBranchGithubPRs = (function() {
 //             uses one "old_tree" and many "new_trees"
 //             old_tree => current google/fonts/master (baseRefName)
 
+
 function GitBranchGithubPRs(logging, id, repoPath, baseReference
                                     , gitHubAPIToken, familyWhitelist) {
     GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist);
+
+    this._gitHubAPIToken = gitHubAPIToken;
     this._lastChecked = new Map();
 }
 
@@ -452,6 +493,11 @@ query($repoOwner: String!, $repoName: String!, $baseRefName: String, $cursor: St
         endCursor
       }
       nodes {
+        headRef {
+          target {
+            oid
+          }
+        }
         id
         url
         createdAt
@@ -507,7 +553,13 @@ _p._sendRequest = function(cursor) {
         });
         res.on('end', function() {
             try {
-                resolve(JSON.parse(data.join('')));
+                let json = JSON.parse(data.join(''));
+                if(res.statusCode !== 200) {
+                    let error = Error('('+res.statusCode+') ' + json.message);
+                    error.code = res.statusCode;
+                    throw error;
+                }
+                resolve(json);
             }
             catch(err) {
                 reject(err);
@@ -551,14 +603,14 @@ _p._queryPullRequestsData = function() {
     return this._sendRequest(null).then(recursiveFetch);
 };
 
-_p._getReferenceResources = function(reference) {
+
+_p._getCommitResources = function(commitOid) {
     var result = {
-        reference: reference
-      , commit: null
+        commit: null
       , commitTree: null
     };
 
-    return this._getCommit(reference)
+    return this._getCommit(commitOid)
         .then(commit => {
             result.commit = commit;
             return commit.getTree();
@@ -568,6 +620,14 @@ _p._getReferenceResources = function(reference) {
         })
         .then(() => result)
         ;
+};
+
+_p._getReferenceResources = function(reference) {
+    return this._getCommitResources(reference.target())
+        .then(result => {
+            result.reference = reference;
+            return result;
+        });
 };
 
 /**
@@ -586,10 +646,14 @@ _p._getReferenceResources = function(reference) {
  * }]
  */
 _p._fetchPullRequests = function(prsData) {
+    this._log.debug('Fetching Pull Requests:', prsData.length);
     return Promise.all(prsData.map(prData => {
-        return this._fetchRef(
+        // no fetch needed if:
+        // prData.headRef.target.oid === reference.target().sha()
+        return this._getOrfetchRef(
             prData.headRepository.nameWithOwner
           , prData.headRefName
+          , prData.headRef.target.oid
         )
         .then(reference => this._getReferenceResources(reference))
         .then(referenceResources => ({
@@ -601,9 +665,38 @@ _p._fetchPullRequests = function(prsData) {
     }));
 };
 
+_p._filterPullRequests = function(prsData) {
+    let reasons = {}
+      , filtered = prsData.filter(prData => {
+        if(prData.mergeable !== 'MERGEABLE'){
+            if(!(prData.mergeable in reasons))
+                reasons[prData.mergeable] = [];
+            reasons[prData.mergeable].push(prData);
+            return false;
+        }
+        return true;
+    });
+
+    if(filtered.length) {
+        this._log.info('Filtered' , prsData.length - filtered.length
+                                        , 'PRs of',  prsData.length);
+        let dgb = ['Filtered', '…'];
+        for(let reason in reasons) {
+            dgb.push(reason + ':');
+            Array.prototype.push.apply(dgb, reasons[reason]
+                 .map(prData => { return prData.headRepository.nameWithOwner
+                                 + ':' + prData.headRefName;}));
+        }
+        this._log.debug(dgb.join(' '));
+    }
+
+    return filtered;
+};
+
 _p._getPullRequests = function() {
-    return this._queryPullRequestsData
-        .then(this._fetchPullRequests);
+    return this._queryPullRequestsData()
+        .then(this._filterPullRequests.bind(this))
+        .then(this._fetchPullRequests.bind(this));
 };
 
 _p._getBaseResources = function() {
@@ -615,24 +708,37 @@ _p._getBaseResources = function() {
 // prsData => [{data: prData, reference: reference, commit: commit, commitTree:commitTree}]
 _p._getPRchangedFamilies = function([baseData, prsData]) {
     return Promise.all(prsData.map(prData => {
-        var oldTree = baseData.commitTree
-          , newTree = prData.commitTree
+        var newTree = prData.commitTree
           ;
-          return this._dirsToCheck(oldTree, newTree)
+                // oid = the commit OID of a merge base between 'one' and 'two'
+        return NodeGit.Merge.base(this._repo, baseData.commit.id(), prData.commit.id())
+        .then(this._getCommitResources.bind(this))
+        .then(baseCommitData => {
+            let oldTree = baseCommitData.commitTree;
+
+            return this._dirsToCheck(oldTree, newTree)
                 .then(changedFamilies => {
                     prData.changedFamilies = changedFamilies;
+                    return prData;
                 });
-    })).then(prsData => {
+        });
+    }))
+    .then(prsData => {
         let checkFamilies = new Map();
         // only do the "latest" commit for each family.
         // prsData is still ordered by {field: CREATED_AT, direction: DESC}
         // from the original github graphQL query.
         for(let i=0,l=prsData.length;i<l;i++) {
-            let changedFamilies = prsData[i].changedFamilies;
+            let prData = prsData[i]
+              , changedFamilies = prData.changedFamilies
+              ;
             for(let j=0,ll=changedFamilies.length;j<ll;j++) {
                 let family = changedFamilies[j];
-                if(checkFamilies.has(family))
+                if(checkFamilies.has(family)) {
+                    this._log.debug('Skip family ' + family + ' of ' + prsData[i].data.url);
                     continue;
+                }
+                this._log.debug('Checking family ' + family + ' of ' + prsData[i].data.url);
                 checkFamilies.set(family, prsData[i]);
             }
         }
@@ -641,32 +747,31 @@ _p._getPRchangedFamilies = function([baseData, prsData]) {
 };
 
 _p._update = function(forceUpdate, checkFamilies) {
-    var promises = [];
-    checkFamilies.forEach((prData, dir) => {
-        let promise = prData.commitTree.getEntry(dir)
-            .then(treeEntry => {
-                if(!forceUpdate && this._lastChecked.get(treeEntry.path())
-                                                        === treeEntry.oid())
-                    // needs no update
-                    return null;
-                this._lastChecked.set(treeEntry.path(), treeEntry.oid());
-                let metadata = {
-                        commit: prData.commit.sha()
-                      , commitDate: prData.commit.date()
-                      , familyTree: treeEntry.sha()
-                      , familyPath: treeEntry.path()
-                      , repository: prData.data.headRepository.nameWithOwner
-                      , branch: prData.data.headRefName
-                      , prUrl: prData.url
-                      , prTitle: prData.title
-                };
-                return this._updateTreeEntry(treeEntry, metadata);
-            });
-        promises.push(promise);
-    });
     // some will resolve to null if there's a hit in this._familyWhitelist
     // or this._lastChecked though, at this point, error reporting may be
     // the only thing left to do.
+    var promises = [];
+    checkFamilies.forEach((prData, dir) => {
+        var promise = prData.commitTree.getEntry(dir).then(treeEntry => {
+            if(!forceUpdate
+                    && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
+                // needs no update
+                return null;
+            this._lastChecked.set(treeEntry.path(), treeEntry.oid());
+            let metadata = {
+                    commit: prData.commit.sha()
+                  , commitDate: prData.commit.date()
+                  , familyTree: treeEntry.sha()
+                  , familyPath: treeEntry.path()
+                  , repository: prData.data.headRepository.nameWithOwner
+                  , branch: prData.data.headRefName
+                  , prUrl: prData.data.url
+                  , prTitle: prData.data.title
+            };
+            return this._dispatchTreeEntry(treeEntry, metadata);
+        });
+        promises.push(promise);
+    });
     return Promise.all(promises);
 };
 
@@ -740,28 +845,73 @@ if (typeof require != 'undefined' && require.main==module) {
           , process.env.GITHUB_API_TOKEN, familyWhitelist
     ));
 
-    var server = null;
-
-    // an initial fetch of our repository can take a while
-    // hence we do it very controlled at the beginning and get better
-    // log output.
-    setup.logging.info('Fetching git base reference:', baseReference);
-    sources[0].init()
-        .then(() => sources[0].fetchBaseRef())
-        .then(() => {
-            setup.logging.info('Done fetching git base reference!');
-            setup.logging.info('Starting manifest server');
-            server = new ManifestServer(
-                setup.logging
-              , 'GitHub-GoogleFonts'
-              , sources
-              , grpcPort
-              , setup.cache
-              , setup.amqp
-            );
-            return server.initPromise;
-        }, err => {
-            setup.logging.error('Can\'t fetch base reference:', err);
-            process.exit(1);
-        });
+    setup.logging.info('Starting manifest server');
+    server = new ManifestServer(
+        setup.logging
+      , 'GitHub-GoogleFonts'
+      , sources
+      , grpcPort
+      , setup.cache
+      , setup.amqp
+    );
 }
+
+// This was used for local testing without other dependencies:
+//
+//if (typeof require != 'undefined' && require.main==module) {
+//
+//    var setup = getSetup(), sources = []
+//       , repoPath = '/home/commander/Projekte/googlefonts/fontsgit'
+//       , GITHUB_API_TOKEN = process.env.GITHUB_API_TOKEN
+//       , familyWhitelist = null//new Set(['Pacifico', 'Astloch'])
+//       ;
+//
+//    setup.logging.log('Loglevel', setup.logging.loglevel);
+//
+//    var baseReference = {
+//            repoOwner: 'google'
+//          , repoName: 'fonts'
+//          , name: 'master'
+//    };
+//
+//    sources.push(new GitBranch(
+//            setup.logging, 'master', repoPath, baseReference, familyWhitelist
+//    ));
+//    sources.push(new GitBranchGithubPRs(
+//            setup.logging, 'pulls', repoPath, baseReference
+//          , process.env.GITHUB_API_TOKEN, familyWhitelist
+//    ));
+//
+//    // an initial fetch of our repository can take a while
+//    // hence we do it very controlled at the beginning and get better
+//    // log output.
+//    setup.logging.info('Fetching git base reference:', baseReference);
+//    sources[0].init()
+//        .then(() => sources[0].fetchBaseRef())
+//        .then(null, err => {
+//            setup.logging.error('Can\'t fetch base reference:', err);
+//            throw(err);
+//        })
+//        .then(() => sources[1].init())
+//        .then(()=>{
+//            let promises = [];
+//            for(let source of sources) {
+//                if(source === sources[0])
+//                    continue;
+//                source.setDispatchFamily(
+//                    (family, files, ...args) =>
+//                        console.log('DispatchFamily ('+source.id+'):'
+//                            , family
+//                            , files.map(([name, arr]) => name + ' ' + arr.length)
+//                            , ...args));
+//                promises.push(source.update(false));
+//
+//            }
+//            return Promise.all(promises);
+//        })
+//        .then(()=>console.log('All up'))
+//        .catch(err => {
+//            setup.logging.error('Some error', err);
+//            throw(err);
+//        });
+//}
