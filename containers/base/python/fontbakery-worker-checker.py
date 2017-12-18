@@ -13,7 +13,7 @@ from worker.fontbakeryworker import (
                 )
 from fontbakery.reporters import FontbakeryReporter
 from fontbakery.message import Message
-from fontbakery.testrunner import STARTTEST, ENDTEST, DEBUG
+from fontbakery.checkrunner import STARTCHECK, ENDCHECK, DEBUG
 
 class DashbordWorkerReporter(FontbakeryReporter):
   def __init__(self, dbOps, jobid, specification, runner, **kwd):
@@ -33,13 +33,13 @@ class DashbordWorkerReporter(FontbakeryReporter):
 
     key = self._spec.serialize_identity(identity)
 
-    if status == STARTTEST:
+    if status == STARTCHECK:
         self._current = {
             'job_id': self._jobid # for debugging/analysis tasks
           , 'statuses': []
         }
 
-    if status == ENDTEST:
+    if status == ENDCHECK:
         # Do more? Anything more would make access easier but also be a
         # derivative of the actual data, i.e. not SSOT. Calculating (and
         # thus interpreting) results for the tests is probably not too
