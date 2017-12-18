@@ -14,6 +14,9 @@ function getSetup() {
             host: null
           , port: null
           , db: 'fontbakery' // this db will be created
+          , buffer: 10 //<number> - Minimum number of connections available in the pool, default 50
+          , max: 1000 //<number> - Maximum number of connections available in the pool, default 1000
+
         }
       , dbSetup = {
             rethink: rethinkSetup
@@ -22,7 +25,6 @@ function getSetup() {
                 family: 'familytests'
               , collection: 'collectiontests'
             }
-
         }
       , amqpSetup = {
             host: process.env.RABBITMQ_SERVICE_SERVICE_HOST
@@ -144,7 +146,7 @@ function initDB(log, dbSetup) {
 exports.initDB = initDB;
 
 function initAmqp(log, amqpSetup) {
-    return amqplib.connect('amqp://' + amqpSetup.host)
+    return amqplib.connect('amqp://' + amqpSetup.host + "?heartbeat=600")
             .then(function(connection) {
                 process.once('SIGINT', connection.close.bind(connection));
                 function oncreateChannel(channel) {
