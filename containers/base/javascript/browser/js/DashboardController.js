@@ -65,7 +65,7 @@ define([
     }
 
     function percent(ratio) {
-        if(ratio === null)
+        if(!ratio && ratio !== 0)
             return null;
         var percentStr = Math.round(ratio * 10000)/100 + '%';
         return [percentStr, percentIndicator(percentStr)];
@@ -990,12 +990,18 @@ define([
 
         this._collectionOrder = [
               'GoogleFontsAPI/production'
-            , 'GoogleFontsAPI/sandbox'
+            //, 'GoogleFontsAPI/sandbox'
+            , 'GitHub-GoogleFonts/master'
+            , 'GitHub-GoogleFonts/pulls'
             , 'fontnames'
         ];
         this._collectionTypes = {
             fontnames: LabelsCollection
         };
+
+        this._updateWaitingSelectors = [];
+        this._updateBreak = null;
+        this._updateWaiting = true; // initially true
 
         this._reorderRowsScheduling = null;
         this._sortField = null;
@@ -1070,7 +1076,7 @@ define([
         repr.render();
         button.addEventListener('click', function() {
             this._showPercentages = !this._showPercentages;
-            this._update([selectorShowPercentages]);
+            this._update(true, [selectorShowPercentages]);
         }.bind(this));
         this._global.setCell(repr);
         return button;
@@ -1147,8 +1153,45 @@ define([
         return changed;
     };
 
+
     // changedSelector = [ [collection, row, '*'], ... ]
-    _p._update = function(changedSelectors, checkCells) {
+    _p._update = function(now, changedSelectors, checkCells) {
+    // FIXME: this is a mess, sorry!
+
+        if(changedSelectors)
+            Array.prototype.push.apply(this._updateWaitingSelectors, changedSelectors);
+        var update = (function() {
+            //jshint validthis: true
+            this._updateBreak = null;
+            if(this._updateWaiting || this._updateWaitingSelectors.length) {
+                this.__update(this._updateWaitingSelectors);
+                this._updateBreak = setTimeout(update, 200);
+            }
+            this._updateWaitingSelectors = [];
+            this._updateWaiting = false;
+        }).bind(this);
+
+        if(now || checkCells) {
+            // force into sync execution
+            // check cells is enough if this is a check cells call and
+            // no this._updateBreak has been scheduled
+            if(!checkCells || this._updateWaiting || this._updateWaitingSelectors.length) {
+                clearTimeout(this._updateBreak);
+                this._updateWaiting = true;
+                update();
+            }
+
+            if(checkCells)
+                this.__update(null, checkCells);
+            return;
+        }
+
+        this._updateWaiting = true;
+        if(!this._updateBreak)
+            update();
+    };
+
+    _p.__update = function(changedSelectors, checkCells) {
         // traverse the dependency graph depth first
         // and update cells if needed
         function visit(subject) {
@@ -1311,7 +1354,7 @@ define([
             // be a useful feature:
             this._updateSortIndicators();
             // I dislike that I need an selector for this!
-            this._update(undefined, newCells);
+            this._update(true, undefined, newCells);
         }
 
         var action = collection.isExpanded ? 'add' : 'remove';
@@ -1369,7 +1412,7 @@ define([
 
         this._updateSortIndicators();
         // we may need to evaluate the sort fields
-        this._update();
+        this._update(true);
         // _update schedules this only if the field values have actually
         // changed
         this._scheduleReorderRows(true);
@@ -1592,7 +1635,7 @@ define([
         changedRows.forEach(function(row) {
             return changedSelectors.push([row.collection, row, '*']);
         });
-        this._update(changedSelectors);
+        this._update(false, changedSelectors);
     };
 
     _p._changeCollectiontest = function(data) {
