@@ -323,3 +323,111 @@ It's working now.
 To debug the message queue, the service `rabbitmq-management` can be changed to `type: LoadBalancer` from the kubernetes management interface (edit the YAML).
 Changing it back requires to delete `clientIP`, but the interface will complain about that, so it's easy to remember.
 
+
+# Latest deployment (end of 2018)
+
+## Access the rethinkdb admin interface
+
+```
+$ kubectl get pods
+$ kubectl port-forward rethinkdb-admin-3880935612-p0kvj 8080:8080
+```
+
+I accessed this and deleted the 'draganddrop' database, which is no longer needed.
+
+## Secrets
+
+```bash
+GOOGLE_API_KEY=AAAAAAAAABBBBBBXXXXXX{PRIVATE}XXXXAAAABBBB
+GITHUB_API_TOKEN=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+
+kubectl delete secret external-resources
+kubectl create secret generic external-resources \
+     --from-literal=google-api-key=$GOOGLE_API_KEY \
+     --from-literal=github-api-token=$GITHUB_API_TOKEN;
+```
+
+## ENVIRONMENT_VERSION
+
+This is to control when already checked family version should be re-tested.
+E.g. when fontbakery changed.
+
+```
+ENVIRONMENT_VERSION="$(date)" # Mi 8. Nov 03:57:01 CET 2017
+kubectl delete configmap env-config
+kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
+```
+
+## Deployments in order:
+
+1. gcloud-rabbitmq.yaml, gcloud-rethinkdb-stage-1.yaml
+2. gcloud-rethinkdb-stage-2.yaml
+3. gcloud-fontbakery-cache.yaml
+4. gcloud-fontbakery-worker-cleanup.yaml, gcloud-fontbakery-worker-checker.yaml,
+   gcloud-fontbakery-worker-distributor.yaml, gcloud-fontbakery-manifest-master.yaml
+5. gcloud-fontbakery-api.yaml
+6. gcloud-fontbakery-manifest-gfapi.yaml
+7. gcloud-fontbakery-manifest-githubgf.yaml
+
+## Docker stuff
+
+```
+
+
+docker build -t fontbakery/base-javascript:23 containers/base/javascript;
+docker tag fontbakery/base-javascript:23 gcr.io/fontbakery-168509/base-javascript:23
+gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:23
+
+docker build -t fontbakery/base-python:3 containers/base/python;
+docker tag fontbakery/base-python:3 gcr.io/fontbakery-168509/base-python:3
+gcloud docker -- push gcr.io/fontbakery-168509/base-python:3
+```
+
+# Deploy
+
+```
+
+kubectl apply -f kubernetes/gcloud-rabbitmq.yaml
+
+kubectl apply -f kubernetes/gcloud-rethinkdb-stage-1.yaml
+kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
+
+kubectl apply -f kubernetes/gcloud-fontbakery-cache.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-worker-cleanup.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-worker-checker.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-worker-distributor.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-api.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-manifest-gfapi.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-manifest-githubgf.yaml
+
+```
+### delete deployments
+
+```
+kubectl delete deployment fontbakery-cache;
+kubectl delete deployment fontbakery-worker-cleanup
+kubectl delete deployment fontbakery-worker-checker
+kubectl delete deployment fontbakery-worker-distributor
+kubectl delete deployment fontbakery-manifest-master
+kubectl delete deployment fontbakery-api
+kubectl delete deployment fontbakery-manifest-gfapi
+kubectl delete fontbakery-manifest-githubgf
+```
+
+### autoscale
+
+```
+kubectl autoscale deployment fontbakery-worker-checker --cpu-percent=80 --min=1 --max=700
+```
+
+
+### update an image (roling update style)
+
+```
+kubectl set image deployments/fontbakery-api fontbakery-api=gcr.io/fontbakery-168509/base-javascript:23
+
+kubectl set image deployments/fontbakery-worker-checker fontbakery-worker-checker=gcr.io/fontbakery-168509/base-python:4
+
+
+```
