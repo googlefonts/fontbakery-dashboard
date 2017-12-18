@@ -22,7 +22,12 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
     var address = [host, port].join(':');
     this._logging = logging;
     // in seconds, we use this to get an error when the channel is broken
-    this._deadline = 5;
+    // 30 secconds is a lot time, still, under high load I guess this
+    // can take some time. 5 seconds was sometimes not enough on my minikube
+    // setup.
+    // TODO: maybe we can have multiple retries with increasing deadlines
+    //       and still fail eventually.
+    this._deadline = 30;
     this._logging.info('CacheClient at:', address);
     this._client = new services_pb.CacheClient(
                           address
@@ -55,10 +60,12 @@ _p._getTypeForTypeName = function(typeName) {
 };
 
 Object.defineProperty(_p, 'deadline', {
-    get: function(){
-       var deadline = new Date();
-       deadline.setSeconds(deadline.getSeconds() + this._deadline);
-       return deadline;
+    get: function() {
+        if(this._deadline === Infinity)
+            return this._deadline;
+        var deadline = new Date();
+        deadline.setSeconds(deadline.getSeconds() + this._deadline);
+        return deadline;
     }
 });
 
