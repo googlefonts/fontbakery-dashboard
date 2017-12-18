@@ -6,55 +6,45 @@
 
 function _Source() {
     // jshint validthis: true
-    this.__tick = this._tick.bind(this);
-    this._currentTask = null;
-    this._scheduled = [];
+
+    // Both implemented as stub functions!
+    // this._queue = null;
+    // this._dispatchFamily = null;
 }
 
 var _p = _Source.prototype;
 
+_p._queue = function() {
+    throw new Error('Not implemented! Use setQueue to add the interface!');
+};
+
 _p._dispatchFamily = function() {
-    throw new Error('Not implemented! Use the setDispatchFamily interface!');
+    throw new Error('Not implemented! Use setDispatchFamily to add the interface!');
 };
 
-_p.setDispatchFamily = function(dispatchFamily) {
-    this._dispatchFamily = dispatchFamily;
+_p.setDispatchFamily = function(dispatchFamilyAPI) {
+    this._dispatchFamily = dispatchFamilyAPI;
 };
 
-_p._tick = function() {
-    if(!this._scheduled.length || this._currentTask)
-        return;
-    var [task, args, resolve, reject] = this._scheduled.shift();
-    this._currentTask = this[task].apply(this, args)
-        // unset _currentTask
-        .then(resolve, reject)
-        .then(() => this._currentTask = null)
-        // schedule the next tick
-        // even on error! Otherwise we loose continuation to work on
-        // this._scheduled
-        // finally:
-        .then(this.__tick, this.__tick)
-        ;
+_p.setQueue = function(queueAPI) {
+    this._queue = queueAPI;
 };
 
 // generic source API?
-_p.schedule = function(taskName /* args */) {
-    // push even is task is already scheduled? Like if a `update`
+_p.schedule = function(task /* args */) {
+    // queue even is task is already scheduled? Like if a `update`
     // is long running, and the cron/timer schedules it even though it
     // is running now or in this._scheduled, that may be a bit annoying.
     // Still, if no update is needed by then, nothing more should happen
     // than a basic check.
-    var task
-      , args = [], i, l
-      , promise = new Promise(
-              // the executor runs immediately
-              (resolve, reject) => {task = [taskName, args, resolve, reject]; })
-      ;
+    var args = [], i, l;
     for(i=1,l=arguments.length;i<l;i++)
         args.push(arguments[i]);
-    this._scheduled.push(task);
-    this._tick();
-    return promise;
+    // use the global `schedule` queue for all sources of the ManifestServer
+    // if not good: use this._queue(this.id+':schedule', ...)
+    return this._queue('schedule', () => {
+       return  this[task].apply(this, args);
+    });
 };
 
 // Runs immediately on init. Then it's called via the poke interface.
@@ -68,6 +58,6 @@ _p.init = function() {
     // may return a promise if the source needs to set up its own resources.
     // promise exceptions will be handled as well (= end the server).
     return null;
-}
+};
 
 exports._Source = _Source;
