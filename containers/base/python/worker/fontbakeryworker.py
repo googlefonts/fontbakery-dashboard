@@ -268,7 +268,10 @@ class DBOperations(object):
     }
 
     with self.dbTableContext() as (q, conn):
-      q.get(self._docid).update(doc).run(conn)
+      result = q.get(self._docid).update(doc).run(conn)
+      if result['errors']:
+        raise FontbakeryWorkerError('RethinkDB: {}'.format(result['first_error']))
+
 
 @contextmanager
 def tempdir():
@@ -278,21 +281,21 @@ def tempdir():
   shutil.rmtree(tmpDirectory)
 
 @contextmanager
-def get_db(host, port, db, table=None):
+def get_db(connection, db_name, table=None):
   """
   Use this context manager to send just one message per connection (socket).
   Depending on message size and network, this means some messages may
   arrive earlier than others at the db host, NOT in order.
-  To compensate in a rethink change feed, `sqash` can be used. Maybe other
-  tweeks, like the
+  To compensate in a rethink change feed, `sqash` can be used.
+
+  FIXME: not doing this anymore, I wonder if it was respnsible for making
+  connecting to the db so slow that it timed out!.
   """
-  connection = r.connect(host=host, port=port, db=db)
   if table is not None:
-    q = r.table(table)
+    q = r.db(db_name).table(table)
   else:
-    q = r
+    q = r.db(db_name)
   yield q, connection
-  connection.close()
 
 def setLoglevel(loglevel):
   '''
@@ -336,11 +339,18 @@ def main(queue_in_name, queue_out_name, db_name, db_table, Worker):
   setLoglevel(setup.log_level)
   logging.info(' '.join(['RethinkDB', 'HOST', setup.db_host, 'PORT', setup.db_port]))
 
-  dbTableContext = partial(get_db, setup.db_host, setup.db_port, db_name, db_table)
+  dbConnection = r.connect(host=setup.db_host, port=setup.db_port, timeout=120)
+  dbTableContext = partial(get_db, dbConnection, db_name, db_table)
   cache = CacheClient(setup.cache_host, setup.cache_port, Files)
 
+  # http://pika.readthedocs.io/en/latest/examples/heartbeat_and_blocked_timeouts.html
   connection = pika.BlockingConnection(
-                    pika.ConnectionParameters(host=setup.msgqueue_host))
+                pika.ConnectionParameters(
+                    host=setup.msgqueue_host
+                    # for long running tasks
+                  , heartbeat=20*60 # 20 minutes
+                  # , socket_timeout=5
+                ))
   queue_channel = connection.channel()
   queue_channel.basic_qos(prefetch_count=1)
   queue_channel.queue_declare(queue=queue_in_name, durable=True)
