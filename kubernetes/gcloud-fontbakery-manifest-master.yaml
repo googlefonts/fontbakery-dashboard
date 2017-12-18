@@ -1,0 +1,25 @@
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-manifest-master
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fontbakery-manifest-master
+        role: manifest
+    spec:
+      containers:
+      - name: fontbakery-manifest-master
+        image: gcr.io/fontbakery-168509/base-javascript:23
+        env:
+          - name: FONTBAKERY_LOG_LEVEL
+            value: "DEBUG"
+          - name: ENVIRONMENT_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: env-config
+                key: ENVIRONMENT_VERSION
+        workingDir: /var/javascript
+        command: ["node", "node/ManifestMaster.js"]

@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: fontbakery-worker-checker
 spec:
-  replicas: 5
+  replicas: 1
   template:
     metadata:
       labels:
@@ -11,6 +11,9 @@ spec:
     spec:
       containers:
       - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:1.03
+        image: gcr.io/fontbakery-168509/base-python:8
+        env:
+          - name: FONTBAKERY_WORKER_LOG_LEVEL
+            value: "DEBUG"
         workingDir: /var/python
         command: ["python2",  "-u", "fontbakery-worker-checker.py"]

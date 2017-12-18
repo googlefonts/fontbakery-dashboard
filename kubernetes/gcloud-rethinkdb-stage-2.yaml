@@ -13,7 +13,7 @@ spec:
         role: admin
     spec:
       containers:
-      - image: rosskukulinski/rethinkdb-kubernetes:2.3.5
+      - image: rosskukulinski/rethinkdb-kubernetes:latest
         imagePullPolicy: Always
         name: rethinkdb
         env:
@@ -62,7 +62,7 @@ spec:
         resources:
           limits:
             cpu: 100m
-            memory: 256Mi
+            memory: 500Mi
           requests:
             cpu: 100m
             memory: 256Mi
@@ -89,10 +89,10 @@ spec:
         instance: two
     spec:
       containers:
-      - image: rosskukulinski/rethinkdb-kubernetes:2.3.5
-        args:
-          - "--cache-size"
-          - "100"
+      - image: rosskukulinski/rethinkdb-kubernetes:latest
+        #args:
+        #  - "--cache-size"
+        #  - "100"
         imagePullPolicy: Always
         name: rethinkdb
         env:
@@ -138,11 +138,11 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 2
+            memory: 5Gi
           requests:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 1
+            memory: 1Gi
         volumeMounts:
         - mountPath: /data
           name: storage
@@ -166,7 +166,7 @@ spec:
         role: proxy
     spec:
       containers:
-      - image: rosskukulinski/rethinkdb-kubernetes:2.3.5
+      - image: rosskukulinski/rethinkdb-kubernetes:latest
         imagePullPolicy: Always
         name: rethinkdb
         env:
@@ -214,11 +214,11 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 2
+            memory: 5Gi
           requests:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 1
+            memory: 1Gi
         volumeMounts:
         - mountPath: /data/rethinkdb_data
           name: storage

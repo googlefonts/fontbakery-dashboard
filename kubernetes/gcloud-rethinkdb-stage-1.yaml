@@ -71,10 +71,10 @@ spec:
 # review looked OK, but we should think about our trust model
 # here, some binaries are included that we just need to trust and
 # it runs NOT through Debian or something.
-      - image: rosskukulinski/rethinkdb-kubernetes:2.3.5
-        args:
-          - "--cache-size"
-          - "100"
+      - image: rosskukulinski/rethinkdb-kubernetes:latest
+        #args:
+        #  - "--cache-size"
+        #  - "100"
         imagePullPolicy: Always
         name: rethinkdb
         env:
@@ -120,11 +120,11 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 2
+            memory: 5Gi
           requests:
-            cpu: 100m
-            memory: 256Mi
+            cpu: 1
+            memory: 1Gi
         volumeMounts:
         - mountPath: /data
           name: storage

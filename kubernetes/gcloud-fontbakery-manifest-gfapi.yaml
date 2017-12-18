@@ -12,12 +12,12 @@ spec:
     spec:
       containers:
       - name: fontbakery-manifest-gfapi
-        image: fontbakery/base-javascript:2
+        image: gcr.io/fontbakery-168509/base-javascript:23
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
-          - name: DEVEL_FAMILY_WHITELIST
-            value: "[\"Rosario\", \"Amiri\", \"Pacifico\", \"Astloch\"]"
+          #- name: DEVEL_FAMILY_WHITELIST
+          #  value: "[\"Rosario\", \"Amiri\", \"Pacifico\", \"Astloch\"]"
           - name: GOOGLE_API_KEY
             valueFrom:
               secretKeyRef:

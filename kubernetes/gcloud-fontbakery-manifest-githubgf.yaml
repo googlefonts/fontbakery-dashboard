@@ -1,0 +1,42 @@
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-manifest-githubgf
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fontbakery-manifest-githubgf
+        role: manifest
+    spec:
+      containers:
+      - name: fontbakery-manifest-githubgf
+        image: gcr.io/fontbakery-168509/base-javascript:23
+        env:
+          - name: FONTBAKERY_LOG_LEVEL
+            value: "DEBUG"
+          # - name: DEVEL_FAMILY_WHITELIST
+          #   value: "[\"Rosario\", \"Amiri\", \"Pacifico\", \"Astloch\"]"
+          - name: GITHUB_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: github-api-token
+        workingDir: /var/javascript
+        command: ["node", "node/manifestSources/Git.js", "-p", "50051"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fontbakery-manifest-githubgf
+  labels:
+    component: fontbakery-manifest-githubgf
+spec:
+  ports:
+    - port: 50051
+      targetPort: 50051
+  selector:
+    component: fontbakery-manifest-githubgf
+    role: manifest
