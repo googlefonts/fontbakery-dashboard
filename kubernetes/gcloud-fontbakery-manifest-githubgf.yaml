@@ -12,12 +12,12 @@ spec:
     spec:
       containers:
       - name: fontbakery-manifest-githubgf
-        image: gcr.io/fontbakery-168509/base-javascript:23
+        image: gcr.io/fontbakery-168509/base-javascript:27
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
-          # - name: DEVEL_FAMILY_WHITELIST
-          #   value: "[\"Rosario\", \"Amiri\", \"Pacifico\", \"Astloch\"]"
+          #- name: DEVEL_FAMILY_WHITELIST
+          #  value: "[\"Seoul Hangang Condensed\"]"
           - name: GITHUB_API_TOKEN
             valueFrom:
               secretKeyRef:

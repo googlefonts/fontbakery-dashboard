@@ -372,15 +372,13 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
+docker build -t fontbakery/base-javascript:27 containers/base/javascript;
+docker tag fontbakery/base-javascript:27 gcr.io/fontbakery-168509/base-javascript:27
+gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:27
 
-
-docker build -t fontbakery/base-javascript:23 containers/base/javascript;
-docker tag fontbakery/base-javascript:23 gcr.io/fontbakery-168509/base-javascript:23
-gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:23
-
-docker build -t fontbakery/base-python:3 containers/base/python;
-docker tag fontbakery/base-python:3 gcr.io/fontbakery-168509/base-python:3
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:3
+docker build -t fontbakery/base-python:9 containers/base/python;
+docker tag fontbakery/base-python:9 gcr.io/fontbakery-168509/base-python:9
+gcloud docker -- push gcr.io/fontbakery-168509/base-python:9
 ```
 
 # Deploy
@@ -425,9 +423,20 @@ kubectl autoscale deployment fontbakery-worker-checker --cpu-percent=80 --min=1 
 ### update an image (roling update style)
 
 ```
-kubectl set image deployments/fontbakery-api fontbakery-api=gcr.io/fontbakery-168509/base-javascript:23
+kubectl set image deployments/fontbakery-api fontbakery-api=gcr.io/fontbakery-168509/base-javascript:27
 
 kubectl set image deployments/fontbakery-worker-checker fontbakery-worker-checker=gcr.io/fontbakery-168509/base-python:4
 
 
+```
+
+https://github.com/kubernetes/kubernetes/issues/24330#issuecomment-265750353
+
+> Thought this might help anyone looking at how to remove inactive replicasets
+(spec.replicas set to zero by the deployment). You may want to add something to
+filter for replicasets actually managed by a deployment as this might end up
+destroying manually created replicasets:
+
+```
+kubectl get --all-namespaces rs -o json|jq -r '.items[] | select(.spec.replicas | contains(0)) | "kubectl delete rs --namespace=\(.metadata.namespace) \(.metadata.name)"'
 ```

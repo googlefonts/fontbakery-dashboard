@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:23
+        image: gcr.io/fontbakery-168509/base-javascript:27
         env:
           - name: COLLECTION_AUTH_SECRET
             value: ""

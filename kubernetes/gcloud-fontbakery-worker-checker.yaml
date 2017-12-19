@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:8
+        image: gcr.io/fontbakery-168509/base-python:9
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"

@@ -11,6 +11,6 @@ spec:
     spec:
       containers:
       - name: fontbakery-worker-distributor
-        image: gcr.io/fontbakery-168509/base-python:8
+        image: gcr.io/fontbakery-168509/base-python:9
         workingDir: /var/python
         command: ["python2",  "-u", "fontbakery-worker-distributor.py"]
