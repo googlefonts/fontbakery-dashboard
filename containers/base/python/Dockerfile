@@ -1,4 +1,4 @@
-FROM ubuntu:trusty
+FROM ubuntu:xenial
 
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y software-properties-common \
