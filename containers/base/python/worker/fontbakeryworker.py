@@ -30,7 +30,7 @@ def get_fontbakery(fonts):
   return runner, spec
 
 def validate_filename(logs, seen, filename):
-  maxfiles = 30
+  maxfiles = 60
   # Basic input validation
   # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
   if filename in {'', '.', '..'} or '/' in filename:
@@ -73,7 +73,7 @@ class FontbakeryWorker(object):
     # And big enough for all of our jobs, otherwise, change ;-)
     job = self._job
     files = self._cache.get(job.cacheKey).files
-    maxfiles = 25
+    maxfiles = 45
     logs = []
     if tmpDirectory is not None:
       logs.append('Dry run! tmpDirectory is None.')
@@ -98,7 +98,7 @@ class FontbakeryWorker(object):
         fontfiles.append(path)
 
     if len(fontfiles) > maxfiles:
-      raise FontbakeryPreparationError('Found {} font files, but maximu '
+      raise FontbakeryPreparationError('Found {} font files, but maximum '
                       'is limiting to {}.'.format(len(fontfiles), maxfiles))
 
     if len(fontfiles) == 0:
