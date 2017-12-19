@@ -801,7 +801,7 @@ return GitBranchGithubPRs;
 if (typeof require != 'undefined' && require.main==module) {
 
     var setup = getSetup(), sources = [], server
-       , repoPath = '/var/fontsgit'
+       , repoPath = './var/fontsgit'
        , familyWhitelist = null
        , grpcPort=50051
        ;
@@ -855,63 +855,3 @@ if (typeof require != 'undefined' && require.main==module) {
       , setup.amqp
     );
 }
-
-// This was used for local testing without other dependencies:
-//
-//if (typeof require != 'undefined' && require.main==module) {
-//
-//    var setup = getSetup(), sources = []
-//       , repoPath = '/home/commander/Projekte/googlefonts/fontsgit'
-//       , GITHUB_API_TOKEN = process.env.GITHUB_API_TOKEN
-//       , familyWhitelist = null//new Set(['Pacifico', 'Astloch'])
-//       ;
-//
-//    setup.logging.log('Loglevel', setup.logging.loglevel);
-//
-//    var baseReference = {
-//            repoOwner: 'google'
-//          , repoName: 'fonts'
-//          , name: 'master'
-//    };
-//
-//    sources.push(new GitBranch(
-//            setup.logging, 'master', repoPath, baseReference, familyWhitelist
-//    ));
-//    sources.push(new GitBranchGithubPRs(
-//            setup.logging, 'pulls', repoPath, baseReference
-//          , process.env.GITHUB_API_TOKEN, familyWhitelist
-//    ));
-//
-//    // an initial fetch of our repository can take a while
-//    // hence we do it very controlled at the beginning and get better
-//    // log output.
-//    setup.logging.info('Fetching git base reference:', baseReference);
-//    sources[0].init()
-//        .then(() => sources[0].fetchBaseRef())
-//        .then(null, err => {
-//            setup.logging.error('Can\'t fetch base reference:', err);
-//            throw(err);
-//        })
-//        .then(() => sources[1].init())
-//        .then(()=>{
-//            let promises = [];
-//            for(let source of sources) {
-//                if(source === sources[0])
-//                    continue;
-//                source.setDispatchFamily(
-//                    (family, files, ...args) =>
-//                        console.log('DispatchFamily ('+source.id+'):'
-//                            , family
-//                            , files.map(([name, arr]) => name + ' ' + arr.length)
-//                            , ...args));
-//                promises.push(source.update(false));
-//
-//            }
-//            return Promise.all(promises);
-//        })
-//        .then(()=>console.log('All up'))
-//        .catch(err => {
-//            setup.logging.error('Some error', err);
-//            throw(err);
-//        });
-//}
