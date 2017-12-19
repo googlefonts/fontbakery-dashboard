@@ -68,8 +68,12 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     }.bind(this));
 
     var serveStandardClient = this.fbIndex.bind(this);
+
+    // the client decides what to serve here as default
     this._app.get('/', serveStandardClient);
-    // this._app.get('/collections', serveStandardClient); // currently index "mode"
+
+    // these just need to exist, they serve the normal client
+    this._app.get('/collections', serveStandardClient); // currently index "mode"
     // probably dashboard is later index, or a more general landing page
     this._app.get('/drag-and-drop', serveStandardClient);
     this._app.get('/dashboard', serveStandardClient);

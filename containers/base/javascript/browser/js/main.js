@@ -136,7 +136,7 @@ define([
 
     function getInterfaceMode() {
         var data = null
-          , defaultMode = 'collections'
+          , defaultMode = 'drag-and-drop'
           , defaultData = null
           , mode, init
           , pathparts = window.location.pathname.split('/')
