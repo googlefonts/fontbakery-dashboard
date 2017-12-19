@@ -32,6 +32,10 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
     this._client = new services_pb.CacheClient(
                           address
                         , credentials || grpc.credentials.createInsecure()
+                        , {
+                              'grpc.max_send_message_length': 80 * 1024 * 1024
+                            , 'grpc.max_receive_message_length': 80 * 1024 * 1024
+                          }
                         );
     this._knownTypes = knownTypes || {};
     this._typesNamespace = typesNamespace && typesNamespace.slice(-1) === '.'

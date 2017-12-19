@@ -43,7 +43,12 @@ class CacheClient(object):
 
   """
   def __init__(self, host, port, ExpectedGetType):
-    self._channel = grpc.insecure_channel('{}:{}'.format(host, port))
+    self._channel = grpc.insecure_channel('{}:{}'.format(host, port)
+          , options=[
+              ('grpc.max_send_message_length', 80 * 1024 * 1024)
+            , ('grpc.max_receive_message_length', 80 * 1024 * 1024)
+          ]
+    )
     self._client = messages_pb2_grpc.CacheStub(self._channel)
     self.ExpectedGetType = ExpectedGetType
 

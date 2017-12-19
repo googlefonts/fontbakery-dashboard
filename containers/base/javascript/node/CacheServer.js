@@ -88,7 +88,12 @@ return CacheItem;
 function CacheServer(logging, port) {
     this._logging = logging;
     this._data = new Map();
-    this._server = new grpc.Server();
+
+    this._server = new grpc.Server({
+        'grpc.max_send_message_length': 80 * 1024 * 1024
+      , 'grpc.max_receive_message_length': 80 * 1024 * 1024
+    });
+
     this._server.addService(CacheService, this);
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 }
