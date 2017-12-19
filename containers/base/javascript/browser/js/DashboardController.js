@@ -1494,8 +1494,8 @@ define([
         return slotSortItems;
     };
 
-    function compare(a, b, reverseNull) {
-        var i, l;
+    function compare(a, b, reverseNull, reversedCompareIndexes) {
+        var i, l, reversed;
         // we'll always feed same length a and b arrays
         for(i=0,l=a.length;i<l;i++) {
             if(a[i] === b[i]) continue;
@@ -1507,14 +1507,20 @@ define([
             if(a[i] === null) return reverseNull ? -1 :  1;
             if(b[i] === null) return reverseNull ?  1 : -1;
 
-            if(a[i] < b[i]) return -1;
-            if(a[i] > b[i]) return 1;
+            // we use this currently for i===1 (slot name) in compare_reversed
+            // because, we want to have the null values of i===0
+            // sorted in descending alphabetical order again.
+            // This depends on _getSlotSortItem
+            reversed = reversedCompareIndexes && reversedCompareIndexes.has(i);
+
+            if(a[i] < b[i]) return reversed ?  1 : -1;
+            if(a[i] > b[i]) return reversed ? -1 : 1;
         }
         return 0;
     }
 
     function compare_reversed (a, b) {
-        return -compare(a, b, true);
+        return -compare(a, b, true, new Set([1]));
     }
 
     _p._reorderRows = function() {
