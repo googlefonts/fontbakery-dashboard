@@ -7,7 +7,7 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y curl mono-complete libicu-dev \
                           fontforge-nox python-fontforge git build-essential \
                           libssl-dev libffi-dev python-dev libxmlsec1-dev \
-                          libxml2 libxml2-dev;
+                          libxml2 libxml2-dev tzdata;
 
 RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
 
@@ -26,8 +26,7 @@ run pip install --upgrade pip
 # not in development) Though, now we have longer running containers
 # it used to be a massive amount of single job containers before/
 # FIXME: This is a hack, we need a proper way to do this
-RUN curl -o /tmp/fontbakery-microsoft-vendorlist.cache https://www.microsoft.com/typography/links/vendorlist.aspx
-
+RUN curl -o tmp/fontbakery-microsoft-vendorlist.cache https://www.microsoft.com/typography/links/vendorlist.aspx
 
 # This is taking forever to compile, so it slows down reiterations
 # it's a dependency of fontbakery. Adding it early, so it is cached
@@ -46,20 +45,20 @@ RUN touch /tmp/cache_spoof_17
 # RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
 
 # FIXME: upstream changes to googlefonts/fontbakery master
-RUN git clone --depth 1 -b util_fix_import git://github.com/graphicore/fontbakery /tmp/fontbakery;\
-    pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
+RUN git clone --depth 1 -b util_fix_import git://github.com/graphicore/fontbakery /var/fontbakery;\
+    pip install /var/fontbakery;pip install -r /var/fontbakery/requirements.txt;
 
-RUN cp -r /tmp/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \
+RUN cp -r /var/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \
     echo "#! /bin/bash"  > /bin/ftxvalidator; \
     echo ">&2 echo 'ftxvalidator is not available!'; exit 1" >> /bin/ftxvalidator; \
     chmod +x /bin/ftxvalidator; \
     echo "#! /bin/bash"  > /bin/FontValidator.exe; \
-    echo "mono /tmp/fontbakery/prebuilt/fval/FontValidator.exe \$@" >> /bin/FontValidator.exe; \
+    echo "mono /var/fontbakery/prebuilt/fval/FontValidator.exe \$@" >> /bin/FontValidator.exe; \
     chmod +x /bin/FontValidator.exe; \
-    echo 'export LD_PRELOAD=/tmp/fontbakery/prebuilt/custom_freetype/lib/libfreetype.so' >> ~/.bashrc;
+    echo 'export LD_PRELOAD=/var/fontbakery/prebuilt/custom_freetype/lib/libfreetype.so' >> ~/.bashrc;
 
-#RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /tmp/fontbakery;\
-#    pip install /tmp/fontbakery;pip install -r /tmp/fontbakery/requirements.txt;
+#RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
+#    pip install /var/fontbakery;pip install -r /var/fontbakery/requirements.txt;
 
 
 
