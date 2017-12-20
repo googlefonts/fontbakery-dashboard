@@ -22,7 +22,7 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-pool-1
       containers:
       - name: fontbakery-worker-checker-sprinter
-        image: gcr.io/fontbakery-168509/base-python:11
+        image: gcr.io/fontbakery-168509/base-python:12
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
@@ -33,8 +33,25 @@ spec:
         command: ["python2",  "-u", "fontbakery-worker-checker.py"]
         resources:
           requests:
-            # 0.58 * 110 = 63.8 an this runs on the 64CPU machines.
-            cpu: 600m
+            # 110 is the upper limit for pods, so we can use it all
+            # For a standard machine 64CPU 240GB VM:
+            # 0.58 * 110 = 63.8
+            # cpu: 580m
+            # but, actually there seems no improvement in speed over 200m
+            # Thus, a smaller machine, but with ~ 220 GB (seems needed)
+            # But it's probably less.
+            # For a custom machine 34CPU 221GB (the smallest with this amount of RAM)
+            # cpu: 300m
+            # To actually be able to scale to ~ 2.5 k, we need to respect
+            # our quota of 500 CPUs, thus after subtracting our 16 CPU
+            # infrastructure VM we have 484 CPUs left, with 0.2 per pod
+            # we're at 22 CPU machines, max ram is 143 GB here,
+            # let's hope its enough.
+            # ALWAYS CHOOSE:
+            # Preemtible: enabled! (much cheaper, our use case)
+            # Use 1 SSD, try 170 GB, if it doesn't cause disk pressure
+            # we should be able to scale up to scale up to ~22 VMS and ~ 2.5 k workers
+            cpu: 300m
         # not sure about the need for these!
         # maybe they help reducing the disc pressure problem. Needs testing.
         # They are not too bad here, this is a good case for SSD.
@@ -65,7 +82,7 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:11
+        image: gcr.io/fontbakery-168509/base-python:12
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
