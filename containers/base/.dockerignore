@@ -1,0 +1,6 @@
+# we exclude these as a way to make sure our package.json and bower.json
+# are defining the right dependencies the alternative would be to rely
+# on the state of the developer machine that builds the image, which is
+# a moving target.
+**/node_modules
+**/bower_components

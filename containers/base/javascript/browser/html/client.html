@@ -1,0 +1,557 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>FontBakery</title>
+    <script src="/browser/js/bower_components/requirejs/require.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=Inconsolata|Roboto:300,300i,400,400i,700,700i" rel="stylesheet">
+    <style>
+
+        html {
+            font-size: 20px;
+            font-family: Roboto, sans-serif;
+        }
+        article, header {
+            width: 80%;
+            margin: 0 auto;
+        }
+        header img{
+            display: block;
+            margin: 0 auto;
+        }
+
+        h1, h2{
+            font-family: Roboto, sans-serif;
+            font-weight: 300;
+        }
+        h1{
+            font-size: 2em;
+        }
+        h2{
+            font-size: 1.7em;
+        }
+
+        pre {
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+        }
+
+        .sending-interface input,
+        .sending-interface button {
+            padding: .5em;
+            font-family: Roboto, sans-serif;
+            font-size: 1em;
+        }
+
+
+        .sending-interface button {
+            cursor: pointer;
+        }
+
+        .drop-fonts {
+            display: inline-block;
+            border: 3px solid grey;
+            padding: .5em;
+            vertical-align: baseline;
+        }
+
+        .general-controls{
+            display: inline-block;
+            vertical-align: baseline;
+        }
+
+        .drop-fonts:hover {
+            background: #b3eeff; /* this is also the background color of the fb logo */
+        }
+
+        .filename {
+            white-space: nowrap;
+            display: block;
+            padding-left: 1em;
+        }
+
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 3px 10px;
+            border: 1px solid #ddd;
+        }
+
+        td {
+            vertical-align: top;
+        }
+
+        /* Reporting Interface */
+
+        .report-container_isFinished > strong,
+        .report-container_created > strong,
+        .report-container_started > strong,
+        .report-container_finished > strong {
+            display: inline-block;
+            margin-right: .5em;
+        }
+
+        .report-container_stderr pre,
+        .report-container_stdout pre {
+            background: darkgreen;
+            color: lime;
+            border: 3px solid lime;
+            padding: .5em;
+            overflow: auto;
+            max-height: 30em;
+            white-space: pre-wrap;
+        }
+
+        .report-container_exception pre {
+            background: pink;
+            border: 3px solid tomato;
+            padding: .5em
+        }
+
+        .report-container_command ol {
+            list-style: none;
+            padding: 0;
+        }
+        .report-container_command ol:before {
+            content: '$';
+            font-weight: bold;
+        }
+
+        .report-container_command {
+            margin: 1em 0;
+        }
+
+        .report-container_command li {
+            display: inline-block;
+            background: lightgrey;
+            margin: 0 0 .5em .5em;
+            padding: .2em;
+        }
+
+        .report-container_command li > * {
+            white-space: pre;
+
+            font-size: 1.1em;
+        }
+
+        .report-container_test-item > .generic-items > div{
+            display: inline;
+        }
+
+        .report-container_preparation_logs ol,
+        .check-item-container_statuses {
+            background: LemonChiffon;
+            max-height: 15em;
+            overflow: auto;
+        }
+
+        .report-container_preparation_logs li {
+            padding: .1em;
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+            /* "pre-wrap" is closest to what the terminal does */
+            white-space: pre-wrap;
+        }
+
+        .result-value_indicator-button,
+        .report-container_tests-tab {
+            display: inline-block;
+            margin-right: .5em;
+            margin-bottom: .5em;
+            padding: .4em;
+            border-style: outset;
+            cursor: pointer;
+        }
+
+        .report-container_tests-tab:hover,
+        .report-container_tests-tab.active-tab {
+            background-color: #b3eeff;
+        }
+
+        .report-container_tests-tab:hover,
+        .report-container_tests-tab.active-tab,
+        .result-value_indicator-button.active,
+        .result-value_indicator-button:hover {
+            border-style: inset;
+        }
+
+        .report-container_tests-container {
+            display: none;
+        }
+
+        .report-container_tests-container > ol {
+            overflow: auto;
+            list-style: none;
+            padding: 0;
+            background: #EFEFEF;
+            border-top: 3px solid lightgrey;
+        }
+
+        .report-container_tests-container.active-tab {
+            display: block;
+        }
+
+        .report-container_test-item {
+            margin: 1em 0;
+            background: white;
+            /* enforces the margins to not float into each other */
+            border-top: 1px solid transparent;
+            border-bottom: 1px solid transparent;
+        }
+
+
+        .report-container_test-item .check-item-container_result {
+            float: left;
+            margin-right: .5em;
+        }
+
+        .report-container_test-item > p:first-child {
+            min-height: 2.2em;
+        }
+
+        .report-container_test-item .generic-items > * {
+            margin-right: 1em;
+            font-family: 'Inconsolata', monospace;
+            font-size: 1.1em;
+            font-size: .7em;
+        }
+
+
+        .check-item-container_result {
+            padding: .5em;
+        }
+
+        .check-item_status_code:before {
+            content: '[';
+        }
+        .check-item_status_code:after {
+            content: ']';
+        }
+        .check-item_status_code {
+            background: #EEE;
+            color: #555;
+            font-family: 'Inconsolata', monospace;
+            /* "pre-wrap" is closest to what the terminal does */
+            white-space: pre-wrap;
+            font-size: .75em;
+        }
+
+        .check-item_status_status,
+        .check-item_status_message,
+        .check-item_status_code {
+            display: inline;
+        }
+
+        .check-item_status_message {
+            white-space: pre-wrap;
+        }
+
+
+        /* Repeat class names to make the selector more specific ;-)
+           Nobody needs !important!
+        */
+        .result-value_indicator-button.active.active.active:hover {
+            background: #DDD;
+        }
+
+        .result-value_indicator {
+            display: inline-block;
+            margin-right: .5em;
+            margin-bottom: .5em;
+            padding: .4em;
+        }
+
+        /* test result colors */
+        .fontbakery_status-ERROR,
+        .report-container_tests .status-value-ERROR,
+        .result-value_indicator-button.active.result-value-ERROR,
+        .result-value_indicator-button.inactive.result-value-ERROR:hover,
+        .result-value_indicator.result-value-ERROR,
+        .dashboard-table th.row_field-ERROR
+        {
+
+            background: crimson;
+            color: white;
+        }
+        .fontbakery_status-FAIL,
+        .report-container_tests .status-value-FAIL,
+        .result-value_indicator-button.active.result-value-FAIL,
+        .result-value_indicator-button.inactive.result-value-FAIL:hover,
+        .result-value_indicator.result-value-FAIL,
+        .dashboard-table th.row_field-FAIL
+        {
+            background: tomato;
+        }
+        .fontbakery_status-WARN,
+        .report-container_tests .status-value-WARN,
+        .result-value_indicator-button.active.result-value-WARN,
+        .result-value_indicator-button.inactive.result-value-WARN:hover,
+        .result-value_indicator.result-value-WARN,
+        .dashboard-table th.row_field-WARN
+        {
+            background: darkorange;
+        }
+        .fontbakery_status-SKIP,
+        .report-container_tests .status-value-SKIP,
+        .result-value_indicator-button.active.result-value-SKIP,
+        .result-value_indicator-button.inactive.result-value-SKIP:hover,
+        .result-value_indicator.result-value-SKIP,
+        .dashboard-table th.row_field-SKIP
+        {
+            background: LemonChiffon;
+        }
+        .fontbakery_status-INFO,
+        .report-container_tests .status-value-INFO,
+        .result-value_indicator-button.active.result-value-INFO,
+        .result-value_indicator-button.inactive.result-value-INFO:hover,
+        .result-value_indicator.result-value-INFO,
+        .dashboard-table th.row_field-INFO
+        {
+            background: #b3eeff;
+        }
+        .fontbakery_status-PASS,
+        .report-container_tests .status-value-PASS,
+        .result-value_indicator-button.active.result-value-PASS,
+        .result-value_indicator-button.inactive.result-value-PASS:hover,
+        .result-value_indicator.result-value-PASS,
+        .dashboard-table th.row_field-PASS
+        {
+            background: greenyellow;
+        }
+        .fontbakery_status-DEBUG,
+        .report-container_tests .status-value-DEBUG,
+        .result-value_indicator-button.active.result-value-DEBUG,
+        .result-value_indicator-button.inactive.result-value-DEBUG:hover,
+        .result-value_indicator.result-value-DEBUG,
+        .dashboard-table th.row_field-DEBUG
+        {
+            background: lavender ;
+        }
+
+        /* by https://stephanwagner.me/only-css-loading-spinner */
+
+        /*
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .report-container_isFinished .status{
+            position: relative;
+        }
+
+        .report-container_isFinished .status.in-progress:after {
+          content: '';
+          box-sizing: border-box;
+          position: absolute;
+          width: 20px;
+          height: 20px;
+          margin-left: 5px;
+          border-radius: 50%;
+          border: 2px solid #ccc;
+          border-top-color: #333;
+          animation: spinner .6s linear infinite;
+        }
+        */
+
+        .dashboard-table .slot_column-names  > th::after,
+        .collection-report_reports-head > th::after {
+            content: '▴';
+            margin-left: .2em;
+            vertical-align: super;
+            opacity: .3;
+        }
+
+        .dashboard-table .slot_column-names.sort-desc  > th::after,
+        .collection-report_reports-head.ordering-reversed > th::after {
+            content: '▾';
+        }
+
+        .dashboard-table .slot_column-names > th.sort-active::after,
+        .collection-report_reports-head > th.ordering-column::after {
+           opacity: 1;
+        }
+
+        .dashboard-table .slot_collection-names > th::before{
+            content: '◂\a0';
+        }
+        .dashboard-table .slot_collection-names > th.collection-expanded::before{
+            content: '▸\a0';
+        }
+
+        /* quick and dirty for this exception */
+        .dashboard-table .slot_collection-names
+                > th.row_field-collectionid[data-collection="fontnames"]::before{
+            content: '';
+        }
+        .dashboard-table .slot_collection-names
+                > th.row_field-collectionid[data-collection="fontnames"] {
+            visibility: hidden;
+        }
+
+        .dashboard-table tfoot {
+            border-top: 3px solid grey;
+        }
+
+        .dashboard-table tbody th:first-child {
+            white-space: nowrap;
+        }
+
+        .dashboard-table th,
+        .dashboard-table td {
+            position: relative;
+        }
+
+        .dashboard-table .percent-indicator {
+            display: block;
+            height: 100%;
+            background-color: #efefefef;
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            z-index: -1;
+        }
+    </style>
+    <script>
+    require(['/browser/js/bootstrap.js'], function(require) {
+        require(['main'], function(main){main()});
+    });
+    </script>
+</head>
+<body>
+<div class="templates" style="display:none">
+    <div class="sending-interface">
+        <p>Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.</p>
+        <p>Font Bakery will run inter-family checks if you drop more than one font.</p>
+        <div class="drop-fonts"><p>Drop font files here or <button>click to choose</button></p></div>
+        <div class="general-controls"></div>
+        <ol class="files-controls"></ol>
+    </div>
+    <div class="reporting-interface">
+    <!-- insert: report-root -->
+    </div>
+
+    <div class="collection-report-interface">
+    <!-- insert: report-root -->
+    </div>
+
+    <div class="dashboard-interface">
+    <!-- insert: toggle-percentages -->
+    <!-- insert: dashboard -->
+    </div>
+
+    <div class="collection-landing-page">
+        <div>
+            <h2>Collections</h2>
+            <ol><!-- insert: link --></ol>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-templates" style="display:none">
+</div>
+
+<div class="collection-report-templates" style="display:none">
+    <div class="report-root">
+        <button class="switch-percentages"></button>
+        <!-- insert: results -->
+        <div class="generic-items"></div>
+    </div>
+
+
+    <table class="table_templates">
+    <tr class="collection-report_reports-head"></tr>
+
+    <tr class="collection-report_reports-results"></tr>
+
+    <tbody class="collection-report_reports-children"><!-- insert: children --></tbody>
+
+    </table>
+
+    <table class="collection-report-container_reports">
+        <thead>
+            <!-- insert: head-row -->
+        </thead>
+        <!-- insert: body -->
+    </table>
+</div>
+
+<div class="report-templates" style="display:none">
+
+    <div class="report-root">
+        <div>
+            <!-- insert: id-->
+            <!-- insert: created -->
+            <!-- insert: started -->
+            <!-- insert: finished -->
+            <!-- insert: exception -->
+        </div>
+        <!-- insert: tests -->
+        <div class="generic-items"></div>
+    </div>
+
+    <h1 class="report-container_id">Report ID: <!-- insert: id--></h1>
+
+    <div class="report-container_tests_results-aggregation">
+        <strong>Aggregated Results</strong> <!-- insert: result-indicator -->
+        <!-- insert: percent -->&nbsp;%
+        <!-- insert: results-total -->&nbsp;of&nbsp;<!--insert: tests-total -->
+
+    </div>
+
+    <div class="report-container_tests">
+        <!-- insert: results-aggregation -->
+        <div class="report-container_tests_tabs">
+            <!-- insert: tabs -->
+        </div>
+        <div class="report-container_tests_containers">
+            <!-- insert: containers -->
+        </div>
+    </div>
+
+    <button class="report-container_tests-tab"><!-- insert: title --></button>
+
+    <ol class="check-item-container_statuses"></ol>
+    <li class="check-item_status">
+        <!-- insert: status -->
+        <!-- insert: message -->
+        <!-- insert: traceback -->
+        <!-- insert: code -->
+    </li>
+
+    <span class="check-item-container_result"></span>
+
+    <li class="report-container_test-item">
+        <p>
+            <!-- insert: result -->
+            <strong><!-- insert: test-key --></strong>
+            <!-- insert: description -->
+        </p>
+        <!-- insert: statuses -->
+        <div class="generic-items"></div>
+    </li>
+
+    <ol class="report-container_tests-items"></ol>
+
+    <div class="report-container_tests-container">
+        <h2><!-- insert: label --></h2>
+        <strong>Results</strong> <!-- insert: result-indicator -->
+        Total <!-- insert: results-total -->
+        <!-- insert: tests -->
+    </div>
+
+    <span class="result-value_indicator"><!-- insert: name --> <!-- insert: value --></span>
+
+    <button class="result-value_indicator-button">
+        <!-- insert: name --> <!-- insert: value -->
+    </button>
+</div>
+<header>
+    <img alt="Font Bakery" src="/browser/img/logo_200px.png"/>
+</header>
+<article class="active-interface"></article>
+</body>
+</html>

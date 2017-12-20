@@ -1,0 +1,20 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-worker-distributor
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: fontbakery-worker-distributor
+    spec:
+      containers:
+      - name: fontbakery-worker-distributor
+        image: fontbakery/base-python:1
+        env:
+          - name: FONTBAKERY_WORKER_LOG_LEVEL
+            value: "DEBUG"
+        workingDir: /var/python
+        command: ["python2",  "-u", "fontbakery-worker-distributor.py"]
+

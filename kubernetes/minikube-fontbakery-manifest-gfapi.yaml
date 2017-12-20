@@ -1,0 +1,41 @@
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-manifest-gfapi
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fontbakery-manifest-gfapi
+        role: manifest
+    spec:
+      containers:
+      - name: fontbakery-manifest-gfapi
+        image: fontbakery/base-javascript:2
+        env:
+          - name: FONTBAKERY_LOG_LEVEL
+            value: "DEBUG"
+          - name: DEVEL_FAMILY_WHITELIST
+            value: "[\"Rosario\", \"Amiri\", \"Pacifico\", \"Astloch\"]"
+          - name: GOOGLE_API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: google-api-key
+        workingDir: /var/javascript
+        command: ["node", "node/manifestSources/GoogleFonts.js", "-p", "50051"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fontbakery-manifest-gfapi
+  labels:
+    component: fontbakery-manifest-gfapi
+spec:
+  ports:
+    - port: 50051
+      targetPort: 50051
+  selector:
+    component: fontbakery-manifest-gfapi
+    role: manifest

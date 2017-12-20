@@ -1,0 +1,39 @@
+
+
+a client connects
+    create the rethink db query
+        with all initial true, so we don't have race conditions
+    associate client with query
+
+
+a query answers
+    push to the client who's connected to the query
+
+    * Problems SocketIO seems not to support to push to specific clients on
+      Python (probably wrong)
+    * rethinkdb change is blocking, we can't run many of these using not Threads
+
+        ws =
+        g = gevent.Greenlet.spawn(read_feed).get()
+
+
+if a document has ended, it would be wise to close the websocket after
+sending the data.
+It would be cooler to hang up server side than client side!
+
+
+a client disconnects
+    destroy the query
+
+a feed ends
+    send that to the client (and hang up?)
+
+
+The plan dies because: each test needs all files, otherwise we can't run family tests successfully :-(
+Also, family fonts themselves have different rules than single fonts.
+
+Tough, as a preparation for a post-refactoring client, this would still be a good start.
+We can just send at the end of a fb run X-different messages to the rethinkdb client,
+having all the infrastructure in place for more complex runs.
+
+

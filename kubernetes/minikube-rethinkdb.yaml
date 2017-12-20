@@ -1,0 +1,108 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-replica-1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        db: rethinkdb
+        role: replica
+        instance: one
+    spec:
+      containers:
+# review looked OK, but we should think about our trust model
+# here, some binaries are included that we just need to trust and
+# it runs NOT through Debian or something.
+      - image: rosskukulinski/rethinkdb-kubernetes:2.3.5
+        args:
+          - "--cache-size"
+          - "100"
+        imagePullPolicy: Always
+        name: rethinkdb
+        env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: RETHINK_CLUSTER
+          value: rethinkdb
+        ports:
+        - containerPort: 8080
+          name: admin
+        - containerPort: 28015
+          name: driver
+        - containerPort: 29015
+          name: cluster
+        livenessProbe:
+          exec:
+            command:
+              - /probe
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+              - /probe
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 100m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+        volumeMounts:
+        - mountPath: /data
+          name: storage
+      volumes:
+      - name: storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-admin
+spec:
+  type: LoadBalancer
+  ports:
+   - port: 8080
+     targetPort: 8080
+  selector:
+    db: rethinkdb
+    role: replica
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-driver
+spec:
+  ports:
+    - port: 28015
+      targetPort: 28015
+  selector:
+    db: rethinkdb
+    role: replica
