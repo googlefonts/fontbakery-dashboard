@@ -376,9 +376,11 @@ docker build -t fontbakery/base-javascript:27 containers/base/javascript;
 docker tag fontbakery/base-javascript:27 gcr.io/fontbakery-168509/base-javascript:27
 gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:27
 
-docker build -t fontbakery/base-python:9 containers/base/python;
-docker tag fontbakery/base-python:9 gcr.io/fontbakery-168509/base-python:9
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:9
+docker build -t fontbakery/base-python:11 containers/base/python;
+docker tag fontbakery/base-python:11 gcr.io/fontbakery-168509/base-python:11
+gcloud docker -- push gcr.io/fontbakery-168509/base-python:11
+
+
 ```
 
 # Deploy
@@ -410,7 +412,7 @@ kubectl delete deployment fontbakery-worker-distributor
 kubectl delete deployment fontbakery-manifest-master
 kubectl delete deployment fontbakery-api
 kubectl delete deployment fontbakery-manifest-gfapi
-kubectl delete fontbakery-manifest-githubgf
+kubectl delete deployment fontbakery-manifest-githubgf
 ```
 
 ### autoscale
@@ -439,4 +441,33 @@ destroying manually created replicasets:
 
 ```
 kubectl get --all-namespaces rs -o json|jq -r '.items[] | select(.spec.replicas | contains(0)) | "kubectl delete rs --namespace=\(.metadata.namespace) \(.metadata.name)"'
+```
+
+### label a node
+
+```
+# this will always run
+kubectl label nodes gke-fontbakery-dashboard-default-pool-146c1d02-4c6c determination=infrastructure
+```
+
+```
+# this is fired up to run with many checkers for a short period of time
+kubectl label nodes gke-fontbakery-dashboard-sprint-pool-146c1d02-4c6c determination=checker-sprinter
+```
+### Labeling Clusters
+
+Is not needed:
+Each node in the pool has a Kubernetes node label with the node pool's
+name in the key cloud.google.com/gke-nodepool
+
+i.e: for the pool "checker-pool-1"
+each node has a label: "cloud.google.com/gke-nodepool=checker-pool"
+
+
+Thus we can say a pod to only attach to that pool with:
+
+```
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: checker-pool-1
 ```
