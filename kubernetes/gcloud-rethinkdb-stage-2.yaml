@@ -12,6 +12,8 @@ spec:
         db: rethinkdb
         role: admin
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         imagePullPolicy: Always
@@ -88,6 +90,8 @@ spec:
         role: replica
         instance: two
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         #args:
@@ -159,12 +163,15 @@ metadata:
     db: rethinkdb
   name: rethinkdb-proxy
 spec:
+  replicas: 1
   template:
     metadata:
       labels:
         db: rethinkdb
         role: proxy
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         imagePullPolicy: Always

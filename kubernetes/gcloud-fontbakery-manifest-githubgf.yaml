@@ -10,6 +10,8 @@ spec:
         component: fontbakery-manifest-githubgf
         role: manifest
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - name: fontbakery-manifest-githubgf
         image: gcr.io/fontbakery-168509/base-javascript:27

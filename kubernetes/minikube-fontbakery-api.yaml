@@ -9,6 +9,8 @@ spec:
       labels:
         run: fontbakery-api
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - name: fontbakery-api
         image: fontbakery/base-javascript:2

@@ -10,6 +10,8 @@ spec:
         component: fontbakery-cache
         role: messagecache
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - name: fontbakery-cache
         image: gcr.io/fontbakery-168509/base-javascript:27

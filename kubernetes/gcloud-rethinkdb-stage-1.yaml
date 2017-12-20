@@ -67,6 +67,8 @@ spec:
         role: replica
         instance: one
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
 # review looked OK, but we should think about our trust model
 # here, some binaries are included that we just need to trust and

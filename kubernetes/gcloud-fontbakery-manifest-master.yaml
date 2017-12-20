@@ -10,6 +10,8 @@ spec:
         component: fontbakery-manifest-master
         role: manifest
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - name: fontbakery-manifest-master
         image: gcr.io/fontbakery-168509/base-javascript:27

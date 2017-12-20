@@ -1,19 +1,76 @@
+# eventually we'll have a cheap way to scale and wait in the same nodepool
+# but not this year.
+# Also, we could use a priority queue for drag and drop jobs, to serve
+# faster while a family-wide check runs. RabbitMq implements priority queues.
+# https://www.rabbitmq.com/priority.html
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-worker-checker-sprinter
+spec:
+  # only use and scale these for collection wide jobs
+  # 749 with 7 64CPU machines.
+  replicas: 0
+  template:
+    metadata:
+      labels:
+        run: fontbakery-worker-checker-sprinter
+    spec:
+      # this has no node selector/determined node, so it will
+      # also attach to the short lived sprinter nodes
+      nodeSelector:
+        cloud.google.com/gke-nodepool: checker-sprinter-pool-1
+      containers:
+      - name: fontbakery-worker-checker-sprinter
+        image: gcr.io/fontbakery-168509/base-python:11
+        env:
+          - name: FONTBAKERY_WORKER_LOG_LEVEL
+            value: "INFO"
+          # python will put the jobs here and so harness the SSD goodnes
+          - name: TMPDIR
+            value: '/tmp/ssd/'
+        workingDir: /var/python
+        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+        resources:
+          requests:
+            # 0.58 * 110 = 63.8 an this runs on the 64CPU machines.
+            cpu: 600m
+        # not sure about the need for these!
+        # maybe they help reducing the disc pressure problem. Needs testing.
+        # They are not too bad here, this is a good case for SSD.
+        volumeMounts:
+        - mountPath: "/tmp/ssd/"
+          name: "tmp-ssd"
+      volumes:
+      - name: "tmp-ssd"
+        hostPath:
+          path: "/mnt/disks/ssd0"
+---
+# let these wait for drag and drop jobs in the normal cluster
+# it seems like it is sized enough for that.
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   name: fontbakery-worker-checker
 spec:
-  replicas: 1
+  replicas: 8
   template:
     metadata:
       labels:
         run: fontbakery-worker-checker
     spec:
+      # this has no node selector/determined node, so it will
+      # also attach to the short lived sprinter nodes
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:9
+        image: gcr.io/fontbakery-168509/base-python:11
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
         workingDir: /var/python
         command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+        resources:
+          requests:
+            cpu: 200m

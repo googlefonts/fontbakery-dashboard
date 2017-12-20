@@ -12,6 +12,8 @@ spec:
         app: taskQueue
         component: rabbitmq
     spec:
+      nodeSelector:
+        determination: infrastructure
       containers:
       - image: rabbitmq:3-management
         name: rabbitmq
