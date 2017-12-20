@@ -41,6 +41,7 @@ metadata:
     run: fontbakery-api
 spec:
   type: LoadBalancer
+  loadBalancerIP: "35.225.170.228"
 # need this for socketIO
   sessionAffinity: ClientIP
   ports:
