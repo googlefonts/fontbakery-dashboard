@@ -122,11 +122,10 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            cpu: 2
-            memory: 5Gi
+            memory: 10Gi
           requests:
-            cpu: 1
-            memory: 1Gi
+            cpu: 2
+            memory: 8Gi
         volumeMounts:
         - mountPath: /data
           name: storage
@@ -134,7 +133,7 @@ spec:
       - gcePersistentDisk:
           # This GCE PD must already exist.
           fsType: ext4
-          pdName: rethinkdb-storage-1
+          pdName: rethinkdb-storage-ssd-1
         name: storage
 # When this is up, apply gcloud-rethinkdb-stage-2.yaml to
 # start the rest of the cluster.
