@@ -379,8 +379,6 @@ gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:30
 docker build -t fontbakery/base-python:15 containers/base/python;
 docker tag fontbakery/base-python:15 gcr.io/fontbakery-168509/base-python:15
 gcloud docker -- push gcr.io/fontbakery-168509/base-python:15
-
-
 ```
 
 # Deploy
