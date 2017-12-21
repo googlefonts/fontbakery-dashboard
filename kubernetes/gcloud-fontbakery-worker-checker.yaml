@@ -30,7 +30,7 @@ metadata:
 spec:
   # only use and scale these for collection wide jobs
   # 109 pods per machine, 749 with 7 machines.
-  replicas: 540
+  replicas: 0
   template:
     metadata:
       labels:
@@ -42,10 +42,12 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-pool-1
       containers:
       - name: fontbakery-worker-checker-sprinter
-        image: gcr.io/fontbakery-168509/base-python:15
+        image: gcr.io/fontbakery-168509/base-python:19
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
+          - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
+            value: "20"
           # python will put the jobs here and so harness the SSD goodnes
 #          - name: TMPDIR
 #            value: '/tmp/ssd/'
@@ -74,8 +76,11 @@ metadata:
   name: fontbakery-worker-checker-sprinter-ssd
 spec:
   # only use and scale these for collection wide jobs
-  # 109 pods per machine, 749 with 7 machines.
-  replicas: 1080
+  # 109 pods per machine, 749 with  machines.
+  #  1 VM :  109
+  #  7 VMs:  749
+  # 15 VMs: 1619
+  replicas: 0
   template:
     metadata:
       labels:
@@ -87,10 +92,12 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-ssd-pool-1
       containers:
       - name: fontbakery-worker-checker-sprinter-ssd
-        image: gcr.io/fontbakery-168509/base-python:15
+        image: gcr.io/fontbakery-168509/base-python:19
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
+          - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
+            value: "20"
           # python will put the jobs here and so harness the SSD goodnes
           - name: TMPDIR
             value: '/tmp/ssd/'
@@ -130,10 +137,12 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:15
+        image: gcr.io/fontbakery-168509/base-python:19
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
+          - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
+            value: "1"
         workingDir: /var/python
         command: ["python2",  "-u", "fontbakery-worker-checker.py"]
         resources:
