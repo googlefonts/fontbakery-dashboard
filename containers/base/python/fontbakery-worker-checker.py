@@ -9,20 +9,23 @@ from worker.fontbakeryworker import (
                   main
                 , get_fontbakery
                 , FontbakeryWorker
-                , logging
+                # , logging
                 )
 from fontbakery.reporters import FontbakeryReporter
 from fontbakery.message import Message
 from fontbakery.checkrunner import STARTCHECK, ENDCHECK, DEBUG
 
 class DashbordWorkerReporter(FontbakeryReporter):
-  def __init__(self, dbOps, jobid, specification, runner, **kwd):
+  def __init__(self, dbOps, jobid, specification, runner
+                                          , ticks_to_flush = None, **kwd):
     super(DashbordWorkerReporter, self).__init__(runner=runner, **kwd)
     self._dbOps = dbOps
     self._jobid = jobid
-    self._spec = specification
+    self._spec = specification;
+    self.ticks_to_flush = ticks_to_flush or 1
     self.doc = []
     self._current = None
+    self._collectedChecks = None
 
   def _register(self, event):
     super(DashbordWorkerReporter, self)._register(event)
@@ -45,7 +48,7 @@ class DashbordWorkerReporter(FontbakeryReporter):
         # thus interpreting) results for the tests is probably not too
         # expensive to do it on the fly.
         self._current['result'] = message.name
-        self._flush_result(key, self._current)
+        self._save_result(key, self._current)
         self._current = None
 
     if status >= DEBUG:
@@ -77,24 +80,38 @@ class DashbordWorkerReporter(FontbakeryReporter):
         log['message'] = '{}'.format(message)
       self._current['statuses'].append(log)
 
-  def _flush_result(self, key, test_result):
+  def _save_result(self, key, test_result):
     """ send test_result to the retthinkdb document"""
-    self._dbOps.insert_test(key, test_result)
+    if self._collectedChecks is None:
+      self._collectedChecks = {}
+    self._collectedChecks[key] = test_result
+    if len(self._collectedChecks) >= self.ticks_to_flush:
+      self.flush()
 
+  def flush(self):
+    if self._collectedChecks:
+      self._dbOps.insert_checks(self._collectedChecks)
+    self._collectedChecks = None
 
 class WorkerChecker(FontbakeryWorker):
-  def __init__(self, dbTableContext, queue, cache):
+  def __init__(self, dbTableContext, queue, cache, setup=None):
       super(WorkerChecker, self).__init__(dbTableContext, queue, cache)
       self._with_tempdir = True
       self._JobType = FamilyJob
+      self.ticks_to_flush = setup.ticks_to_flush if setup else None
 
   def _work(self, fonts):
     self._dbOps.update({'started': datetime.now(pytz.utc)})
     runner, spec = get_fontbakery(fonts)
     order = spec.deserialize_order(self._job.order)
     reporter = DashbordWorkerReporter(self._dbOps, self._job.jobid,
-                                        specification=spec, runner=runner)
+                                        specification=spec
+                                      , runner=runner
+                                      , ticks_to_flush=self.ticks_to_flush
+                                      , )
     reporter.run(order)
+    # flush the rest
+    reporter.flush()
     self._dbOps.update({'finished': datetime.now(pytz.utc)})
 
   def _finalize(self):

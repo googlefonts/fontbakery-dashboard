@@ -13,8 +13,8 @@ from worker.fontbakeryworker import (
                 )
 
 class WorkerDistributor(FontbakeryWorker):
-  def __init__(self, dbTableContext, queue, cache):
-      super(WorkerDistributor, self).__init__(dbTableContext, queue, cache)
+  def __init__(self, dbTableContext, queue, cache, setup=None):
+      super(WorkerDistributor, self).__init__(dbTableContext, queue, cache, setup)
       self._save_preparation_logs = True
       self._JobType = FamilyJob
 
