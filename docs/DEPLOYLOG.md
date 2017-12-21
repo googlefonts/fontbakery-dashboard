@@ -113,7 +113,8 @@ rethinkdb-storage-2  us-central1-a  200      pd-standard  READY
 ```
 
 It says new disks are unformatted and that I must format it. But I want to see it fail, because nobody
-documented this well. Also, why is there a `fsType: ext4` in the volume setup (kubernetes yaml file, probably that we mount it correctly...)
+documented this well. Also, why is there a `fsType: ext4` in the volume setup (kubernetes yaml file
+, probably that we mount it correctly...)
 
 
 OK, no disk formatting, crash and burn:
@@ -376,9 +377,9 @@ docker build -t fontbakery/base-javascript:30 containers/base/javascript;
 docker tag fontbakery/base-javascript:30 gcr.io/fontbakery-168509/base-javascript:30
 gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:30
 
-docker build -t fontbakery/base-python:15 containers/base/python;
-docker tag fontbakery/base-python:15 gcr.io/fontbakery-168509/base-python:15
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:15
+docker build -t fontbakery/base-python:19 containers/base/python;
+docker tag fontbakery/base-python:19 gcr.io/fontbakery-168509/base-python:19
+gcloud docker -- push gcr.io/fontbakery-168509/base-python:19
 ```
 
 # Deploy
@@ -388,6 +389,7 @@ gcloud docker -- push gcr.io/fontbakery-168509/base-python:15
 kubectl apply -f kubernetes/gcloud-rabbitmq.yaml
 
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-1.yaml
+kubectl apply -f kubernetes/gcloud-rethinkdb-proxy.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
 
 kubectl apply -f kubernetes/gcloud-fontbakery-cache.yaml
@@ -407,8 +409,8 @@ kubectl delete deployment fontbakery-cache;
 kubectl delete deployment fontbakery-worker-cleanup
 kubectl delete deployment fontbakery-worker-checker
 kubectl delete deployment fontbakery-worker-distributor
-kubectl delete deployment fontbakery-manifest-master
 kubectl delete deployment fontbakery-api
+kubectl delete deployment fontbakery-manifest-master
 kubectl delete deployment fontbakery-manifest-gfapi
 kubectl delete deployment fontbakery-manifest-githubgf
 ```
