@@ -47,7 +47,7 @@ def validate_filename(logs, seen, filename):
   return True
 
 class FontbakeryWorker(object):
-  def __init__(self, dbTableContext, queue, cache):
+  def __init__(self, dbTableContext, queue, cache, setup=None):
     self._dbTableContext = dbTableContext
     self._queue = queue
     self._cache = cache
@@ -238,9 +238,9 @@ class DBOperations(object):
     with self.dbTableContext() as (q, conn):
       return q.get(self._docid).update(_doc).run(conn)
 
-  def insert_test(self, key, test_result):
+  def insert_checks(self, check_results):
     doc = {
-        'tests': r.row['tests'].merge({key: test_result})
+        'tests': r.row['tests'].merge(check_results)
       # increase the counter
       # FIXME: This is a denormalization, and we can most probably create
       # a rethinkdb query to fetch a results object like this on the fly.
@@ -259,7 +259,7 @@ class DBOperations(object):
       # this recreates the results dict on each insert
       # to avoid the race condition, the r.row['tests'] is recreated
       # here on the fly
-        , 'results': r.row['tests'].merge({key: test_result})
+        , 'results': r.row['tests'].merge(check_results)
                     .values()
                     .filter(lambda item: item.has_fields('result'))
                     .map(lambda item: item['result'])
@@ -308,7 +308,8 @@ def setLoglevel(loglevel):
 
 QueueData = namedtuple('QueueData', ['channel', 'in_name', 'out_name'])
 Setup = namedtuple('Setup', ['log_level', 'db_host', 'db_port'
-                           , 'msgqueue_host', 'cache_host', 'cache_port'])
+                           , 'msgqueue_host', 'cache_host', 'cache_port'
+                           , 'ticks_to_flush'])
 
 def getSetup():
   log_level = os.environ.get("FONTBAKERY_WORKER_LOG_LEVEL", 'INFO')
@@ -327,7 +328,15 @@ def getSetup():
   cache_host = os.environ.get("FONTBAKERY_CACHE_SERVICE_HOST")
   cache_port = os.environ.get("FONTBAKERY_CACHE_SERVICE_PORT", 50051)
 
-  return Setup(log_level, db_host, db_port, msgqueue_host, cache_host, cache_port)
+  # 1 reports every test result to the database and creates a good
+  # live report granularity, but it also slows the database down.
+  # For a massive scale of checkers, this can be a major tool to tune
+  # performance.
+
+  ticks_to_flush = int(os.environ.get("FONTBAKERY_CHECKER_TICKS_TO_FLUSH", 1))
+
+  return Setup(log_level, db_host, db_port, msgqueue_host
+                              , cache_host, cache_port, ticks_to_flush)
 
 def main(queue_in_name, queue_out_name, db_name, db_table, Worker):
   """
@@ -366,5 +375,5 @@ def main(queue_in_name, queue_out_name, db_name, db_table, Worker):
   # Ack immediately and see how to handle failed jobs at another
   # point of time.
   for method, properties, body in queue.channel.consume(queue.in_name):
-    worker = Worker(dbTableContext, queue, cache)
+    worker = Worker(dbTableContext, queue, cache, setup)
     worker.consume(method, properties, body)
