@@ -198,7 +198,8 @@ _p._cacheFamily = function (filesMessage) {
     return this._cache.put([filesMessage])
         // only the first item is interesting/present because we only
         // put one message into: `[filesMessage]`
-        .then(responses=>responses[0]); // [cacheKey] => cacheKey
+        .then(responses=>responses[0]  // [cacheKey] => cacheKey
+            , err=>{ this._log.error(err); throw err; });
 };
 
 _p._sendAMQPMessage = function (queueName, message) {

@@ -372,15 +372,13 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
-docker build -t fontbakery/base-javascript:27 containers/base/javascript;
-docker tag fontbakery/base-javascript:27 gcr.io/fontbakery-168509/base-javascript:27
-gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:27
+docker build -t fontbakery/base-javascript:30 containers/base/javascript;
+docker tag fontbakery/base-javascript:30 gcr.io/fontbakery-168509/base-javascript:30
+gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:30
 
-docker build -t fontbakery/base-python:11 containers/base/python;
-docker tag fontbakery/base-python:11 gcr.io/fontbakery-168509/base-python:11
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:11
-
-
+docker build -t fontbakery/base-python:15 containers/base/python;
+docker tag fontbakery/base-python:15 gcr.io/fontbakery-168509/base-python:15
+gcloud docker -- push gcr.io/fontbakery-168509/base-python:15
 ```
 
 # Deploy
@@ -425,7 +423,7 @@ kubectl autoscale deployment fontbakery-worker-checker --cpu-percent=80 --min=1 
 ### update an image (roling update style)
 
 ```
-kubectl set image deployments/fontbakery-api fontbakery-api=gcr.io/fontbakery-168509/base-javascript:27
+kubectl set image deployments/fontbakery-api fontbakery-api=gcr.io/fontbakery-168509/base-javascript:30
 
 kubectl set image deployments/fontbakery-worker-checker fontbakery-worker-checker=gcr.io/fontbakery-168509/base-python:4
 

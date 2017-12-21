@@ -46,6 +46,12 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
 
 var _p = CacheClient.prototype;
 
+_p._raiseUnhandledError = function(err) {
+    this._log.error(err);
+    throw err;
+};
+
+
 _p._getTypeNameForMessage = function(message) {
     var name;
     for(name in this._knownTypes)
@@ -148,12 +154,16 @@ _p._getMessageFromAny = function(any) {
 _p.get = function(cacheKey) {
     var func = this._client.get.bind(this._client);
     return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline})
-           .then(this._getMessageFromAny.bind(this));
+           .then(this._getMessageFromAny.bind(this))
+           .then(null, error=>this._raiseUnhandledError(error))
+           ;
 };
 
 _p.purge = function(cacheKey) {
     var func = this._client.purge.bind(this._client);
-    return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline});
+    return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline})
+                    .then(null, error=>this._raiseUnhandledError(error))
+                    ;
 };
 
 _p.waitForReady = function() {

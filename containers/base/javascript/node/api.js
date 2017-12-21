@@ -839,11 +839,16 @@ _p._subscribeToCollectionReport = function(socket, data) {
     this._sendInitialCollectionSubscription(collectionId, socket.id);
 };
 
-
 _p._unsubscribeFromDashboard = function(socketId) {
-    var consumers = this._dashboardSubscription.consumers
-      , consumer = consumers.get(socketId)
-      ;
+    var consumers, consumer;
+
+    if(!this._dashboardSubscription)
+        return;
+    consumers = this._dashboardSubscription.consumers;
+    consumer = consumers.get(socketId);
+    if(!consumer)
+        return;
+
     consumer.unsubscribe_callbacks.forEach(unsubscribe => unsubscribe());
     consumers.delete(socketId);
 

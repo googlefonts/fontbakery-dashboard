@@ -13,7 +13,7 @@ spec:
         determination: infrastructure
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:27
+        image: gcr.io/fontbakery-168509/base-javascript:30
         env:
           - name: COLLECTION_AUTH_SECRET
             value: ""
@@ -41,6 +41,7 @@ metadata:
     run: fontbakery-api
 spec:
   type: LoadBalancer
+  loadBalancerIP: "35.225.170.228"
 # need this for socketIO
   sessionAffinity: ClientIP
   ports:
