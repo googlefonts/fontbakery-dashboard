@@ -13,7 +13,7 @@ spec:
         determination: infrastructure
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:27
+        image: gcr.io/fontbakery-168509/base-javascript:30
         env:
           - name: COLLECTION_AUTH_SECRET
             value: ""
