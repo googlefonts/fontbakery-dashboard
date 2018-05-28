@@ -24,7 +24,7 @@ class WorkerDistributor(FontbakeryWorker):
     runner, spec = get_fontbakery(fonts)
 
     # this must survive JSON
-    full_order = spec.serialize_order(runner.order)
+    full_order = list(spec.serialize_order(runner.order))
     tests = {identity:{'index':index}  for index, identity in enumerate(full_order)}
 
     # FIXME: do something fancy to split this up

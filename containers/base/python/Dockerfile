@@ -45,7 +45,9 @@ RUN touch /tmp/cache_spoof_17
 # RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
 
 # FIXME: upstream changes to googlefonts/fontbakery master
-RUN git clone --depth 1 -b util_fix_import git://github.com/graphicore/fontbakery /var/fontbakery;\
+
+# RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
+RUN git clone --depth 1 -b minor_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
     pip install /var/fontbakery;pip install -r /var/fontbakery/requirements.txt;
 
 RUN cp -r /var/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \

@@ -27,6 +27,19 @@ def get_fontbakery(fonts):
   from fontbakery.commands.check_googlefonts import runner_factory
   runner = runner_factory(fonts)
   spec = runner.specification
+
+  old_check_filter = spec.check_filter
+  def check_filter(checkid, font=None, **iterargs):
+      # Familyname must be unique according to namecheck.fontdata.com
+    if checkid == 'com.google.fonts/check/165':
+      return False, ('Disabled for Fontbakery-Dashboard, see: '
+                     'https://github.com/googlefonts/fontbakery/issues/1680')
+    if old_check_filter:
+      return old_check_filter(checkid, font, **iterargs)
+    return True, None
+
+  spec.set_check_filter(check_filter)
+
   return runner, spec
 
 def validate_filename(logs, seen, filename):
