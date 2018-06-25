@@ -24,6 +24,7 @@ function getSetup() {
                 // these tables will be created
                 family: 'familytests'
               , collection: 'collectiontests'
+              , statusreport: 'statusreports'
             }
         }
       , amqpSetup = {
@@ -35,6 +36,11 @@ function getSetup() {
             // call it: "fontbakery-cache"
             host: process.env.FONTBAKERY_CACHE_SERVICE_HOST
           , port: process.env.FONTBAKERY_CACHE_SERVICE_PORT
+        }
+      , reportsSetup = {
+            // call it: "fontbakery-reports"
+            host: process.env.FONTBAKERY_REPORTS_SERVICE_HOST
+          , port: process.env.FONTBAKERY_REPORTS_SERVICE_PORT
         }
       , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
       , develFamilyWhitelist = null
@@ -64,6 +70,7 @@ function getSetup() {
         amqp: amqpSetup
       , db: dbSetup
       , cache: cacheSetup
+      , reports: reportsSetup
       , logging: logging
       , develFamilyWhitelist: develFamilyWhitelist
     };
@@ -97,8 +104,9 @@ function initDB(log, dbSetup) {
         });
     }
 
-    function createTableIndex(tableName, index) {
-        var query = r.table(tableName)
+    function createTableIndex(dbTable, index) {
+        var tableName = dbSetup.tables[dbTable]
+          , query = r.table(tableName)
           , index_ =  index instanceof Array ? index : [index]
           ;
         return query.indexCreate.apply(query, index_)
@@ -122,27 +130,39 @@ function initDB(log, dbSetup) {
             return Promise.all(Object.values(dbSetup.tables).map(createTable));
         })
         .then(function() {
-            // create a compound index in dbSetup.tables.family:
+            // create indexes for dbSetup.tables.family
             // [environment_version, test_data_hash]
             var index = [
                     'env_hash'
                   , [r.row('environment_version'), r.row('test_data_hash')]
                 ];
-            return createTableIndex(dbSetup.tables.family, index);
+            return createTableIndex('family', index);
         })
         .then(function() {
+            // create indexes for dbSetup.tables.collection
             // TODO: dbSetup.tables.collection needs probably some more indexes!
             return Promise.all([
                 // collection_id
-                createTableIndex(dbSetup.tables.collection, 'collection_id')
+                createTableIndex('collection', 'collection_id')
                 // collection_id | family_name
-              , createTableIndex(dbSetup.tables.collection, ['collection_family'
+              , createTableIndex('collection', ['collection_family'
                         , [r.row('collection_id'), r.row('family_name')]])
                 // familytests_id
-              , createTableIndex(dbSetup.tables.collection
-                                        , dbSetup.tables.family + '_id')
+              , createTableIndex('collection', dbSetup.tables.family + '_id')
                 // date
-              , createTableIndex(dbSetup.tables.collection, 'date')
+              , createTableIndex('collection', 'date')
+            ]);
+        })
+        .then(()=>{
+            //  create indexes for dbSetup.tables.statusreport
+            return Promise.all([
+                //reported
+                createTableIndex('statusreport', 'reported')
+                // reported | id
+                // this index exists to make it possible to orderBy `reported`
+                // while doing an (optimized by index) pagination using `id`.
+              , createTableIndex('statusreport', ['reported_id'
+                                        , [r.row('reported'), r.row('id')]])
             ]);
         })
         .then(function(){return r;})
