@@ -7,7 +7,7 @@
 const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , services_pb = require('protocolbuffers/messages_grpc_pb')
+  , { CacheClient: GrpcCacheClient } = require('protocolbuffers/messages_grpc_pb')
   , any_pb = require('google-protobuf/google/protobuf/any_pb.js')
   ;
 
@@ -29,7 +29,7 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
     //       and still fail eventually.
     this._deadline = 30;
     this._logging.info('CacheClient at:', address);
-    this._client = new services_pb.CacheClient(
+    this._client = new GrpcCacheClient(
                           address
                         , credentials || grpc.credentials.createInsecure()
                         , {
