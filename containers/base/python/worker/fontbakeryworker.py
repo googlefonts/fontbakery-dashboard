@@ -28,17 +28,17 @@ def get_fontbakery(fonts):
   runner = runner_factory(fonts)
   spec = runner.specification
 
-  old_check_filter = spec.check_filter
-  def check_filter(checkid, font=None, **iterargs):
+  old_check_skip_filter = spec.check_skip_filter
+  def check_skip_filter(checkid, font=None, **iterargs):
       # Familyname must be unique according to namecheck.fontdata.com
     if checkid == 'com.google.fonts/check/165':
       return False, ('Disabled for Fontbakery-Dashboard, see: '
                      'https://github.com/googlefonts/fontbakery/issues/1680')
-    if old_check_filter:
-      return old_check_filter(checkid, font, **iterargs)
+    if old_check_skip_filter:
+      return old_check_skip_filter(checkid, font, **iterargs)
     return True, None
 
-  spec.set_check_filter(check_filter)
+  spec.check_skip_filter = check_skip_filter
 
   return runner, spec
 
