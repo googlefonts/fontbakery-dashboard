@@ -7,11 +7,11 @@
 const getSetup = require('./util/getSetup').getSetup
   , crypto = require('crypto')
   , grpc = require('grpc')
-  , messages_pb = require('protocolbuffers/messages_pb')
-  , services_pb = require('protocolbuffers/messages_grpc_pb')
-  , CacheService = services_pb.CacheService
-  , CacheKeyMessage = messages_pb.CacheKey
-  , CacheStatusMessage = messages_pb.CacheStatus
+  , { CacheService } = require('protocolbuffers/messages_grpc_pb')
+  , {
+        CacheStatus: CacheStatusMessage
+      , CacheKey: CacheKeyMessage
+    } = require('protocolbuffers/messages_pb')
   ;
 
 /**
