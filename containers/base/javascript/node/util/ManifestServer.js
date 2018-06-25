@@ -10,17 +10,17 @@ const { initAmqp }= require('./getSetup')
   , messages_pb = require('protocolbuffers/messages_pb')
   , services_pb = require('protocolbuffers/messages_grpc_pb')
   , ManifestService = services_pb.ManifestService
-  , timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js')
+  , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   ;
 
 
 // TODO: this is a nice helper for _Source.schedule as well!
-function AsynQueue() {
+function AsyncQueue() {
     this._current = null;
     this._thread = [];
 }
-AsynQueue.prototype._tick = function() {
+AsyncQueue.prototype._tick = function() {
     if(!this._thread.length || this._current) {
         return;
     }
@@ -32,7 +32,7 @@ AsynQueue.prototype._tick = function() {
     });
 };
 
-AsynQueue.prototype.schedule = function(job) {
+AsyncQueue.prototype.schedule = function(job) {
     var resolve, reject
         // resolve, reject of the closure are
       , jobPromise = new Promise((res, rej) => {
@@ -59,6 +59,8 @@ AsynQueue.prototype.schedule = function(job) {
     this._tick();
     return jobPromise;
 };
+
+exports.AsyncQueue = AsyncQueue;
 
 /**
  * This connects the manifestSources to the world (cluster)
@@ -100,6 +102,7 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     .then(()=>{
         this._ready = true;
         this._log.info('Ready now!');
+        return this._server.start();
     })
     .catch(function(err) {
         this._log.error('Can\'t initialize server.', err);
@@ -222,7 +225,7 @@ _p._sendAMQPMessage = function (queueName, message) {
 _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
     var collectionId = [this._id, sourceid].join('/')
       , job = new messages_pb.CollectionFamilyJob()
-      , timestamp = new timestamp_pb.Timestamp()
+      , timestamp = new Timestamp()
       , buffer
       ;
     this._log.debug('_dispatchFamilyJob:', familyName, collectionId);
@@ -262,7 +265,7 @@ _p._queue = function(name, job) {
 
     queue = this._queues.get(name_);
     if(!queue) {
-        queue = new AsynQueue();
+        queue = new AsyncQueue();
         this._queues.set(name_, queue);
     }
     return queue.schedule(job_);
