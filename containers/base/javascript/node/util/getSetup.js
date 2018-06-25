@@ -37,6 +37,7 @@ function getSetup() {
           , port: process.env.FONTBAKERY_CACHE_SERVICE_PORT
         }
       , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
+      , develFamilyWhitelist = null
       ;
 
     if(process.env.RETHINKDB_PROXY_SERVICE_HOST) {
@@ -51,11 +52,20 @@ function getSetup() {
         rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
     }
 
+    // setup.develFamilyWhitelist is used in the manifestSources implementations
+    if(process.env.DEVEL_FAMILY_WHITELIST) {
+        develFamilyWhitelist = new Set(JSON.parse(process.env.DEVEL_FAMILY_WHITELIST));
+        if(!develFamilyWhitelist.size)
+            develFamilyWhitelist = null;
+    }
+
+
     return {
         amqp: amqpSetup
       , db: dbSetup
       , cache: cacheSetup
       , logging: logging
+      , develFamilyWhitelist: develFamilyWhitelist
     };
 }
 

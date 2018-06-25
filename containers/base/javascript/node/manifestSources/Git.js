@@ -801,6 +801,7 @@ return GitBranchGithubPRs;
 if (typeof require != 'undefined' && require.main==module) {
 
     var setup = getSetup(), sources = [], server
+       , familyWhitelist = setup.develFamilyWhitelist
        , repoPath = './var/fontsgit'
        , familyWhitelist = null
        , grpcPort=50051
@@ -823,13 +824,8 @@ if (typeof require != 'undefined' && require.main==module) {
         throw new Error('MISSING: process.env.GITHUB_API_TOKEN');
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
-
-    if(process.env.DEVEL_FAMILY_WHITELIST) {
-        familyWhitelist = new Set(JSON.parse(process.env.DEVEL_FAMILY_WHITELIST));
-        if(!familyWhitelist.size)
-            familyWhitelist = null;
+    if(familyWhitelist)
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
-    }
 
     var baseReference = {
             repoOwner: 'google'

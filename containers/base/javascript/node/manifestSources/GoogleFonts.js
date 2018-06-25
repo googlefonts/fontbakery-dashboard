@@ -208,6 +208,7 @@ _p._update = function(forceUpdate, apiData) {
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
+       , familyWhitelist = setup.develFamilyWhitelist
        , apiDataBaseUrl = 'https://www.googleapis.com/webfonts/v1/webfonts?key='
        , apiDataUrl = apiDataBaseUrl + process.env.GOOGLE_API_KEY
        , familyWhitelist = null
@@ -231,14 +232,9 @@ if (typeof require != 'undefined' && require.main==module) {
         throw new Error('MISSING: process.env.GOOGLE_API_KEY');
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    // the prod api
-
-    if(process.env.DEVEL_FAMILY_WHITELIST) {
-        familyWhitelist = new Set(JSON.parse(process.env.DEVEL_FAMILY_WHITELIST));
-        if(!familyWhitelist.size)
-            familyWhitelist = null;
+    if(familyWhitelist)
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
-    }
+    // the prod api
 
     sources.push(new GoogleFonts(setup.logging, 'production', apiDataUrl, familyWhitelist));
     // the devel api
