@@ -11,6 +11,7 @@ const { initAmqp }= require('./getSetup')
   , services_pb = require('protocolbuffers/messages_grpc_pb')
   , ManifestService = services_pb.ManifestService
   , timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js')
+  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   ;
 
 
@@ -227,8 +228,8 @@ _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
     this._log.debug('_dispatchFamilyJob:', familyName, collectionId);
 
     job.setCollectionid(collectionId);
-    job.setFamilyname(familyName);
-    job.setCachekey(cacheKey);
+    job.setFamilyName(familyName);
+    job.setCacheKey(cacheKey);
 
     timestamp.fromDate(new Date());
     job.setDate(timestamp);// Timestamp => hoping that this is the way to do it
@@ -268,31 +269,26 @@ _p._queue = function(name, job) {
 };
 
 // ManifestService implementation
-// rpc Poke (PokeRequest) returns (GenericResponse) {};
+// rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
 _p.poke = function(call, callback) {
     if(!this._ready)
         callback(new Error('Not ready yet'));
     var sourceId = call.request.getSource() // call.request is a PokeRequest
       , force = call.request.getForce()
-      , response = new messages_pb.GenericResponse()
       , err = null
+      , response
       ;
 
     if(sourceId !== '') {
         if( !(sourceId in this._sources) )
             err = new Error('Not Found: The source "' + sourceId + '" is unknown.');
-        else {
+        else
             this.update(sourceId, force);
-            response.setOk(true);
-        }
     }
-    else {
+    else
         this.updateAll();
-        response.setOk(true);
-    }
 
-    if(err)
-        response = null;
+    response = err ? null : new Empty();
     callback(err, response);
 };
 

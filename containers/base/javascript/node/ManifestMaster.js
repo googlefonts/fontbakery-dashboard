@@ -92,7 +92,7 @@ _p._getCollectionFamilyJob = function(messageContent) {
  */
 _p._consumeQueue = function(message) {
     var job = this._getCollectionFamilyJob(message.content)
-      , cacheKey = job.getCachekey()
+      , cacheKey = job.getCacheKey()
       , test_data_hash = cacheKey.getHash()
       ;
     return this._io.getDocId(test_data_hash) // => [created, docid]
@@ -132,7 +132,7 @@ _p._consumeQueue = function(message) {
  */
 _p._createCollectionEntry = function(job, familytests_id) {
   var collection_id = job.getCollectionid()
-    , family_name = job.getFamilyname()
+    , family_name = job.getFamilyName()
     , metadata = job.getMetadata()
     , doc = {
         collection_id: collection_id

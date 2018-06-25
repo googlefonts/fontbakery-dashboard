@@ -155,7 +155,7 @@ _p.dispatchFamilyJob = function(cacheKey, docid) {
      , buffer
      ;
     job.setDocid(docid);
-    job.setCachekey(cacheKey);
+    job.setCacheKey(cacheKey);
     buffer = new Buffer(job.serializeBinary());
     return this.sendQueueMessage(this._distributorQueueName, buffer);
 };

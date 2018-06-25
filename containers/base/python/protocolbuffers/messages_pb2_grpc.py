@@ -2,6 +2,7 @@
 import grpc
 
 from google.protobuf import any_pb2 as google_dot_protobuf_dot_any__pb2
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 import messages_pb2 as messages__pb2
 
 
@@ -95,7 +96,7 @@ class ManifestStub(object):
     self.Poke = channel.unary_unary(
         '/fontbakery.dashboard.Manifest/Poke',
         request_serializer=messages__pb2.PokeRequest.SerializeToString,
-        response_deserializer=messages__pb2.GenericResponse.FromString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
 
 
@@ -134,9 +135,89 @@ def add_ManifestServicer_to_server(servicer, server):
       'Poke': grpc.unary_unary_rpc_method_handler(
           servicer.Poke,
           request_deserializer=messages__pb2.PokeRequest.FromString,
-          response_serializer=messages__pb2.GenericResponse.SerializeToString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
       'fontbakery.dashboard.Manifest', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))
+
+
+class ReportsStub(object):
+  """The Reports service
+
+  Provides interfaces to read the data, get listings/filter.
+  """
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.File = channel.unary_unary(
+        '/fontbakery.dashboard.Reports/File',
+        request_serializer=messages__pb2.Report.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
+    self.Query = channel.unary_stream(
+        '/fontbakery.dashboard.Reports/Query',
+        request_serializer=messages__pb2.ReportsQuery.SerializeToString,
+        response_deserializer=messages__pb2.Report.FromString,
+        )
+    self.Get = channel.unary_stream(
+        '/fontbakery.dashboard.Reports/Get',
+        request_serializer=messages__pb2.ReportIds.SerializeToString,
+        response_deserializer=messages__pb2.Report.FromString,
+        )
+
+
+class ReportsServicer(object):
+  """The Reports service
+
+  Provides interfaces to read the data, get listings/filter.
+  """
+
+  def File(self, request, context):
+    """to file the report ("file" as a verb, but by convention first letter uppercased)
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def Query(self, request, context):
+    """Get a list of reports including selection/filtering etc.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def Get(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_ReportsServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'File': grpc.unary_unary_rpc_method_handler(
+          servicer.File,
+          request_deserializer=messages__pb2.Report.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'Query': grpc.unary_stream_rpc_method_handler(
+          servicer.Query,
+          request_deserializer=messages__pb2.ReportsQuery.FromString,
+          response_serializer=messages__pb2.Report.SerializeToString,
+      ),
+      'Get': grpc.unary_stream_rpc_method_handler(
+          servicer.Get,
+          request_deserializer=messages__pb2.ReportIds.FromString,
+          response_serializer=messages__pb2.Report.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'fontbakery.dashboard.Reports', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))

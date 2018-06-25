@@ -85,7 +85,7 @@ class FontbakeryWorker(object):
     # `maxfiles` files should be small enough to not totally DOS us easily.
     # And big enough for all of our jobs, otherwise, change ;-)
     job = self._job
-    files = self._cache.get(job.cacheKey).files
+    files = self._cache.get(job.cache_key).files
     maxfiles = 45
     logs = []
     if tmpDirectory is not None:

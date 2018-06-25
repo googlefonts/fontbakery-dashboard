@@ -2,13 +2,14 @@ syntax = "proto3";
 
 import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
 import public "shared.proto";
 
 package fontbakery.dashboard;
 
 message FamilyJob {
     string docid = 1;
-    CacheKey cacheKey = 2;
+    CacheKey cache_key = 2;
     //
     // START distributed job fields
     //
@@ -70,7 +71,7 @@ service Manifest {
   // The Manifest itselt can in the meantime update itself etc.
   // I.e. We create a "Snapshot" of the manifest in the cache, then
   // we can forget about it
-  rpc Poke (PokeRequest) returns (GenericResponse) {};
+  rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
 }
 
 message PokeRequest {
@@ -83,19 +84,10 @@ message PokeRequest {
     bool force = 2;
 }
 
-// use this if ther's not really an answer expected;
-// if `ok` is false, the other fields should explain why the request failed
-message GenericResponse {
-    bool ok = 1; // required default:false, must set ok explicitly
-    string code = 2; // optional, generic response code/error code if applicable
-    string error = 3; // Error name
-    string message = 4;// Error message
-}
-
 message CollectionFamilyJob {
     string collectionid = 1; // the name that identifies the collection
-    string familyName = 2; // the name that identifies the family
-    CacheKey cacheKey = 3;
+    string family_name = 2; // the name that identifies the family
+    CacheKey cache_key = 3;
     google.protobuf.Timestamp date = 4; // when the job was created
     // We'll have more information about the job eventually
     // i.e. a "Upstream" or "PullRequests" source will likely be created
@@ -103,4 +95,71 @@ message CollectionFamilyJob {
     // the family actually comes is very interesting and should be included
     // This is a metadata dict stored as JSON
     string metadata = 5;
+}
+
+
+// The Reports service
+
+service Reports {
+  // Provides interfaces to read the data, get listings/filter.
+
+  // to file the report ("file" as a verb, but by convention first letter uppercased)
+  rpc File (Report) returns (google.protobuf.Empty) {};
+  // Get a list of reports including selection/filtering etc.
+  rpc Query (ReportsQuery) returns (stream Report) {};
+  rpc Get (ReportIds) returns (stream Report) {};
+  // Describe what filters can be used in a ReportsQuery
+  // not implemented (and maybe not sound, look into ReportsServer
+  // rpc Describe (google.protobuf.Empty) returns (ReportsQuery) {};
+
+}
+
+// A Report is be publicly available in a simple web interface.
+// It's meant to have reports about the inner workings of the
+// Dashboard, so that we can check if everything is running within
+// expected margins or if some action is required.
+message Report {
+    string type = 1; // the type of the service that issued the report
+    string type_id = 2; // the id of the service, expected to be unique per type
+    string method = 3; // the method of the service that generated the report
+    // The timestamps are nice to have e.g. to figure how long method takes
+    google.protobuf.Timestamp started = 4; // when the Report was started
+    google.protobuf.Timestamp finished = 5; // when the Report was finished
+    // JSON serialized report data. This is underspecified on purpose ATM.
+    // Expecting this to be an array of arrays, where the items contain two
+    // elements: `type` and type specific data.
+    // known types: "md" (markdown) "table" data to be rendered in a table
+    // with some meta data added.
+    string data = 6; // when reading, optionally used
+    // Not used when writing, only when reading:
+    string id = 7; // database id, if existing => not used when saving a new report
+    google.protobuf.Timestamp reported = 8; // when the Report was filed, if existing
+}
+
+message ReportsQuery {
+    message Filter {
+        enum Type {
+            VALUE = 0;
+            DATE = 1;
+        };
+        Type type = 1;
+        // if this is a Type.VALUE type
+        repeated string values = 2;
+        // if this is a Type.DATE type
+        // if more than one, pick min and max
+        repeated google.protobuf.Timestamp min_max_dates = 3;
+    };
+    // filter name -> reportFilter
+    map<string, Filter> filters = 1;
+    message Pagination {
+      google.protobuf.Timestamp item_reported = 1;
+      string item_id = 2;
+      bool previous_page = 3;
+    };
+    Pagination pagination = 4;
+    bool include_data = 5;
+}
+
+message ReportIds {
+    repeated string ids = 1;
 }

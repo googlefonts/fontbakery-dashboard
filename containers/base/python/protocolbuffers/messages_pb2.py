@@ -15,6 +15,7 @@ _sym_db = _symbol_database.Default()
 
 from google.protobuf import any_pb2 as google_dot_protobuf_dot_any__pb2
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
+from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 import shared_pb2 as shared__pb2
 
 from shared_pb2 import *
@@ -23,12 +24,34 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='messages.proto',
   package='fontbakery.dashboard',
   syntax='proto3',
-  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x0cshared.proto\"j\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x30\n\x08\x63\x61\x63heKey\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"D\n\tCacheItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"F\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\".\n\x0bPokeRequest\x12\x10\n\x08sourceid\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"K\n\x0fGenericResponse\x12\n\n\x02ok\x18\x01 \x01(\x08\x12\x0c\n\x04\x63ode\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\"\xad\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x12\n\nfamilyName\x18\x02 \x01(\t\x12\x30\n\x08\x63\x61\x63heKey\x18\x03 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t2\xe2\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12=\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x14.google.protobuf.Any\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00\x32^\n\x08Manifest\x12R\n\x04Poke\x12!.fontbakery.dashboard.PokeRequest\x1a%.fontbakery.dashboard.GenericResponse\"\x00P\x02\x62\x06proto3')
+  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0cshared.proto\"k\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x31\n\tcache_key\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"D\n\tCacheItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"F\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\".\n\x0bPokeRequest\x12\x10\n\x08sourceid\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"\xaf\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12\x31\n\tcache_key\x18\x03 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\xda\x01\n\x06Report\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07type_id\x18\x02 \x01(\t\x12\x0e\n\x06method\x18\x03 \x01(\t\x12+\n\x07started\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04\x64\x61ta\x18\x06 \x01(\t\x12\n\n\x02id\x18\x07 \x01(\t\x12,\n\x08reported\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x96\x04\n\x0cReportsQuery\x12@\n\x07\x66ilters\x18\x01 \x03(\x0b\x32/.fontbakery.dashboard.ReportsQuery.FiltersEntry\x12\x41\n\npagination\x18\x04 \x01(\x0b\x32-.fontbakery.dashboard.ReportsQuery.Pagination\x12\x14\n\x0cinclude_data\x18\x05 \x01(\x08\x1a\xa6\x01\n\x06\x46ilter\x12<\n\x04type\x18\x01 \x01(\x0e\x32..fontbakery.dashboard.ReportsQuery.Filter.Type\x12\x0e\n\x06values\x18\x02 \x03(\t\x12\x31\n\rmin_max_dates\x18\x03 \x03(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1b\n\x04Type\x12\t\n\x05VALUE\x10\x00\x12\x08\n\x04\x44\x41TE\x10\x01\x1aY\n\x0c\x46iltersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).fontbakery.dashboard.ReportsQuery.Filter:\x02\x38\x01\x1ag\n\nPagination\x12\x31\n\ritem_reported\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07item_id\x18\x02 \x01(\t\x12\x15\n\rprevious_page\x18\x03 \x01(\x08\"\x18\n\tReportIds\x12\x0b\n\x03ids\x18\x01 \x03(\t2\xe2\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12=\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x14.google.protobuf.Any\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00\x32O\n\x08Manifest\x12\x43\n\x04Poke\x12!.fontbakery.dashboard.PokeRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xe2\x01\n\x07Reports\x12>\n\x04\x46ile\x12\x1c.fontbakery.dashboard.Report\x1a\x16.google.protobuf.Empty\"\x00\x12M\n\x05Query\x12\".fontbakery.dashboard.ReportsQuery\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x12H\n\x03Get\x12\x1f.fontbakery.dashboard.ReportIds\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01P\x03\x62\x06proto3')
   ,
-  dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,shared__pb2.DESCRIPTOR,],
+  dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,shared__pb2.DESCRIPTOR,],
   public_dependencies=[shared__pb2.DESCRIPTOR,])
 
 
+
+_REPORTSQUERY_FILTER_TYPE = _descriptor.EnumDescriptor(
+  name='Type',
+  full_name='fontbakery.dashboard.ReportsQuery.Filter.Type',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='VALUE', index=0, number=0,
+      options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='DATE', index=1, number=1,
+      options=None,
+      type=None),
+  ],
+  containing_type=None,
+  options=None,
+  serialized_start=1200,
+  serialized_end=1227,
+)
+_sym_db.RegisterEnumDescriptor(_REPORTSQUERY_FILTER_TYPE)
 
 
 _FAMILYJOB = _descriptor.Descriptor(
@@ -46,7 +69,7 @@ _FAMILYJOB = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cacheKey', full_name='fontbakery.dashboard.FamilyJob.cacheKey', index=1,
+      name='cache_key', full_name='fontbakery.dashboard.FamilyJob.cache_key', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -78,8 +101,8 @@ _FAMILYJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=114,
-  serialized_end=220,
+  serialized_start=143,
+  serialized_end=250,
 )
 
 
@@ -116,8 +139,8 @@ _CACHEITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=222,
-  serialized_end=290,
+  serialized_start=252,
+  serialized_end=320,
 )
 
 
@@ -168,8 +191,8 @@ _CACHEKEY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=292,
-  serialized_end=362,
+  serialized_start=322,
+  serialized_end=392,
 )
 
 
@@ -206,8 +229,8 @@ _CACHESTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=364,
-  serialized_end=409,
+  serialized_start=394,
+  serialized_end=439,
 )
 
 
@@ -244,60 +267,8 @@ _POKEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=411,
-  serialized_end=457,
-)
-
-
-_GENERICRESPONSE = _descriptor.Descriptor(
-  name='GenericResponse',
-  full_name='fontbakery.dashboard.GenericResponse',
-  filename=None,
-  file=DESCRIPTOR,
-  containing_type=None,
-  fields=[
-    _descriptor.FieldDescriptor(
-      name='ok', full_name='fontbakery.dashboard.GenericResponse.ok', index=0,
-      number=1, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='code', full_name='fontbakery.dashboard.GenericResponse.code', index=1,
-      number=2, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='error', full_name='fontbakery.dashboard.GenericResponse.error', index=2,
-      number=3, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-    _descriptor.FieldDescriptor(
-      name='message', full_name='fontbakery.dashboard.GenericResponse.message', index=3,
-      number=4, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
-  ],
-  extensions=[
-  ],
-  nested_types=[],
-  enum_types=[
-  ],
-  options=None,
-  is_extendable=False,
-  syntax='proto3',
-  extension_ranges=[],
-  oneofs=[
-  ],
-  serialized_start=459,
-  serialized_end=534,
+  serialized_start=441,
+  serialized_end=487,
 )
 
 
@@ -316,14 +287,14 @@ _COLLECTIONFAMILYJOB = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='familyName', full_name='fontbakery.dashboard.CollectionFamilyJob.familyName', index=1,
+      name='family_name', full_name='fontbakery.dashboard.CollectionFamilyJob.family_name', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
     _descriptor.FieldDescriptor(
-      name='cacheKey', full_name='fontbakery.dashboard.CollectionFamilyJob.cacheKey', index=2,
+      name='cache_key', full_name='fontbakery.dashboard.CollectionFamilyJob.cache_key', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -355,21 +326,318 @@ _COLLECTIONFAMILYJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=537,
-  serialized_end=710,
+  serialized_start=490,
+  serialized_end=665,
 )
 
-_FAMILYJOB.fields_by_name['cacheKey'].message_type = _CACHEKEY
+
+_REPORT = _descriptor.Descriptor(
+  name='Report',
+  full_name='fontbakery.dashboard.Report',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='type', full_name='fontbakery.dashboard.Report.type', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='type_id', full_name='fontbakery.dashboard.Report.type_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='method', full_name='fontbakery.dashboard.Report.method', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='started', full_name='fontbakery.dashboard.Report.started', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='finished', full_name='fontbakery.dashboard.Report.finished', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='data', full_name='fontbakery.dashboard.Report.data', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='id', full_name='fontbakery.dashboard.Report.id', index=6,
+      number=7, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='reported', full_name='fontbakery.dashboard.Report.reported', index=7,
+      number=8, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=668,
+  serialized_end=886,
+)
+
+
+_REPORTSQUERY_FILTER = _descriptor.Descriptor(
+  name='Filter',
+  full_name='fontbakery.dashboard.ReportsQuery.Filter',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='type', full_name='fontbakery.dashboard.ReportsQuery.Filter.type', index=0,
+      number=1, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='values', full_name='fontbakery.dashboard.ReportsQuery.Filter.values', index=1,
+      number=2, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='min_max_dates', full_name='fontbakery.dashboard.ReportsQuery.Filter.min_max_dates', index=2,
+      number=3, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _REPORTSQUERY_FILTER_TYPE,
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1061,
+  serialized_end=1227,
+)
+
+_REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
+  name='FiltersEntry',
+  full_name='fontbakery.dashboard.ReportsQuery.FiltersEntry',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='key', full_name='fontbakery.dashboard.ReportsQuery.FiltersEntry.key', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='fontbakery.dashboard.ReportsQuery.FiltersEntry.value', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=_descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001')),
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1229,
+  serialized_end=1318,
+)
+
+_REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
+  name='Pagination',
+  full_name='fontbakery.dashboard.ReportsQuery.Pagination',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='item_reported', full_name='fontbakery.dashboard.ReportsQuery.Pagination.item_reported', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='item_id', full_name='fontbakery.dashboard.ReportsQuery.Pagination.item_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='previous_page', full_name='fontbakery.dashboard.ReportsQuery.Pagination.previous_page', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1320,
+  serialized_end=1423,
+)
+
+_REPORTSQUERY = _descriptor.Descriptor(
+  name='ReportsQuery',
+  full_name='fontbakery.dashboard.ReportsQuery',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='filters', full_name='fontbakery.dashboard.ReportsQuery.filters', index=0,
+      number=1, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='pagination', full_name='fontbakery.dashboard.ReportsQuery.pagination', index=1,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+    _descriptor.FieldDescriptor(
+      name='include_data', full_name='fontbakery.dashboard.ReportsQuery.include_data', index=2,
+      number=5, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[_REPORTSQUERY_FILTER, _REPORTSQUERY_FILTERSENTRY, _REPORTSQUERY_PAGINATION, ],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=889,
+  serialized_end=1423,
+)
+
+
+_REPORTIDS = _descriptor.Descriptor(
+  name='ReportIds',
+  full_name='fontbakery.dashboard.ReportIds',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='ids', full_name='fontbakery.dashboard.ReportIds.ids', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      options=None),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1425,
+  serialized_end=1449,
+)
+
+_FAMILYJOB.fields_by_name['cache_key'].message_type = _CACHEKEY
 _CACHEITEM.fields_by_name['payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
-_COLLECTIONFAMILYJOB.fields_by_name['cacheKey'].message_type = _CACHEKEY
+_COLLECTIONFAMILYJOB.fields_by_name['cache_key'].message_type = _CACHEKEY
 _COLLECTIONFAMILYJOB.fields_by_name['date'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_REPORT.fields_by_name['started'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_REPORT.fields_by_name['finished'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_REPORT.fields_by_name['reported'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_REPORTSQUERY_FILTER.fields_by_name['type'].enum_type = _REPORTSQUERY_FILTER_TYPE
+_REPORTSQUERY_FILTER.fields_by_name['min_max_dates'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_REPORTSQUERY_FILTER.containing_type = _REPORTSQUERY
+_REPORTSQUERY_FILTER_TYPE.containing_type = _REPORTSQUERY_FILTER
+_REPORTSQUERY_FILTERSENTRY.fields_by_name['value'].message_type = _REPORTSQUERY_FILTER
+_REPORTSQUERY_FILTERSENTRY.containing_type = _REPORTSQUERY
+_REPORTSQUERY_PAGINATION.fields_by_name['item_reported'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_REPORTSQUERY_PAGINATION.containing_type = _REPORTSQUERY
+_REPORTSQUERY.fields_by_name['filters'].message_type = _REPORTSQUERY_FILTERSENTRY
+_REPORTSQUERY.fields_by_name['pagination'].message_type = _REPORTSQUERY_PAGINATION
 DESCRIPTOR.message_types_by_name['FamilyJob'] = _FAMILYJOB
 DESCRIPTOR.message_types_by_name['CacheItem'] = _CACHEITEM
 DESCRIPTOR.message_types_by_name['CacheKey'] = _CACHEKEY
 DESCRIPTOR.message_types_by_name['CacheStatus'] = _CACHESTATUS
 DESCRIPTOR.message_types_by_name['PokeRequest'] = _POKEREQUEST
-DESCRIPTOR.message_types_by_name['GenericResponse'] = _GENERICRESPONSE
 DESCRIPTOR.message_types_by_name['CollectionFamilyJob'] = _COLLECTIONFAMILYJOB
+DESCRIPTOR.message_types_by_name['Report'] = _REPORT
+DESCRIPTOR.message_types_by_name['ReportsQuery'] = _REPORTSQUERY
+DESCRIPTOR.message_types_by_name['ReportIds'] = _REPORTIDS
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 FamilyJob = _reflection.GeneratedProtocolMessageType('FamilyJob', (_message.Message,), dict(
@@ -407,13 +675,6 @@ PokeRequest = _reflection.GeneratedProtocolMessageType('PokeRequest', (_message.
   ))
 _sym_db.RegisterMessage(PokeRequest)
 
-GenericResponse = _reflection.GeneratedProtocolMessageType('GenericResponse', (_message.Message,), dict(
-  DESCRIPTOR = _GENERICRESPONSE,
-  __module__ = 'messages_pb2'
-  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.GenericResponse)
-  ))
-_sym_db.RegisterMessage(GenericResponse)
-
 CollectionFamilyJob = _reflection.GeneratedProtocolMessageType('CollectionFamilyJob', (_message.Message,), dict(
   DESCRIPTOR = _COLLECTIONFAMILYJOB,
   __module__ = 'messages_pb2'
@@ -421,7 +682,54 @@ CollectionFamilyJob = _reflection.GeneratedProtocolMessageType('CollectionFamily
   ))
 _sym_db.RegisterMessage(CollectionFamilyJob)
 
+Report = _reflection.GeneratedProtocolMessageType('Report', (_message.Message,), dict(
+  DESCRIPTOR = _REPORT,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.Report)
+  ))
+_sym_db.RegisterMessage(Report)
 
+ReportsQuery = _reflection.GeneratedProtocolMessageType('ReportsQuery', (_message.Message,), dict(
+
+  Filter = _reflection.GeneratedProtocolMessageType('Filter', (_message.Message,), dict(
+    DESCRIPTOR = _REPORTSQUERY_FILTER,
+    __module__ = 'messages_pb2'
+    # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ReportsQuery.Filter)
+    ))
+  ,
+
+  FiltersEntry = _reflection.GeneratedProtocolMessageType('FiltersEntry', (_message.Message,), dict(
+    DESCRIPTOR = _REPORTSQUERY_FILTERSENTRY,
+    __module__ = 'messages_pb2'
+    # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ReportsQuery.FiltersEntry)
+    ))
+  ,
+
+  Pagination = _reflection.GeneratedProtocolMessageType('Pagination', (_message.Message,), dict(
+    DESCRIPTOR = _REPORTSQUERY_PAGINATION,
+    __module__ = 'messages_pb2'
+    # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ReportsQuery.Pagination)
+    ))
+  ,
+  DESCRIPTOR = _REPORTSQUERY,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ReportsQuery)
+  ))
+_sym_db.RegisterMessage(ReportsQuery)
+_sym_db.RegisterMessage(ReportsQuery.Filter)
+_sym_db.RegisterMessage(ReportsQuery.FiltersEntry)
+_sym_db.RegisterMessage(ReportsQuery.Pagination)
+
+ReportIds = _reflection.GeneratedProtocolMessageType('ReportIds', (_message.Message,), dict(
+  DESCRIPTOR = _REPORTIDS,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ReportIds)
+  ))
+_sym_db.RegisterMessage(ReportIds)
+
+
+_REPORTSQUERY_FILTERSENTRY.has_options = True
+_REPORTSQUERY_FILTERSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
 
 _CACHE = _descriptor.ServiceDescriptor(
   name='Cache',
@@ -429,8 +737,8 @@ _CACHE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=713,
-  serialized_end=939,
+  serialized_start=1452,
+  serialized_end=1678,
   methods=[
   _descriptor.MethodDescriptor(
     name='Put',
@@ -471,8 +779,8 @@ _MANIFEST = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   options=None,
-  serialized_start=941,
-  serialized_end=1035,
+  serialized_start=1680,
+  serialized_end=1759,
   methods=[
   _descriptor.MethodDescriptor(
     name='Poke',
@@ -480,13 +788,55 @@ _MANIFEST = _descriptor.ServiceDescriptor(
     index=0,
     containing_service=None,
     input_type=_POKEREQUEST,
-    output_type=_GENERICRESPONSE,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     options=None,
   ),
 ])
 _sym_db.RegisterServiceDescriptor(_MANIFEST)
 
 DESCRIPTOR.services_by_name['Manifest'] = _MANIFEST
+
+
+_REPORTS = _descriptor.ServiceDescriptor(
+  name='Reports',
+  full_name='fontbakery.dashboard.Reports',
+  file=DESCRIPTOR,
+  index=2,
+  options=None,
+  serialized_start=1762,
+  serialized_end=1988,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='File',
+    full_name='fontbakery.dashboard.Reports.File',
+    index=0,
+    containing_service=None,
+    input_type=_REPORT,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Query',
+    full_name='fontbakery.dashboard.Reports.Query',
+    index=1,
+    containing_service=None,
+    input_type=_REPORTSQUERY,
+    output_type=_REPORT,
+    options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Get',
+    full_name='fontbakery.dashboard.Reports.Get',
+    index=2,
+    containing_service=None,
+    input_type=_REPORTIDS,
+    output_type=_REPORT,
+    options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_REPORTS)
+
+DESCRIPTOR.services_by_name['Reports'] = _REPORTS
 
 try:
   # THESE ELEMENTS WILL BE DEPRECATED.
@@ -588,7 +938,7 @@ try:
       self.Poke = channel.unary_unary(
           '/fontbakery.dashboard.Manifest/Poke',
           request_serializer=PokeRequest.SerializeToString,
-          response_deserializer=GenericResponse.FromString,
+          response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
           )
 
 
@@ -627,11 +977,91 @@ try:
         'Poke': grpc.unary_unary_rpc_method_handler(
             servicer.Poke,
             request_deserializer=PokeRequest.FromString,
-            response_serializer=GenericResponse.SerializeToString,
+            response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
         'fontbakery.dashboard.Manifest', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+  class ReportsStub(object):
+    """The Reports service
+
+    Provides interfaces to read the data, get listings/filter.
+    """
+
+    def __init__(self, channel):
+      """Constructor.
+
+      Args:
+        channel: A grpc.Channel.
+      """
+      self.File = channel.unary_unary(
+          '/fontbakery.dashboard.Reports/File',
+          request_serializer=Report.SerializeToString,
+          response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          )
+      self.Query = channel.unary_stream(
+          '/fontbakery.dashboard.Reports/Query',
+          request_serializer=ReportsQuery.SerializeToString,
+          response_deserializer=Report.FromString,
+          )
+      self.Get = channel.unary_stream(
+          '/fontbakery.dashboard.Reports/Get',
+          request_serializer=ReportIds.SerializeToString,
+          response_deserializer=Report.FromString,
+          )
+
+
+  class ReportsServicer(object):
+    """The Reports service
+
+    Provides interfaces to read the data, get listings/filter.
+    """
+
+    def File(self, request, context):
+      """to file the report ("file" as a verb, but by convention first letter uppercased)
+      """
+      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+      context.set_details('Method not implemented!')
+      raise NotImplementedError('Method not implemented!')
+
+    def Query(self, request, context):
+      """Get a list of reports including selection/filtering etc.
+      """
+      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+      context.set_details('Method not implemented!')
+      raise NotImplementedError('Method not implemented!')
+
+    def Get(self, request, context):
+      # missing associated documentation comment in .proto file
+      pass
+      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+      context.set_details('Method not implemented!')
+      raise NotImplementedError('Method not implemented!')
+
+
+  def add_ReportsServicer_to_server(servicer, server):
+    rpc_method_handlers = {
+        'File': grpc.unary_unary_rpc_method_handler(
+            servicer.File,
+            request_deserializer=Report.FromString,
+            response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        ),
+        'Query': grpc.unary_stream_rpc_method_handler(
+            servicer.Query,
+            request_deserializer=ReportsQuery.FromString,
+            response_serializer=Report.SerializeToString,
+        ),
+        'Get': grpc.unary_stream_rpc_method_handler(
+            servicer.Get,
+            request_deserializer=ReportIds.FromString,
+            response_serializer=Report.SerializeToString,
+        ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+        'fontbakery.dashboard.Reports', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
@@ -806,7 +1236,7 @@ try:
       ('fontbakery.dashboard.Manifest', 'Poke'): PokeRequest.FromString,
     }
     response_serializers = {
-      ('fontbakery.dashboard.Manifest', 'Poke'): GenericResponse.SerializeToString,
+      ('fontbakery.dashboard.Manifest', 'Poke'): google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
     }
     method_implementations = {
       ('fontbakery.dashboard.Manifest', 'Poke'): face_utilities.unary_unary_inline(servicer.Poke),
@@ -825,13 +1255,112 @@ try:
       ('fontbakery.dashboard.Manifest', 'Poke'): PokeRequest.SerializeToString,
     }
     response_deserializers = {
-      ('fontbakery.dashboard.Manifest', 'Poke'): GenericResponse.FromString,
+      ('fontbakery.dashboard.Manifest', 'Poke'): google_dot_protobuf_dot_empty__pb2.Empty.FromString,
     }
     cardinalities = {
       'Poke': cardinality.Cardinality.UNARY_UNARY,
     }
     stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
     return beta_implementations.dynamic_stub(channel, 'fontbakery.dashboard.Manifest', cardinalities, options=stub_options)
+
+
+  class BetaReportsServicer(object):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This class was generated
+    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
+    """The Reports service
+
+    Provides interfaces to read the data, get listings/filter.
+    """
+    def File(self, request, context):
+      """to file the report ("file" as a verb, but by convention first letter uppercased)
+      """
+      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+    def Query(self, request, context):
+      """Get a list of reports including selection/filtering etc.
+      """
+      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+    def Get(self, request, context):
+      # missing associated documentation comment in .proto file
+      pass
+      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
+
+
+  class BetaReportsStub(object):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This class was generated
+    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
+    """The Reports service
+
+    Provides interfaces to read the data, get listings/filter.
+    """
+    def File(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+      """to file the report ("file" as a verb, but by convention first letter uppercased)
+      """
+      raise NotImplementedError()
+    File.future = None
+    def Query(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+      """Get a list of reports including selection/filtering etc.
+      """
+      raise NotImplementedError()
+    def Get(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
+      # missing associated documentation comment in .proto file
+      pass
+      raise NotImplementedError()
+
+
+  def beta_create_Reports_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This function was
+    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
+    request_deserializers = {
+      ('fontbakery.dashboard.Reports', 'File'): Report.FromString,
+      ('fontbakery.dashboard.Reports', 'Get'): ReportIds.FromString,
+      ('fontbakery.dashboard.Reports', 'Query'): ReportsQuery.FromString,
+    }
+    response_serializers = {
+      ('fontbakery.dashboard.Reports', 'File'): google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ('fontbakery.dashboard.Reports', 'Get'): Report.SerializeToString,
+      ('fontbakery.dashboard.Reports', 'Query'): Report.SerializeToString,
+    }
+    method_implementations = {
+      ('fontbakery.dashboard.Reports', 'File'): face_utilities.unary_unary_inline(servicer.File),
+      ('fontbakery.dashboard.Reports', 'Get'): face_utilities.unary_stream_inline(servicer.Get),
+      ('fontbakery.dashboard.Reports', 'Query'): face_utilities.unary_stream_inline(servicer.Query),
+    }
+    server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
+    return beta_implementations.server(method_implementations, options=server_options)
+
+
+  def beta_create_Reports_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
+    """The Beta API is deprecated for 0.15.0 and later.
+
+    It is recommended to use the GA API (classes and functions in this
+    file not marked beta) for all further purposes. This function was
+    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
+    request_serializers = {
+      ('fontbakery.dashboard.Reports', 'File'): Report.SerializeToString,
+      ('fontbakery.dashboard.Reports', 'Get'): ReportIds.SerializeToString,
+      ('fontbakery.dashboard.Reports', 'Query'): ReportsQuery.SerializeToString,
+    }
+    response_deserializers = {
+      ('fontbakery.dashboard.Reports', 'File'): google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+      ('fontbakery.dashboard.Reports', 'Get'): Report.FromString,
+      ('fontbakery.dashboard.Reports', 'Query'): Report.FromString,
+    }
+    cardinalities = {
+      'File': cardinality.Cardinality.UNARY_UNARY,
+      'Get': cardinality.Cardinality.UNARY_STREAM,
+      'Query': cardinality.Cardinality.UNARY_STREAM,
+    }
+    stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
+    return beta_implementations.dynamic_stub(channel, 'fontbakery.dashboard.Reports', cardinalities, options=stub_options)
 except ImportError:
   pass
 # @@protoc_insertion_point(module_scope)
