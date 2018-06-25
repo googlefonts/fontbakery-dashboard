@@ -5,18 +5,14 @@
 
 
 // Turn node callback style into a promise style
-function nodeCallback2Promise(func/* args */) {
-    var args = [], i, l;
-    for(i=1,l=arguments.length;i<l;i++)
-        args.push(arguments[i]);
-
+function nodeCallback2Promise(func, ...args) {
     return new Promise(function(resolve, reject) {
-        // callback is the last argument
-        args.push(function(err, result) {
+        function callback(err, result) {
             if(err) reject(err);
             else resolve(result);
-        });
-        func.apply(null, args);
+        }
+        // callback is the last argument
+        func(...args, callback);
     });
 }
 
