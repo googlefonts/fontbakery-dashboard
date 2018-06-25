@@ -154,7 +154,7 @@ _p._createCollectionEntry = function(job, familytests_id) {
                             , collection_id, family_name, familytests_id);
                 return collectionDoc.id;
             }
-            return this._io.insertDoc(this._dbSetup.tables.collection, doc)
+            return this._io.insertDoc('collection', doc)
                            .then(response=>response.generated_keys[0]);// => collectiontests_id;
         })
         ;

@@ -124,7 +124,7 @@ _p.fbIndex = function(req, res) {
 _p.fbCollectionsGetLinks = function(req, res) {
     // query the db
     // for collection-test-docs
-    this._io.query(this._dbSetup.tables.collection)
+    this._io.query('collection')
         .group('collection_id')
         .max('date')
         .ungroup()
@@ -171,7 +171,7 @@ _p._fbCheckIndexExists = function(dbTable, indexName, req, res, next) {
  *   : same as fbIndex on success
  */
 _p.fbFamilyReport = function(req, res, next) {
-    return this._fbCheckIndexExists(this._dbSetup.tables.family, 'id', req, res, next);
+    return this._fbCheckIndexExists('family', 'id', req, res, next);
 };
 
 /**
@@ -186,7 +186,7 @@ _p.fbFamilyReport = function(req, res, next) {
  *   : same as fbIndex on success
  */
 _p.fbCollectionReport = function(req, res, next) {
-    return this._fbCheckIndexExists(this._dbSetup.tables.collection, 'collection_id', req, res, next);
+    return this._fbCheckIndexExists('collection', 'collection_id', req, res, next);
 };
 
 _p._getFilesMessage = function(buffer) {
@@ -369,7 +369,7 @@ _p._updateFamilytestReport = function(cursor, socket, data) {
  * data.docid is the rethink db document UUID.
  */
 _p._subscribeToFamilytestReport = function(socket, data) {
-    return this._io.query(this._dbSetup.tables.family)
+    return this._io.query('family')
         .get(data.id + '')
         .changes({includeInitial: true, squash: 1})
         .run((err, cursor) => {
@@ -479,7 +479,7 @@ function _callbackFamilyDocSubscubscriber(subscription, data) {
 
 
 _p._getDashboardFamilytestQuery = function(familytests_id) {
-    var query = this._io.query(this._dbSetup.tables.family);
+    var query = this._io.query('family');
     // this way we can create a changefeed for the whole table
     // and have a single point of truth for the query
     if(familytests_id)
@@ -645,7 +645,7 @@ _p._raiseUnhandledError = function(message, err) {
 _p.subscribeCollectionChanges = function(collectionId) {
     var collectionSubscriptions = this._collectionSubscriptions.get(collectionId);
 
-    return this._io.query(this._dbSetup.tables.collection)
+    return this._io.query('collection')
         .getAll(collectionId, {index: 'collection_id'})
         .changes({squash: 1})
         .run((err, cursor) => {
@@ -661,7 +661,7 @@ _p.subscribeCollectionChanges = function(collectionId) {
 };
 
 _p._primeCollectionSubscription = function(collectionId) {
-    return this._io.query(this._dbSetup.tables.collection)
+    return this._io.query('collection')
         .getAll(collectionId, {index: 'collection_id'})
         .group('family_name')
         // use this for "time travelling". Each group will skip(n)
@@ -792,7 +792,7 @@ _p._subscribeToCollectionReport = function(socket, data) {
     //       there are no super easy al-in-one change feeds ...
     // NOTE: we can't do a changes on the query above, because of the
     // group, but it should be possible to do a changes like this:
-    //     this._io.query(this._dbSetup.tables.collection)
+    //     this._io.query('collection')
     //         .getAll(collectionId, {index: 'collection_id'})
     //         .changes({include_initial: true})
     // And then always react when new items are created: `item.type === "add"`
@@ -908,7 +908,7 @@ _p._subscribeToDashboard = function(socket, data) {
           , collectionDocs: new Map()
         };
         // init the cursor
-        this._io.query(this._dbSetup.tables.collection)
+        this._io.query('collection')
         .merge({type: 'collectiontest'})
         .changes({squash: 1})
         .run((err, cursor) => {
@@ -923,7 +923,7 @@ _p._subscribeToDashboard = function(socket, data) {
         }, {cursor: true})
         .then(() => {
             // prime the cache
-            return this._io.query(this._dbSetup.tables.collection)
+            return this._io.query('collection')
                 .group({index: 'collection_family'})
                 .max('date')// only the most current entries in each group
                 .merge({type: 'collectiontest'})
