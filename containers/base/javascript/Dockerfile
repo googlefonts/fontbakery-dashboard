@@ -1,4 +1,11 @@
-FROM node:latest
+# :latest as pointing to: 10.4.0-jessie, 10.4-jessie, 10-jessie, jessie, 10.4.0, 10.4, 10, latest
+# https://github.com/nodejs/docker-node/blob/8efaa064853a2f866481f162eb4e424c5ee8ac9e/10/jessie/Dockerfile
+# does currently not build node-git: https://github.com/nodegit/nodegit/issues/1490
+# FROM node:latest
+# FIXME: use :latest when it builds again
+FROM node:9
+
+RUN touch /tmp/cache_spoof_1
 
 RUN npm install -g bower browserify requirejs;
 
