@@ -4,12 +4,12 @@
 /* global require, module */
 /* jshint esnext:true */
 
-const { _Source } = require('./_Source')
-  , Parent = _Source
+const { _Source: Parent } = require('./_Source')
   , { ManifestServer } = require('../util/ManifestServer')
   , { getSetup } = require('../util/getSetup')
   , https = require('https')
   , http = require('http')
+  , fs = require('fs')
   , url = require('url')
   ;
 
@@ -72,9 +72,19 @@ function download(fileUrl) {
         });
     }
     return new Promise(function(resolve, reject) {
-        var http_ = fileUrl.indexOf('https') === 0 ? https : http;
-        http_.get(url.parse(fileUrl)
-                                , onResult.bind(null, resolve, reject));
+        let resultHandler = onResult.bind(null, resolve, reject)
+          , protocol = fileUrl.split('://', 1)[0]
+          ;
+
+        if(protocol.startsWith('http')) {
+            var httpx = protocol === 'https' ? https : http;
+            httpx.get(url.parse(fileUrl), resultHandler);
+        }
+        else if(protocol === 'file')
+            resultHandler(fs.createReadStream(fileUrl.slice('file://'.length)));
+        else
+            throw new Error('Don\'t know how to handle file url "'+fileUrl+'"; '
+                + 'it should start with "http://", "https://" or "file://".');
     });
 }
 
@@ -192,7 +202,7 @@ _p._update = function(forceUpdate, apiData) {
 
     for(let familyData of apiData.values()) {
 
-        let familyName = familyData.family
+        let familyName = familyData.family;
         if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
             continue;
 
