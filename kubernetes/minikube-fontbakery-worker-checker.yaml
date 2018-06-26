@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-worker-checker
-        image: fontbakery/base-python:1
+        image: fontbakery/base-python:3
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
