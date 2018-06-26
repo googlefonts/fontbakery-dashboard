@@ -18,6 +18,7 @@
   "dependencies": {
     "amqplib": "^0.5.2",
     "body-parser": "^1.18.3",
+    "csv-parse": "^2.2.0",
     "express": "^4.16.3",
     "google-protobuf": "^3.5.0",
     "grpc": "^1.12.3",
