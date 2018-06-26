@@ -10,7 +10,7 @@ From (https://console.cloud.google.com/kubernetes/list?project=fontbakery-168509
 Configure kubectl command line access by running the following command:
 
 ```
-$ gcloud container clusters get-credentials fontbakery-cluster-1 \
+$ gcloud container clusters get-credentials fontbakery-dashboard-1 \
     --zone us-central1-a --project fontbakery-168509
 ```
 
@@ -377,9 +377,9 @@ docker build -t fontbakery/base-javascript:30 containers/base/javascript;
 docker tag fontbakery/base-javascript:30 gcr.io/fontbakery-168509/base-javascript:30
 gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:30
 
-docker build -t fontbakery/base-python:19 containers/base/python;
-docker tag fontbakery/base-python:19 gcr.io/fontbakery-168509/base-python:19
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:19
+docker build -t fontbakery/base-python:24 containers/base/python;
+docker tag fontbakery/base-python:24 gcr.io/fontbakery-168509/base-python:24
+gcloud docker -- push gcr.io/fontbakery-168509/base-python:24
 ```
 
 # Deploy

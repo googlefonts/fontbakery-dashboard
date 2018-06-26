@@ -205,6 +205,10 @@ Alternatively, `kubectl` can be used with `--namespace=fontbakery`  on every `ku
 
 ```
 $ kubectl --namespace=fontbakery get pods
+# or just do:
+$ alias kf="kubectl -n fontbakery"
+# now:
+$ kf get pods
 ```
 
 ---
@@ -233,3 +237,59 @@ to remove unused docker images and release disk space.
 IMPORTANT: minikube must be running, so that we don't delete docker images that are currently used. I wonder at this point if we even need a local docker registry when we build with `minikube docker-env`.
 
 ---
+
+
+
+## just rebuilt everything from scratch:
+
+### 1. protobufs:
+
+```
+$ /fontbakery-dashboard/containers/base$ ./update_protobufs.sh
+```
+
+
+```
+$ minikube start
+$ . <(minikube docker-env)
+$ docker build -t fontbakery/base-javascript:3 containers/base/javascript/
+$ docker build -t fontbakery/base-python:3 containers/base/python/
+$ kubectl create namespace fontbakery
+$ alias kf="kubectl -n fontbakery"
+$ ENVIRONMENT_VERSION="$(date)"
+$ kf create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
+# same order as in DEPLOY log
+$ kf apply -f kubernetes/minikube-rabbitmq.yaml
+$ kf apply -f kubernetes/minikube-rethinkdb.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-cache.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-worker-cleanup.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-worker-checker.yaml
+# SKIP for now (don't want to kick of the checking at the moment!)
+# $ kf apply -f kubernetes/minikube-fontbakery-worker-distributor.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-master.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-api.yaml
+# now: open web frontend: $ minikube -n fontbakery service fontbakery-api
+# SKIP: (do not need right now)
+# $ kf apply -f kubernetes/minikube-fontbakery-manifest-gfapi.yaml
+# $ kf apply -f kubernetes/minikube-fontbakery-manifest-githubgf.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-csvupstream.yaml
+
+
+```
+
+
+# cheat sheet:
+
+## services:
+
+```
+# rethinkdb admin interface in browser
+$ minikube -n fontbakery service rethinkdb-admin
+
+# web frontend in browser
+$ minikube -n fontbakery service fontbakery-api
+
+# rabbitmq admin interface; user: "guest" password: "guest"
+$ minikube -n fontbakery service rabbitmq-management
+```
