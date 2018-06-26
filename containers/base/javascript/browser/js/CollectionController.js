@@ -1,30 +1,18 @@
 define([
     'dom-tool'
+  , 'xhr'
 ], function(
     dom
+  , xhr
 ) {
     "use strict";
-    /*global console, XMLHttpRequest*/
+    /*global console*/
 
     function CollectionController(container) {
         this.container = container;
         this._getReportLinks();
     }
     var _p = CollectionController.prototype;
-
-    function _sendXHR(xhr, data, onResponse) {
-        xhr.send(data);
-        xhr.onreadystatechange = function () {
-            if(xhr.readyState !== XMLHttpRequest.DONE)
-                return;
-            if(xhr.status !== 200)
-                console.warn(xhr.status, xhr.statusText );
-            else {
-                console.info('Received:', xhr.responseType, xhr.response);
-                onResponse( xhr.response );
-            }
-        };
-    }
 
     _p._insertReportLinks = function(items) {
         var i, l, item, a, li, marker;
@@ -47,11 +35,13 @@ define([
     };
 
     _p._getReportLinks = function() {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/collection-reports');
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.responseType = 'json';
-        _sendXHR(xhr, null, this._insertReportLinks.bind(this));
+        return xhr.getJSON('/collection-reports', null)
+            .then(this._insertReportLinks.bind(this))
+            .then(null, function(error) {
+                console.error(error);
+                throw error;
+            })
+            ;
     };
 
     return CollectionController;

@@ -4,6 +4,7 @@ define([
   , 'Controller'
   , 'Report'
   , 'CollectionController'
+  , 'StatusController'
   , 'CollectionReport'
   , 'DashboardController'
 ], function(
@@ -12,6 +13,7 @@ define([
   , Controller
   , Report
   , CollectionController
+  , StatusController
   , CollectionReport
   , DashboardController
 ) {
@@ -78,6 +80,11 @@ define([
           , target = document.getElementsByClassName('active-interface')[0]
           , activatedElement
           ;
+
+        for(var i=0,l=target.children.length;i<l;i++)
+            // children can listen for the event and cleanup if needed
+            // activatedElement.addEventListener('destroy', function (e) { //... }, false);
+            target.children[i].dispatchEvent(new Event('destroy'));
         dom.clear(target);
         activatedElement = template.cloneNode(true);
         target.appendChild(activatedElement);
@@ -110,6 +117,14 @@ define([
         var container = activateTemplate('collection-landing-page')
           , ctrl = new CollectionController(container)
           ;
+          return ctrl;
+    }
+
+    function _initStatusInterface() {
+        var container = activateTemplate('status-landing-page')
+          , ctrl = new StatusController(container)
+          ;
+        return ctrl;
     }
 
     function initCollectionReportInterface(data) {
@@ -147,6 +162,8 @@ define([
                 // Could maybe get rid of it.
                 report:  initReportingInterface
               , collections: _initCollectionsInterface
+              , status: _initStatusInterface
+              , 'status-report': function(){} // No action, is server side rendered.
               , 'collection-report': initCollectionReportInterface
               , 'drag-and-drop': initDNDSendingInterface
               , 'dashboard': initDashboard
