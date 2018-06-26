@@ -13,13 +13,12 @@ const { _Source: Parent } = require('./_Source')
   , url = require('url')
   ;
 
-function GoogleFonts(logging, id, apiDataUrl, familyWhitelist) {
-    this._log = logging;
+function GoogleFonts(logging, id, apiDataUrl, familyWhitelist, reportsSetup) {
     this._apiAPIDataUrl = apiDataUrl; // contains api key
     this._lastAPIData = null;
     this.id = id;
     this._familyWhitelist = familyWhitelist;
-    Parent.call(this);
+    Parent.call(this, logging, reportsSetup);
 }
 
 var _p = GoogleFonts.prototype = Object.create(Parent.prototype);

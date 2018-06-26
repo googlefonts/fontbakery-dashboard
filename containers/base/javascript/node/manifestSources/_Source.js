@@ -3,16 +3,103 @@
 // this is expected to run in nodejs
 /* jshint esnext:true */
 
+const { ReportsClient } = require('../util/ReportsClient')
+  , { Report } = require('protocolbuffers/messages_pb')
+  , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
+  ;
 
-function _Source() {
+function _Source(logging, id, reportsSetup) {
     // jshint validthis: true
+    this._log = logging;
+    this.id = id;
 
     // Both implemented as stub functions!
     // this._queue = null;
     // this._dispatchFamily = null;
+
+    this._reportData = null;
+    this._reports = null;
+    if(reportsSetup)
+        // needs this._reports.waitForReady(); see this.init
+        this._reports = new ReportsClient(logging, reportsSetup.host
+                                                    , reportsSetup.port);
 }
 
 var _p = _Source.prototype;
+
+Object.defineProperty(_p, 'reports', {
+    get: function(){
+        if(!this._reports)
+            throw new Error('Reports client is not configured');
+        return this._reports;
+    }
+});
+
+/**
+ * Use this to add a data item to the report.
+ *
+ *
+ * There's a generic, persistent report logging service.
+ * It takes just the whole report, no incremental updates/streaming data yet.
+ *
+ * The report data:
+ *
+ * {
+ *          type: 'source' // for structuring
+ *        , id: this.id // type + id should be unique
+ *        , report: [
+ *                  // can contain different structures:
+ *                  // * a table: CSV data will be rendered by the frontend
+ *                  //   has information whether to render the head row and/or
+ *                  //   column as thead/th. All fields will be markdown interpreted
+ *                  // * just markdown (do not render the table completely
+ *                  //   as markdown in here, to avoid having too much formatting
+ *                  //   right here.)
+ *          ]
+ * }
+ *
+ */
+_p._reportAdd = function(type, data, initial) {
+    if(this._reportData === null) {
+        if(!initial)
+            // Don't use this._reportData in conflicting conditions!
+            // if this raises, the approach of the sources concurrency
+            // may be troubled. NOTE: this should be managed via the queue
+            // mechanism in ManifestServer.
+            throw new Error('There\'s already reportData, but this is '
+                            + 'marked as the initial entry!');
+        this._reportData = [];
+        this._reportData.started = new Date();
+    }
+    this._reportData.push([type, data]);
+};
+
+function timestampFromDate(date){
+    var ts = new Timestamp();
+    ts.fromDate(date);
+    return ts;
+}
+/**
+ * Sends the collected report data to the ReportsService.
+ */
+_p._reportFlush  = function(method) {
+    var report = new Report();
+    report.setType('source'); // string
+    report.setTypeId(this.id); // string
+    report.setMethod(method); // string
+    report.setStarted(timestampFromDate(this._reportData.started)); // Timestamp
+    report.setFinished(timestampFromDate(new Date())); // Timestamp
+    report.setData(JSON.stringify(this._reportData)); // string
+
+    this._reportData = null;
+
+    return this.reports.file(report)
+        .then(null, err=>{
+            this._log.error(err);
+            // this is logged, no need to propagate further.
+            // throw err;
+        });
+};
 
 _p._queue = function() {
     throw new Error('Not implemented! Use setQueue to add the interface!');
@@ -43,7 +130,7 @@ _p.schedule = function(task /* args */) {
     // use the global `schedule` queue for all sources of the ManifestServer
     // if not good: use this._queue(this.id+':schedule', ...)
     return this._queue('schedule', () => {
-       return  this[task].apply(this, args);
+       return this[task].apply(this, args);
     });
 };
 
@@ -57,7 +144,8 @@ _p.update = function(forceUpdate) {
 _p.init = function() {
     // may return a promise if the source needs to set up its own resources.
     // promise exceptions will be handled as well (= end the server).
-    return null;
+    return this._reports ? this._reports.waitForReady() : null;
+
 };
 
 exports._Source = _Source;
