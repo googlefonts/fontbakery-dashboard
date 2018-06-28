@@ -193,12 +193,39 @@ function familyName(fontname) {
   return fontname.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
+_p._familyNameFromFilesData = function(filesData) {
+    let fileNames = []
+        , sufixes = new Set(['otf', 'ttf'])
+        ;
+    for(let [fileName, ] of filesData) {
+        let suffix = fileName.indexOf('.') > 0
+                ? fileName.split('.').pop().toLowerCase()
+                : null
+            ;
+        fileNames.push(fileName);
+        if(sufixes.has(suffix)) {
+            // hmmm not all file names are normalized/canonical!
+            return [this._familyNameFromFilename(fileName), null];
+        }
+    }
+    return [null, fileNames];
+};
+
 /**
  * for `this._log.debug` expects:
  *      metadata.repository
  *      metadata.branch
+ *
+ * asFamilyName: optional; string; otherwise trying to use _familyNameFromFilesData
+ *               Some sources have "naturally" bad font file names that are
+ *               not good enough to determine the family name from it. At
+ *               least initially until it is fixed. But that is enough to
+ *               put the check report into an odd/wrong row of the dashboard
+ *               thus, using an explicit FamilyName can be much more robust
+ *               here. See e.g. CSVSpreadsheet/upstream
  */
 _p._dispatchTree = function(tree, metadata
+            , asFamilyName/* */
             , filterFunction/*optional: filterFunction(string:filename)*/) {
     function treeEntryToFileData(treeEntry) {
         return treeEntry.getBlob()
@@ -220,26 +247,14 @@ _p._dispatchTree = function(tree, metadata
     }
 
     let dispatchFilesData = (filesData) => {
-        let familyName = null
-          , fileNames = []
-          ;
-        for(let fileData of filesData) {
-            let fileName = fileData[0]
-              , suffix = fileName.indexOf('.') > 0
-                    ? fileName.split('.').pop()
-                    : null
-              , sufixes = new Set(['otf', 'ttf'])
-              ;
-            fileNames.push(fileName);
-            if(sufixes.has(suffix)) {
-                familyName = this._familyNameFromFilename(fileName);
-                break;
-            }
-        }
-        if(!familyName)
-            throw new Error('Can\'t determine family name from files in '
+        let familyName = asFamilyName, fileNames;
+        if(!familyName) {
+            [familyName, fileNames] = this._familyNameFromFilesData(filesData);
+            if(!familyName)
+                throw new Error('Can\'t determine family name from files in '
                                 + 'directory "' + tree.path() + '" files: '
-                                + fileNames.join(', ')+'.');
+                                + fileNames.join(', ') + '.');
+        }
 
         if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
             return null;

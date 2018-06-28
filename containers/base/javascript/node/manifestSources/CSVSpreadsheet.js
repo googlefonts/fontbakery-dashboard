@@ -654,7 +654,7 @@ _p._dispatchIfNecessary = function(forceUpdate, [familyData, commit, tree, files
         }
       ;
     // Allright, this goes off into charted territory
-    return this._dispatchTree(tree, metadata, filterFunction);
+    return this._dispatchTree(tree, metadata, familyData.name, filterFunction);
 };
 
 _p._prepareAndDispatchGit = function(forceUpdate, familyData, reference) {
