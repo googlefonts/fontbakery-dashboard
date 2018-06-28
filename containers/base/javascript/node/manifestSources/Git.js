@@ -467,7 +467,7 @@ _p._update = function(forceUpdate, currentCommit) {
         // though, at this point, error reporting may be the only thing left to
         // do.
 
-        return Promise.all(treeEntries.map(treeEntry => {
+        return this._waitForAll(treeEntries.map(treeEntry => {
             if(!forceUpdate
                     && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
                 // needs no update
@@ -854,7 +854,7 @@ _p._update = function(forceUpdate, checkFamilies) {
         });
         promises.push(promise);
     });
-    return Promise.all(promises);
+    return this._waitForAll(promises);
 };
 
 /**

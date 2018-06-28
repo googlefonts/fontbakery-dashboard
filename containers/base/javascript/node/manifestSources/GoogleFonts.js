@@ -211,7 +211,7 @@ _p._update = function(forceUpdate, apiData) {
         updating.push(this._loadFamily(familyData).then(dispatchFamily));
     }
     this._lastAPIData = apiData;
-    return Promise.all(updating);
+    return this._waitForAll(updating);
 };
 
 

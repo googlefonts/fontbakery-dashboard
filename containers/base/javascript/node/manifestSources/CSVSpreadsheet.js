@@ -698,7 +698,7 @@ _p._update = function(forceUpdate, csvData) {
     // `updating` as well. But currently we only update git repos.
     updating.push(...dispatchingGits);
     this._lastAPIData = csvData;
-    return Promise.all(updating);
+    return this._waitForAll(updating);
 };
 
 _p.update = function(forceUpdate) {

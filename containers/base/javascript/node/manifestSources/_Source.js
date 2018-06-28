@@ -109,6 +109,33 @@ _p._dispatchFamily = function() {
     throw new Error('Not implemented! Use setDispatchFamily to add the interface!');
 };
 
+function reflectPromise(promise) {
+    return promise.then(
+            value => ({value:value, status: true }),
+            error => ({error:error, status: false }));
+}
+
+/**
+ * Reject when all promises are finished, rejected OR resolved, and at
+ * least one promise was rejected.
+ * Resolve when all promises are resolved and none was rejected.
+ *
+ * NOTE, this is a replacement for Promise.all, but Promise.all fails
+ * immediately on the first rejected promise and we need all promises
+ * to finish fist, before rejecting or resolving.
+ *
+ * I.e. wait until all promises have finished!
+ */
+_p._waitForAll = function(promises) {
+    return Promise.all(promises.map(reflectPromise)) // always resolves
+        .then(results=>{
+            let rejects = results.filter(item=>!item.status);
+            if(rejects.length)
+                throw new Error(rejects.length + ' promises did not finish successfully.');
+            return results.map(item=>item.value);
+        });
+};
+
 _p.setDispatchFamily = function(dispatchFamilyAPI) {
     this._dispatchFamily = dispatchFamilyAPI;
 };
