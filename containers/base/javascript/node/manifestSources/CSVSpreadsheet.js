@@ -607,38 +607,69 @@ function _getMetadata(familyData, commit, tree) {
         };
 }
 
-_p._dispatchIfNecessary = function(forceUpdate, [familyData, commit, tree]) {
-    // FIXME/TODO: it seems like LICENSE.txt and some metadata files are
-    // not located (sometimes/always?) in the fonts directory.
-    // In that case, we:
-    //      A: need to add all dependencies to this._lastChecked
+_p._dispatchIfNecessary = function(forceUpdate, [familyData, commit, tree, filesPrefix]) {
+    // FIXME/TODO: meta data files like LICENSE.txt, METADATA.pb etc. are
+    // usually not located in the fonts directory (are they sometimes?)
+    // We need to:
+    //      A: add all dependencies to check_sum
     //      B: need to collect data also from elsewhere (which will add
-    //         a load of complexity.
+    //         some complexity. Marcs dispatcher script does this already!
+    //
+    // Also filesPrefix can change and that is equivalent to a changed
+    // tree.id, since it potentially results in a different set of files.
+    let check_sum = [tree.id(), filesPrefix].join('::');
     if(!forceUpdate
-            && this._lastChecked.get(familyData.name) === tree.id())
+            && this._lastChecked.get(familyData.name) === check_sum) {
+
+        this._reportFamily(familyData.name, 'skipped'
+                                    , 'needs no update; ' + check_sum);
         // needs no update
         return null;
-    this._lastChecked.set(familyData.name, tree.id());
+
+    }
+    this._lastChecked.set(familyData.name, check_sum);
 
     // needs update
-    let metadata = _getMetadata(familyData, commit, tree);
+    let metadata = _getMetadata(familyData, commit, tree)
+      , filterFunction = filename => {
+            // I wouldn't expect these files to be in these upstream directories
+            // however, if they are, we might as well include them at this point.
+            // FIXME: These files are not in the fonts directory in our
+            // google fonts source repo directory layout and we need to get
+            // them from other locations in the repo (root dir) or generate them
+            // and put them into the dispatched data manually.
+            // THIS IS MISSING ATM
+            let allowedFiles = new Set([
+                'METADATA.pb'
+              , 'DESCRIPTION.en_us.html'
+              , 'OFL.txt'
+              , 'LICENSE.txt'
+            ]);
+            return (allowedFiles.has(filesPrefix) ||
+                        (filesPrefix
+                                ? filename.startsWith(filesPrefix)
+                                : true
+                        )
+                    );
+        }
+      ;
     // Allright, this goes off into charted territory
-    return this._dispatchTree(tree, metadata);
+    return this._dispatchTree(tree, metadata, filterFunction);
 };
 
 _p._prepareAndDispatchGit = function(forceUpdate, familyData, reference) {
     return this._getCommit(reference.owner(), reference.target())
         .then(commit=>{
-            var [path, ] = familyData.fontFilesLocation
+            var [path, filesPrefix] = familyData.fontFilesLocation
               , treePromise = path === ''
-                        ? commit.getTree() // -> tree
+                        ? commit.getTree() // -> tree, no path: get root
                         : commit.getEntry(path) // -> treeEntry
                                 .then(_getTreeFromTreeEntry) // -> tree
               ;
 
-            return Promise.all([familyData, commit, treePromise]);
+            return Promise.all([familyData, commit, treePromise, filesPrefix]);
         })
-        .then(this._dispatchIfNecessary.bind(this, forceUpdate/*, -> [familyData, commit, treePromise]*/))
+        .then(this._dispatchIfNecessary.bind(this, forceUpdate/*, -> [familyData, commit, treePromise, filesPrefix]*/))
         .then(null, err=>{
             let [path, ] = familyData.fontFilesLocation
               , message = ['Can\'t dispatch path "' + path + '" for'

@@ -198,7 +198,8 @@ function familyName(fontname) {
  *      metadata.repository
  *      metadata.branch
  */
-_p._dispatchTree = function(tree, metadata) {
+_p._dispatchTree = function(tree, metadata
+            , filterFunction/*optional: filterFunction(string:filename)*/) {
     function treeEntryToFileData(treeEntry) {
         return treeEntry.getBlob()
                 .then(blob => new Uint8Array(blob.content()))
@@ -209,6 +210,11 @@ _p._dispatchTree = function(tree, metadata) {
     function treeToFilesData(tree) {
         let fileEntries = tree.entries()// -> [treeEntry]
                               .filter(te=>te.isFile())
+                              .filter(te=>filterFunction
+                                                ? filterFunction(te.name())
+                                                // if there's no filterFunction
+                                                // this doesn't filter at all
+                                                : true)
                               .map(treeEntryToFileData);
         return Promise.all(fileEntries);
     }
