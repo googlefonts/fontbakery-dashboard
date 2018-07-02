@@ -8,7 +8,7 @@ define([
   , reporterBlocks
 ) {
     "use strict";
-    /*global setTimeout, clearTimeout*/
+    /*global setTimeout, clearTimeout, Set, Map, console*/
     // TODO: make this extra instead of part of reporterBlocks?
     var binInsert = reporterBlocks.binInsert;
 /**
@@ -993,7 +993,8 @@ define([
             //, 'GoogleFontsAPI/sandbox'
             , 'GitHub-GoogleFonts/master'
             , 'GitHub-GoogleFonts/pulls'
-            , 'fontnames'
+            , 'CSVSpreadsheet/upstream'
+            , 'fontnames' // TODO: make sure this is always the first column!
         ];
         this._collectionTypes = {
             fontnames: LabelsCollection
