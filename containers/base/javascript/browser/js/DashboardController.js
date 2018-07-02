@@ -131,7 +131,7 @@ define([
             name = namesInOrder[i];
             if(!this._cells.has(name)) {
                 cell = new Cell(
-                    dom.createElement(this.cellTag, {'class': 'row_field-' + name})
+                    dom.createElement(this.cellTag, {'class': 'row_field-' + name.replace(' ', '_')})
                   , this._representations.get(name)
                 );
 
@@ -417,7 +417,7 @@ define([
             if(!this._representations.has(name))
                 this._initRepresentation(name, [this._renderCollectionidCell.bind(this)]);
             cell = new Cell(
-                    dom.createElement(this.cellTag, {'class': 'row_field-' +  name})
+                    dom.createElement(this.cellTag, {'class': 'row_field-' +  name.replace(' ', '_')})
                   , this._representations.get(name)
                 );
             if(this._setLocationDataAttributes) {
