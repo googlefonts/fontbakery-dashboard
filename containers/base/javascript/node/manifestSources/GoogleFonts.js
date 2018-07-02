@@ -143,22 +143,14 @@ _p._needsUpdate = function (familyData) {
 };
 
 _p._loadFamily = function(familyData) {
-    var files = []
-      , variant, fileUrl, fileName
-      ;
+    var files = [];
     // download the files
-
-    function onDownload(fileName, blob){
-        return [fileName, blob];
-    }
-    for(variant in familyData.files) {
-        fileUrl = familyData.files[variant];
-        // make proper file names
-        fileName = makeFontFileName(familyData.family, variant);
-        // Bind fileName, it changes in the loop, so bind is good, closure
-        // and scope are bad.
-        files.push(download(fileUrl)
-                    .then(onDownload.bind(null, fileName /* => blob */)));
+    for(let variant in familyData.files) {
+        let fileUrl = familyData.files[variant]
+          // make proper file names
+          , fileName = makeFontFileName(familyData.family, variant)
+          ;
+        files.push(download(fileUrl).then(blob => [fileName, blob])); // jshint ignore:line
     }
 
 
@@ -197,18 +189,21 @@ _p.update = function(forceUpdate) {
 };
 
 _p._update = function(forceUpdate, apiData) {
-    var dispatchFamily, updating = [];
+    var updating = [];
 
     for(let familyData of apiData.values()) {
-
         let familyName = familyData.family;
+
         if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
             continue;
 
         if(!(forceUpdate || this._needsUpdate(familyData)))
             continue;
-        dispatchFamily = this._dispatchFamily.bind(this, familyName);
-        updating.push(this._loadFamily(familyData).then(dispatchFamily));
+
+        updating.push(
+            this._loadFamily(familyData) // -> filesData
+                .then(filesData=>this._dispatchFamily(familyName, filesData)) // jshint ignore:line
+        );
     }
     this._lastAPIData = apiData;
     return this._waitForAll(updating);
