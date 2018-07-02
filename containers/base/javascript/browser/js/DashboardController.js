@@ -1035,14 +1035,16 @@ define([
         this._slotTypes = {
             collectionNames: [this._thead, CollectionNamesRow]
           , columnNames: [this._thead, ColumnNamesRow]
+          , summary_head: [this._thead, SummaryRow]
           , data: [this._tbody, DataRow]
-          , summary: [this._tfoot, SummaryRow]
+          , summary_foot: [this._tfoot, SummaryRow]
         };
         this._initSlot('collectionNames', 'collection-names'
                             , ['click', this._collectionExpandHandler]);
         this._initSlot('columnNames', 'column-names'
                             , ['click', this._slotOrderChangeHandler]);
-        this._initSlot('summary', 'column-summary');
+        this._initSlot('summary_head', 'column-summary-head');
+        this._initSlot('summary_foot', 'column-summary-foot');
 
         this._updateSortIndicators();
     }
