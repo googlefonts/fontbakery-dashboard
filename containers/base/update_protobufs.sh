@@ -16,15 +16,24 @@ PATH="$(pwd)/javascript/node_modules/.bin:$PATH"
 source devvenv/bin/activate
 
 
+
 pushd .;
 cd protocolbuffers;
+
+if [ -d ./tools ]; then
+    pushd .; cd tools && git pull || exit 1; popd;
+else
+    git clone --depth 1 -b master git@github.com:googlefonts/tools.git || exit 1;
+fi
+cp tools/Lib/gftools/fonts_public.proto . || exit 1
+
+
 # old, replaced by `grpc_tools_node_protoc`
 # protoc --js_out=import_style=commonjs,binary:../javascript/generated_modules/protocolbuffers *.proto;
 grpc_tools_node_protoc --js_out=import_style=commonjs,binary:../javascript/generated_modules/protocolbuffers/ \
                        --grpc_out=../javascript/generated_modules/protocolbuffers \
                        --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` \
                        *.proto
-
 
 # protoc --python_out=../python/protocolbuffers *.proto
 python -m grpc_tools.protoc -I./ \

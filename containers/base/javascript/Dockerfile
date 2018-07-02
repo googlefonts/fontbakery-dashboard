@@ -21,6 +21,17 @@ ADD ./generated_modules /var/javascript/generated_modules
 RUN cd /var/javascript && npm install --unsafe-perm  --production
 
 
+# It seems to be moost roust to read our METADATA.pb files using python
+# that's the only reason for this dependency, used in manifestSources
+# via the module /node/util/getMetadataPb
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y software-properties-common \
+    && apt-get update \
+    && apt-get install -y python-dev;
+RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
+RUN pip install --upgrade pip
+RUN pip install git+https://github.com/googlefonts/gftools.git@master
+
 RUN cd /var/javascript \
      && bower install --allow-root \
      && browserify ./browser/js/bower_components/jiff/jiff.js -s jiff \

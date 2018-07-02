@@ -1,2 +1,4 @@
 *.pyc
 devvenv
+protocolbuffers/tools
+protocolbuffers/fonts_public.proto

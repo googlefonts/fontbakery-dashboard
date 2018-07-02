@@ -7,6 +7,7 @@
 const { _Source: Parent } = require('./_Source')
     , { ManifestServer } = require('../util/ManifestServer')
     , { getSetup } = require('../util/getSetup')
+    , { parseMetadata } = require('../util/getMetadataPb')
     , NodeGit = require('nodegit')
     , https = require('https')
     ;
@@ -193,22 +194,43 @@ function familyName(fontname) {
   return fontname.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
-_p._familyNameFromFilesData = function(filesData) {
-    let fileNames = []
-        , sufixes = new Set(['otf', 'ttf'])
-        ;
-    for(let [fileName, ] of filesData) {
+_p._familyNameFromFilesData = function(path, filesData) {
+    let fileNames = filesData.map(([fileName, ])=>fileName)
+      , sufixes = new Set(['otf', 'ttf'])
+      , metadataIndex = fileNames.indexOf('METADATA.pb')
+      ;
+
+    // use family name from METADATA.pb
+    if(metadataIndex !== -1 ) {
+        let metadataBlob = new Buffer(filesData[metadataIndex][1] /* = Uint8Array */);
+        return parseMetadata(metadataBlob)
+        .then(familyProto=>{
+            let familyName = familyProto.getName();
+            if(!familyName)
+                throw new Error('Can\'t read familyName from METADATA.pb');
+            this._log.debug(this.id + ':', 'took familyName from METADATA.pb: ', familyName);
+            return familyName;
+        });
+    }
+    // try to generate a family name from the first font file name
+    // though, this should not happen in most cases anymore.
+    for(let fileName of fileNames) {
         let suffix = fileName.indexOf('.') > 0
                 ? fileName.split('.').pop().toLowerCase()
                 : null
             ;
-        fileNames.push(fileName);
         if(sufixes.has(suffix)) {
-            // hmmm not all file names are normalized/canonical!
-            return [this._familyNameFromFilename(fileName), null];
+            // Hmmm, not all file names are normalized/canonical!
+            // see: https://github.com/googlefonts/fontbakery-dashboard/issues/73
+            let familyName = this._familyNameFromFilename(fileName);
+            this._log.debug(this.id + ':', 'took familyName from fileName '
+                            + '"' + fileName+'": ', familyName);
+            return Promise.resolve(familyName);
         }
     }
-    return [null, fileNames];
+    throw new Error('Can\'t determine family name from files in '
+                                + 'directory "' + path + '" files: '
+                                + fileNames.join(', ') + '.');
 };
 
 /**
@@ -247,20 +269,17 @@ _p._dispatchTree = function(tree, metadata
     }
 
     let dispatchFilesData = (filesData) => {
-        let familyName = asFamilyName, fileNames;
-        if(!familyName) {
-            [familyName, fileNames] = this._familyNameFromFilesData(filesData);
-            if(!familyName)
-                throw new Error('Can\'t determine family name from files in '
-                                + 'directory "' + tree.path() + '" files: '
-                                + fileNames.join(', ') + '.');
-        }
-
-        if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
-            return null;
-        this._log.debug(this.id+':', 'dispatching family', familyName
+        return (asFamilyName
+                    ? Promise.resolve(asFamilyName)
+                    // raises/rejects if it can't find a family name
+                    : this._familyNameFromFilesData(tree.path(), filesData)
+        ).then(familyName=> {
+            if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
+                return null;
+            this._log.debug(this.id+':', 'dispatching family', familyName
                         , 'of', metadata.repository + ':' + metadata.branch);
-        return this._dispatchFamily(familyName, filesData, metadata);
+            return this._dispatchFamily(familyName, filesData, metadata);
+        });
     };
     return treeToFilesData(tree)
                 .then(dispatchFilesData);
