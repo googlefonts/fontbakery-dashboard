@@ -16,9 +16,8 @@ const { _Source: Parent } = require('./_Source')
 function GoogleFonts(logging, id, apiDataUrl, familyWhitelist, reportsSetup) {
     this._apiAPIDataUrl = apiDataUrl; // contains api key
     this._lastAPIData = null;
-    this.id = id;
     this._familyWhitelist = familyWhitelist;
-    Parent.call(this, logging, reportsSetup);
+    Parent.call(this, logging, id, reportsSetup);
 }
 
 var _p = GoogleFonts.prototype = Object.create(Parent.prototype);
