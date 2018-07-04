@@ -375,7 +375,7 @@ _p._getRemote = function(remoteName, remoteUrl, allowUpdateUrl) {
 
 _p.fetchBaseRef = function() {
     var remoteUrl = this._getRemoteUrl(this._baseRef.remoteName);
-    return this._fetchRef(remoteUrl, this._baseRef.remoteName, this._baseRef.name);
+    return this._fetchRef(this._baseRef.remoteName, remoteUrl, this._baseRef.name);
 };
 
 // returns a list of family directories that differ
