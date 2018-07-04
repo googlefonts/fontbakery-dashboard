@@ -21,7 +21,7 @@
 # ALWAYS CHOOSE:
 # Preemtible: enabled! (much cheaper, our use case)
 # Use 1 SSD, try 170 GB, if it doesn't cause disk pressure
-# we should be able to scale up to scale up to ~22 VMS and ~ 2.5 k workers
+# we should be able to scale up to ~22 VMS and ~ 2.5 k workers
 # 5 VMS: 519 Pods
 apiVersion: apps/v1beta1
 kind: Deployment
@@ -29,7 +29,9 @@ metadata:
   name: fontbakery-worker-checker-sprinter
 spec:
   # only use and scale these for collection wide jobs
-  # 109 pods per machine, 749 with 7 machines.
+  # used last => 107 pods per machine, 642 with 6 machines.
+  # 107 pods per machine, 749 with 7 machines.
+  # replicas: 642
   replicas: 0
   template:
     metadata:
@@ -42,7 +44,7 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-pool-1
       containers:
       - name: fontbakery-worker-checker-sprinter
-        image: gcr.io/fontbakery-168509/base-python:19
+        image: gcr.io/fontbakery-168509/base-python:30
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
@@ -79,7 +81,8 @@ spec:
   # 109 pods per machine, 749 with  machines.
   #  1 VM :  109
   #  7 VMs:  749
-  # 15 VMs: 1619
+  # used last => 15 VMs: 1619
+  # replicas: 1619
   replicas: 0
   template:
     metadata:
@@ -92,7 +95,7 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-ssd-pool-1
       containers:
       - name: fontbakery-worker-checker-sprinter-ssd
-        image: gcr.io/fontbakery-168509/base-python:19
+        image: gcr.io/fontbakery-168509/base-python:30
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
@@ -137,7 +140,7 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:19
+        image: gcr.io/fontbakery-168509/base-python:30
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
