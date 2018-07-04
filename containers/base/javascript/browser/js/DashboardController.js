@@ -249,6 +249,9 @@ define([
                 return false;
             }]
           , '#fonts': ['*origin.familytest.#fonts', identity]
+          , 'has-exception': ['*origin.familytest.exception', function(val) {
+                return val !== null;
+            }]
           , reported: ['results', function(results) {
                 return results === null ? null : arraySum(Object.values(results));
             }]
@@ -280,6 +283,7 @@ define([
           , 'SKIP-sort': [showPercentagesSelector, 'SKIP-ratio', 'SKIP', percentagesSort]
           , 'INFO-sort': [showPercentagesSelector, 'INFO-ratio', 'INFO', percentagesSort]
           , 'PASS-sort': [showPercentagesSelector, 'PASS-ratio', 'FAIL', percentagesSort]
+          , 'exception-sort': ['has-exception', function(val){ return val ? 1 : 0; }]
           , 'passing-sort': [showPercentagesSelector, 'passing-ratio', 'passing', percentagesSort]
           , slot: [function(slot){ return slot;}.bind(null, this.slot)]
         });
@@ -323,8 +327,16 @@ define([
             return result.length ? result : null;
         }
 
+        function renderException(hasException) {
+            return hasException
+                    ? '😿' // sad cat face
+                    : ''
+                    ;
+        }
+
         this._initRepresentations({
             'Font Family': ['slot', identity]
+          , Exception: ['has-exception', renderException]
           , ERROR: [showPercentagesSelector, 'ERROR-ratio', 'ERROR', renderRatio]
           , FAIL: [showPercentagesSelector, 'FAIL-ratio', 'FAIL', '*origin.familytest.id', renderRatioAndLink]
           , WARN: [showPercentagesSelector, 'WARN-ratio', 'WARN', renderRatio]
@@ -487,6 +499,10 @@ define([
             return vals.length ? result : null;
         }
 
+        function countTruish(values) {
+            return values.filter(function(val){return !!val;}).length;
+        }
+
          this._initFields({
             'total-ERROR-ratio': [[this.collection, '*', 'ERROR-ratio'], average]
           , 'total-FAIL-ratio': [[this.collection, '*', 'FAIL-ratio'], average]
@@ -498,6 +514,7 @@ define([
           , '# total-fonts': [[this.collection, '*', '#fonts'], arraySum]
           , '# total-tests': [[this.collection, '*', 'total'], arraySum]
           , 'total-progress': [[this.collection, '*', 'progress'], average]
+          , '# exceptions': [[this.collection, '*', 'has-exception'], countTruish]
 
         });
 
@@ -513,6 +530,7 @@ define([
           , 'total': ['# total-tests', identity]
           , 'Font Family': [function(){ return 'Summaries'; }]
           , 'progress': ['total-progress', percent]
+          , 'Exception': ['# exceptions', identity]
         });
     }
 
@@ -618,6 +636,7 @@ define([
         _BaseCollection.call(this, global, id);
         this._cellName2SortField = {
             slot: 'slot'
+          , Exception: 'exception-sort'
           , ERROR: 'ERROR-sort'
           , FAIL: 'FAIL-sort'
           , WARN: 'WARN-sort'
@@ -646,10 +665,10 @@ define([
         // must be scheduled after OR be included.
         // a field could be like:
 
-        this._blacklistedFields = new Set(['ERROR']);
+        this._blacklistedFields = new Set(['Exception', 'ERROR']);
         this._fieldOrders = {
-            reduced:  ['ERROR', 'FAIL', 'progress']
-          , expanded: ['ERROR', 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS'
+            reduced:  ['Exception', 'ERROR', 'FAIL', 'progress']
+          , expanded: ['Exception', 'ERROR', 'FAIL', 'WARN', 'SKIP', 'INFO', 'PASS'
                      , 'all passing', 'progress', 'total', '# fonts']
         };
         this._expanded = false;
@@ -661,10 +680,16 @@ define([
     var _p = Collection.prototype = Object.create(_BaseCollection.prototype);
 
     function sumHasAny(values){ return !!arraySum(values);}
+    function hasAnyTruish(values) {
+        var i,l;
+        for(i=0,l=values.length;i<l;i++)
+            if(values[i])
+                return true;
+        return false;
+    }
 
     _p._initNotifications = function() {
-        // right now: only has-ERRORS
-        // that's the field:
+        // has-ERRORS:
         var selectorAllErrors = [this, '*', 'ERROR']
           , selectorHasErrors = [this, null, 'has-ERRORS']
           ,  hasErrorsField = this.global.initField(
@@ -676,11 +701,29 @@ define([
                 , [this.global.getField(selectorAllErrors)]
                 , sumHasAny
             )
-          , repr = new Representation(
+          , errorsRepr = new Representation(
                   [hasErrorsField]
-                , this._hasErrorChanged.bind(this)
+                , this._displayFieldChanged.bind(this, 'ERROR')
             );
-        this.global.setListener(repr);
+        this.global.setListener(errorsRepr);
+
+        // has-Exceptions
+        var selectorAllExceptions = [this, '*', 'has-exception']
+          , selectorHasExceptions = [this, null, '# exceptions']
+          , hasExceptionsField = this.global.initField(
+                  selectorHasExceptions
+                  //dependenc(y)ies
+                  // could also reference the summary row field
+                  // total-Exceptions. On the other hand, both have this
+                  // field defined
+                , [this.global.getField(selectorAllExceptions)]
+                , hasAnyTruish
+            )
+          , exceptionsRepr = new Representation(
+                  [hasExceptionsField]
+                , this._displayFieldChanged.bind(this, 'Exception')
+            );
+        this.global.setListener(exceptionsRepr);
     };
 
     _p.getSortField = function(cellName) {
@@ -725,13 +768,15 @@ define([
         return this._fieldsInOrder.indexOf(cellName) !== -1;
     };
 
-    _p._hasErrorChanged = function(displayError) {
+    _p._displayFieldChanged = function(fieldName, displayField) {
+        // fieldName: string e.g. "ERROR"
+        // displayField: bool
         var size = this._blacklistedFields.size;
 
-        if(displayError)
-            this._blacklistedFields.delete('ERROR');
+        if(displayField)
+            this._blacklistedFields.delete(fieldName);
         else
-            this._blacklistedFields.add('ERROR');
+            this._blacklistedFields.add(fieldName);
 
         if(size === this._blacklistedFields.size)
             // no change
