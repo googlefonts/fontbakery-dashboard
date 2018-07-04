@@ -23,23 +23,29 @@ class FontbakeryWorkerError(Exception):
 class FontbakeryPreparationError(FontbakeryWorkerError):
   pass
 
+__private_marker = object()
 def get_fontbakery(fonts):
   from fontbakery.commands.check_googlefonts import runner_factory
   runner = runner_factory(fonts)
   spec = runner.specification
-
+  # This changes the specification object, which is not elegant.
+  # It's a bug when we do it repeatedly, creating a deep call stack, like
+  # a manually build recursion without end after a while.
+  # The __private_marker is a hack to change the specification object
+  # only once with this function.
   old_check_skip_filter = spec.check_skip_filter
-  def check_skip_filter(checkid, font=None, **iterargs):
-      # Familyname must be unique according to namecheck.fontdata.com
-    if checkid == 'com.google.fonts/check/165':
-      return False, ('Disabled for Fontbakery-Dashboard, see: '
-                     'https://github.com/googlefonts/fontbakery/issues/1680')
-    if old_check_skip_filter:
-      return old_check_skip_filter(checkid, font, **iterargs)
-    return True, None
-
-  spec.check_skip_filter = check_skip_filter
-
+  if not old_check_skip_filter or \
+      getattr(old_check_skip_filter,'__mark', None) is not __private_marker:
+    def check_skip_filter(checkid, font=None, **iterargs):
+        # Familyname must be unique according to namecheck.fontdata.com
+      if checkid == 'com.google.fonts/check/165':
+        return False, ('Disabled for Fontbakery-Dashboard, see: '
+                        'https://github.com/googlefonts/fontbakery/issues/1680')
+      if old_check_skip_filter:
+        return old_check_skip_filter(checkid, font, **iterargs)
+      return True, None
+    setattr(check_skip_filter,'__mark', __private_marker)
+    spec.check_skip_filter = check_skip_filter
   return runner, spec
 
 def validate_filename(logs, seen, filename):
