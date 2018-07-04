@@ -671,9 +671,9 @@ _p._queryPullRequestsData = function() {
           , cursor = data.repository.pullRequests.pageInfo.endCursor
           ;
         if(prs === null)
-            prs = pullRequests.nodes;
-        else
-            Array.prototype.push.apply(prs, pullRequests.nodes);
+            prs = [];
+        // filter because a node happened to be null at some point
+        prs.push(...pullRequests.nodes.filter(node=>!!node));
 
         if(cursor !== null)
             return this._sendRequest(cursor).then(recursiveFetch);
@@ -789,10 +789,32 @@ _p._fetchPullRequests = function(prsData) {
 _p._filterPullRequests = function(prsData) {
     let reasons = {}
       , filtered = prsData.filter(prData => {
-        if(prData.mergeable !== 'MERGEABLE'){
-            if(!(prData.mergeable in reasons))
-                reasons[prData.mergeable] = [];
-            reasons[prData.mergeable].push(prData);
+        let reason = null;
+        if(prData.mergeable !== 'MERGEABLE')
+            reason = prData.mergeable;
+        else if(!prData.headRepository){
+            // FIXME: is there a way to fetch these PR's without
+            // having access to the headRepository?
+            // real world example
+            // {
+            //    headRef: null,
+            //    id: 'MDExOlB1bGxSZXF1ZXN0MTU1MTEzNjQ5',
+            //    url: 'https://github.com/google/fonts/pull/1358',
+            //    createdAt: '2017-11-28T16:07:22Z',
+            //    updatedAt: '2017-11-28T16:07:22Z',
+            //    baseRefName: 'master',
+            //    resourcePath: '/google/fonts/pull/1358',
+            //    title: 'Correct spelling of "emoji"',
+            //    mergeable: 'MERGEABLE',
+            //    headRefName: 'patch-1',
+            //    headRepository: null
+            //}
+            reason = 'unkown reporsitory';
+        }
+        if(reason) {
+            if(!(reason in reasons))
+                reasons[reason] = [];
+            reasons[reason].push(prData);
             return false;
         }
         return true;
@@ -805,8 +827,8 @@ _p._filterPullRequests = function(prsData) {
         for(let reason in reasons) {
             dgb.push(reason + ':');
             Array.prototype.push.apply(dgb, reasons[reason]
-                 .map(prData => { return prData.headRepository.nameWithOwner
-                                 + ':' + prData.headRefName;}));
+                 .map(prData => { return prData.title + ' ' + prData.url
+                                 + ' ' + prData.headRefName;}));
         }
         this._log.debug(dgb.join(' '));
     }
