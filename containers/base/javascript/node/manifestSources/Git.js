@@ -314,20 +314,20 @@ function GitBase(logging, id, repoPath, baseReference, familyWhitelist
 var _p = GitBase.prototype = Object.create(Parent.prototype);
 
 _p.init = function() {
-    if(this._initPromise)
-        return this._initPromise;
-    this._initPromise = Promise.resolve(Parent.prototype.init.call(this))
-        .then(()=>this._initRepo(this._repoPath))
-        .then(
-            repo => {
-                this._repo = repo;
-                return null;
-            }
-          , err => {
-                this._log.error('Can\'t init git reporsitory: ', err);
-                throw err;
-            }
-        );
+    if(!this._initPromise)
+        this._initPromise = Promise.resolve(Parent.prototype.init.call(this))
+            .then(()=>this._initRepo(this._repoPath))
+            .then(
+                repo => {
+                    this._repo = repo;
+                    return null;
+                }
+              , err => {
+                    this._log.error('Can\'t init git reporsitory: ', err);
+                    throw err;
+                }
+            );
+    return this._initPromise;
 };
 
 _p._getRemoteUrl = function(remoteName) {
