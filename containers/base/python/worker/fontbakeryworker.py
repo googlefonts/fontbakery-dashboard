@@ -113,15 +113,18 @@ class FontbakeryWorker(object):
         path = filename
 
       logs.append('Added file "{}".'.format(filename))
-      if path.endswith('.ttf'):
+      if path.lower().endswith('.ttf') or path.lower().endswith('.otf'):
         fontfiles.append(path)
 
     if len(fontfiles) > maxfiles:
       raise FontbakeryPreparationError('Found {} font files, but maximum '
                       'is limiting to {}.'.format(len(fontfiles), maxfiles))
 
-    if len(fontfiles) == 0:
-      raise FontbakeryPreparationError('Could not find .ttf files in job.')
+    # If this is a problem, fontbakery itself should have a check for
+    # it. It improves the reporting! Also, this was limited to ".ttf"
+    # suffixes, which should be done differently in the future as well.
+    # if len(fontfiles) == 0:
+    #   raise FontbakeryPreparationError('Could not find .ttf files in job.')
     if self._save_preparation_logs:
       self._dbOps.update({'preparation_logs': logs})
     return fontfiles
