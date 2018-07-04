@@ -609,7 +609,7 @@ _p._makeGrapQlQueryBody = function(cursor) {
               repoOwner: this._baseRef.repoOwner
             , repoName: this._baseRef.repoName
             , baseRefName: this._baseRef.name // only fetch PRs to baseRefName
-              // when in the responese endCursor === null all items have been fetched!
+              // when in the response endCursor === null all items have been fetched!
               // when here cursor === null: fetches the beginning of the list
             , cursor:  cursor || null // data.repository.pullRequests.pageInfo.endCursor
         }
