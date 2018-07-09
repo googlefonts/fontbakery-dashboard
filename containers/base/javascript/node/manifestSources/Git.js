@@ -233,6 +233,25 @@ _p._familyNameFromFilesData = function(path, filesData) {
                                 + fileNames.join(', ') + '.');
 };
 
+_p._treeEntryToFileData = function(treeEntry) {
+    return treeEntry.getBlob()
+            .then(blob => new Uint8Array(blob.content()))
+            .then(data => [treeEntry.name(), data])
+            ;
+};
+
+_p._treeToFilesData = function (tree, filterFunction/*optional: filterFunction(string:filename)*/) {
+    let fileEntries = tree.entries()// -> [treeEntry]
+                          .filter(te=>te.isFile())
+                          .filter(te=>filterFunction
+                                            ? filterFunction(te.name())
+                                            // if there's no filterFunction
+                                            // this doesn't filter at all
+                                            : true)
+                          .map(treeEntry=>this._treeEntryToFileData(treeEntry));
+    return Promise.all(fileEntries);
+};
+
 /**
  * for `this._log.debug` expects:
  *      metadata.repository
@@ -247,43 +266,28 @@ _p._familyNameFromFilesData = function(path, filesData) {
  *               here. See e.g. CSVSpreadsheet/upstream
  */
 _p._dispatchTree = function(tree, metadata
-            , asFamilyName/* */
+            , asFamilyName/*optional: string*/
             , filterFunction/*optional: filterFunction(string:filename)*/) {
-    function treeEntryToFileData(treeEntry) {
-        return treeEntry.getBlob()
-                .then(blob => new Uint8Array(blob.content()))
-                .then(data => [treeEntry.name(), data])
-                ;
-    }
 
-    function treeToFilesData(tree) {
-        let fileEntries = tree.entries()// -> [treeEntry]
-                              .filter(te=>te.isFile())
-                              .filter(te=>filterFunction
-                                                ? filterFunction(te.name())
-                                                // if there's no filterFunction
-                                                // this doesn't filter at all
-                                                : true)
-                              .map(treeEntryToFileData);
-        return Promise.all(fileEntries);
-    }
+    return this._treeToFilesData(tree, filterFunction)
+                .then(filesData=>this._dispatchFilesData(filesData, metadata
+                                                , tree.path(), asFamilyName));
+};
 
-    let dispatchFilesData = (filesData) => {
-        return (asFamilyName
+_p._dispatchFilesData = function(filesData, metadata, path, asFamilyName/*optional: string*/) {
+    return (asFamilyName
                     ? Promise.resolve(asFamilyName)
                     // raises/rejects if it can't find a family name
-                    : this._familyNameFromFilesData(tree.path(), filesData)
-        ).then(familyName=> {
-            if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
-                return null;
-            this._log.debug(this.id+':', 'dispatching family', familyName
-                        , 'of', metadata.repository + ':' + metadata.branch);
-            return this._dispatchFamily(familyName, filesData, metadata);
-        });
-    };
-    return treeToFilesData(tree)
-                .then(dispatchFilesData);
+                    : this._familyNameFromFilesData(path, filesData)
+    ).then(familyName=> {
+        if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
+            return null;
+        this._log.debug(this.id+':', 'dispatching family', familyName
+                    , 'of', metadata.repository + ':' + metadata.branch);
+        return this._dispatchFamily(familyName, filesData, metadata);
+    });
 };
+
 
 return GitShared;
 })();
