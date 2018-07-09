@@ -163,7 +163,7 @@ _p.schedule = function(task /* args */) {
 
 // Runs immediately on init. Then it's called via the poke interface.
 // There's no cron/scheduling in the ManifestSource itself.
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // jshint unused:vars
     throw new Error('Not Implemented "update".');
 };

@@ -76,12 +76,6 @@ service Manifest {
 
 message PokeRequest {
     string sourceid = 1; // '' === default/not set for all
-     // True=force update, False=update only if it looks changed for the source
-     // force is good if i.e. fontbakery was updated and all tests must re-run
-     // we could also just restart the source pods, same result but a bigger
-     // hammer for some sources (e.g. if a git repo can be kept between
-     // updates but is lost between restarts)
-    bool force = 2;
 }
 
 message CollectionFamilyJob {

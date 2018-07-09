@@ -139,15 +139,15 @@ _p._addSource = function(source) {
     return source.schedule('init');
 };
 
-_p.updateAll = function(force) {
+_p.updateAll = function() {
     var updates = [], sourceId;
     for(sourceId in this._sources)
-        updates.push(this.update(sourceId, force));
+        updates.push(this.update(sourceId));
     return Promise.all(updates);
 };
 
-_p.update = function(sourceId, force) {
-    return this._sources[sourceId].schedule('update', force)
+_p.update = function(sourceId) {
+    return this._sources[sourceId].schedule('update')
         .then(
               () => {
                   this._log.info('Finished updating ', sourceId);
@@ -155,7 +155,6 @@ _p.update = function(sourceId, force) {
             , err => {
                 this._log.error('ManifestServer problem updating'
                                     , 'source:', sourceId
-                                    , 'force:', force
                                     , 'error:', err
                                     , 'CAUTION: Error is suppressed!');
         });
@@ -277,7 +276,6 @@ _p.poke = function(call, callback) {
     if(!this._ready)
         callback(new Error('Not ready yet'));
     var sourceId = call.request.getSource() // call.request is a PokeRequest
-      , force = call.request.getForce()
       , err = null
       , response
       ;
@@ -286,7 +284,7 @@ _p.poke = function(call, callback) {
         if( !(sourceId in this._sources) )
             err = new Error('Not Found: The source "' + sourceId + '" is unknown.');
         else
-            this.update(sourceId, force);
+            this.update(sourceId);
     }
     else
         this.updateAll();
@@ -294,6 +292,5 @@ _p.poke = function(call, callback) {
     response = err ? null : new Empty();
     callback(err, response);
 };
-
 
 exports.ManifestServer = ManifestServer;

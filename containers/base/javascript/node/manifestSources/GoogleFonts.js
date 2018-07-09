@@ -15,7 +15,6 @@ const { _Source: Parent } = require('./_Source')
 
 function GoogleFonts(logging, id, apiDataUrl, familyWhitelist, reportsSetup) {
     this._apiAPIDataUrl = apiDataUrl; // contains api key
-    this._lastAPIData = null;
     this._familyWhitelist = familyWhitelist;
     Parent.call(this, logging, id, reportsSetup);
 }
@@ -112,35 +111,6 @@ function downloadAPIData(url) {
             ;
 }
 
-_p._needsUpdate = function (familyData) {
-    var familyName = familyData.family
-      , oldFamilyData, variant, fileName
-      ;
-
-    if(!this._lastAPIData || !this._lastAPIData.has(familyName))
-        // there's no API data yet, this is initial
-        // or this is a new family
-        return true;
-    oldFamilyData = this._lastAPIData.get(familyName);
-    if(familyData.lastModified !== oldFamilyData.lastModified
-        || familyData.version !== oldFamilyData.version
-        // this is essentially redundant data to familyData.files.keys()
-        // despite of the order in variants which is not guaranteed in the
-        // dictionary familyData.files
-        || familyData.variants.length !== oldFamilyData.variants.length
-    )
-        return true;
-    for(variant in familyData.files) {
-        fileName = familyData.files[variant];
-        if(!(variant in oldFamilyData.files))
-            return true;
-        if(fileName !== oldFamilyData.files[variant])
-            return true;
-    }
-    // no indication for an update found
-    return false;
-};
-
 _p._loadFamily = function(familyData) {
     var files = [];
     // download the files
@@ -179,15 +149,15 @@ _p._loadFamily = function(familyData) {
 
 // Runs immediately on init. Then it's called via the poke interface.
 // There's no scheduling in the ManifesrSource itself.
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // download the API JSON file
 
     return downloadAPIData(this._apiAPIDataUrl)
-        .then(this._update.bind(this, forceUpdate /* Map apiData */ ))
+        .then(this._update.bind(this /* Map apiData */ ))
         ;
 };
 
-_p._update = function(forceUpdate, apiData) {
+_p._update = function(apiData) {
     var updating = [];
 
     for(let familyData of apiData.values()) {
@@ -196,15 +166,11 @@ _p._update = function(forceUpdate, apiData) {
         if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
             continue;
 
-        if(!(forceUpdate || this._needsUpdate(familyData)))
-            continue;
-
         updating.push(
             this._loadFamily(familyData) // -> filesData
                 .then(filesData=>this._dispatchFamily(familyName, filesData)) // jshint ignore:line
         );
     }
-    this._lastAPIData = apiData;
     return this._waitForAll(updating);
 };
 

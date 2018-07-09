@@ -915,8 +915,7 @@ proto.fontbakery.dashboard.PokeRequest.prototype.toObject = function(opt_include
  */
 proto.fontbakery.dashboard.PokeRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
-    sourceid: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    force: jspb.Message.getFieldWithDefault(msg, 2, false)
+    sourceid: jspb.Message.getFieldWithDefault(msg, 1, "")
   };
 
   if (includeInstance) {
@@ -957,10 +956,6 @@ proto.fontbakery.dashboard.PokeRequest.deserializeBinaryFromReader = function(ms
       var value = /** @type {string} */ (reader.readString());
       msg.setSourceid(value);
       break;
-    case 2:
-      var value = /** @type {boolean} */ (reader.readBool());
-      msg.setForce(value);
-      break;
     default:
       reader.skipField();
       break;
@@ -997,13 +992,6 @@ proto.fontbakery.dashboard.PokeRequest.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getForce();
-  if (f) {
-    writer.writeBool(
-      2,
-      f
-    );
-  }
 };
 
 
@@ -1019,23 +1007,6 @@ proto.fontbakery.dashboard.PokeRequest.prototype.getSourceid = function() {
 /** @param {string} value */
 proto.fontbakery.dashboard.PokeRequest.prototype.setSourceid = function(value) {
   jspb.Message.setField(this, 1, value);
-};
-
-
-/**
- * optional bool force = 2;
- * Note that Boolean fields may be set to 0/1 when serialized from a Java server.
- * You should avoid comparisons like {@code val === true/false} in those cases.
- * @return {boolean}
- */
-proto.fontbakery.dashboard.PokeRequest.prototype.getForce = function() {
-  return /** @type {boolean} */ (jspb.Message.getFieldWithDefault(this, 2, false));
-};
-
-
-/** @param {boolean} value */
-proto.fontbakery.dashboard.PokeRequest.prototype.setForce = function(value) {
-  jspb.Message.setField(this, 2, value);
 };
 
 

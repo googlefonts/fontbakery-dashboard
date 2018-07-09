@@ -24,7 +24,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='messages.proto',
   package='fontbakery.dashboard',
   syntax='proto3',
-  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0cshared.proto\"k\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x31\n\tcache_key\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"D\n\tCacheItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"F\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\".\n\x0bPokeRequest\x12\x10\n\x08sourceid\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"\xaf\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12\x31\n\tcache_key\x18\x03 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\xda\x01\n\x06Report\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07type_id\x18\x02 \x01(\t\x12\x0e\n\x06method\x18\x03 \x01(\t\x12+\n\x07started\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04\x64\x61ta\x18\x06 \x01(\t\x12\n\n\x02id\x18\x07 \x01(\t\x12,\n\x08reported\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x96\x04\n\x0cReportsQuery\x12@\n\x07\x66ilters\x18\x01 \x03(\x0b\x32/.fontbakery.dashboard.ReportsQuery.FiltersEntry\x12\x41\n\npagination\x18\x04 \x01(\x0b\x32-.fontbakery.dashboard.ReportsQuery.Pagination\x12\x14\n\x0cinclude_data\x18\x05 \x01(\x08\x1a\xa6\x01\n\x06\x46ilter\x12<\n\x04type\x18\x01 \x01(\x0e\x32..fontbakery.dashboard.ReportsQuery.Filter.Type\x12\x0e\n\x06values\x18\x02 \x03(\t\x12\x31\n\rmin_max_dates\x18\x03 \x03(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1b\n\x04Type\x12\t\n\x05VALUE\x10\x00\x12\x08\n\x04\x44\x41TE\x10\x01\x1aY\n\x0c\x46iltersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).fontbakery.dashboard.ReportsQuery.Filter:\x02\x38\x01\x1ag\n\nPagination\x12\x31\n\ritem_reported\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07item_id\x18\x02 \x01(\t\x12\x15\n\rprevious_page\x18\x03 \x01(\x08\"\x18\n\tReportIds\x12\x0b\n\x03ids\x18\x01 \x03(\t2\xe2\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12=\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x14.google.protobuf.Any\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00\x32O\n\x08Manifest\x12\x43\n\x04Poke\x12!.fontbakery.dashboard.PokeRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xe2\x01\n\x07Reports\x12>\n\x04\x46ile\x12\x1c.fontbakery.dashboard.Report\x1a\x16.google.protobuf.Empty\"\x00\x12M\n\x05Query\x12\".fontbakery.dashboard.ReportsQuery\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x12H\n\x03Get\x12\x1f.fontbakery.dashboard.ReportIds\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01P\x03\x62\x06proto3')
+  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0cshared.proto\"k\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x31\n\tcache_key\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"D\n\tCacheItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"F\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\"\x1f\n\x0bPokeRequest\x12\x10\n\x08sourceid\x18\x01 \x01(\t\"\xaf\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12\x31\n\tcache_key\x18\x03 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\xda\x01\n\x06Report\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07type_id\x18\x02 \x01(\t\x12\x0e\n\x06method\x18\x03 \x01(\t\x12+\n\x07started\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04\x64\x61ta\x18\x06 \x01(\t\x12\n\n\x02id\x18\x07 \x01(\t\x12,\n\x08reported\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x96\x04\n\x0cReportsQuery\x12@\n\x07\x66ilters\x18\x01 \x03(\x0b\x32/.fontbakery.dashboard.ReportsQuery.FiltersEntry\x12\x41\n\npagination\x18\x04 \x01(\x0b\x32-.fontbakery.dashboard.ReportsQuery.Pagination\x12\x14\n\x0cinclude_data\x18\x05 \x01(\x08\x1a\xa6\x01\n\x06\x46ilter\x12<\n\x04type\x18\x01 \x01(\x0e\x32..fontbakery.dashboard.ReportsQuery.Filter.Type\x12\x0e\n\x06values\x18\x02 \x03(\t\x12\x31\n\rmin_max_dates\x18\x03 \x03(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1b\n\x04Type\x12\t\n\x05VALUE\x10\x00\x12\x08\n\x04\x44\x41TE\x10\x01\x1aY\n\x0c\x46iltersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).fontbakery.dashboard.ReportsQuery.Filter:\x02\x38\x01\x1ag\n\nPagination\x12\x31\n\ritem_reported\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07item_id\x18\x02 \x01(\t\x12\x15\n\rprevious_page\x18\x03 \x01(\x08\"\x18\n\tReportIds\x12\x0b\n\x03ids\x18\x01 \x03(\t2\xe2\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12=\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x14.google.protobuf.Any\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00\x32O\n\x08Manifest\x12\x43\n\x04Poke\x12!.fontbakery.dashboard.PokeRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xe2\x01\n\x07Reports\x12>\n\x04\x46ile\x12\x1c.fontbakery.dashboard.Report\x1a\x16.google.protobuf.Empty\"\x00\x12M\n\x05Query\x12\".fontbakery.dashboard.ReportsQuery\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x12H\n\x03Get\x12\x1f.fontbakery.dashboard.ReportIds\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01P\x03\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,shared__pb2.DESCRIPTOR,],
   public_dependencies=[shared__pb2.DESCRIPTOR,])
@@ -48,8 +48,8 @@ _REPORTSQUERY_FILTER_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   options=None,
-  serialized_start=1200,
-  serialized_end=1227,
+  serialized_start=1185,
+  serialized_end=1212,
 )
 _sym_db.RegisterEnumDescriptor(_REPORTSQUERY_FILTER_TYPE)
 
@@ -248,13 +248,6 @@ _POKEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       options=None),
-    _descriptor.FieldDescriptor(
-      name='force', full_name='fontbakery.dashboard.PokeRequest.force', index=1,
-      number=2, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      options=None),
   ],
   extensions=[
   ],
@@ -268,7 +261,7 @@ _POKEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=441,
-  serialized_end=487,
+  serialized_end=472,
 )
 
 
@@ -326,8 +319,8 @@ _COLLECTIONFAMILYJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=490,
-  serialized_end=665,
+  serialized_start=475,
+  serialized_end=650,
 )
 
 
@@ -406,8 +399,8 @@ _REPORT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=668,
-  serialized_end=886,
+  serialized_start=653,
+  serialized_end=871,
 )
 
 
@@ -452,8 +445,8 @@ _REPORTSQUERY_FILTER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1061,
-  serialized_end=1227,
+  serialized_start=1046,
+  serialized_end=1212,
 )
 
 _REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
@@ -489,8 +482,8 @@ _REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1229,
-  serialized_end=1318,
+  serialized_start=1214,
+  serialized_end=1303,
 )
 
 _REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
@@ -533,8 +526,8 @@ _REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1320,
-  serialized_end=1423,
+  serialized_start=1305,
+  serialized_end=1408,
 )
 
 _REPORTSQUERY = _descriptor.Descriptor(
@@ -577,8 +570,8 @@ _REPORTSQUERY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=889,
-  serialized_end=1423,
+  serialized_start=874,
+  serialized_end=1408,
 )
 
 
@@ -608,8 +601,8 @@ _REPORTIDS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1425,
-  serialized_end=1449,
+  serialized_start=1410,
+  serialized_end=1434,
 )
 
 _FAMILYJOB.fields_by_name['cache_key'].message_type = _CACHEKEY
@@ -737,8 +730,8 @@ _CACHE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   options=None,
-  serialized_start=1452,
-  serialized_end=1678,
+  serialized_start=1437,
+  serialized_end=1663,
   methods=[
   _descriptor.MethodDescriptor(
     name='Put',
@@ -779,8 +772,8 @@ _MANIFEST = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   options=None,
-  serialized_start=1680,
-  serialized_end=1759,
+  serialized_start=1665,
+  serialized_end=1744,
   methods=[
   _descriptor.MethodDescriptor(
     name='Poke',
@@ -803,8 +796,8 @@ _REPORTS = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=2,
   options=None,
-  serialized_start=1762,
-  serialized_end=1988,
+  serialized_start=1747,
+  serialized_end=1973,
   methods=[
   _descriptor.MethodDescriptor(
     name='File',

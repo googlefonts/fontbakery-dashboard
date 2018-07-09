@@ -473,21 +473,16 @@ function GitBranch(logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup) {
     GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup);
-    this._lastChecked = new Map();
     this._oldCommit = null;
 }
 
 var _p = GitBranch.prototype = Object.create(GitBase.prototype);
 
 /**
- * if there is no state information about the last update,
- * all of the fonts must be dispatched
- * if there is state information about the last update
- * dispatch only fonts with another tree object id than the state knows
  * don't fetch files in subdirectories, we want a flat dir here
  * besides, at the moment, fontbakery-worker rejects sub directories
  */
-_p._update = function(forceUpdate, currentCommit) {
+_p._update = function(currentCommit) {
     let currentCommitTreePromise = currentCommit.getTree()
       , dirsPromise = this._oldCommit
             // based on diff
@@ -508,11 +503,6 @@ _p._update = function(forceUpdate, currentCommit) {
         // do.
 
         return this._waitForAll(treeEntries.map(treeEntry => {
-            if(!forceUpdate
-                    && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
-                // needs no update
-                return null;
-            this._lastChecked.set(treeEntry.path(), treeEntry.oid());
             let metadata = {
                 commit: currentCommit.sha()
               , commitDate: currentCommit.date()
@@ -529,11 +519,11 @@ _p._update = function(forceUpdate, currentCommit) {
 
 // Runs immediately on init. Then it's called via the poke interface.
 // There's no scheduling in the ManifestSource itself.
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // update the baseRef => can take really long the first time
     return this.fetchBaseRef()
         .then(reference => this._getCommit(reference.owner(), reference.target()))
-        .then(currentCommit => this._update(forceUpdate, currentCommit))
+        .then(currentCommit => this._update(currentCommit))
         ;
 };
 
@@ -557,7 +547,6 @@ function GitBranchGithubPRs(logging, id, repoPath, baseReference
                                         , familyWhitelist, reportsSetup);
 
     this._gitHubAPIToken = gitHubAPIToken;
-    this._lastChecked = new Map();
 }
 
 
@@ -889,18 +878,12 @@ _p._getPRchangedFamilies = function([baseData, prsData]) {
     });
 };
 
-_p._update = function(forceUpdate, checkFamilies) {
+_p._update = function(checkFamilies) {
     // some will resolve to null if there's a hit in this._familyWhitelist
-    // or this._lastChecked though, at this point, error reporting may be
-    // the only thing left to do.
+    // though, at this point, error reporting may be the only thing left to do.
     var promises = [];
     checkFamilies.forEach((prData, dir) => {
         var promise = prData.commitTree.getEntry(dir).then(treeEntry => {
-            if(!forceUpdate
-                    && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
-                // needs no update
-                return null;
-            this._lastChecked.set(treeEntry.path(), treeEntry.oid());
             let metadata = {
                     commit: prData.commit.sha()
                   , commitDate: prData.commit.date()
@@ -927,14 +910,14 @@ _p._update = function(forceUpdate, checkFamilies) {
  * ids, as that won't even change between rebasing. still, it is probably
  * to just use the HEAD commit as mark.
  */
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // update the baseRef => can take really long the first time
     return Promise.all([
             this._getBaseResources()
           , this._getPullRequests()
         ])
        .then(this._getPRchangedFamilies.bind(this))
-       .then(checkFamilies => this._update(forceUpdate, checkFamilies))
+       .then(checkFamilies => this._update(checkFamilies))
        ;
 };
 

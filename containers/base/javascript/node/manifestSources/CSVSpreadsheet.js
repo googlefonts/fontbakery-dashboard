@@ -63,7 +63,6 @@ function CSVSpreadsheet(logging, id, reposPath, sheetCSVUrl, familyWhitelist
                                                         , reportsSetup) {
     this._log = logging;
     this._sheetCSVUrl = sheetCSVUrl;
-    this._lastChecked = new Map();
     // TODO: remove and delete files if a repo is  not in the CSV-sheet
     // anymore after an update?
     this._gitRepos = new Map();
@@ -607,7 +606,7 @@ function _getMetadata(familyData, commit, tree) {
         };
 }
 
-_p._dispatchIfNecessary = function(forceUpdate, [familyData, commit, tree, filesPrefix]) {
+_p._dispatchIfNecessary = function([familyData, commit, tree, filesPrefix]) {
     // FIXME/TODO: meta data files like LICENSE.txt, METADATA.pb etc. are
     // usually not located in the fonts directory (are they sometimes?)
     // We need to:
@@ -617,17 +616,6 @@ _p._dispatchIfNecessary = function(forceUpdate, [familyData, commit, tree, files
     //
     // Also filesPrefix can change and that is equivalent to a changed
     // tree.id, since it potentially results in a different set of files.
-    let check_sum = [tree.id(), filesPrefix].join('::');
-    if(!forceUpdate
-            && this._lastChecked.get(familyData.name) === check_sum) {
-
-        this._reportFamily(familyData.name, 'skipped'
-                                    , 'needs no update; ' + check_sum);
-        // needs no update
-        return null;
-
-    }
-    this._lastChecked.set(familyData.name, check_sum);
 
     // needs update
     let metadata = _getMetadata(familyData, commit, tree)
@@ -657,7 +645,7 @@ _p._dispatchIfNecessary = function(forceUpdate, [familyData, commit, tree, files
     return this._dispatchTree(tree, metadata, familyData.name, filterFunction);
 };
 
-_p._prepareAndDispatchGit = function(forceUpdate, familyData, reference) {
+_p._prepareAndDispatchGit = function(familyData, reference) {
     return this._getCommit(reference.owner(), reference.target())
         .then(commit=>{
             var [path, filesPrefix] = familyData.fontFilesLocation
@@ -669,7 +657,7 @@ _p._prepareAndDispatchGit = function(forceUpdate, familyData, reference) {
 
             return Promise.all([familyData, commit, treePromise, filesPrefix]);
         })
-        .then(this._dispatchIfNecessary.bind(this, forceUpdate/*, -> [familyData, commit, treePromise, filesPrefix]*/))
+        .then(this._dispatchIfNecessary.bind(this/*, -> [familyData, commit, treePromise, filesPrefix]*/))
         .then(null, err=>{
             let [path, ] = familyData.fontFilesLocation
               , message = ['Can\'t dispatch path "' + path + '" for'
@@ -686,18 +674,18 @@ _p._prepareAndDispatchGit = function(forceUpdate, familyData, reference) {
         });
 };
 
-_p._prepareAndDispatchGits = function(forceUpdate, families_referencePromises) {
+_p._prepareAndDispatchGits = function(families_referencePromises) {
     var gitUpdatingPromises = [];
     for (let [familyData, referencePromise] of families_referencePromises) {
         // referencePromise doesn't seem to have an error handler attached!
         // if it rejects it won't be passed to _prepareAndDispatchGit
         gitUpdatingPromises.push(referencePromise.then(
-                 this._prepareAndDispatchGit.bind(this, forceUpdate, familyData)));
+                 this._prepareAndDispatchGit.bind(this, familyData)));
     }
     return gitUpdatingPromises;
 };
 
-_p._update = function(forceUpdate, csvData) {
+_p._update = function(csvData) {
     // depends on the result of parseCSV
     var updating = []
       , gitFamilies = []
@@ -723,7 +711,7 @@ _p._update = function(forceUpdate, csvData) {
         }
     }
     let fetchingingGits = zip(gitFamilies, this._fetchGits(gitFamilies))
-      , dispatchingGits = this._prepareAndDispatchGits(forceUpdate, fetchingingGits)
+      , dispatchingGits = this._prepareAndDispatchGits(fetchingingGits)
       ;
     // When/if we add support for other repo types, they will be added to
     // `updating` as well. But currently we only update git repos.
@@ -732,11 +720,11 @@ _p._update = function(forceUpdate, csvData) {
     return this._waitForAll(updating);
 };
 
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // download the CSV file
     this._reportAdd(
           'md'
-        , '## Start update. forceUpdate: '+ (forceUpdate ? 'True' : 'False')
+        , '## Start update.'
         , true /*initial entry*/
         );
 
@@ -766,7 +754,7 @@ _p.update = function(forceUpdate) {
 
             return csvData;
         })
-        .then(this._update.bind(this, forceUpdate /* Map apiData */ ))
+        .then(this._update.bind(this /* csvData */ ))
         .then(null, error=>{
             // this doesn't always mean it failed completely, just that
             // at least one family failed
