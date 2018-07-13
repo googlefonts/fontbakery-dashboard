@@ -477,7 +477,6 @@ function GitBranch(logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup) {
     GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup);
-    this._oldCommit = null;
 }
 
 var _p = GitBranch.prototype = Object.create(GitBase.prototype);
@@ -488,14 +487,9 @@ var _p = GitBranch.prototype = Object.create(GitBase.prototype);
  */
 _p._update = function(currentCommit) {
     let currentCommitTreePromise = currentCommit.getTree()
-      , dirsPromise = this._oldCommit
-            // based on diff
-            ? Promise.all([this._oldCommit.getTree(), currentCommitTreePromise])
-                     .then(([oldTree, newTree]) => this._dirsToCheck(oldTree, newTree))
-            // all families
-            : currentCommitTreePromise.then(tree => this._getRootTreeFamilies(tree))
+        // all families
+      , dirsPromise = currentCommitTreePromise.then(tree => this._getRootTreeFamilies(tree))
       ;
-    this._oldCommit = currentCommit;
 
     Promise.all([currentCommitTreePromise, dirsPromise])
     .then(([currentCommitTree, dirs]) => {
