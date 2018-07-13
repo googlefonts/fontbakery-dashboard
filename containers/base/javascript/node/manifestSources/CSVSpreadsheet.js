@@ -326,6 +326,15 @@ var CSVData = (function() {
         return this._data.values();
     };
 
+    _p.get = function(familyName, defaultVal) {
+        if(!this._data.has(familyName)) {
+            if(arguments.length > 1)
+                return defaultVal;
+            throw new Error('No family found for "' + familyName + '".');
+        }
+        return this._data.get(familyName);
+    };
+
     return CSVData;
 })();
 
@@ -375,6 +384,9 @@ function downloadCSVData(fileUrl) {
 }
 
 _p._reportFamily = function(familyName, status, message) {
+    if(!this._familyReportTable)
+        // no reporting at the moment
+        return;
     this._familyReportTable.push([familyName, status
                                 , message !== undefined ? message : '']);
 };
@@ -888,6 +900,29 @@ _p.update = function() {
         // return promise.finally(finallyFunc);
         promise.then(finallyFunc, finallyFunc); // no need to return this
         return promise;
+};
+
+/**
+ * Get one family "package" by family name (via ManifestServer as a FamilyData message).
+ * The data is the same as the update function dispatches, in this case
+ * intended for the release pipeline.
+ */
+_p.get = function(familyName) {
+    // update the csv
+    return downloadCSVData(this._sheetCSVUrl)// -> instance of CSVData
+        // get the row of the requested family
+        // raises if familyName is not fond
+        .then(csvData=>csvData.get(familyName)) // -> instance of CSVFamily; raises if familyName doesn't exist
+        // get the files
+        .then(familyData=>{
+            if(familyData.repoType !== 'git')
+                throw new Error('Repository is not git.');
+            return this._fetchGit(familyData)
+                .then(reference=>this._getGitData(familyData, reference));
+                // ->  [filesData, metadata, path, familyName]
+
+        })
+        .then(([filesData, metadata, path, familyName])=>[familyName, filesData, metadata]);
 };
 
 if (typeof require != 'undefined' && require.main==module) {
