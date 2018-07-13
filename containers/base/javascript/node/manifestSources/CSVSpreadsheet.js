@@ -34,6 +34,7 @@ const { GitShared: Parent /*is a _Source*/ } = require('./Git')
   , http = require('http')
   , fs = require('fs')
   , url = require('url')
+  , { createMetadata } = require('../util/getMetadataPb')
   ;
 
 /**
@@ -565,6 +566,15 @@ _p._fetchGit = function(familyData) {
         });
 };
 
+_p._fetchGoogleFontsMaster = function() {
+    return this._fetchGit({
+            name: 'Google Fonts GitHub Master'
+          , remoteName: 'google/fonts'
+          , remoteUrl: 'https://github.com/google/fonts.git'
+          , referenceName: 'master'
+    }); // -> git reference promise
+};
+
 function _getTreeFromTreeEntry(treeEntry) {
     if(treeEntry.isTree())
         return treeEntry.getTree();
@@ -594,7 +604,34 @@ function zip(...arrays) {
     return result;
 }
 
-function _getMetadata(familyData, commit, tree) {
+function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
+    var isUpdate = !!googleMasterFamilyTree
+      , googleMasterDir = isUpdate
+                            ? googleMasterFamilyTree.path()
+                            : '(unknown)'
+        // as default assuming OFL, the most common license,
+        // otherwise, add the right license file to the repo data!
+      , licenseDir = 'ofl'
+      ;
+    if(isUpdate)
+            // If this is the wrong licenseDir it's unlikely that
+            // the dispatcher pipeline will work for the family.
+            // At least the PR will end in the wrong place!
+            licenseDir = googleMasterDir.split('/')[0];
+    // no update assumed
+    else {
+        for(let [file, dir] of [
+                    ['UFL.txt', 'ufl']
+                  , ['OFL.txt', 'ofl']
+                    // this is last because the UFL font's also have a LICENSE.txt
+                  , ['LICENSE.txt', 'apache']]) {
+            if(files.has(file)) {
+                licenseDir = dir;
+                break;
+            }
+        }
+    }
+
     return {
                 commit: commit.sha()
               , commitDate: commit.date()
@@ -603,61 +640,146 @@ function _getMetadata(familyData, commit, tree) {
               , familyPath: tree.path()
               , repository: familyData.upstream
               , branch: familyData.referenceName // Error: NotImplemented if not git
+              , googleMasterDir: googleMasterDir
+              , isUpdate: isUpdate
+              , licenseDir: licenseDir
         };
 }
 
-_p._dispatchIfNecessary = function([familyData, commit, tree, filesPrefix]) {
-    // FIXME/TODO: meta data files like LICENSE.txt, METADATA.pb etc. are
-    // usually not located in the fonts directory (are they sometimes?)
-    // We need to:
-    //      A: add all dependencies to check_sum
-    //      B: need to collect data also from elsewhere (which will add
-    //         some complexity. Marcs dispatcher script does this already!
-    //
-    // Also filesPrefix can change and that is equivalent to a changed
-    // tree.id, since it potentially results in a different set of files.
-
-    // needs update
-    let metadata = _getMetadata(familyData, commit, tree)
-      , filterFunction = filename => {
-            // I wouldn't expect these files to be in these upstream directories
-            // however, if they are, we might as well include them at this point.
-            // FIXME: These files are not in the fonts directory in our
-            // google fonts source repo directory layout and we need to get
-            // them from other locations in the repo (root dir) or generate them
-            // and put them into the dispatched data manually.
-            // THIS IS MISSING ATM
-            let allowedFiles = new Set([
-                'METADATA.pb'
-              , 'DESCRIPTION.en_us.html'
-              , 'OFL.txt'
-              , 'LICENSE.txt'
-            ]);
-            return (allowedFiles.has(filesPrefix) ||
-                        (filesPrefix
-                                ? filename.startsWith(filesPrefix)
-                                : true
-                        )
-                    );
+_p._insertMetadataPB = function (filesData, licenseDir, isUpdate) {
+    return createMetadata(filesData, licenseDir, isUpdate)// -> <Uint8Array>
+    .then(fileData=>{
+        var metaDataFile = 'METADATA.pb'
+          , resultFilesData = filesData.slice()
+          ;
+        for(let i=resultFilesData.length-1;i>=0;i--) {
+            if(resultFilesData[i][0] === metaDataFile)
+                resultFilesData.splice(i, 1);
         }
-      ;
-    // Allright, this goes off into charted territory
-    return this._dispatchTree(tree, metadata, familyData.name, filterFunction);
+        resultFilesData.push([metaDataFile, fileData]);
+        return resultFilesData;
+    }, err=>{
+        // This is not a complete failure, Font Bakery will likely complain
+        // here, because it was not possible to create or update the
+        // METADATA.pb file
+        this._log.warning('Can\'t create METADATA.pb:', err);
+        return filesData;
+    });
 };
 
-_p._prepareAndDispatchGit = function(familyData, reference) {
+_p._collectDataGit = function(familyData, commit, tree, rootTree
+            , masterFamilyTree, filesPrefix) {
+    var files = new Map()
+      , treeToFiles = (tree, filterFunc) => {
+            return this._treeToFilesData(tree, filterFunc)
+                    .then(filesData=>filesData.map(
+                        // This will override entries that are already
+                        // in files, which is expected.
+                        fileData/*[name, data]*/=>files.set(...fileData)));
+        };
+    // From masterFamilyTree: get all files, except the .ttf ones
+    return (masterFamilyTree
+                // this may be null, e.g. if the family is a new addition
+                ? treeToFiles(masterFamilyTree, filename=>!filename.endsWith('.ttf'))
+                : Promise.resolve())
+    // From tree: get all .ttf files starting with filesPrefix
+    .then(()=>treeToFiles(tree, filename=>{
+        return (filesPrefix
+                    ? filename.startsWith(filesPrefix)
+                    : true
+                    // really only add ".ttf" files from the font files
+                    // tree to the google fonts api/fontbakery check!
+                ) && filename.endsWith('.ttf');
+    }))
+    // From rootTree: get all known license files. Usually there should
+    // be only one, but this is the wrong place to detect and complain
+    // about ambiguities (use Font Bakery). Also, the Ubuntu fonts have
+    // both LICENSE.txt and UFL.txt with the same contents.
+    .then(()=>treeToFiles(tree, filename=>{
+        var licenseFiles = new Set(['OFL.txt', 'LICENSE.txt', 'UFL.txt']);
+        return licenseFiles.has(filename);
+    }))
+    // Maybe we can have a drag and drop entry point for the dispatcher?
+    // that way we could update stuff using the dispatcher pipeline
+    // without having to program rare exceptions.
+    .then(()=>{
+        var metadata = _getMetadata(files, familyData, commit, tree, masterFamilyTree);
+        return this._insertMetadataPB(
+                        Array.from(files.entries()) // -> filesData
+                     ,  metadata.licenseDir
+                     ,  metadata.isUpdate
+                     ) // -> filesData
+            .then(filesData=>[metadata, filesData]);
+    })
+    .then(([metadata, filesData])=>[
+             filesData
+           , metadata
+           , tree.path()
+           , familyData.name
+    ]);// -> [filesData, metadata, path, familyName]
+};
+
+
+function _findTree(
+                  root /*can be a tree or a commit (needs `getEntry`)*/
+                , dirName
+                , searchDirs) {
+    // searchDirs will be consumed recursively: searchDirs.slice(1)
+    var searchDir, path;
+    if(!searchDirs.length)
+        // A directory for dirName was not found.
+        throw new Error('Directory not found for "' + dirName + '".');
+    searchDir = searchDirs[0];
+    path = [searchDir, dirName].join('/');
+    return root.getEntry(path).then(
+        /* found */
+        _getTreeFromTreeEntry// treeEntry->tree
+        /* redo */
+      , err=> {
+            if(err.errno === NodeGit.Error.CODE.ENOTFOUND)
+                // retry
+                return _findTree(root, dirName, searchDirs.slice(1));
+            // fail, other kind of error
+            throw err;
+        }
+    );
+}
+
+_p._getGitMasterTreeForFamily = function(familyName) {
+    return this._fetchGoogleFontsMaster()
+        .then(reference=>this._getCommit(reference.owner(), reference.target()))
+        .then(currentCommit=>_findTree(
+                currentCommit
+              , familyName.toLowerCase().replace(/ /g, '')/*familyDirName*/
+              , ['ofl', 'apache', 'ufl']/*licenseDirs*/))
+        .then(null, err=>{
+            this._log.info('Can\'t get ', familyName, 'tree from master:', err);
+            return null;
+        });
+};
+
+_p._getGitData = function(familyData, reference) {
     return this._getCommit(reference.owner(), reference.target())
         .then(commit=>{
             var [path, filesPrefix] = familyData.fontFilesLocation
+              , rootTreePromise = commit.getTree()
               , treePromise = path === ''
-                        ? commit.getTree() // -> tree, no path: get root
+                        ? rootTreePromise // -> no path: use root
                         : commit.getEntry(path) // -> treeEntry
                                 .then(_getTreeFromTreeEntry) // -> tree
+              , masterFamilyTreePromise = this._getGitMasterTreeForFamily(familyData.name)
               ;
 
-            return Promise.all([familyData, commit, treePromise, filesPrefix]);
+            return Promise.all([familyData, commit, treePromise, rootTreePromise, masterFamilyTreePromise, filesPrefix]);
         })
-        .then(this._dispatchIfNecessary.bind(this/*, -> [familyData, commit, treePromise, filesPrefix]*/))
+        // args = [familyData, commit, tree, rootTree, masterFamilyTree, filesPrefix]
+        .then(args=>this._collectDataGit(...args))// -> [filesData, metadata, path, familyName]
+        ;
+};
+
+_p._prepareAndDispatchGit = function(familyData, reference) {
+    return this._getGitData(familyData, reference) // -> args: [filesData, metadata, path, asFamilyName]
+        .then(args=>this._dispatchFilesData(...args))// -> a promise to track when it's done, value not relevant
         .then(null, err=>{
             let [path, ] = familyData.fontFilesLocation
               , message = ['Can\'t dispatch path "' + path + '" for'
