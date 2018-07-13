@@ -1,8 +1,37 @@
-FROM ubuntu:xenial
+# bionic == 18.04 LTS
+FROM ubuntu:bionic
+
+RUN touch /tmp/cache_spoof_1
+
+
+# START TZCONFIG FIX suggested in:
+# https://stackoverflow.com/a/47909037/1315369
+# The tzdata package was expecting interaction to configure it
+
+## for apt to be noninteractive
+ENV DEBIAN_FRONTEND noninteractive
+ENV DEBCONF_NONINTERACTIVE_SEEN true
+
+## preesed tzdata, update package index, upgrade packages and install needed software
+RUN echo "tzdata tzdata/Areas select Europe" > /tmp/preseed.txt; \
+    echo "tzdata tzdata/Zones/Europe select Berlin" >> /tmp/preseed.txt; \
+    debconf-set-selections /tmp/preseed.txt && \
+    rm -f /etc/timezone && \
+    rm -f /etc/localtime && \
+    apt-get update && \
+    apt-get install -y tzdata
+
+## cleanup of files from setup
+RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# END TZCONFIG FIX
+
+# universe in bionic has a Package: fontforge (1:20170731~dfsg-1)
+# while the ppa currently has no newer version and no bionic version yet
+# TODO: re-check and insrt the following line before the "&& apt-get update \" line
+#     && add-apt-repository ppa:fontforge/fontforge \
 
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y software-properties-common \
-    && add-apt-repository ppa:fontforge/fontforge \
     && apt-get update \
     && apt-get install -y curl mono-complete libicu-dev \
                           fontforge-nox python-fontforge git build-essential \
@@ -44,11 +73,9 @@ RUN touch /tmp/cache_spoof_17
 # FIXME: doesn't install all dependencies!
 # RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
 
-# FIXME: upstream changes to googlefonts/fontbakery master
-
-# RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
-RUN git clone --depth 1 -b minor_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
-    pip install /var/fontbakery;pip install -r /var/fontbakery/requirements.txt;
+# RUN git clone --depth 1 -b minor_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
+RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
+    pip install /var/fontbakery;
 
 RUN cp -r /var/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \
     echo "#! /bin/bash"  > /bin/ftxvalidator; \

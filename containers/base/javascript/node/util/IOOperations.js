@@ -15,34 +15,73 @@ function IOOperations(logging, dbSetup, amqpSetup) {
     this._amqpSetup = amqpSetup;
     this._initPromise = null;
     this._r = null;
+    this._dbTables = this._dbSetup && this._dbSetup.tables || {};
     this._amqp = null;
     this._distributorQueueName = 'fontbakery-worker-distributor';
 }
 
 var _p = IOOperations.prototype;
 
+/**
+ * same as pythons builtin `zip` function
+ */
+function zip(...arrays) {
+    var result = [];
+    for(let i=0,l=Math.min(...arrays.map(a=>a.length));i<l;i++) {
+        let row = [];
+        for(let a of arrays) row.push(a[i]);
+        result.push(row);
+    }
+    return result;
+}
+
 _p.init = function() {
-    if(!this._initPromise)
-        this._initPromise = Promise.all([
-                initDB(this._log, this._dbSetup)
-              , initAmqp(this._log, this._amqpSetup)
-            ])
-            .then(resources => {
-                this._r= resources[0];
-                this._amqp = resources[1];
+    if(!this._initPromise) {
+        let promises = [], names = []
+          , pushPromise = (name, promise) => {
+                promises.push(promise);
+                names.push(name);
+            }
+          ;
+        if(this._dbSetup)
+            pushPromise('_r', initDB(this._log, this._dbSetup));
+        if(this._amqpSetup)
+            pushPromise('_amqp', initAmqp(this._log, this._amqpSetup));
+
+        this._initPromise = Promise.all(promises)
+            .then(resources=>{
+                let names_resources = zip(names, resources);
+                for(let [name, resource] of names_resources)
+                    this[name] = resource;
                 return resources;
             });
+    }
     return this._initPromise;
 };
 
-Object.defineProperty(_p, 'r', {
-    get: function(){
-        return this._r;
+Object.defineProperties(_p, {
+    r: {
+        get: function() {
+            if(!this._r)
+                throw new Error('Database resource "this._r" was not configured.');
+            return this._r;
+        }
     }
+  , amqp: {
+        get: function() {
+            if(!this._amqp)
+                throw new Error('Messaging Queue resource "this._amqp" was not configured.');
+            return this._amqp;
+        }
+    }
+
 });
 
 _p.query = function(dbTable) {
-    return this._r.table(dbTable);
+    let r = this.r // raises if db was not configured;
+      , realTableName = this._dbTables[dbTable]
+      ;
+    return r.table(realTableName);
 };
 
 _p.insertDoc = function(dbTable, doc) {
@@ -63,7 +102,7 @@ _p._createFamilyDoc = function(environment_version, test_data_hash) {
         , environment_version: environment_version
     };
 
-    return this.insertDoc(this._dbSetup.tables.family, doc)
+    return this.insertDoc('family', doc)
         .then(function(dbResponse) {
             var docid = dbResponse.generated_keys[0];
             return docid;
@@ -71,9 +110,9 @@ _p._createFamilyDoc = function(environment_version, test_data_hash) {
 };
 
 _p.getLatesCollectionEntry = function(collection_id, family_name) {
-    return this.query(this._dbSetup.tables.collection)
+    return this.query('collection')
             .getAll([collection_id, family_name], {index:'collection_family'})
-            .orderBy(this._r.desc('date'))
+            .orderBy(this.r.desc('date'))
             .limit(1)
             // => should return just the first element
             // .nth(0) there's no description what it does if the element doesn't exist!
@@ -120,7 +159,7 @@ _p.getDocId = function(test_data_hash) {
     // restart the pods when it is updated.
     var environment_version = process.env.ENVIRONMENT_VERSION;
 
-    return this.query(this._dbSetup.tables.family)
+    return this.query('family')
         .getAll([environment_version, test_data_hash], {index:'env_hash'})
         .run()
         .then(function(docs) {
@@ -155,7 +194,7 @@ _p.dispatchFamilyJob = function(cacheKey, docid) {
      , buffer
      ;
     job.setDocid(docid);
-    job.setCachekey(cacheKey);
+    job.setCacheKey(cacheKey);
     buffer = new Buffer(job.serializeBinary());
     return this.sendQueueMessage(this._distributorQueueName, buffer);
 };

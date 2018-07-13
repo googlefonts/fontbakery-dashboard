@@ -23,23 +23,29 @@ class FontbakeryWorkerError(Exception):
 class FontbakeryPreparationError(FontbakeryWorkerError):
   pass
 
+__private_marker = object()
 def get_fontbakery(fonts):
   from fontbakery.commands.check_googlefonts import runner_factory
   runner = runner_factory(fonts)
   spec = runner.specification
-
-  old_check_filter = spec.check_filter
-  def check_filter(checkid, font=None, **iterargs):
-      # Familyname must be unique according to namecheck.fontdata.com
-    if checkid == 'com.google.fonts/check/165':
-      return False, ('Disabled for Fontbakery-Dashboard, see: '
-                     'https://github.com/googlefonts/fontbakery/issues/1680')
-    if old_check_filter:
-      return old_check_filter(checkid, font, **iterargs)
-    return True, None
-
-  spec.set_check_filter(check_filter)
-
+  # This changes the specification object, which is not elegant.
+  # It's a bug when we do it repeatedly, creating a deep call stack, like
+  # a manually build recursion without end after a while.
+  # The __private_marker is a hack to change the specification object
+  # only once with this function.
+  old_check_skip_filter = spec.check_skip_filter
+  if not old_check_skip_filter or \
+      getattr(old_check_skip_filter,'__mark', None) is not __private_marker:
+    def check_skip_filter(checkid, font=None, **iterargs):
+        # Familyname must be unique according to namecheck.fontdata.com
+      if checkid == 'com.google.fonts/check/165':
+        return False, ('Disabled for Fontbakery-Dashboard, see: '
+                        'https://github.com/googlefonts/fontbakery/issues/1680')
+      if old_check_skip_filter:
+        return old_check_skip_filter(checkid, font, **iterargs)
+      return True, None
+    setattr(check_skip_filter,'__mark', __private_marker)
+    spec.check_skip_filter = check_skip_filter
   return runner, spec
 
 def validate_filename(logs, seen, filename):
@@ -85,7 +91,7 @@ class FontbakeryWorker(object):
     # `maxfiles` files should be small enough to not totally DOS us easily.
     # And big enough for all of our jobs, otherwise, change ;-)
     job = self._job
-    files = self._cache.get(job.cacheKey).files
+    files = self._cache.get(job.cache_key).files
     maxfiles = 45
     logs = []
     if tmpDirectory is not None:
@@ -107,15 +113,18 @@ class FontbakeryWorker(object):
         path = filename
 
       logs.append('Added file "{}".'.format(filename))
-      if path.endswith('.ttf'):
+      if path.lower().endswith('.ttf') or path.lower().endswith('.otf'):
         fontfiles.append(path)
 
     if len(fontfiles) > maxfiles:
       raise FontbakeryPreparationError('Found {} font files, but maximum '
                       'is limiting to {}.'.format(len(fontfiles), maxfiles))
 
-    if len(fontfiles) == 0:
-      raise FontbakeryPreparationError('Could not find .ttf files in job.')
+    # If this is a problem, fontbakery itself should have a check for
+    # it. It improves the reporting! Also, this was limited to ".ttf"
+    # suffixes, which should be done differently in the future as well.
+    # if len(fontfiles) == 0:
+    #   raise FontbakeryPreparationError('Could not find .ttf files in job.')
     if self._save_preparation_logs:
       self._dbOps.update({'preparation_logs': logs})
     return fontfiles

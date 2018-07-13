@@ -10,16 +10,17 @@ const { initAmqp }= require('./getSetup')
   , messages_pb = require('protocolbuffers/messages_pb')
   , services_pb = require('protocolbuffers/messages_grpc_pb')
   , ManifestService = services_pb.ManifestService
-  , timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js')
+  , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
+  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   ;
 
 
 // TODO: this is a nice helper for _Source.schedule as well!
-function AsynQueue() {
+function AsyncQueue() {
     this._current = null;
     this._thread = [];
 }
-AsynQueue.prototype._tick = function() {
+AsyncQueue.prototype._tick = function() {
     if(!this._thread.length || this._current) {
         return;
     }
@@ -31,7 +32,7 @@ AsynQueue.prototype._tick = function() {
     });
 };
 
-AsynQueue.prototype.schedule = function(job) {
+AsyncQueue.prototype.schedule = function(job) {
     var resolve, reject
         // resolve, reject of the closure are
       , jobPromise = new Promise((res, rej) => {
@@ -58,6 +59,8 @@ AsynQueue.prototype.schedule = function(job) {
     this._tick();
     return jobPromise;
 };
+
+exports.AsyncQueue = AsyncQueue;
 
 /**
  * This connects the manifestSources to the world (cluster)
@@ -99,6 +102,7 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     .then(()=>{
         this._ready = true;
         this._log.info('Ready now!');
+        return this._server.start();
     })
     .catch(function(err) {
         this._log.error('Can\'t initialize server.', err);
@@ -135,15 +139,15 @@ _p._addSource = function(source) {
     return source.schedule('init');
 };
 
-_p.updateAll = function(force) {
+_p.updateAll = function() {
     var updates = [], sourceId;
     for(sourceId in this._sources)
-        updates.push(this.update(sourceId, force));
+        updates.push(this.update(sourceId));
     return Promise.all(updates);
 };
 
-_p.update = function(sourceId, force) {
-    return this._sources[sourceId].schedule('update', force)
+_p.update = function(sourceId) {
+    return this._sources[sourceId].schedule('update')
         .then(
               () => {
                   this._log.info('Finished updating ', sourceId);
@@ -151,7 +155,6 @@ _p.update = function(sourceId, force) {
             , err => {
                 this._log.error('ManifestServer problem updating'
                                     , 'source:', sourceId
-                                    , 'force:', force
                                     , 'error:', err
                                     , 'CAUTION: Error is suppressed!');
         });
@@ -221,14 +224,14 @@ _p._sendAMQPMessage = function (queueName, message) {
 _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
     var collectionId = [this._id, sourceid].join('/')
       , job = new messages_pb.CollectionFamilyJob()
-      , timestamp = new timestamp_pb.Timestamp()
+      , timestamp = new Timestamp()
       , buffer
       ;
     this._log.debug('_dispatchFamilyJob:', familyName, collectionId);
 
     job.setCollectionid(collectionId);
-    job.setFamilyname(familyName);
-    job.setCachekey(cacheKey);
+    job.setFamilyName(familyName);
+    job.setCacheKey(cacheKey);
 
     timestamp.fromDate(new Date());
     job.setDate(timestamp);// Timestamp => hoping that this is the way to do it
@@ -261,40 +264,33 @@ _p._queue = function(name, job) {
 
     queue = this._queues.get(name_);
     if(!queue) {
-        queue = new AsynQueue();
+        queue = new AsyncQueue();
         this._queues.set(name_, queue);
     }
     return queue.schedule(job_);
 };
 
 // ManifestService implementation
-// rpc Poke (PokeRequest) returns (GenericResponse) {};
+// rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
 _p.poke = function(call, callback) {
     if(!this._ready)
         callback(new Error('Not ready yet'));
     var sourceId = call.request.getSource() // call.request is a PokeRequest
-      , force = call.request.getForce()
-      , response = new messages_pb.GenericResponse()
       , err = null
+      , response
       ;
 
     if(sourceId !== '') {
         if( !(sourceId in this._sources) )
             err = new Error('Not Found: The source "' + sourceId + '" is unknown.');
-        else {
-            this.update(sourceId, force);
-            response.setOk(true);
-        }
+        else
+            this.update(sourceId);
     }
-    else {
+    else
         this.updateAll();
-        response.setOk(true);
-    }
 
-    if(err)
-        response = null;
+    response = err ? null : new Empty();
     callback(err, response);
 };
-
 
 exports.ManifestServer = ManifestServer;

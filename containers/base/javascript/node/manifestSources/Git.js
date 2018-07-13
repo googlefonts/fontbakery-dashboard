@@ -4,10 +4,10 @@
 /* global require, module */
 /* jshint esnext:true */
 
-const { _Source } = require('./_Source')
-    , Parent = _Source
+const { _Source: Parent } = require('./_Source')
     , { ManifestServer } = require('../util/ManifestServer')
     , { getSetup } = require('../util/getSetup')
+    , { parseMetadata } = require('../util/getMetadataPb')
     , NodeGit = require('nodegit')
     , https = require('https')
     ;
@@ -17,7 +17,7 @@ const GITHUB_HTTPS_GIT_URL = 'https://github.com/{remoteName}.git'
     , GITHUB_API_PATH = '/graphql'
     ;
 
-const GitBase = (function() {
+const GitShared = (function() {
 
 /**
  * the sources are different implementations, but both run on the
@@ -32,32 +32,18 @@ const GitBase = (function() {
  * action following).
  */
 
-function GitBase(logging, id, repoPath, baseReference, familyWhitelist) {
-    this._log = logging;
-    this.id = id;
-    this._baseRef = {
-        repoOwner: baseReference.repoOwner
-      , repoName: baseReference.repoName
-        // e.g. "google/fonts"
-      , remoteName: [baseReference.repoOwner, baseReference.repoName].join('/')
-      , name: baseReference.name
-    };
+function GitShared(logging, id, familyWhitelist, reportsSetup) {
     this._familyWhitelist = familyWhitelist;
-
-    this._licenseDirs = new Set(['apache', 'ofl', 'ufl']);
-    this._repoPath = repoPath;
-    this._repo = null;
-
-    Parent.call(this);
+    Parent.call(this, logging, id, reportsSetup);
 }
 
-var _p = GitBase.prototype = Object.create(Parent.prototype);
+var _p = GitShared.prototype = Object.create(Parent.prototype);
 
-_p._initRepo = function() {
+_p._initRepo = function(repoPath) {
     // doesn't fail if the repository exists already
     // returns the repository
     var isBare = 1; // == true but must be a number
-    return NodeGit.Repository.init(this._repoPath, isBare);
+    return NodeGit.Repository.init(repoPath, isBare);
 };
 
 // remoteName = resourcePath.slice(1)
@@ -68,64 +54,30 @@ _p._initRepo = function() {
 // remoteName = "m4rc1e/fonts"
 // remoteUrl = "https://github.com/m4rc1e/fonts.git"
 // referenceName = "pacifico"
-_p._getRemote = function(remoteName) {
-    // right now, hard-coding this to github.
-    // githubResourcePath = '/google/fonts'
-    // remoteName = github.resourcePath.slice(1)
-    // var remoteUrl = ['git@github.com:', remoteName, '.git'].join('');
-    // Use https for now, it is easier because it doesn't need ssh credentials!
-    var remoteUrl = GITHUB_HTTPS_GIT_URL.replace('{remoteName}', remoteName);
-    return NodeGit.Remote.create(this._repo, remoteName, remoteUrl).then(null, err => {
-        if(err.errno === NodeGit.Error.CODE.EEXISTS)
-            // NOTE: the remote returned by Repository.getRemote has
-            // a reference to the repository:
-            // remote.repo, while the remote created using NodeGit.Remote.create
-            // doesn't have that reference.
-            // in both cases remote.owner() returns a repository, but these
-            // are not the same instance as this._repo;
-            return this._repo.getRemote(remoteName);
-        throw err;
-    });
+/**
+ * remoteName: a git repository name that makes sense in the source context
+ *
+ * remoteUrl: Use https for now, it is easier because it doesn't need ssh credentials!
+ *
+ * allowUpdateUrl: is only interesting in cases where the combination
+ * of remoteName and remoteUrl can change. That is not always the case.
+ * One case is our CSVSpreadsheet source, where remoteUrls are configured
+ * externally. Within this module, the GitHub based sources don't have
+ * changing remoteUrls for remoteNames.
+ */
+_p._getRemote = function(remoteName, remoteUrl, allowUpdateUrl) {
+    // jshint unused:vars
+    throw new Error('Not Implemented: GitShared.prototype._getRemote');
 };
 
-_p._getRef = function(remoteName, referenceName) {
+_p._getRef = function(repo, remoteName, referenceName) {
     // use _fetchRef to also update the ref
     var fullReferenceName = [remoteName, referenceName].join('/'); // m4rc1e/fonts/pacifico ???
-    return this._repo.getReference(fullReferenceName);
+    return repo.getReference(fullReferenceName);
 };
 
-// This is to not fetch if we already have the reference
-// note that oid here and a freshly fetched oid can still differ
-// due to race conditions. But the freshly fetched oid likely is
-// more up to date then.
-_p._getOrfetchRef = function(remoteName, referenceName, oid) {
-    return this._getRef(remoteName, referenceName)
-        .then(ref => {
-            let targetOid = ref.target().toString();
-            if(targetOid === oid) {
-                // the existing reference is sufficient
-                this._log.debug(remoteName + ':' + referenceName
-                            , 'pointing at ', oid, 'is already fetched.');
-                return ref;
-            }
-            let message = 'Found reference but has an insufficient '
-                        + 'OID: ' + targetOid
-                        + ' expected: ' + oid
-              , error = new Error(message)
-              ;
-            // the error handler will _fetchRef with this error code
-            error.errno = NodeGit.Error.CODE.ENOTFOUND;
-            throw error;
-        })
-        .then(null, err => {
-            if(err.errno === NodeGit.Error.CODE.ENOTFOUND)
-                return this._fetchRef(remoteName, referenceName);
-            throw err;
-        });
-};
-
-_p.__fetchRef = function(remoteName, referenceName) {
-    return this._getRemote(remoteName)
+_p.__fetchRef = function(remoteName, remoteUrl, referenceName) {
+    return this._getRemote(remoteName, remoteUrl, true)
         .then(remote => {
            this._log.info(this.id + ': Started fetching remote "'
                                 + remoteName + ':' + referenceName + '"');
@@ -134,9 +86,10 @@ _p.__fetchRef = function(remoteName, referenceName) {
             // also, it kind of fails silently if there's no referenceName
             // at remote. Thus, later is checked if we can get the actual
             // reference from the repo.
-           return remote.fetch(referenceName);
+           return remote.fetch(referenceName).then(()=>remote);
         })
-        .then(() => this._getRef(remoteName, referenceName))
+        .then((remote) => this._getRef(remote.owner() /* = repository */
+                                     , remoteName, referenceName))
         .then(ref => {
             // this does not mean the remote reference exists now
             this._log.info(this.id + ': Finished fetching remote "'
@@ -146,24 +99,24 @@ _p.__fetchRef = function(remoteName, referenceName) {
             if(err.errno === NodeGit.Error.CODE.ENOTFOUND)
             // message: no reference found for shorthand '{fullReferenceName}'
             // errno: -3
-                this._log.error(this.id + ': FAILED: Fetching remote "'
-                                + remoteName + ':' + referenceName + '"');
+            // at the moment E.g.: ERROR upstream: FAILED: Fetching remote "upstream/Rakkas:master"
+            // … for shorthand 'upstream/Rakkas/master'
+            // And indeed, there's only a `gh-pages` branch (which is the default as well)
+                this._log.error(this.id + ': FAILED: Fetching remote (branch) '
+                                + '"' + remoteName + ':' + referenceName + '" '
+                                + 'at url: ' + remoteUrl);
             throw err;
         });
 };
 
-_p._fetchRef = function(remoteName, referenceName) {
+_p._fetchRef = function(remoteName, remoteUrl, referenceName) {
     return this._queue('git.lock'
-                    , () => this.__fetchRef(remoteName, referenceName));
-};
-
-_p.fetchBaseRef = function() {
-    return this._fetchRef(this._baseRef.remoteName, this._baseRef.name);
+                    , () => this.__fetchRef(remoteName, remoteUrl, referenceName));
 };
 
 // this is a *good to know how* interface, we don't actually use it
 // but it is good for debugging
-_p._getOidType = function(oid) {
+_p._getOidType = function(repo, oid) {
     // returns http://www.nodegit.org/api/object/#TYPE
     // NodeGit.Object.TYPE.ANY       -2
     // NodeGit.Object.TYPE.BAD       -1
@@ -175,18 +128,18 @@ _p._getOidType = function(oid) {
     // NodeGit.Object.TYPE.EXT2       5
     // NodeGit.Object.TYPE.OFS_DELTA  6
     // NodeGit.Object.TYPE.REF_DELTA  7
-    this._repo.odb()
+    return repo.odb()
         .then(odb=>odb.read(oid))
         .then(odbObject => odbObject.type())
         ;
 };
 
 _p._getReferencedType = function(reference) {
-    return this._getOidType(reference.target());
+    return this._getOidType(reference.owner(), reference.target());
 };
 
-_p._getCommit = function(commitOid) {
-    return NodeGit.Commit.lookup(this._repo, commitOid)
+_p._getCommit = function(repo, commitOid) {
+    return NodeGit.Commit.lookup(repo, commitOid)
         .then(null, err => {
             // if reference target is something else
             // message the requested type does not match the type in ODB
@@ -196,6 +149,240 @@ _p._getCommit = function(commitOid) {
         });
 };
 
+const _FAMILY_WEIGHT_REGEX = /([^/-]+)-(\w+)\.ttf$/;
+_p._familyNameFromFilename = function (filename) {
+  /**
+   * Ported partially from Python gftools.util.google_fonts.FileFamilyStyleWeight
+   * https://github.com/googlefonts/tools/blob/master/Lib/gftools/util/google_fonts.py#L449
+   *
+   * If style and weight is needed it's worth porting the whole function.
+   *
+   * > familyNameFromFilename('LibreBarcode39ExtendedText-Regular.ttf')
+   * 'Libre Barcode 39 Extended Text'
+   */
+
+  var m = filename.match(_FAMILY_WEIGHT_REGEX), name;
+  if(!m) {
+    name = filename.slice(0,-4);// remove .ttf;
+    this._log.info('Cannot not parse ' + filename
+                                    + ' (usually because it misses a '
+                                    + '"-{WeightStyle}" part) '
+                                    + 'using: ' + name);
+  }
+  else
+    name = m[1];
+  return familyName(name);
+};
+
+function familyName(fontname) {
+  /**
+   * Ported from Python gftools.util.google_fonts.FamilyName
+   * https://github.com/googlefonts/tools/blob/master/Lib/gftools/util/google_fonts.py#L417
+   *
+   * Attempts to build family name from font name.
+   * For example, HPSimplifiedSans => HP Simplified Sans.
+   * Args:
+   *   fontname: The name of a font.
+   * Returns:
+   *   The name of the family that should be in this font.
+   */
+  // SomethingUpper => Something Upper
+  fontname = fontname.replace(/(.)([A-Z][a-z]+)/g, '$1 $2');
+  // Font3 => Font 3
+  fontname = fontname.replace(/([a-z])([0-9]+)/g, '$1 $2');
+  // lookHere => look Here
+  return fontname.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
+_p._familyNameFromFilesData = function(path, filesData) {
+    let fileNames = filesData.map(([fileName, ])=>fileName)
+      , sufixes = new Set(['otf', 'ttf'])
+      , metadataIndex = fileNames.indexOf('METADATA.pb')
+      ;
+
+    // use family name from METADATA.pb
+    if(metadataIndex !== -1 ) {
+        let metadataBlob = new Buffer(filesData[metadataIndex][1] /* = Uint8Array */);
+        return parseMetadata(metadataBlob)
+        .then(familyProto=>{
+            let familyName = familyProto.getName();
+            if(!familyName)
+                throw new Error('Can\'t read familyName from METADATA.pb');
+            this._log.debug(this.id + ':', 'took familyName from METADATA.pb: ', familyName);
+            return familyName;
+        });
+    }
+    // try to generate a family name from the first font file name
+    // though, this should not happen in most cases anymore.
+    for(let fileName of fileNames) {
+        let suffix = fileName.indexOf('.') > 0
+                ? fileName.split('.').pop().toLowerCase()
+                : null
+            ;
+        if(sufixes.has(suffix)) {
+            // Hmmm, not all file names are normalized/canonical!
+            // see: https://github.com/googlefonts/fontbakery-dashboard/issues/73
+            let familyName = this._familyNameFromFilename(fileName);
+            this._log.debug(this.id + ':', 'took familyName from fileName '
+                            + '"' + fileName+'": ', familyName);
+            return Promise.resolve(familyName);
+        }
+    }
+    throw new Error('Can\'t determine family name from files in '
+                                + 'directory "' + path + '" files: '
+                                + fileNames.join(', ') + '.');
+};
+
+_p._treeEntryToFileData = function(treeEntry) {
+    return treeEntry.getBlob()
+            .then(blob => new Uint8Array(blob.content()))
+            .then(data => [treeEntry.name(), data])
+            ;
+};
+
+_p._treeToFilesData = function (tree, filterFunction/*optional: filterFunction(string:filename)*/) {
+    let fileEntries = tree.entries()// -> [treeEntry]
+                          .filter(te=>te.isFile())
+                          .filter(te=>filterFunction
+                                            ? filterFunction(te.name())
+                                            // if there's no filterFunction
+                                            // this doesn't filter at all
+                                            : true)
+                          .map(treeEntry=>this._treeEntryToFileData(treeEntry));
+    return Promise.all(fileEntries);
+};
+
+/**
+ * for `this._log.debug` expects:
+ *      metadata.repository
+ *      metadata.branch
+ *
+ * asFamilyName: optional; string; otherwise trying to use _familyNameFromFilesData
+ *               Some sources have "naturally" bad font file names that are
+ *               not good enough to determine the family name from it. At
+ *               least initially until it is fixed. But that is enough to
+ *               put the check report into an odd/wrong row of the dashboard
+ *               thus, using an explicit FamilyName can be much more robust
+ *               here. See e.g. CSVSpreadsheet/upstream
+ */
+_p._dispatchTree = function(tree, metadata
+            , asFamilyName/*optional: string*/
+            , filterFunction/*optional: filterFunction(string:filename)*/) {
+
+    return this._treeToFilesData(tree, filterFunction)
+                .then(filesData=>this._dispatchFilesData(filesData, metadata
+                                                , tree.path(), asFamilyName));
+};
+
+_p._dispatchFilesData = function(filesData, metadata, path, asFamilyName/*optional: string*/) {
+    return (asFamilyName
+                    ? Promise.resolve(asFamilyName)
+                    // raises/rejects if it can't find a family name
+                    : this._familyNameFromFilesData(path, filesData)
+    ).then(familyName=> {
+        if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
+            return null;
+        this._log.debug(this.id+':', 'dispatching family', familyName
+                    , 'of', metadata.repository + ':' + metadata.branch);
+        return this._dispatchFamily(familyName, filesData, metadata);
+    });
+};
+
+
+return GitShared;
+})();
+
+exports.GitShared = GitShared;
+
+
+const GitBase = (function() {
+const Parent = GitShared;
+function GitBase(logging, id, repoPath, baseReference, familyWhitelist
+                                                        , reportsSetup) {
+    this._repo = null;
+    this._repoPath = repoPath;
+    this._initPromise = null;
+
+    this._licenseDirs = new Set(['apache', 'ofl', 'ufl']);
+
+    this._baseRef = {
+        repoOwner: baseReference.repoOwner
+      , repoName: baseReference.repoName
+        // e.g. "google/fonts"
+      , remoteName: [baseReference.repoOwner, baseReference.repoName].join('/')
+      , name: baseReference.name
+    };
+    Parent.call(this, logging, id, familyWhitelist, reportsSetup);
+}
+
+var _p = GitBase.prototype = Object.create(Parent.prototype);
+
+_p.init = function() {
+    if(!this._initPromise)
+        this._initPromise = Promise.resolve(Parent.prototype.init.call(this))
+            .then(()=>this._initRepo(this._repoPath))
+            .then(
+                repo => {
+                    this._repo = repo;
+                    return null;
+                }
+              , err => {
+                    this._log.error('Can\'t init git reporsitory: ', err);
+                    throw err;
+                }
+            );
+    return this._initPromise;
+};
+
+_p._getRemoteUrl = function(remoteName) {
+    return GITHUB_HTTPS_GIT_URL.replace('{remoteName}', remoteName);
+};
+
+/**
+ * Note: this doesn't do network requests yet. Thus, at this point we won't
+ * get an error if remoteUrl is problematic.
+ */
+_p._getRemote = function(remoteName, remoteUrl, allowUpdateUrl) {
+    return NodeGit.Remote.create(this._repo, remoteName, remoteUrl).then(null, err => {
+        if(err.errno !== NodeGit.Error.CODE.EEXISTS)
+            throw err;
+        // => err.errno === NodeGit.Error.CODE.EEXISTS
+        // NOTE: the remote returned by Repository.getRemote has
+        // a reference to the repository:
+        // remote.repo, while the remote created using NodeGit.Remote.create
+        // doesn't have that reference.
+        // in both cases remote.owner() returns a repository, but these
+        // are not the same instance as this._repo;
+        return this._repo.getRemote(remoteName).then(remote => {
+            if(remote.url() === remoteUrl)
+                return remote;
+
+            // the url is different
+
+            if(!allowUpdateUrl)
+                throw new Error('Remote "'+remoteName+'" exists '
+                        + 'pointing to "'+remote.url()+'" but url "'
+                        + remoteUrl+'" is expected and updating is '
+                        + 'not allowed.');
+
+            // update the remote
+            // remote.setUrl is sync; Returns Number 0 or an error value
+            let result = remote.setUrl(this._repo, remoteName, remoteUrl);
+            if(result !== 0)
+                throw new Error('`remote.setUrl` failed with error '
+                    + 'value "'+result+'" trying to set  remoteName: "'
+                    + remoteName + '"; remoteUrl: "' + remoteUrl + '".');
+            return remote;
+        });
+    });
+};
+
+_p.fetchBaseRef = function() {
+    var remoteUrl = this._getRemoteUrl(this._baseRef.remoteName);
+    return this._fetchRef(this._baseRef.remoteName, remoteUrl, this._baseRef.name);
+};
+
+// returns a list of family directories that differ
 
 function _getChildDirPaths(tree) {
     // returns the full path of direct child directories
@@ -208,7 +395,7 @@ function _getChildDirPaths(tree) {
 
 function _arrayFlatten(arrayOfArrays) {
     const reducer = (flat, item) => {
-        Array.prototype.push.apply(flat, item);
+        flat.push(...item);
         return flat;
     };
     return arrayOfArrays.reduce(reducer, []);
@@ -260,7 +447,6 @@ _p._dirsToCheckFromDiff = function (newTree, changedNamesDiff ) {
             ;
 };
 
-// returns a list of family directories that differ
 _p._dirsToCheck = function(oldTree, newTree) {
     let diffOptions = new NodeGit.DiffOptions();
     return NodeGit.Diff.treeToTree(this._repo, oldTree, newTree, diffOptions)
@@ -270,105 +456,6 @@ _p._dirsToCheck = function(oldTree, newTree) {
         //       dirsToCheck(newTree, changedNamesDiff.toString())
         .then(changedNamesDiff => this._dirsToCheckFromDiff(newTree, changedNamesDiff))
         ;
-};
-
-
-const _FAMILY_WEIGHT_REGEX = /([^/-]+)-(\w+)\.ttf$/;
-_p._familyNameFromFilename = function (filename) {
-  /**
-   * Ported partially from Python gftools.util.google_fonts.FileFamilyStyleWeight
-   * https://github.com/googlefonts/tools/blob/master/Lib/gftools/util/google_fonts.py#L449
-   *
-   * If style and weight is needed it's worth porting the whole function.
-   *
-   * > familyNameFromFilename('LibreBarcode39ExtendedText-Regular.ttf')
-   * 'Libre Barcode 39 Extended Text'
-   */
-
-  var m = filename.match(_FAMILY_WEIGHT_REGEX), name;
-  if(!m) {
-    name = filename.slice(0,-4);// remove .ttf;
-    this._log.info('Cannot not parse ' + filename
-                                    + ' (usually because it misses a '
-                                    + '"-{WeightStyle}" part) '
-                                    + 'using: ' + name);
-  }
-  else
-    name = m[1];
-  return familyName(name);
-};
-
-function familyName(fontname) {
-  /**
-   * Ported from Python gftools.util.google_fonts.FamilyName
-   * https://github.com/googlefonts/tools/blob/master/Lib/gftools/util/google_fonts.py#L417
-   *
-   * Attempts to build family name from font name.
-   * For example, HPSimplifiedSans => HP Simplified Sans.
-   * Args:
-   *   fontname: The name of a font.
-   * Returns:
-   *   The name of the family that should be in this font.
-   */
-  // SomethingUpper => Something Upper
-  fontname = fontname.replace(/(.)([A-Z][a-z]+)/g, '$1 $2');
-  // Font3 => Font 3
-  fontname = fontname.replace(/([a-z])([0-9]+)/g, '$1 $2');
-  // lookHere => look Here
-  return fontname.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
-}
-
-_p._dispatchTreeEntry = function(treeEntry, metadata) {
-    function treeEntryToFileData(treeEntry) {
-        return treeEntry.getBlob()
-                .then(blob => new Uint8Array(blob.content()))
-                .then(data => [treeEntry.name(), data])
-                ;
-    }
-
-    function treeToFilesData(tree) {
-        let fileEntries = tree.entries()
-                              .filter(te=>te.isFile())
-                              .map(treeEntryToFileData);
-        return Promise.all(fileEntries);
-    }
-
-    let dispatchFilesData = (filesData) => {
-        let familyName = null;
-        for(let fileData of filesData) {
-            let fileName = fileData[0];
-            if(fileName.slice(-4) === '.ttf') {
-                familyName = this._familyNameFromFilename(fileName);
-                break;
-            }
-        }
-        if(!familyName)
-            throw new Error('Can\'t determine family name from files in '
-                                + 'directory "' + treeEntry.path() + '".');
-
-        if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
-            return null;
-        this._log.debug(this.id+':', 'dispatching family', familyName
-                        , 'of', metadata.repository + ':' + metadata.branch);
-        return this._dispatchFamily(familyName, filesData, metadata);
-    };
-    return treeEntry.getTree()
-                    .then(treeToFilesData)
-                    .then(dispatchFilesData)
-                    ;
-};
-
-_p.init = function() {
-    return this._repo
-            ? Promise.resolve(this._repo)
-            : this._initRepo().then(
-                  repo => this._repo = repo
-                , err => {
-                    this._log.error('Can\'t init git reporsitory: ', err);
-                    throw err;
-                  }
-              )
-            ;
 };
 
 return GitBase;
@@ -386,23 +473,20 @@ const GitBranch = (function() {
 //               if no old_tree is available, we check
 //               the full collection, i.e. the tree of the current commit.
 // "new_tree" => current google/fonts/master
-function GitBranch(logging, id, repoPath, baseReference, familyWhitelist) {
-    GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist);
-    this._lastChecked = new Map();
+function GitBranch(logging, id, repoPath, baseReference, familyWhitelist
+                                                        , reportsSetup) {
+    GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist
+                                                        , reportsSetup);
     this._oldCommit = null;
 }
 
 var _p = GitBranch.prototype = Object.create(GitBase.prototype);
 
 /**
- * if there is no state information about the last update,
- * all of the fonts must be dispatched
- * if there is state information about the last update
- * dispatch only fonts with another tree object id than the state knows
  * don't fetch files in subdirectories, we want a flat dir here
  * besides, at the moment, fontbakery-worker rejects sub directories
  */
-_p._update = function(forceUpdate, currentCommit) {
+_p._update = function(currentCommit) {
     let currentCommitTreePromise = currentCommit.getTree()
       , dirsPromise = this._oldCommit
             // based on diff
@@ -422,12 +506,7 @@ _p._update = function(forceUpdate, currentCommit) {
         // though, at this point, error reporting may be the only thing left to
         // do.
 
-        return Promise.all(treeEntries.map(treeEntry => {
-            if(!forceUpdate
-                    && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
-                // needs no update
-                return null;
-            this._lastChecked.set(treeEntry.path(), treeEntry.oid());
+        return this._waitForAll(treeEntries.map(treeEntry => {
             let metadata = {
                 commit: currentCommit.sha()
               , commitDate: currentCommit.date()
@@ -436,18 +515,19 @@ _p._update = function(forceUpdate, currentCommit) {
               , repository: this._baseRef.remoteName
               , branch: this._baseRef.name
             };
-            return this._dispatchTreeEntry(treeEntry, metadata);
+            return treeEntry.getTree()
+                            .then(tree=>this._dispatchTree(tree, metadata));
         }));
     });
 };
 
 // Runs immediately on init. Then it's called via the poke interface.
 // There's no scheduling in the ManifestSource itself.
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // update the baseRef => can take really long the first time
     return this.fetchBaseRef()
-        .then(reference => this._getCommit(reference.target()))
-        .then(currentCommit => this._update(forceUpdate, currentCommit))
+        .then(reference => this._getCommit(reference.owner(), reference.target()))
+        .then(currentCommit => this._update(currentCommit))
         ;
 };
 
@@ -466,11 +546,11 @@ const GitBranchGithubPRs = (function() {
 
 
 function GitBranchGithubPRs(logging, id, repoPath, baseReference
-                                    , gitHubAPIToken, familyWhitelist) {
-    GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist);
+                        , gitHubAPIToken, familyWhitelist, reportsSetup) {
+    GitBase.call(this, logging, id, repoPath, baseReference
+                                        , familyWhitelist, reportsSetup);
 
     this._gitHubAPIToken = gitHubAPIToken;
-    this._lastChecked = new Map();
 }
 
 
@@ -522,7 +602,7 @@ _p._makeGrapQlQueryBody = function(cursor) {
               repoOwner: this._baseRef.repoOwner
             , repoName: this._baseRef.repoName
             , baseRefName: this._baseRef.name // only fetch PRs to baseRefName
-              // when in the responese endCursor === null all items have been fetched!
+              // when in the response endCursor === null all items have been fetched!
               // when here cursor === null: fetches the beginning of the list
             , cursor:  cursor || null // data.repository.pullRequests.pageInfo.endCursor
         }
@@ -584,9 +664,9 @@ _p._queryPullRequestsData = function() {
           , cursor = data.repository.pullRequests.pageInfo.endCursor
           ;
         if(prs === null)
-            prs = pullRequests.nodes;
-        else
-            Array.prototype.push.apply(prs, pullRequests.nodes);
+            prs = [];
+        // filter because a node happened to be null at some point
+        prs.push(...pullRequests.nodes.filter(node=>!!node));
 
         if(cursor !== null)
             return this._sendRequest(cursor).then(recursiveFetch);
@@ -604,13 +684,13 @@ _p._queryPullRequestsData = function() {
 };
 
 
-_p._getCommitResources = function(commitOid) {
+_p._getCommitResources = function(repo, commitOid) {
     var result = {
         commit: null
       , commitTree: null
     };
 
-    return this._getCommit(commitOid)
+    return this._getCommit(repo, commitOid)
         .then(commit => {
             result.commit = commit;
             return commit.getTree();
@@ -623,10 +703,44 @@ _p._getCommitResources = function(commitOid) {
 };
 
 _p._getReferenceResources = function(reference) {
-    return this._getCommitResources(reference.target())
+    return this._getCommitResources(reference.owner(), reference.target())
         .then(result => {
             result.reference = reference;
             return result;
+        });
+};
+
+// This is to not fetch if we already have the reference
+// note that oid here and a freshly fetched oid can still differ
+// due to race conditions. But the freshly fetched oid likely is
+// more up to date then. This is OK for GitHub PRs which always
+// point to the latest references of referenceName, so we get at
+// least oid or something more up to date.
+_p._getOrfetchRef = function(remoteName, referenceName, oid) {
+    return this._getRef(this._repo, remoteName, referenceName)
+        .then(ref => {
+            let targetOid = ref.target().toString();
+            if(targetOid === oid) {
+                // the existing reference is sufficient
+                this._log.debug(remoteName + ':' + referenceName
+                            , 'pointing at ', oid, 'is already fetched.');
+                return ref;
+            }
+            let message = 'Found reference but has an insufficient '
+                        + 'OID: ' + targetOid
+                        + ' expected: ' + oid
+              , error = new Error(message)
+              ;
+            // the error handler will _fetchRef with this error code
+            error.errno = NodeGit.Error.CODE.ENOTFOUND;
+            throw error;
+        })
+        .then(null, err => {
+            if(err.errno === NodeGit.Error.CODE.ENOTFOUND) {
+                var remoteUrl = this._getRemoteUrl(remoteName);
+                return this._fetchRef(remoteName, remoteUrl, referenceName);
+            }
+            throw err;
         });
 };
 
@@ -668,10 +782,32 @@ _p._fetchPullRequests = function(prsData) {
 _p._filterPullRequests = function(prsData) {
     let reasons = {}
       , filtered = prsData.filter(prData => {
-        if(prData.mergeable !== 'MERGEABLE'){
-            if(!(prData.mergeable in reasons))
-                reasons[prData.mergeable] = [];
-            reasons[prData.mergeable].push(prData);
+        let reason = null;
+        if(prData.mergeable !== 'MERGEABLE')
+            reason = prData.mergeable;
+        else if(!prData.headRepository){
+            // FIXME: is there a way to fetch these PR's without
+            // having access to the headRepository?
+            // real world example
+            // {
+            //    headRef: null,
+            //    id: 'MDExOlB1bGxSZXF1ZXN0MTU1MTEzNjQ5',
+            //    url: 'https://github.com/google/fonts/pull/1358',
+            //    createdAt: '2017-11-28T16:07:22Z',
+            //    updatedAt: '2017-11-28T16:07:22Z',
+            //    baseRefName: 'master',
+            //    resourcePath: '/google/fonts/pull/1358',
+            //    title: 'Correct spelling of "emoji"',
+            //    mergeable: 'MERGEABLE',
+            //    headRefName: 'patch-1',
+            //    headRepository: null
+            //}
+            reason = 'unkown reporsitory';
+        }
+        if(reason) {
+            if(!(reason in reasons))
+                reasons[reason] = [];
+            reasons[reason].push(prData);
             return false;
         }
         return true;
@@ -684,8 +820,8 @@ _p._filterPullRequests = function(prsData) {
         for(let reason in reasons) {
             dgb.push(reason + ':');
             Array.prototype.push.apply(dgb, reasons[reason]
-                 .map(prData => { return prData.headRepository.nameWithOwner
-                                 + ':' + prData.headRefName;}));
+                 .map(prData => { return prData.title + ' ' + prData.url
+                                 + ' ' + prData.headRefName;}));
         }
         this._log.debug(dgb.join(' '));
     }
@@ -712,7 +848,7 @@ _p._getPRchangedFamilies = function([baseData, prsData]) {
           ;
                 // oid = the commit OID of a merge base between 'one' and 'two'
         return NodeGit.Merge.base(this._repo, baseData.commit.id(), prData.commit.id())
-        .then(this._getCommitResources.bind(this))
+        .then(this._getCommitResources.bind(this, this._repo))
         .then(baseCommitData => {
             let oldTree = baseCommitData.commitTree;
 
@@ -746,18 +882,12 @@ _p._getPRchangedFamilies = function([baseData, prsData]) {
     });
 };
 
-_p._update = function(forceUpdate, checkFamilies) {
+_p._update = function(checkFamilies) {
     // some will resolve to null if there's a hit in this._familyWhitelist
-    // or this._lastChecked though, at this point, error reporting may be
-    // the only thing left to do.
+    // though, at this point, error reporting may be the only thing left to do.
     var promises = [];
     checkFamilies.forEach((prData, dir) => {
         var promise = prData.commitTree.getEntry(dir).then(treeEntry => {
-            if(!forceUpdate
-                    && this._lastChecked.get(treeEntry.path()) === treeEntry.oid())
-                // needs no update
-                return null;
-            this._lastChecked.set(treeEntry.path(), treeEntry.oid());
             let metadata = {
                     commit: prData.commit.sha()
                   , commitDate: prData.commit.date()
@@ -768,11 +898,12 @@ _p._update = function(forceUpdate, checkFamilies) {
                   , prUrl: prData.data.url
                   , prTitle: prData.data.title
             };
-            return this._dispatchTreeEntry(treeEntry, metadata);
+            return treeEntry.getTree()
+                            .then(tree=>this._dispatchTree(tree, metadata));
         });
         promises.push(promise);
     });
-    return Promise.all(promises);
+    return this._waitForAll(promises);
 };
 
 /**
@@ -783,14 +914,14 @@ _p._update = function(forceUpdate, checkFamilies) {
  * ids, as that won't even change between rebasing. still, it is probably
  * to just use the HEAD commit as mark.
  */
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // update the baseRef => can take really long the first time
     return Promise.all([
             this._getBaseResources()
           , this._getPullRequests()
         ])
        .then(this._getPRchangedFamilies.bind(this))
-       .then(checkFamilies => this._update(forceUpdate, checkFamilies))
+       .then(checkFamilies => this._update(checkFamilies))
        ;
 };
 
@@ -801,6 +932,7 @@ return GitBranchGithubPRs;
 if (typeof require != 'undefined' && require.main==module) {
 
     var setup = getSetup(), sources = [], server
+       , familyWhitelist = setup.develFamilyWhitelist
        , repoPath = './var/fontsgit'
        , familyWhitelist = null
        , grpcPort=50051
@@ -823,13 +955,8 @@ if (typeof require != 'undefined' && require.main==module) {
         throw new Error('MISSING: process.env.GITHUB_API_TOKEN');
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
-
-    if(process.env.DEVEL_FAMILY_WHITELIST) {
-        familyWhitelist = new Set(JSON.parse(process.env.DEVEL_FAMILY_WHITELIST));
-        if(!familyWhitelist.size)
-            familyWhitelist = null;
+    if(familyWhitelist)
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
-    }
 
     var baseReference = {
             repoOwner: 'google'

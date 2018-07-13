@@ -4,3 +4,5 @@
 # a moving target.
 **/node_modules
 **/bower_components
+# used in local development
+**/many_csvfontsgit

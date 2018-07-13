@@ -105,7 +105,7 @@ _p._checkFamilyDoc = function(job, doc) {
         // but at this point, this is our best option.
         // We don't know if another cleanup message will come again for
         // this cacheKey!
-        promises.push(this._cache.purge(job.getCachekey()));
+        promises.push(this._cache.purge(job.getCacheKey()));
     }
 
     promise = Promise.all(promises);

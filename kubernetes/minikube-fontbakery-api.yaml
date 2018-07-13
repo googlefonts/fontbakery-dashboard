@@ -9,11 +9,9 @@ spec:
       labels:
         run: fontbakery-api
     spec:
-      nodeSelector:
-        determination: infrastructure
       containers:
       - name: fontbakery-api
-        image: fontbakery/base-javascript:2
+        image: fontbakery/base-javascript:3
         env:
           - name: COLLECTION_AUTH_SECRET
             value: ""
@@ -34,7 +32,7 @@ spec:
         # kf get pods
         # kf port-forward fontbakery-api-12334-123 9229:9229
         # open chrome and go to chrome://inspect
-        command: ["node", "--inspect=9229 ", "node/api.js"]
+        command: ["node", "--inspect=0.0.0.0:9229", "node/api.js"]
         # PRODUCTION:
         # command: ["npm", "start"]
 ---

@@ -4,22 +4,19 @@
 /* global require, module */
 /* jshint esnext:true */
 
-const { _Source } = require('./_Source')
-  , Parent = _Source
+const { _Source: Parent } = require('./_Source')
   , { ManifestServer } = require('../util/ManifestServer')
   , { getSetup } = require('../util/getSetup')
   , https = require('https')
   , http = require('http')
+  , fs = require('fs')
   , url = require('url')
   ;
 
-function GoogleFonts(logging, id, apiDataUrl, familyWhitelist) {
-    this._log = logging;
+function GoogleFonts(logging, id, apiDataUrl, familyWhitelist, reportsSetup) {
     this._apiAPIDataUrl = apiDataUrl; // contains api key
-    this._lastAPIData = null;
-    this.id = id;
     this._familyWhitelist = familyWhitelist;
-    Parent.call(this);
+    Parent.call(this, logging, id, reportsSetup);
 }
 
 var _p = GoogleFonts.prototype = Object.create(Parent.prototype);
@@ -72,9 +69,19 @@ function download(fileUrl) {
         });
     }
     return new Promise(function(resolve, reject) {
-        var http_ = fileUrl.indexOf('https') === 0 ? https : http;
-        http_.get(url.parse(fileUrl)
-                                , onResult.bind(null, resolve, reject));
+        let resultHandler = onResult.bind(null, resolve, reject)
+          , protocol = fileUrl.split('://', 1)[0]
+          ;
+
+        if(protocol.startsWith('http')) {
+            var httpx = protocol === 'https' ? https : http;
+            httpx.get(url.parse(fileUrl), resultHandler);
+        }
+        else if(protocol === 'file')
+            resultHandler(fs.createReadStream(fileUrl.slice('file://'.length)));
+        else
+            throw new Error('Don\'t know how to handle file url "'+fileUrl+'"; '
+                + 'it should start with "http://", "https://" or "file://".');
     });
 }
 
@@ -104,52 +111,15 @@ function downloadAPIData(url) {
             ;
 }
 
-_p._needsUpdate = function (familyData) {
-    var familyName = familyData.family
-      , oldFamilyData, variant, fileName
-      ;
-
-    if(!this._lastAPIData || !this._lastAPIData.has(familyName))
-        // there's no API data yet, this is initial
-        // or this is a new family
-        return true;
-    oldFamilyData = this._lastAPIData.get(familyName);
-    if(familyData.lastModified !== oldFamilyData.lastModified
-        || familyData.version !== oldFamilyData.version
-        // this is essentially redundant data to familyData.files.keys()
-        // despite of the order in variants which is not guaranteed in the
-        // dictionary familyData.files
-        || familyData.variants.length !== oldFamilyData.variants.length
-    )
-        return true;
-    for(variant in familyData.files) {
-        fileName = familyData.files[variant];
-        if(!(variant in oldFamilyData.files))
-            return true;
-        if(fileName !== oldFamilyData.files[variant])
-            return true;
-    }
-    // no indication for an update found
-    return false;
-};
-
 _p._loadFamily = function(familyData) {
-    var files = []
-      , variant, fileUrl, fileName
-      ;
+    var files = [];
     // download the files
-
-    function onDownload(fileName, blob){
-        return [fileName, blob];
-    }
-    for(variant in familyData.files) {
-        fileUrl = familyData.files[variant];
-        // make proper file names
-        fileName = makeFontFileName(familyData.family, variant);
-        // Bind fileName, it changes in the loop, so bind is good, closure
-        // and scope are bad.
-        files.push(download(fileUrl)
-                    .then(onDownload.bind(null, fileName /* => blob */)));
+    for(let variant in familyData.files) {
+        let fileUrl = familyData.files[variant]
+          // make proper file names
+          , fileName = makeFontFileName(familyData.family, variant)
+          ;
+        files.push(download(fileUrl).then(blob => [fileName, blob])); // jshint ignore:line
     }
 
 
@@ -179,35 +149,35 @@ _p._loadFamily = function(familyData) {
 
 // Runs immediately on init. Then it's called via the poke interface.
 // There's no scheduling in the ManifesrSource itself.
-_p.update = function(forceUpdate) {
+_p.update = function() {
     // download the API JSON file
 
     return downloadAPIData(this._apiAPIDataUrl)
-        .then(this._update.bind(this, forceUpdate /* Map apiData */ ))
+        .then(this._update.bind(this /* Map apiData */ ))
         ;
 };
 
-_p._update = function(forceUpdate, apiData) {
-    var dispatchFamily, updating = [];
+_p._update = function(apiData) {
+    var updating = [];
 
     for(let familyData of apiData.values()) {
+        let familyName = familyData.family;
 
-        let familyName = familyData.family
         if(this._familyWhitelist && !this._familyWhitelist.has(familyName))
             continue;
 
-        if(!(forceUpdate || this._needsUpdate(familyData)))
-            continue;
-        dispatchFamily = this._dispatchFamily.bind(this, familyName);
-        updating.push(this._loadFamily(familyData).then(dispatchFamily));
+        updating.push(
+            this._loadFamily(familyData) // -> filesData
+                .then(filesData=>this._dispatchFamily(familyName, filesData)) // jshint ignore:line
+        );
     }
-    this._lastAPIData = apiData;
-    return Promise.all(updating);
+    return this._waitForAll(updating);
 };
 
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
+       , familyWhitelist = setup.develFamilyWhitelist
        , apiDataBaseUrl = 'https://www.googleapis.com/webfonts/v1/webfonts?key='
        , apiDataUrl = apiDataBaseUrl + process.env.GOOGLE_API_KEY
        , familyWhitelist = null
@@ -231,14 +201,9 @@ if (typeof require != 'undefined' && require.main==module) {
         throw new Error('MISSING: process.env.GOOGLE_API_KEY');
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    // the prod api
-
-    if(process.env.DEVEL_FAMILY_WHITELIST) {
-        familyWhitelist = new Set(JSON.parse(process.env.DEVEL_FAMILY_WHITELIST));
-        if(!familyWhitelist.size)
-            familyWhitelist = null;
+    if(familyWhitelist)
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
-    }
+    // the prod api
 
     sources.push(new GoogleFonts(setup.logging, 'production', apiDataUrl, familyWhitelist));
     // the devel api

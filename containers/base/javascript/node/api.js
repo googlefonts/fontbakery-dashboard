@@ -8,11 +8,19 @@ const express = require('express')
   , http = require('http')
   , socketio = require('socket.io')
   , path = require('path')
+  , fs = require('fs')
   , bodyParser = require('body-parser')
   , messages_pb = require('protocolbuffers/messages_pb')
+
+  , marked = require('marked')
+
+  , { ReportsQuery, ReportIds } = messages_pb
+  , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
+
   , { getSetup } = require('./util/getSetup')
   , { IOOperations } = require('./util/IOOperations')
   , { CacheClient }  = require('./util/CacheClient')
+  , { ReportsClient } = require('./util/ReportsClient')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   ;
 
@@ -22,7 +30,8 @@ const express = require('express')
  * Initialization starts the server.
  *
  */
-function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
+function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup
+                                                     , reportsSetup) {
     this._log = logging;
     this._portNum = portNum;
 
@@ -46,6 +55,8 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
                             , messages_pb, 'fontbakery.dashboard');
 
+    this._reports = new ReportsClient(logging, reportsSetup.host
+                                                    , reportsSetup.port);
 
     this._dbSetup = dbSetup;
 
@@ -57,6 +68,7 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     Promise.all([
                  this._io.init()
                , this._cache.waitForReady()
+               , this._reports.waitForReady()
                ])
     //.then(function(resources) {
     //    // [r, amqp] = resources[0] ;
@@ -88,8 +100,23 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup) {
     // AJAX returns JSON array of collection-test links
     this._app.get('/collection-reports', this.fbCollectionsGetLinks.bind(this));
 
+
     // report document
     this._app.get('/collection-report/:id', this.fbCollectionReport.bind(this));
+
+
+    // landing page => the normal client
+    this._app.get('/status', serveStandardClient); // currently index "mode"
+    // much like this.fbCollectionsGetLinks.bind(this));
+    this._app.get('/status-reports', this.fbStatusReportsGetList.bind(this));
+    // This is for pagination requests; the info needed is not obvious,
+    // but used for an optimized database request.
+    this._app.get('/status-reports/:lastItemReported/:lastItemId/:previous'
+                                   , this.fbStatusReportsGetList.bind(this));
+
+
+    // status report document (client renders into html for now);
+    this._app.get('/status-report/:id', this.fbStatusReport.bind(this));
 
     this._sio.on('connection', this.fbSocketConnect.bind(this));
 }
@@ -116,15 +143,26 @@ _p.fbIndex = function(req, res) {
                                                     {root: ROOT_PATH});
 };
 
+_p.fbSendServsersideRenderedPage = function(htmlSnipped, req, res, next) {
+    fs.readFile(path.join(ROOT_PATH, 'browser/html/client.html'), (err, page) => {
+        if (err) {
+            next(err);
+            return;
+        }
+        res.send(page.toString().replace(
+                    '<!-- server side include marker -->', htmlSnipped));
+    });
+};
+
 /**
  * GET AJAX
  *
  * return a JSON array of collection-test links: {id:, created:, href: }}
  */
-_p.fbCollectionsGetLinks = function(req, res) {
+_p.fbCollectionsGetLinks = function(req, res, next) {
     // query the db
     // for collection-test-docs
-    this._io.query(this._dbSetup.tables.collection)
+    this._io.query('collection')
         .group('collection_id')
         .max('date')
         .ungroup()
@@ -136,11 +174,162 @@ _p.fbCollectionsGetLinks = function(req, res) {
         })
         .without('group', 'reduction')
         .run()
-        .then(function answer(items) {
-            res.setHeader('Content-Type', 'application/json');
-            items.forEach(function (item) {
-                        item.href = 'collection-report/' + encodeURIComponent(item.collection_id);});
-            res.send(JSON.stringify(items));
+        .then(items => {
+            items.forEach(item =>
+                item.href = 'collection-report/' + encodeURIComponent(item.collection_id));
+            return items;
+        })
+        .then(items=>_sendAsJson(res, items))
+        .then(null, next)
+        ;
+};
+
+function _sendAsJson(res, items) {
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(items));
+}
+
+/**
+ * Get a Timestamp message from a JavaScript Date instance
+ */
+//function timestampFromDate(date){
+//    var ts = new Timestamp();
+//    ts.fromDate(date);
+//    return ts;
+//}
+
+
+/**
+ * Respond with a JSON array of StatusReport data.
+ */
+_p.fbStatusReportsGetList = function(req, res, next) {
+    var reportsQuery = new ReportsQuery();
+    // we have an autoscroll/load feature for these links,
+    // so this is filter is not really needed but left here commented out,
+    // as an example, if we want to filter stuff in the future:
+    // Make a DATE filter:
+    // min value two months in the past.
+    // I.e. show the reports not older than min date
+    // let date = new Date()
+    //   , filter = new ReportsQuery.Filter()
+    //   ;
+    // date.setMonth(date.getMonth() - 2); // two month in the past
+    // filter.setType(ReportsQuery.Filter.Type.DATE);
+    // filter.setMinMaxDatesList([timestampFromDate(date)]);// just one means only min-date
+    // reportsQuery.getFiltersMap().set('reported', filter);
+    if('lastItemReported' in req.params) {
+        let { lastItemReported, lastItemId, previous } = req.params
+          , pagination = new ReportsQuery.Pagination()
+          , reported = new Timestamp()
+          ;
+        reported.fromDate(new Date(lastItemReported));
+        pagination.setItemReported(reported);
+        pagination.setItemId(lastItemId);
+        pagination.setPreviousPage(previous === 'true');
+        reportsQuery.setPagination(pagination);
+    }
+    // that's the default, but for documentation …
+    reportsQuery.setIncludeData(false);
+
+    this._reports.query(reportsQuery)
+        //translate into json for the client
+        .then(reports=>reports.map(report=>{
+            var result = report.toObject(false);
+            // special service for the client:
+            // Do this in the client? This way, the client doesn't need
+            // to know about the date format returned by report.toObject
+            // thus, I prefer this.
+            for (let key of ['started', 'finished', 'reported']) {
+                if(!result[key]) continue;
+                let seconds = result[key].seconds
+                  , nanos = result[key].nanos
+                  ;
+                result[key] = new Date((seconds * 1000) + (nanos / 1000000));
+            }
+            return result;
+        }))
+        .then(items=>_sendAsJson(res, items))
+        .then(null, next)
+        ;
+};
+
+function _renderStatusReportDoc(doc) {
+    var result = []
+      , renderRow = (items, headColumnTag, tailColumnsTag)=>{
+            var result = [];
+            for(let i=0,l=items.length;i<l;i++) {
+                let item = items[i]
+                  , tag = (i===0 ? headColumnTag : tailColumnsTag)
+                  ;
+                result.push('<'+tag+'>', marked(item), '</'+tag+'>\n');
+            }
+            return result;
+        }
+      ;
+    // It would be much nicer and safer to have the browser DOM API to render
+    // this! Now we rely on marked here and trust our own reporting
+    // a bit.
+    for(let [type, data] of doc.data) {
+        let snipped = null;
+        switch(type) {
+        case('md'):
+            snipped = marked(data, {gfm: true});
+            break;
+        case('table'):
+            snipped = ['<table>'];
+            if(data.caption)
+                snipped.push('<caption>', marked(data.caption), '</caption>','\n');
+
+            if(data.firstRowIsHead) {
+                snipped.push('<thead><tr>', '\n');
+                snipped.push(...renderRow(data.data[0], 'th', 'th'));
+                snipped.push('</tr></thead>', '\n');
+            }
+            snipped.push('<tbody>', '\n');
+            let headColumnTag = data.firstRowIsHead ? 'th' : 'td';
+            for(let i=(data.firstRowIsHead ? 1 : 0),l=data.data.length;i<l;i++) {
+                snipped.push('<tr>', '\n'
+                        ,...renderRow(data.data[i], headColumnTag, 'td')
+                        , '</tr>');
+            }
+            snipped.push('</tbody>', '\n');
+            snipped.push('</table>');
+            snipped = snipped.join('');
+            break;
+        default:
+            // unkown type
+            continue;
+        }
+        if(snipped)
+            result.push(snipped);
+    }
+    return result.join('\n');
+}
+
+/**
+ * Responds with an HTML page that includes the rendered status report.
+ *
+ * Other examples use socket.io here, but these reports are not being
+ * updated anymore. A standard get interface makes this simplest.
+ */
+_p.fbStatusReport = function(req, res, next) {
+    // jshint unused:vars
+    var id = decodeURIComponent(req.param('id'))
+      , reportIds = new ReportIds()
+      ;
+    reportIds.addIds(id);
+    this._reports.get(reportIds)
+        .then(reports=>{
+            if(!reports.length)
+                return res.status(404).send('Not found');
+            // there's only one doc requested in this method!
+            let report = reports[0]
+              , doc, htmlSnipped
+              ;
+            doc = report.toObject(false);
+            doc.data = JSON.parse(doc.data);
+            htmlSnipped = _renderStatusReportDoc(doc);
+            this.fbSendServsersideRenderedPage(htmlSnipped, req, res, next);
         });
 };
 
@@ -171,7 +360,7 @@ _p._fbCheckIndexExists = function(dbTable, indexName, req, res, next) {
  *   : same as fbIndex on success
  */
 _p.fbFamilyReport = function(req, res, next) {
-    return this._fbCheckIndexExists(this._dbSetup.tables.family, 'id', req, res, next);
+    return this._fbCheckIndexExists('family', 'id', req, res, next);
 };
 
 /**
@@ -186,7 +375,7 @@ _p.fbFamilyReport = function(req, res, next) {
  *   : same as fbIndex on success
  */
 _p.fbCollectionReport = function(req, res, next) {
-    return this._fbCheckIndexExists(this._dbSetup.tables.collection, 'collection_id', req, res, next);
+    return this._fbCheckIndexExists('collection', 'collection_id', req, res, next);
 };
 
 _p._getFilesMessage = function(buffer) {
@@ -369,7 +558,7 @@ _p._updateFamilytestReport = function(cursor, socket, data) {
  * data.docid is the rethink db document UUID.
  */
 _p._subscribeToFamilytestReport = function(socket, data) {
-    return this._io.query(this._dbSetup.tables.family)
+    return this._io.query('family')
         .get(data.id + '')
         .changes({includeInitial: true, squash: 1})
         .run((err, cursor) => {
@@ -479,7 +668,7 @@ function _callbackFamilyDocSubscubscriber(subscription, data) {
 
 
 _p._getDashboardFamilytestQuery = function(familytests_id) {
-    var query = this._io.query(this._dbSetup.tables.family);
+    var query = this._io.query('family');
     // this way we can create a changefeed for the whole table
     // and have a single point of truth for the query
     if(familytests_id)
@@ -645,7 +834,7 @@ _p._raiseUnhandledError = function(message, err) {
 _p.subscribeCollectionChanges = function(collectionId) {
     var collectionSubscriptions = this._collectionSubscriptions.get(collectionId);
 
-    return this._io.query(this._dbSetup.tables.collection)
+    return this._io.query('collection')
         .getAll(collectionId, {index: 'collection_id'})
         .changes({squash: 1})
         .run((err, cursor) => {
@@ -661,7 +850,7 @@ _p.subscribeCollectionChanges = function(collectionId) {
 };
 
 _p._primeCollectionSubscription = function(collectionId) {
-    return this._io.query(this._dbSetup.tables.collection)
+    return this._io.query('collection')
         .getAll(collectionId, {index: 'collection_id'})
         .group('family_name')
         // use this for "time travelling". Each group will skip(n)
@@ -792,7 +981,7 @@ _p._subscribeToCollectionReport = function(socket, data) {
     //       there are no super easy al-in-one change feeds ...
     // NOTE: we can't do a changes on the query above, because of the
     // group, but it should be possible to do a changes like this:
-    //     this._io.query(this._dbSetup.tables.collection)
+    //     this._io.query('collection')
     //         .getAll(collectionId, {index: 'collection_id'})
     //         .changes({include_initial: true})
     // And then always react when new items are created: `item.type === "add"`
@@ -900,6 +1089,7 @@ _p._sendToDashboardConsumer = function(consumer, collectiontest_data) {
 };
 
 _p._subscribeToDashboard = function(socket, data) {
+    //jshint unused:vars
     var consumer;
     if(!this._dashboardSubscription) {
         this._dashboardSubscription = {
@@ -908,7 +1098,7 @@ _p._subscribeToDashboard = function(socket, data) {
           , collectionDocs: new Map()
         };
         // init the cursor
-        this._io.query(this._dbSetup.tables.collection)
+        this._io.query('collection')
         .merge({type: 'collectiontest'})
         .changes({squash: 1})
         .run((err, cursor) => {
@@ -923,7 +1113,7 @@ _p._subscribeToDashboard = function(socket, data) {
         }, {cursor: true})
         .then(() => {
             // prime the cache
-            return this._io.query(this._dbSetup.tables.collection)
+            return this._io.query('collection')
                 .group({index: 'collection_family'})
                 .max('date')// only the most current entries in each group
                 .merge({type: 'collectiontest'})
@@ -967,5 +1157,6 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.debug('Loglevel', setup.logging.loglevel);
     // storing in global scope, to make it available for inspection
     // in the debugger.
-    global.server = new Server(setup.logging, 3000, setup.amqp, setup.db, setup.cache);
+    global.server = new Server(setup.logging, 3000, setup.amqp, setup.db
+            , setup.cache, setup.reports);
 }

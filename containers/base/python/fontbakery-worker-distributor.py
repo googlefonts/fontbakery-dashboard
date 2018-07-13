@@ -54,8 +54,8 @@ class WorkerDistributor(FontbakeryWorker):
       sub_job = FamilyJob()
       sub_job.docid = self._job.docid
       # this is not possible
-      # sub_job.cacheKey = self._job.cacheKey
-      sub_job.cacheKey.CopyFrom(self._job.cacheKey)
+      # sub_job.cache_key = self._job.cache_key
+      sub_job.cache_key.CopyFrom(self._job.cache_key)
       sub_job.jobid = jobid
       sub_job.order.extend(order)
       jobs.append(sub_job)

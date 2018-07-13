@@ -392,12 +392,14 @@
             visibility: hidden;
         }
 
-        .dashboard-table tfoot {
+        .dashboard-table tbody {
             border-top: 3px solid grey;
+            border-bottom: 3px solid grey;
         }
 
-        .dashboard-table tbody th:first-child {
+        .dashboard-table th.row_field-Font_Family {
             white-space: nowrap;
+            text-align: left;
         }
 
         .dashboard-table th,
@@ -447,6 +449,13 @@
         <div>
             <h2>Collections</h2>
             <ol><!-- insert: link --></ol>
+        </div>
+    </div>
+
+    <div class="status-landing-page">
+        <div>
+            <h2>Status Reports</h2>
+            <ol><!-- insert: status-report-link --></ol>
         </div>
     </div>
 </div>
@@ -552,6 +561,6 @@
 <header>
     <img alt="Font Bakery" src="/browser/img/logo_200px.png"/>
 </header>
-<article class="active-interface"></article>
+<article class="active-interface"><!-- server side include marker --></article>
 </body>
 </html>

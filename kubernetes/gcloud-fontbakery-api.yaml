@@ -10,10 +10,10 @@ spec:
         run: fontbakery-api
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:30
+        image: gcr.io/fontbakery-168509/base-javascript:41
         env:
           - name: COLLECTION_AUTH_SECRET
             value: ""
@@ -30,7 +30,7 @@ spec:
         # - containerPort: 9229
         workingDir: /var/javascript
         # CAUTION!
-        # command: ["node", "--inspect=9229 ", "node/api.js"]
+        # command: ["node", "--inspect=0.0.0.0:9229", "node/api.js"]
         command: ["npm", "start"]
 ---
 apiVersion: v1

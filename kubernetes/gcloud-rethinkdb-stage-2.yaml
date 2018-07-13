@@ -13,7 +13,7 @@ spec:
         role: admin
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         imagePullPolicy: Always
@@ -91,7 +91,7 @@ spec:
         instance: two
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         #args:
@@ -171,7 +171,7 @@ spec:
         instance: three
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         #args:
@@ -251,7 +251,7 @@ spec:
         instance: four
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         #args:

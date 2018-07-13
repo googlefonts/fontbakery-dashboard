@@ -11,10 +11,10 @@ spec:
         role: janitor
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-cleanup
-        image: gcr.io/fontbakery-168509/base-javascript:30
+        image: gcr.io/fontbakery-168509/base-javascript:41
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"

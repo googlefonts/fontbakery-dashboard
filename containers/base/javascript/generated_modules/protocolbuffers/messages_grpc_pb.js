@@ -5,6 +5,7 @@ var grpc = require('grpc');
 var messages_pb = require('./messages_pb.js');
 var google_protobuf_any_pb = require('google-protobuf/google/protobuf/any_pb.js');
 var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js');
+var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var shared_pb = require('./shared_pb.js');
 
 function serialize_fontbakery_dashboard_CacheItem(arg) {
@@ -40,17 +41,6 @@ function deserialize_fontbakery_dashboard_CacheStatus(buffer_arg) {
   return messages_pb.CacheStatus.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_fontbakery_dashboard_GenericResponse(arg) {
-  if (!(arg instanceof messages_pb.GenericResponse)) {
-    throw new Error('Expected argument of type fontbakery.dashboard.GenericResponse');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_fontbakery_dashboard_GenericResponse(buffer_arg) {
-  return messages_pb.GenericResponse.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_fontbakery_dashboard_PokeRequest(arg) {
   if (!(arg instanceof messages_pb.PokeRequest)) {
     throw new Error('Expected argument of type fontbakery.dashboard.PokeRequest');
@@ -62,6 +52,39 @@ function deserialize_fontbakery_dashboard_PokeRequest(buffer_arg) {
   return messages_pb.PokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_Report(arg) {
+  if (!(arg instanceof messages_pb.Report)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.Report');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_Report(buffer_arg) {
+  return messages_pb.Report.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_ReportIds(arg) {
+  if (!(arg instanceof messages_pb.ReportIds)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ReportIds');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ReportIds(buffer_arg) {
+  return messages_pb.ReportIds.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_ReportsQuery(arg) {
+  if (!(arg instanceof messages_pb.ReportsQuery)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ReportsQuery');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ReportsQuery(buffer_arg) {
+  return messages_pb.ReportsQuery.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_google_protobuf_Any(arg) {
   if (!(arg instanceof google_protobuf_any_pb.Any)) {
     throw new Error('Expected argument of type google.protobuf.Any');
@@ -71,6 +94,17 @@ function serialize_google_protobuf_Any(arg) {
 
 function deserialize_google_protobuf_Any(buffer_arg) {
   return google_protobuf_any_pb.Any.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_google_protobuf_Empty(arg) {
+  if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
+    throw new Error('Expected argument of type google.protobuf.Empty');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_google_protobuf_Empty(buffer_arg) {
+  return google_protobuf_empty_pb.Empty.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 
@@ -140,12 +174,54 @@ var ManifestService = exports.ManifestService = {
     requestStream: false,
     responseStream: false,
     requestType: messages_pb.PokeRequest,
-    responseType: messages_pb.GenericResponse,
+    responseType: google_protobuf_empty_pb.Empty,
     requestSerialize: serialize_fontbakery_dashboard_PokeRequest,
     requestDeserialize: deserialize_fontbakery_dashboard_PokeRequest,
-    responseSerialize: serialize_fontbakery_dashboard_GenericResponse,
-    responseDeserialize: deserialize_fontbakery_dashboard_GenericResponse,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
   },
 };
 
 exports.ManifestClient = grpc.makeGenericClientConstructor(ManifestService);
+// The Reports service
+//
+var ReportsService = exports.ReportsService = {
+  // to file the report ("file" as a verb, but by convention first letter uppercased)
+  file: {
+    path: '/fontbakery.dashboard.Reports/File',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.Report,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_fontbakery_dashboard_Report,
+    requestDeserialize: deserialize_fontbakery_dashboard_Report,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // Get a list of reports including selection/filtering etc.
+  query: {
+    path: '/fontbakery.dashboard.Reports/Query',
+    requestStream: false,
+    responseStream: true,
+    requestType: messages_pb.ReportsQuery,
+    responseType: messages_pb.Report,
+    requestSerialize: serialize_fontbakery_dashboard_ReportsQuery,
+    requestDeserialize: deserialize_fontbakery_dashboard_ReportsQuery,
+    responseSerialize: serialize_fontbakery_dashboard_Report,
+    responseDeserialize: deserialize_fontbakery_dashboard_Report,
+  },
+  get: {
+    path: '/fontbakery.dashboard.Reports/Get',
+    requestStream: false,
+    responseStream: true,
+    requestType: messages_pb.ReportIds,
+    responseType: messages_pb.Report,
+    requestSerialize: serialize_fontbakery_dashboard_ReportIds,
+    requestDeserialize: deserialize_fontbakery_dashboard_ReportIds,
+    responseSerialize: serialize_fontbakery_dashboard_Report,
+    responseDeserialize: deserialize_fontbakery_dashboard_Report,
+  },
+};
+
+exports.ReportsClient = grpc.makeGenericClientConstructor(ReportsService);
+// Provides interfaces to read the data, get listings/filter.

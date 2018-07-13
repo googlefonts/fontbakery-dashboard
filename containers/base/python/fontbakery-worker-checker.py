@@ -120,7 +120,7 @@ class WorkerChecker(FontbakeryWorker):
     is cleaning up ... that could be part of the dispatch-worker/manifest-master
     initiating and cleaning up would make some sense there...
 
-    We need this especially to purge the cacheKey when not used anymore
+    We need this especially to purge the cache_key when not used anymore
     but also to eventually set the correct "finished" date and flag to
     the family/collection job.
 

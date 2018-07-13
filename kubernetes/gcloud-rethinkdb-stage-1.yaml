@@ -68,7 +68,7 @@ spec:
         instance: one
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
 # review looked OK, but we should think about our trust model
 # here, some binaries are included that we just need to trust and

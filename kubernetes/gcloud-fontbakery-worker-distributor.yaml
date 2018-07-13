@@ -10,9 +10,9 @@ spec:
         run: fontbakery-worker-distributor
     spec:
       nodeSelector:
-        determination: infrastructure
+        cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-distributor
-        image: gcr.io/fontbakery-168509/base-python:19
+        image: gcr.io/fontbakery-168509/base-python:30
         workingDir: /var/python
         command: ["python2",  "-u", "fontbakery-worker-distributor.py"]

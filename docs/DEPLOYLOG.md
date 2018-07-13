@@ -10,7 +10,7 @@ From (https://console.cloud.google.com/kubernetes/list?project=fontbakery-168509
 Configure kubectl command line access by running the following command:
 
 ```
-$ gcloud container clusters get-credentials fontbakery-cluster-1 \
+$ gcloud container clusters get-credentials fontbakery-dashboard-1 \
     --zone us-central1-a --project fontbakery-168509
 ```
 
@@ -325,6 +325,24 @@ To debug the message queue, the service `rabbitmq-management` can be changed to 
 Changing it back requires to delete `clientIP`, but the interface will complain about that, so it's easy to remember.
 
 
+### upate
+
+
+Just did the following to to access rabbitmq-management directly without service:
+
+```
+$ kubectl get pods
+# > ...
+# > rabbitmq-54365647-gvsgs                            1/1       Running   0          53d
+# > ...
+$ kubectl port-forward rabbitmq-54365647-gvsgs 8888:15672
+```
+
+user:passwd = guest:guest
+
+
+
+
 # Latest deployment (end of 2018)
 
 ## Access the rethinkdb admin interface
@@ -373,13 +391,13 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
-docker build -t fontbakery/base-javascript:30 containers/base/javascript;
-docker tag fontbakery/base-javascript:30 gcr.io/fontbakery-168509/base-javascript:30
-gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:30
+docker build -t fontbakery/base-javascript:41 containers/base/javascript;
+docker tag fontbakery/base-javascript:41 gcr.io/fontbakery-168509/base-javascript:41
+gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:41
 
-docker build -t fontbakery/base-python:19 containers/base/python;
-docker tag fontbakery/base-python:19 gcr.io/fontbakery-168509/base-python:19
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:19
+docker build -t fontbakery/base-python:30 containers/base/python;
+docker tag fontbakery/base-python:30 gcr.io/fontbakery-168509/base-python:30
+gcloud docker -- push gcr.io/fontbakery-168509/base-python:30
 ```
 
 # Deploy
@@ -397,7 +415,10 @@ kubectl apply -f kubernetes/gcloud-fontbakery-worker-cleanup.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-worker-checker.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-worker-distributor.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-reports.yaml
+
 kubectl apply -f kubernetes/gcloud-fontbakery-api.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-manifest-csvupstream.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-gfapi.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-githubgf.yaml
 
@@ -411,8 +432,10 @@ kubectl delete deployment fontbakery-worker-checker
 kubectl delete deployment fontbakery-worker-distributor
 kubectl delete deployment fontbakery-api
 kubectl delete deployment fontbakery-manifest-master
+
 kubectl delete deployment fontbakery-manifest-gfapi
 kubectl delete deployment fontbakery-manifest-githubgf
+kubectl delete deployment fontbakery-manifest-csvupstream
 ```
 
 ### autoscale

@@ -16,14 +16,17 @@
   "author": "Lasse Fister <commander@graphicore.de>",
   "license": "Apache-2.0",
   "dependencies": {
-    "amqplib": "^0.5.1",
-    "body-parser": "^1.17.2",
-    "express": "^4.15.3",
-    "google-protobuf": "^3.4.0",
-    "grpc": "^1.6.6",
-    "nodegit": "^0.20.3",
-    "rethinkdbdash": "^2.3.28",
-    "socketio": "^1.0.0"
+    "amqplib": "^0.5.2",
+    "body-parser": "^1.18.3",
+    "csv-parse": "^2.2.0",
+    "express": "^4.16.3",
+    "google-protobuf": "^3.5.0",
+    "grpc": "^1.12.3",
+    "marked": "^0.4.0",
+    "nodegit": "^0.22.1",
+    "rethinkdbdash": "^2.3.31",
+    "socketio": "^1.0.0",
+    "tmp": "0.0.33"
   },
   "devDependencies": {
     "grpc-tools": "^1.6.6"
