@@ -168,6 +168,11 @@ _p.update = function() {
     throw new Error('Not Implemented "update".');
 };
 
+_p.get = function(familyName) {
+    // jshint unused:vars
+    throw new Error('Not Implemented "get".');
+};
+
 _p.init = function() {
     // may return a promise if the source needs to set up its own resources.
     // promise exceptions will be handled as well (= end the server).

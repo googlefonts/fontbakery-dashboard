@@ -19,7 +19,9 @@ goog.exportSymbol('proto.fontbakery.dashboard.CacheItem', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CacheKey', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CacheStatus', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CollectionFamilyJob', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.FamilyData', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyJob', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.FamilyRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.PokeRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.Report', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ReportIds', null, global);
@@ -1021,6 +1023,175 @@ proto.fontbakery.dashboard.PokeRequest.prototype.setSourceid = function(value) {
  * @extends {jspb.Message}
  * @constructor
  */
+proto.fontbakery.dashboard.FamilyRequest = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.fontbakery.dashboard.FamilyRequest, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.fontbakery.dashboard.FamilyRequest.displayName = 'proto.fontbakery.dashboard.FamilyRequest';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.fontbakery.dashboard.FamilyRequest.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.FamilyRequest.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.fontbakery.dashboard.FamilyRequest} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.FamilyRequest.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    sourceid: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    familyName: jspb.Message.getFieldWithDefault(msg, 2, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.fontbakery.dashboard.FamilyRequest}
+ */
+proto.fontbakery.dashboard.FamilyRequest.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.fontbakery.dashboard.FamilyRequest;
+  return proto.fontbakery.dashboard.FamilyRequest.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.fontbakery.dashboard.FamilyRequest} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.fontbakery.dashboard.FamilyRequest}
+ */
+proto.fontbakery.dashboard.FamilyRequest.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setSourceid(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFamilyName(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.fontbakery.dashboard.FamilyRequest.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.fontbakery.dashboard.FamilyRequest.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.fontbakery.dashboard.FamilyRequest} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.FamilyRequest.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getSourceid();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getFamilyName();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string sourceid = 1;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.FamilyRequest.prototype.getSourceid = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.FamilyRequest.prototype.setSourceid = function(value) {
+  jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional string family_name = 2;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.FamilyRequest.prototype.getFamilyName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.FamilyRequest.prototype.setFamilyName = function(value) {
+  jspb.Message.setField(this, 2, value);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
 proto.fontbakery.dashboard.CollectionFamilyJob = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
@@ -1290,6 +1461,290 @@ proto.fontbakery.dashboard.CollectionFamilyJob.prototype.getMetadata = function(
 
 /** @param {string} value */
 proto.fontbakery.dashboard.CollectionFamilyJob.prototype.setMetadata = function(value) {
+  jspb.Message.setField(this, 5, value);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.fontbakery.dashboard.FamilyData = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.fontbakery.dashboard.FamilyData, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.fontbakery.dashboard.FamilyData.displayName = 'proto.fontbakery.dashboard.FamilyData';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.FamilyData.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.fontbakery.dashboard.FamilyData} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.FamilyData.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    collectionid: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    familyName: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    files: (f = msg.getFiles()) && shared_pb.Files.toObject(includeInstance, f),
+    date: (f = msg.getDate()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
+    metadata: jspb.Message.getFieldWithDefault(msg, 5, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.fontbakery.dashboard.FamilyData}
+ */
+proto.fontbakery.dashboard.FamilyData.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.fontbakery.dashboard.FamilyData;
+  return proto.fontbakery.dashboard.FamilyData.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.fontbakery.dashboard.FamilyData} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.fontbakery.dashboard.FamilyData}
+ */
+proto.fontbakery.dashboard.FamilyData.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCollectionid(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFamilyName(value);
+      break;
+    case 3:
+      var value = new shared_pb.Files;
+      reader.readMessage(value,shared_pb.Files.deserializeBinaryFromReader);
+      msg.setFiles(value);
+      break;
+    case 4:
+      var value = new google_protobuf_timestamp_pb.Timestamp;
+      reader.readMessage(value,google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
+      msg.setDate(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMetadata(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.fontbakery.dashboard.FamilyData.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.fontbakery.dashboard.FamilyData} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.FamilyData.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getCollectionid();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getFamilyName();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+  f = message.getFiles();
+  if (f != null) {
+    writer.writeMessage(
+      3,
+      f,
+      shared_pb.Files.serializeBinaryToWriter
+    );
+  }
+  f = message.getDate();
+  if (f != null) {
+    writer.writeMessage(
+      4,
+      f,
+      google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
+    );
+  }
+  f = message.getMetadata();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string collectionid = 1;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.getCollectionid = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.FamilyData.prototype.setCollectionid = function(value) {
+  jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional string family_name = 2;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.getFamilyName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.FamilyData.prototype.setFamilyName = function(value) {
+  jspb.Message.setField(this, 2, value);
+};
+
+
+/**
+ * optional Files files = 3;
+ * @return {?proto.fontbakery.dashboard.Files}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.getFiles = function() {
+  return /** @type{?proto.fontbakery.dashboard.Files} */ (
+    jspb.Message.getWrapperField(this, shared_pb.Files, 3));
+};
+
+
+/** @param {?proto.fontbakery.dashboard.Files|undefined} value */
+proto.fontbakery.dashboard.FamilyData.prototype.setFiles = function(value) {
+  jspb.Message.setWrapperField(this, 3, value);
+};
+
+
+proto.fontbakery.dashboard.FamilyData.prototype.clearFiles = function() {
+  this.setFiles(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.hasFiles = function() {
+  return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional google.protobuf.Timestamp date = 4;
+ * @return {?proto.google.protobuf.Timestamp}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.getDate = function() {
+  return /** @type{?proto.google.protobuf.Timestamp} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 4));
+};
+
+
+/** @param {?proto.google.protobuf.Timestamp|undefined} value */
+proto.fontbakery.dashboard.FamilyData.prototype.setDate = function(value) {
+  jspb.Message.setWrapperField(this, 4, value);
+};
+
+
+proto.fontbakery.dashboard.FamilyData.prototype.clearDate = function() {
+  this.setDate(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.hasDate = function() {
+  return jspb.Message.getField(this, 4) != null;
+};
+
+
+/**
+ * optional string metadata = 5;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.getMetadata = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.FamilyData.prototype.setMetadata = function(value) {
   jspb.Message.setField(this, 5, value);
 };
 

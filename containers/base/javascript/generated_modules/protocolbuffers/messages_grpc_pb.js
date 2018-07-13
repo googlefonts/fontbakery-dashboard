@@ -41,6 +41,28 @@ function deserialize_fontbakery_dashboard_CacheStatus(buffer_arg) {
   return messages_pb.CacheStatus.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_FamilyData(arg) {
+  if (!(arg instanceof messages_pb.FamilyData)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.FamilyData');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_FamilyData(buffer_arg) {
+  return messages_pb.FamilyData.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_FamilyRequest(arg) {
+  if (!(arg instanceof messages_pb.FamilyRequest)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.FamilyRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_FamilyRequest(buffer_arg) {
+  return messages_pb.FamilyRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_PokeRequest(arg) {
   if (!(arg instanceof messages_pb.PokeRequest)) {
     throw new Error('Expected argument of type fontbakery.dashboard.PokeRequest');
@@ -179,6 +201,19 @@ var ManifestService = exports.ManifestService = {
     requestDeserialize: deserialize_fontbakery_dashboard_PokeRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // This is the same data as the manifestSource would dispatch as
+  // CollectionFamilyJob for Font Bakery.
+  get: {
+    path: '/fontbakery.dashboard.Manifest/Get',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.FamilyRequest,
+    responseType: messages_pb.FamilyData,
+    requestSerialize: serialize_fontbakery_dashboard_FamilyRequest,
+    requestDeserialize: deserialize_fontbakery_dashboard_FamilyRequest,
+    responseSerialize: serialize_fontbakery_dashboard_FamilyData,
+    responseDeserialize: deserialize_fontbakery_dashboard_FamilyData,
   },
 };
 

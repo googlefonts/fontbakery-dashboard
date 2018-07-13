@@ -72,10 +72,18 @@ service Manifest {
   // I.e. We create a "Snapshot" of the manifest in the cache, then
   // we can forget about it
   rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
+  // This is the same data as the manifestSource would dispatch as
+  // CollectionFamilyJob for Font Bakery.
+  rpc Get (FamilyRequest) returns (FamilyData){}
 }
 
 message PokeRequest {
     string sourceid = 1; // '' === default/not set for all
+}
+
+message FamilyRequest {
+    string sourceid = 1;
+    string family_name = 2;
 }
 
 message CollectionFamilyJob {
@@ -91,6 +99,18 @@ message CollectionFamilyJob {
     string metadata = 5;
 }
 
+
+
+// TODO: this is very similar to CollectionFamilyJob, but the cache_key/files
+// fields differ. Since they represent the same thing though, maybe it would
+// be nice to merge the two message formats into one?
+message FamilyData {
+    string collectionid = 1; // the name that identifies the collection
+    string family_name = 2; // the name that identifies the family
+    Files files = 3;
+    google.protobuf.Timestamp date = 4; // when the data was created
+    string metadata = 5;
+}
 
 // The Reports service
 

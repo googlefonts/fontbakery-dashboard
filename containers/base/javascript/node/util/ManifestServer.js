@@ -273,8 +273,10 @@ _p._queue = function(name, job) {
 // ManifestService implementation
 // rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
 _p.poke = function(call, callback) {
-    if(!this._ready)
+    if(!this._ready) {
         callback(new Error('Not ready yet'));
+        return;
+    }
     var sourceId = call.request.getSource() // call.request is a PokeRequest
       , err = null
       , response
@@ -291,6 +293,42 @@ _p.poke = function(call, callback) {
 
     response = err ? null : new Empty();
     callback(err, response);
+};
+
+_p.get = function(call, callback) {
+    var sourceId = call.request.getSource() // call.request is a FamilyRequest
+     , familyName = call.request.getFamilyName() // call.request is a FamilyRequest
+     , err = null
+     ;
+
+    if(!this._ready)
+        err = new Error('Not ready yet');
+    else if(!(sourceId in this._sources))
+        err = new Error('sourceId "'+sourceId+'" not found.');
+
+    (err ? Promise.reject(err)
+         : this._sources[sourceId].get(familyName))
+    .then(([familyName, filesData, metadata])=>{
+        var familyData = new messages_pb.FamilyData()
+          , collectionId = [this._id, sourceId].join('/')
+          , filesMessage = this._wrapFamilyData(filesData)
+          , timestamp = new Timestamp()
+          ;
+        timestamp.fromDate(new Date());
+        familyData.setCollectionid(collectionId);
+        familyData.setFamilyName(familyName);
+        familyData.setFiles(filesMessage);
+        familyData.setDate(timestamp);
+        familyData.setMetadata(JSON.stringify(metadata));
+        return familyData;
+    })
+    .then(
+          familyData=>callback(null, familyData)
+        , err=>{
+            this._logging.error('[GET:'+sourceId+'/'+familyName+']', err);
+            callback(err, null);
+          }
+    );
 };
 
 exports.ManifestServer = ManifestServer;

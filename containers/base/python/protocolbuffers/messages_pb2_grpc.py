@@ -98,6 +98,11 @@ class ManifestStub(object):
         request_serializer=messages__pb2.PokeRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
+    self.Get = channel.unary_unary(
+        '/fontbakery.dashboard.Manifest/Get',
+        request_serializer=messages__pb2.FamilyRequest.SerializeToString,
+        response_deserializer=messages__pb2.FamilyData.FromString,
+        )
 
 
 class ManifestServicer(object):
@@ -129,6 +134,14 @@ class ManifestServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def Get(self, request, context):
+    """This is the same data as the manifestSource would dispatch as
+    CollectionFamilyJob for Font Bakery.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_ManifestServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -136,6 +149,11 @@ def add_ManifestServicer_to_server(servicer, server):
           servicer.Poke,
           request_deserializer=messages__pb2.PokeRequest.FromString,
           response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'Get': grpc.unary_unary_rpc_method_handler(
+          servicer.Get,
+          request_deserializer=messages__pb2.FamilyRequest.FromString,
+          response_serializer=messages__pb2.FamilyData.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
