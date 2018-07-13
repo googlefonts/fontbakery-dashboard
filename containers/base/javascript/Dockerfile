@@ -27,10 +27,12 @@ RUN cd /var/javascript && npm install --unsafe-perm  --production
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y software-properties-common \
     && apt-get update \
-    && apt-get install -y python-dev;
+    && apt-get install -y python-dev git;
 RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
 RUN pip install --upgrade pip
-RUN pip install git+https://github.com/googlefonts/gftools.git@master
+
+RUN git clone --depth 1 -b master https://github.com/googlefonts/gftools.git /var/gftools;\
+    pip install /var/gftools;
 
 RUN cd /var/javascript \
      && bower install --allow-root \
