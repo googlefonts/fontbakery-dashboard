@@ -494,3 +494,13 @@ Thus we can say a pod to only attach to that pool with:
       nodeSelector:
         cloud.google.com/gke-nodepool: checker-pool-1
 ```
+
+
+## rethink reboot See #78
+
+```
+kubectl delete deployment rethinkdb-admin rethinkdb-proxy rethinkdb-replica-1 rethinkdb-replica-2 rethinkdb-replica-3  rethinkdb-replica-4
+kubectl apply -f kubernetes/gcloud-rethinkdb-stage-1.yaml
+kubectl apply -f kubernetes/gcloud-rethinkdb-proxy.yaml
+kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
+```
