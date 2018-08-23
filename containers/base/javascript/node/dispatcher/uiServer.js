@@ -15,6 +15,54 @@ function appFactory() {
     return app;
 }
 
+const UiApi = (function(){
+
+function UiApi(){}
+const _p = UiApi.prototype;
+
+// This kind of interaction either is coupled to a socket based communication
+// OR, it requires some abstraction to piece it all together...
+// Though, maybe it can be done...
+// What is the the live expectation of the promise (returned by task._userInteraction{...}???
+// if we have race conditions, we want to handle them gracefully.
+// In general. I think the promise construct in here describes nicely
+// the kind of ineraction that is expected. BUT it may be a bit complicated
+// to orchestrate.
+// TODO: NEXT: start sketching the UIServer in here, that loads processes
+// and asks them among other things for their expected user interactions
+// etc. How to do a correct feedback loop that goes through the model (react||process manager)
+// ...
+_p.request = function(...uiItems){
+    var userResponsePromise = Promise((resolve, reject)=>{
+        // generate the interfaces
+
+
+        // wait for answers.
+
+    });
+    return userResponsePromise;
+}
+
+return UiApi;
+})();
+
+
+// used like this
+// -> a promise expecting the `userResponse`
+uiApi.request(
+        new uiAPI.Select({
+            id: 'status'
+          , label: 'Set a final status.'
+          , type: 'select'
+          , select: [FAIL.toString(), OK.toString()]
+        })
+      , new uiAPI.Text({
+            id: 'reasoning'
+          , label: 'Describe your reasoning for the chosen status.'
+          , type: 'text'
+        })
+    ).then(userResponse=>{
+
 /**
  * Using a class here, so state variables are managed not on module level
  * Initialization starts the server.
@@ -23,14 +71,125 @@ function appFactory() {
  *  how to use `appFactory`.
  * `appFactory` is for use as a sub-application in another express.js app.
  */
-function Server(logging, portNum) {
+function Server(logging, portNum, ProcessConstructor) {
     this._log = logging;
+    this.ProcessConstructor = ProcessConstructor;
     this._app = appFactory();
     this._server = http.createServer(this._app);
     this._server.listen(portNum);
 }
 
 var _p = Server.prototype;
+
+
+_p._getProcess = function(processId) {
+    // what if we have process already loaded?
+    // do we keep it at all?
+    // we have to update its state when it changes!
+    var state = dbFetch(processId)
+        // .then(process
+      , process = new this.ProcessConstructor(state)
+      ;
+    return process;
+};
+
+
+
+
+// how to show a process?
+// -> user goes to dispatcher/process/{processID}
+// -> if pid exists, the ui is loaded.
+// -> the ui requests the process data via SocketIO
+//          -> this ensures we can get live updates
+//  -> the ui receives process data and renders it
+//  -> if there's a ui requested the server sends it
+//  -> if the user sends a ui-form the server receives it
+//  the server can send:
+//      * changes to process/step/task statuses
+//          -> task wise, this are mainly only additions to the task history
+//      * user interface requests/removals to process/step/task
+//              -> also responses whether a request was accepted or refused
+//                 or, if applicable if the request failed.
+//              -> maybe within a client/session specific log window
+//                 it's not so interesting to have this data as a status
+//                 in the task I guess.
+//
+// So, updates could also always update and redo the entire task
+// or, at least additions to the task history bring their absolute index
+// with them, so order of arrival is not that important.
+//
+// Process structure will never change, so it should be rather easy to
+// implement all this.
+// In fact, if the process structure is changed on the server, all
+// running processes should be ended immediately and maybe link to a new
+// process that is started instead.
+//
+// If we don't go with sockets, what are the alternatives?
+// -> best: reload the process page when a ui is sent, but, then
+//   other interactions are not live as well, like a pending fb-report
+//   changing to a finsihed one. The page would need to be reloaded.
+// That's maybe OK, user would kind of manually poll ... by reloading
+// Or by posting a form to the page.
+// But we don't need to, because we already have the infrastructure for
+// a socket based UI.
+// Bad thing so far: it was always very complex to implement these interfaces.
+// especially the report and source interfaces were mad. The dashboard table
+// was a bit better though!
+//
+// It may be nice to have a full html report for easy access e.g. to download
+// and archive it, but we don't do this now at all. Maybe we can think
+// of this stuff in a newer 2.0 version of the interfaces.
+
+
+_p.uiShowProcess = function(request) {
+    var processId = request.processId // FIXME: just a sketch
+      , process = this._getProcess(processId)
+      ;
+
+
+    if(process.userInteractionIsRequested) {
+        if(request.userResponse) {
+            // Todo: this must be a fit for the original defineUserInteracion
+            // so some kind of id internal to the process state should make
+            // sure this is a fit
+            process.receiveUserInteracion(request.userResponse);
+
+
+            // Maybe we can just re-run this function?
+            return; ... ?
+        }
+
+
+        uiApi = UiApi();
+        uiAPI.request(...process.requestUserInteracion());
+    }
+
+
+    respond(processData)
+
+}
+
+_p._subscribe = function(socket, data) {
+    var processId = data.id
+
+    // first send the process structure, as it will never change for this
+    // process id and we can use that for more rapid development of the interface
+    // i.e. no need to take care of newly inserted steps or tasks or such.
+
+    // then send the data for process, steps, tasks
+
+    // if needed send user interfaces
+
+    // send any updates that came in in the meanwhile
+
+    // can we have a change stream from the processManager that is
+    // semantically more meaningful than one directly from the database?
+    // where is the translation of db changes -> meaningful changes done?
+    // seems like the processmanager could benefit from it, then just send
+    // the changes it translates along to its subscribers...
+
+
+}
 
 
 

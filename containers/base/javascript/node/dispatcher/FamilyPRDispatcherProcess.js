@@ -3,7 +3,7 @@
 
 const { Process:Parent } = require('./framework/Process')
   , { Step } = require('./framework/Step')
-  , { Task } = require('./framework/Task')
+  , { Task, statusItems } = require('./framework/Task')
   ;
 
 const GetFamilyDataTask = (function(){
@@ -30,11 +30,11 @@ _p._activate = function() {
         .then(familyDataMessage => {
             // this is nice, we'll have all the info of the files
             // of the progress available in the document
-            this._setState(PENDING, familyDataSummaryMarkdown);
-            return this._setSharedState('familyData', familyDataMessage)
-                .then(()=>this._setState(OK, 'Family data is persisted.'))
+            this._logStatus(familyDataSummaryMarkdown);
+            return this._setSharedData('familyData', familyDataMessage)
+                .then(()=>this._setStatus(OK, 'Family data is persisted.'))
         })
-        .then(null, error=>this._setState(FAIL, renderError(error)))
+        .then(null, error=>this._setStatus(FAIL, renderError(error)))
         ;
 };
 
@@ -70,13 +70,14 @@ _p.constructor = FontbakeryTask;
 
 _p._createFamilyJob = function(FamilyDataMessage) { // -> FamilyJobMessage
     throw new Error('Not Implemented _createFamilyJob');
+    // include to call "callbackFontBakeryFinished" with a fontbakeryResultMessage
 };
 
-_p._runFamilyJob = function(FamilyJob) {
-
-    this._dispatchFamilyJob().then(reportID=>{
-        this._setPrivateState('reportId', reportId);
-        this._setState(PENDING, renderMD("# MD Started Font Bakery" + linkToFontbakeryReport));
+_p._runFamilyJob = function(familyJob) {
+    this._dispatchFamilyJob(familyJob).then(reportID=>{
+        this._setPrivateData('reportId', reportId);
+        this._setStatus(PENDING, renderMD('Waiting for Font Bakery [Report '
+                        + reportID + '](' + linkToFontbakeryReport + ')' ));
         return reportId;
     });
 };
@@ -87,7 +88,7 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
     // otherwise, this task may have been re-activated and we're looking at
     // the wrong report and subsequently are setting the wrong state for
     // that wrong report.
-    var expectedReportID = this._getPrivateState('reportId', null)
+    var expectedReportID = this._getPrivateData('reportId', null)
       , resultReportID = fontbakeryResultMessage.getReportId()
       ;
     if(resultReportID !== expectedReportID) {
@@ -98,9 +99,10 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
         // don't do anything.
         return;
     }
-    this._setPrivateState('fontbakeryResultMessage', fontbakeryResultMessage);
-    this._setState(PENDING, renderMD(fontbakeryResultMessage));
-    FIXME; // The task is now waiting for user interaction
+    this._setPrivateData('fontbakeryResultMessage', fontbakeryResultMessage);
+    this._logStatus(renderMD(fontbakeryResultMessage));
+    this._setStatus(Pending, 'Waiting for user interaction.');
+    TODO;  // The task is now waiting for user interaction
            // this needs to be communicated to the applicable users
            // as such:
            //       * we MAY send out emails (later)
@@ -113,47 +115,98 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
 };
 
 _p.callbackFinalize = function(finalizeMessage) {
-    if(!this._hasPrivateState('fontbakeryResultMessage')) {
+    if(!this._hasPrivateData('fontbakeryResultMessage')) {
         // The UI should not allow this callback to be made, but in
-        // fringe cases like updates or such we may receive it.
+        // race condition cases like updates or such we may receive it.
         // There' will also be a way to exceptionally close a whole
         // step, e.g. if Font Bakery is not responding or something
         // else goes totally wrong.
-        this._logStatus('The callback for finalizing the task regularly'
-            + ' requires that there\'s a fontbakeryResultMessage, that means'
-            + ' that there\'s a Font Bakery Report upon which a final assesment'
-            + ' can be made by a human');
-        );
+        this._logStatus('To finalize the task orderly it is required '
+            + 'that there\'s a finished Font Bakery report with which '
+            + 'an informed assesment can be made by a human.');
+        return;
     }
     // we should make an extra userInteraction message type for each of
     // these. This gives some certainty about the message content
     var statusName = finalizeMessage.getStatus()
-      , status = statusItems[statusName]
-      , reasoning = finalizeMessage.setReasoning(reasoning);
+      , status = statusItems.get(statusName)
+      , reasoning = finalizeMessage.getReasoning(reasoning)
       ;
-}
+    if(!this._finishingStatuses.has(status))
+        throw new Error('Status must be OK or FAIL, but received: "'+status+'"');
+    this._setStatus(status, reasoning);
+};
 
 TODO; // user interactions describe how to display and handle
 // required user interactions. These functions are used by the
 // uiServer in contrast to the ProcessManager service.
 // A uiServer will not be allowed to change the Process state directly
 // instead, it can send messages to the ProcessManager.
-_p._userInteractionFinalize = function() {
-    if(!this._hasPrivateState('fontbakeryResultMessage'))
-        return false;
 
-    var finalizeMessage = new UserInteractionFontBakeryFinalize();
-    finalizeMessage.setStatus(state);
-    finalizeMessage.setReasoning(reasoning);
-    return this._send('callbackFinalize', finalizeMessage);TODO;
+// Instead of registering these explicitly, we will look for methods
+// starting with "_userInteraction" that don't return false when called.
+_p._userInteractionFinalizeDefine = function() {
+    // this should be managed differently!
+    // if(!this._hasPrivateData('fontbakeryResultMessage'))
+    //    return false;
+
+    // in this case, show
+    //      * a select field with the choices [FAIL, OK]
+    //      * a text field with the label "Reasoning" (that can't be empty!?)
+    return [
+        new uiAPI.Select({
+            id: 'status'
+          , label: 'Set a final status.'
+          , type: 'select'
+          , select: [FAIL.toString(), OK.toString()]
+        })
+      , new uiAPI.Text({
+            id: 'reasoning'
+          , label: 'Describe your reasoning for the chosen status.'
+          , type: 'text'
+        }
+    ];
 }
+_userInteractionFinalizeReceive = function(userResponse) {
+    // hmmm, this should maybe be just a stand alone function
+    // coupling it with a promise seems adventurous...
+    // at least if we're going to call it multiple times ...
+    // if not multiple times, we may have to delete the promise
+    // alongside with the instance of the process.
+    // so in a model where the request for a UI is decoupled from
+    // the response from the UI, e.g. another frontend server can
+    // respond.
+
+    // This is the result
+    var finalizeMessage = new UserInteractionFontBakeryFinalize();
+    finalizeMessage.setStatus(userResponse.state);
+    finalizeMessage.setReasoning(userResponse.reasoning);
+    return finalizeMessage;
+
+    TODO; // _sendToProcessManager('callbackFinalize', finalizeMessage);
+};
 
 _p._activate = function() {
-    return readSomewhere('familyData').then(FamilyDataMessage=>{
+    return this._getSharedData('familyData').then(FamilyDataMessage=>{
         this._createFamilyJob(FamilyDataMessage)
         .then(FamilyJob=>this._runFamilyJob)
     });
 }
+
+
+// One question is if we're better of structuring a task explicitly
+// so that we always know what the next step is (after finishing the
+// previous one.
+// That way we remove probably some sources of error, like figuring if
+// a callback/userInteraction is allowed to run.
+//
+//
+_activate // _getSharedData ... _createFamilyJob ... _runFamilyJob ... _dispatchFamilyJob
+// -> waiting for callbackFontBakeryFinished
+callbackFontBakeryFinished // _setPrivateData('fontbakeryResultMessage', fontbakeryResultMessage);
+// -> request (dispatch) user-interaction _userInteractionFinalize
+// -> waiting for callbackFinalize
+callbackFinalize // this._setStatus(finishingStatus, reasoning);
 
 return FontbakeryTask;
 })();
@@ -213,7 +266,7 @@ FinalizeStep.tasks = [
  * This is a special step. It runs immediately after the first failed
  * step and closes the process
  *
- * Create an issue somewhere.
+ * Create an issue somewhere on GitHub.
  */
 function FailStep(){}
 
@@ -230,4 +283,11 @@ _p.constructor = FamilyPRDispatcherProcess;
 
 FamilyPRDispatcherProcess.steps = [
     InitProcessStep
-]
+  , FontBakeryStep
+  , RegressionsStep
+];
+
+FamilyPRDispatcherProcess.FinalizeStep = FinalizeStep;
+FamilyPRDispatcherProcess.FailStep = FailStep;
+
+

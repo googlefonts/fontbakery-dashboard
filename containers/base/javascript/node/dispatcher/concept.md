@@ -1,3 +1,9 @@
+# TODO:
+
+* Fill up this document
+* Write current plan into a doc and post to mailinglist.
+
+
 # Planing here: PR-dispatcher for font families.
 
 Spent extra time to plan it as minimalistic and efficient as possible!

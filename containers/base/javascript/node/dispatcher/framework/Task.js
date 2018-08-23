@@ -11,8 +11,8 @@ const PENDING = 'PENDING'
   , statusItems = new Map(Object.entries({PENDING, OK, FAILED, LOG}))
   ;
 
-const TaskState = (function() {
-function TaskState(
+const TaskStatus = (function() {
+function TaskStatus(
             status/*status item*/
           , details/*string(markdown)*/
           , created/*Date: optional*/
@@ -40,7 +40,7 @@ function TaskState(
     this.data = data || null;
 }
 
-const _p = TaskState.prototype;
+const _p = TaskStatus.prototype;
 
 _p.serialize = function() {
     return {
@@ -54,7 +54,7 @@ _p.serialize = function() {
 /**
  * Just a factory function.
  */
-TaskState.deserialize = function(state) {
+TaskStatus.deserialize = function(state) {
     var {
             statusString
           , details
@@ -65,7 +65,7 @@ TaskState.deserialize = function(state) {
     if(!statusItems.has(statusString))
         throw new Error('state.status is not a statusItems key: "'+statusString+'"');
 
-    return new TaskState(
+    return new TaskStatus(
         statusItems.get(statusString)
       , details
       , new Date(createdString)
@@ -73,11 +73,11 @@ TaskState.deserialize = function(state) {
     );
 };
 
-return TaskState;
+return TaskStatus;
 })();
 
 function Task(state, step) {
-    this.parent = step;
+    this._step = step;
     this._state = null;
     if(state)
         this._loadState(state);
@@ -87,20 +87,32 @@ function Task(state, step) {
 
 const _p = Task.prototype;
 
+_p._finishingStatuses = new Set([OK, FAILED]);
+
 // do this?
 Object.defineProperties(_p, {
-    created: {
+    step: {
+        get: function() {
+            return this._step;
+        }
+    }
+  , process: {
+        get: function() {
+            return this._step.process;
+        }
+    }
+  , created: {
         get: function() {
             return this._state.created;
         }
     }
-  , taskState: {
+  , taskStatus: {
         get: function() {
             for(let i=this._state.history.length-1;i>=0;i--) {
-                let taskState = this._state.history[i];
+                let taskStatus = this._state.history[i];
                 // LOG doesn't change the status of the task
-                if(taskState.status !== LOG)
-                    return taskState;
+                if(taskStatus.status !== LOG)
+                    return taskStatus;
             }
             // This should never happen, it's more like a self-health-test.
             // On init we always set: PENDING, '*initial state*'
@@ -109,16 +121,15 @@ Object.defineProperties(_p, {
     }
   , status: {
         get: function() {
-            return this.taskState.status;
+            return this.taskStatus.status;
         }
     }
   , finshed: {
         get: function() {
-            return new Set([OK, FAILED]).has(this.status);
+            return this._finishngStatuses.has(this.status);
         }
     }
 });
-
 
 // FIXME: deserialize is data from external, so it should check
 //        that it's `serialized` argument is valid (otherwise it can't be
@@ -134,13 +145,13 @@ const expectedKeys = {
       , serialize: data => data.toISOString()
       , deserialize: serialized => new Date(serialized)
     }
-  , history: {// array of valid taskState entries, min len = 1 (see _initState)
-        init: ()=>[new TaskState(PENDING, '*initial state*')]
-      , serialize: data=>data.map(taskState=>taskState.serialize())
-      , deserialize: serialized=>serialized.map(TaskState.deserialize)
+  , history: {// array of valid taskStatus entries, min len = 1 (see _initState)
+        init: ()=>[new TaskStatus(PENDING, '*initial state*')]
+      , serialize: data=>data.map(taskStatus=>taskStatus.serialize())
+      , deserialize: serialized=>serialized.map(TaskStatus.deserialize)
     }
-  // can save some internal state data to the database, so that it can validate
-  // and follow its internal state.
+  // Can save some internal state data to the database, so that it can
+  // validate, keep, and follow its internal state.
   , private: {
         init: ()=>null//empty
       , serialize: data=>data
@@ -148,35 +159,33 @@ const expectedKeys = {
     }
 };
 
-_p._setSharedState = function(name, value) {
-    TODO;// state shared with the  whole process
-    // this should be persistant IMO, especially the familyData message
-    // is important for e.g. forensics (only if we didn't do the PR …=
-    // maybe we need to define life time management, or just get a huge disk)
-    // If a new PR for the same family was created the old Process data could
-    // be deleted... but in general, just keeping it around is probably more
-    // straight forward just now and much less effort.
-    // When we save these as files, we should have a MIME type of information
-    // so _getSharedState can figure how to interprete/use the data
-    throw new Error('Not implemented!');
+_p._setSharedData = function(key, value) {
+    this.process.setSharedData(key, value);
 };
 
-_p._getSharedState = function(name, ...args) {
-    TODO;//see, _setSharedState
-    throw new Error('Not implemented!');
+_p._hasSharedData = function(key) {
+    return this.process.hasSharedData(key);
 };
 
-_p._setPrivateState = function(key, value) {
+_p._getSharedData = function(key, ...args) {
+    return this.process.getSharedData(key, ...args);
+};
+
+_p._deleteSharedData = function(key) {
+    return this.process.deleteSharedData(key);
+};
+
+_p._setPrivateData = function(key, value) {
     if(this._state.private === null)
         this._state.private = {};
     this._state.private[key] = value;
 };
 
-_p._getPrivateState = function(key, ...args) {
+_p._getPrivateData = function(key, ...args) {
     var hasFallback = args.length
       , fallback = hasFallback ? args[0] : undefined
       ;
-    if(!this._hasPrivateState(key)) {
+    if(!this._hasPrivateData(key)) {
         if(hasFallback)
             return fallback;
         else
@@ -185,12 +194,12 @@ _p._getPrivateState = function(key, ...args) {
     return this._state.private[key];
 };
 
-_p._hasPrivateState = function(key) {
+_p._hasPrivateData = function(key) {
     return (this._state.private !== null && this._state.private.hasOwnProperty(key));
 };
 
-_p._deletePrivateState = function(key) {
-    if(this._hasPrivateState(key))
+_p._deletePrivateData = function(key) {
+    if(this._hasPrivateData(key))
         delete this._state.private[key];
 
     if(this._state.private !== null && !Object.keys(this._state.private).length)
@@ -215,7 +224,7 @@ _p._activate = function() {
 };
 
 _p.activate = function() {
-    this._setState(PENDING, '*activating*');
+    this._setStatus(PENDING, '*activating*');
     // reset
     this._state.private = null;
     var promise;
@@ -227,7 +236,7 @@ _p.activate = function() {
     catch(error) {
         promise = Promise.reject(error);
     }
-    return promise.then(null, error=>this._setState(
+    return promise.then(null, error=>this._setStatus(
                 FAILED, renderErrorAsMarkdown('Activation failed:', error)));
 };
 
@@ -235,12 +244,12 @@ _p.activate = function() {
  * This doesn't change the state.
  * In the history, the last status that is not a LOG is the status.
  */
-_p._logState = function(markdown, data) {
-    this._setState(LOG, markdown, data);
+_p._logStatus = function(markdown, data) {
+    this._setStatus(LOG, markdown, data);
 };
 
-_p._setState = function(status, markdown, data){
-    this._state.history.push(new TaskState(status, markdown, null, data));
+_p._setStatus = function(status, markdown, data){
+    this._state.history.push(new TaskStatus(status, markdown, null, data));
 };
 
 _p._loadState = function(state) {
