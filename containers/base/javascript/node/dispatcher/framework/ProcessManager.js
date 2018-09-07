@@ -2,6 +2,38 @@
 /* jshint esnext:true, node:true*/
 
 
+FIXME;// This is a stub;
+/** `targetPath` is a path likely the specific task
+ * May also be the step (close it explicitly and forcefully)
+ * and to the process
+ * => {processId}/{stepId}/{taskId}
+ *
+ * as a string:
+ * we could go for indexes OR for ids, for a mixture of both, where it
+ * makes sense AND for both in all cases which is redundant.
+ *
+ * indexes make sense for steps, because these are an ordered list
+ * ids make sense for tasks, because they are "unordered" at least
+ * semantically (there's an explicit order in the `tasks` list of the
+ * step that we use)
+ *
+ * process: {processId}
+ * steps: {index}
+ * task: {id} OR {index}:{id} ? => redundant, but maybe helps to reduce errors, i.e. when refactoring?
+ * callback: {name}
+ *
+ * having an id and an index for a task, we can create a fingerprint
+ * for the step. though, we can also create a fingerprint by merely
+ * using ids! just have to sort the ids before to create a canonical order.
+ * So, tasks don't have indexes …
+ */
+function TargetPath(pathString) {
+    // documenting expected properties;
+    this.processId
+    this.step
+    this.task
+}
+
 function ProcessManager(logging, db, port, ProcessConstructor) {
     this._log = logging;
     this.ProcessConstructor = ProcessConstructor;
@@ -33,12 +65,83 @@ _p._unlock = function(processId) {
     TODO;
 };
 
+
+_p._persistProcess = function(process) {
+        // if process has no id we do an insert, otherwise replace
+        // instead of `replace`, `update` could speed up the action
+        // but it would mean we only update changes, which is more effort
+        // to implement.
+    var method = process.id ? 'replace' : 'insert';
+
+    ...table
+        // Insert a document into the table users, replacing the document
+        // if it already exists.
+        .insert(process.serialize(), {conflict: "replace"})
+        .then(report=>{
+            if(report.generated_keys && report.generated_keys.length)
+                // assert report.inserted === 1
+                // assert process.id === null
+                process.id = report.generated_keys[0];
+            return process
+        })
+}
+
+/**
+ * Crate a brand new process.
+ */
+_p._initProcess = function() {
+    var process = new this.ProcessConstructor(null);
+    return process.activate()
+        .then(()=>this._persistProcess(process));
+};
+
+/**
+ * Try to create a process with state from the database. If using
+ * ProcessConstructor fails (e.g. because it's incompatible with the state)
+ * a GenericProcess will be created, which should be fine for viewing but
+ * has now APIs to change it's state.
+ */
+_p._loadProcess = function(processId) {
+    var state = dbFetch(processId);
+    try {
+        process = new this.ProcessConstructor(state)//should be enough!
+    }
+    catch(error) {
+        // expecting this to be some kind of state validation issue
+        // i.e. the state is (now) incompatible with ProcessConstructor
+        try {
+            process = new GenericProcess(state);
+        }
+        catch(error2) {
+            // Loading the GenericProcess should never fail.
+            // Probably something very basic changed.
+            throw new Error('Can\'t create Process from state with error: '
+                            +  error '+\n'
+                            + 'Also, can\t initiate GenericProcess from '
+                            + 'state with error:' + error2);
+        }
+    }
+    return process.activate()
+        .then(()=>process);
+};
+
+_p._getProcess = function(processId) {
+    TODO;// concept and implementation of process cache and cache invalidation
+    var process = this._activeProcesses.get(processId);
+    if(!process) {
+        TODO;// may fail!
+        process = this._loadProcess(processId);
+        this._activeProcesses.set(processId, process);
+    }
+    return process;
+}
+
 /**
  * This needs to be the gate keeper as well! Are we allowed to perform
  * an action on target? Maybe the step is already finalized or just not
  * the current step ...
  */
-_p._getTarget = function(targetPath) {
+_p._getTargetProcess = function(targetPath) {
     // first fetch the process document
     // then check for each path element if we are allowed to change it
     //          => status is important:
@@ -50,34 +153,28 @@ _p._getTarget = function(targetPath) {
     // => if not fail
     // => else create a tree from _processDefinition
     // return the last created item, the rest being linked by
-    state = dbFetch(targetPath.targetPath.processId)
+    //
+    // Fingerprinting steps will help to detect missmatches between state
+    // from the database and the process defined by the code, not fully
+    // sufficient, but a strong marker if something has changed.
+    //
+    // We must/should have enough data in the DB, to create a generic process
+    // without the current in code defined process, for outdated reports,
+    // that are no longer compatible, so that we can display them.
 
-    // TODO: Process needs to load all the state, not just the adressed
-    process = new this.ProcessConstructor(state)//should be enough!
-    // must validate state
 
-    if(!process.pathIsChanegable(targetPath))
-        throw new
+    NOTE;// can be a GenericProcess as well!
+    var process = this._getProcess(targetPath.processId);
 
 
-    var processId = targetPath.parts[0]
-      , pathParts = targetPath.parts.slice(1) // remove process doc id
-      , state = document
-      , Ctor = this._processDefinition.Process
-      , parent = null
-      , current = new Ctor(state, processId, parent)
-      ;
+    // hmm, probably checked by process.execute internally
+    // GenericProcess would not e changeable in general.
+    // maybe it's own access log could get a message about this attempt
+    // though, that could help with debugging
+    if(!process.isChangegable(targetPath))
+        throw new ...
 
-    checkAllowedToChange(current);
-    for(let pathPart of pathParts) {
-        parent = current
-        state = state[ .... pathPart ]
-        Ctor = this._processDefinition.byPathPart(pathPart)
-        current = new Ctor(state, pathPart, parent)
-        checkAllowedToChange(current);
-    }
-
-    return current;
+    return process;
 
     return {
         type: "process" | "step" | "task"
@@ -89,7 +186,7 @@ _p._getTarget = function(targetPath) {
         // not of a parent, not of a child
         // TODO: this comes from this._processDescription
         execute: function(actionMessage) {
-            // change state by appen2ding a new item to history
+            // change state by appending a new item to history
             // STATUS, INFO_MARKDOWN, MORE(?)
         }
 
@@ -100,24 +197,12 @@ _p._getTarget = function(targetPath) {
     }
 };
 
-/**
- * target will have to validate and perform actionMessage
- */
-_p._execute = function(target, actionMessage) {
-    TODO;
-};
-
-_p._finishTransition = function(target) {
+_p._finishTransition = function(process) {
     TODO;
 };
 
 /**
- * `processId` is used to receive the process state.
- *
- * `targetPath` is a path likely the specific task
- * May also be the step (close it explicitly and forcefully)
- * and to the proces
- * => {processId}/{stepId}/{taskId}
+ * GRPC api "transition" … (could be called action or command as well)
  *
  * action will be dispatched to the task, which will have to validate and
  * handle it.
@@ -126,6 +211,11 @@ _p._finishTransition = function(target) {
  * BEWARE of race conditions! See `_p._lock`.
  */
 _p.transition = function(commandMessage) {
+    // aside from the managemnet, locking, queueing etc.
+    // it's probably the task of each element in the process hierarchy
+    // to check whether the command is applicable or not.
+    // so this command trickles down and is checked by each item on it's
+    // way …
     var [targetPath, actionMessage] = this._unpackCommandMessage(commandMessage)
       , unlockFunc = (err) => {
             return this._unlock(targetPath.processId)
@@ -143,17 +233,18 @@ _p.transition = function(commandMessage) {
                 );
         }
       , transition = () => {
-            return this._getTarget(targetPath)
+            return this._getTargetProcess(targetPath)
             // target = process, step or task
-            .then(target=>this._execute(target, actionMessage)
-                          // on success return target
-                          .then(()=>target))
+            .then(process=>process.execute(targetPath, actionMessage)
+                                  .then(()=>process))// on success return process
             // transition only if not failed?
             // FIXME: Can a fail leave a bad state and we don't clean up???
             //        A failed execute should not change the state at all!
             //        Do we need a rollback mechanism?
-            // Maybe the state needs to be transitioned or the process needs to be finalized.
-            .then(target=>this._finishTransition(target))
+            // Maybe the state needs to be transitioned or the process
+            // needs to be finalized.
+            // process.execute could handle this as well!
+            .then(process=>this._finishTransition(process))
             .then(()=>unlockFunc(), err=>unlockFunc(err))
             ;
         }

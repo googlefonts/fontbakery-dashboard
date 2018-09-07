@@ -3,7 +3,7 @@
 
 const { Process:Parent } = require('./framework/Process')
   , { Step } = require('./framework/Step')
-  , { Task, statusItems } = require('./framework/Task')
+  , { Task, string2statusItem, finishingStatuses } = require('./framework/Task')
   ;
 
 const GetFamilyDataTask = (function(){
@@ -23,7 +23,7 @@ _p.constructor = GetFamilyDataTask;
  * external sources this may change the result of the task.
  */
 _p._activate = function() {
-    var familyRequest new FamilyRequest();
+    var familyRequest = new FamilyRequest();
     familyRequest.setSourceid('CSVSpreadsheet')
     familyRequest.setFamilyName(this.process.familyName)
     this.grpcSourceClient.get(familyRequest)
@@ -51,9 +51,9 @@ function InitProcessStep() {
 const _p = InitProcessStep.prototype = Object.create(Parent.prototype);
 _p.constructor = InitProcessStep;
 
-InitProcessStep.tasks = [
-    GetFamilyDataTask // => where to put the files etc?
-];
+InitProcessStep.tasks = {
+    GetFamilyData: GetFamilyDataTask // => where to put the files etc?
+};
 return InitProcessStep;
 })();
 
@@ -129,11 +129,13 @@ _p.callbackFinalize = function(finalizeMessage) {
     // we should make an extra userInteraction message type for each of
     // these. This gives some certainty about the message content
     var statusName = finalizeMessage.getStatus()
-      , status = statusItems.get(statusName)
+      , status = string2statusItem(statusName)
       , reasoning = finalizeMessage.getReasoning(reasoning)
       ;
-    if(!this._finishingStatuses.has(status))
-        throw new Error('Status must be OK or FAIL, but received: "'+status+'"');
+    if(!finishingStatuses.has(status))
+        throw new Error('Status must be one of '
+                + (finishingStatuses.join(', '))
+                + ', but received: "' + statusName+ '" : ' + status);
     this._setStatus(status, reasoning);
 };
 
@@ -226,13 +228,13 @@ function FontBakeryStep() {
 const _p = FontBakeryStep.prototype = Object.create(Parent.prototype);
 _p.constructor = FontBakeryStep;
 
-FontBakeryStep.tasks = [
+FontBakeryStep.tasks = {
     // needs font files package
-    FontbakeryTask // queue fontbakery
+    Fontbakery: FontbakeryTask // queue fontbakery
                       //   => wait for the result (CleanupJobs will have to call back)
                       //   => present the result and a form to make it pass or fail
                       //   => wait for user interaction to judge result
-];
+};
 
 return FontBakeryStep;
 })();
@@ -241,26 +243,26 @@ return FontBakeryStep;
 function RegressionsStep() {}
 
 
-RegressionsStep.tasks = [
+RegressionsStep.tasks = {
     // needs font files package
     // produces images
     // the UI will need the images
-    DiffbrowsersTask // queue diffbrowsers tool (can this run on our workers?)
+    Diffbrowsers: DiffbrowsersTask // queue diffbrowsers tool (can this run on our workers?)
                      // OR maybe a simple diffbrowsers service that's not massively parallel
                      // when we need more we can still scale this
                      // will call back when done
                      // wait for user interaction to judge result
-];
+};
 
 /**
  * Make a the PR or manually fail with a reasoning.
  */
-function FinalizeStep() {}
+function DispatchStep() {}
 
-FinalizeStep.tasks = [
-    DispatchPRTask  // we want this to be done by authorized engineers only
+DispatchStep.tasks = {
+    DispatchPR: DispatchPRTask // we want this to be done by authorized engineers only
                     // will create a nice PR with good message
-]
+};
 
 /**
  * This is a special step. It runs immediately after the first failed
@@ -270,9 +272,9 @@ FinalizeStep.tasks = [
  */
 function FailStep(){}
 
-FailStep.tasks = [
-    FailTask
-]
+FailStep.tasks = {
+    Fail: FailTask
+};
 
 function FamilyPRDispatcherProcess(state) {
     Parent.call(this, state);
@@ -285,9 +287,10 @@ FamilyPRDispatcherProcess.steps = [
     InitProcessStep
   , FontBakeryStep
   , RegressionsStep
+  , DispatchStep
 ];
 
-FamilyPRDispatcherProcess.FinalizeStep = FinalizeStep;
 FamilyPRDispatcherProcess.FailStep = FailStep;
-
+// optional
+// FamilyPRDispatcherProcess.FinallyStep = FinallyStep;
 

@@ -28,6 +28,8 @@ const _p = UiApi.prototype;
 // In general. I think the promise construct in here describes nicely
 // the kind of ineraction that is expected. BUT it may be a bit complicated
 // to orchestrate.
+--
+--
 // TODO: NEXT: start sketching the UIServer in here, that loads processes
 // and asks them among other things for their expected user interactions
 // etc. How to do a correct feedback loop that goes through the model (react||process manager)
@@ -48,7 +50,8 @@ return UiApi;
 
 
 // used like this
-// -> a promise expecting the `userResponse`
+// -> a promise; expecting uiApi.response(userResponse)
+// to be called to fullfill the promise?
 uiApi.request(
         new uiAPI.Select({
             id: 'status'
@@ -61,6 +64,16 @@ uiApi.request(
           , label: 'Describe your reasoning for the chosen status.'
           , type: 'text'
         })
+    // this is bolloks, as it doesn't tell the whole story...
+    // uiApi.request = funtion(...uiItems){
+    //    var promise = new Promise((resolve, reject)=>{
+    //        // here we need arrange that we can call
+    //        // resolve(userResponse) maybe.
+    //    });
+    //    return promise;
+    // }
+    // // but what is this function supposed to do with
+    // user Response
     ).then(userResponse=>{
 
 /**
@@ -81,15 +94,16 @@ function Server(logging, portNum, ProcessConstructor) {
 
 var _p = Server.prototype;
 
-
 _p._getProcess = function(processId) {
     // what if we have process already loaded?
     // do we keep it at all?
     // we have to update its state when it changes!
+    FIXME;// Won't be loaded from the DB but from ProcessManager
     var state = dbFetch(processId)
         // .then(process
       , process = new this.ProcessConstructor(state)
       ;
+    FIXME;//return process.activate().then(()=>prcoess) ???
     return process;
 };
 
@@ -141,6 +155,10 @@ _p._getProcess = function(processId) {
 // of this stuff in a newer 2.0 version of the interfaces.
 
 
+/**
+ * Hmm,  looks like this has a GET/POST API in mind, receiving "request"
+ * as an argument...
+ */
 _p.uiShowProcess = function(request) {
     var processId = request.processId // FIXME: just a sketch
       , process = this._getProcess(processId)
@@ -152,10 +170,12 @@ _p.uiShowProcess = function(request) {
             // Todo: this must be a fit for the original defineUserInteracion
             // so some kind of id internal to the process state should make
             // sure this is a fit
+            // ProcessManager must receive the interction, we must
+            // eventually send it there.
             process.receiveUserInteracion(request.userResponse);
 
 
-            // Maybe we can just re-run this function?
+            // Maybe we can then just re-run this function?
             return; ... ?
         }
 
