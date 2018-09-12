@@ -44,7 +44,7 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-pool-1
       containers:
       - name: fontbakery-worker-checker-sprinter
-        image: gcr.io/fontbakery-168509/base-python:30
+        image: gcr.io/fontbakery-168509/base-python:31
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
@@ -54,7 +54,7 @@ spec:
 #          - name: TMPDIR
 #            value: '/tmp/ssd/'
         workingDir: /var/python
-        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
         resources:
           requests:
             cpu: 200m
@@ -82,8 +82,8 @@ spec:
   #  1 VM :  109
   #  7 VMs:  749
   # used last => 15 VMs: 1619
-  # replicas: 1619
   replicas: 0
+  #replicas: 0
   template:
     metadata:
       labels:
@@ -95,7 +95,7 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-ssd-pool-1
       containers:
       - name: fontbakery-worker-checker-sprinter-ssd
-        image: gcr.io/fontbakery-168509/base-python:30
+        image: gcr.io/fontbakery-168509/base-python:31
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
@@ -105,7 +105,7 @@ spec:
           - name: TMPDIR
             value: '/tmp/ssd/'
         workingDir: /var/python
-        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
         resources:
           requests:
             cpu: 200m
@@ -140,14 +140,14 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:30
+        image: gcr.io/fontbakery-168509/base-python:31
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
           - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
             value: "1"
         workingDir: /var/python
-        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
         resources:
           requests:
             cpu: 200m

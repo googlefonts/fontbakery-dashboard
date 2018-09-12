@@ -180,7 +180,8 @@ class WorkerChecker(FontbakeryWorker):
     message = deepcopy(self._job)
     # In py 2.7 got an TypeError: field name must be a string
     # if using u'order', which is the default, we import unicode_literals
-    message.ClearField(b'order')
+    # message.ClearField(b'order')
+    message.ClearField('order')
     #logging.debug('dispatching job %s of docid %s', job.jobid, job.docid)
     self._queue_out(message)
 
