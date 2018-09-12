@@ -67,28 +67,28 @@ _FAMILYJOB = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='cache_key', full_name='fontbakery.dashboard.FamilyJob.cache_key', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='jobid', full_name='fontbakery.dashboard.FamilyJob.jobid', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='order', full_name='fontbakery.dashboard.FamilyJob.order', index=3,
       number=4, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -119,14 +119,14 @@ _CACHEITEM = _descriptor.Descriptor(
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='clientid', full_name='fontbakery.dashboard.CacheItem.clientid', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -157,28 +157,28 @@ _CACHEKEY = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='hash', full_name='fontbakery.dashboard.CacheKey.hash', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='clientid', full_name='fontbakery.dashboard.CacheKey.clientid', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='force', full_name='fontbakery.dashboard.CacheKey.force', index=3,
       number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -209,14 +209,14 @@ _CACHESTATUS = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='instances', full_name='fontbakery.dashboard.CacheStatus.instances', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -247,7 +247,7 @@ _POKEREQUEST = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -278,35 +278,35 @@ _COLLECTIONFAMILYJOB = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='family_name', full_name='fontbakery.dashboard.CollectionFamilyJob.family_name', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='cache_key', full_name='fontbakery.dashboard.CollectionFamilyJob.cache_key', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='date', full_name='fontbakery.dashboard.CollectionFamilyJob.date', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='metadata', full_name='fontbakery.dashboard.CollectionFamilyJob.metadata', index=4,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -337,56 +337,56 @@ _REPORT = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='type_id', full_name='fontbakery.dashboard.Report.type_id', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='method', full_name='fontbakery.dashboard.Report.method', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='started', full_name='fontbakery.dashboard.Report.started', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='finished', full_name='fontbakery.dashboard.Report.finished', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='fontbakery.dashboard.Report.data', index=5,
       number=6, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='id', full_name='fontbakery.dashboard.Report.id', index=6,
       number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='reported', full_name='fontbakery.dashboard.Report.reported', index=7,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -417,21 +417,21 @@ _REPORTSQUERY_FILTER = _descriptor.Descriptor(
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='values', full_name='fontbakery.dashboard.ReportsQuery.Filter.values', index=1,
       number=2, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='min_max_dates', full_name='fontbakery.dashboard.ReportsQuery.Filter.min_max_dates', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -462,14 +462,14 @@ _REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='value', full_name='fontbakery.dashboard.ReportsQuery.FiltersEntry.value', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -499,21 +499,21 @@ _REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='item_id', full_name='fontbakery.dashboard.ReportsQuery.Pagination.item_id', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='previous_page', full_name='fontbakery.dashboard.ReportsQuery.Pagination.previous_page', index=2,
       number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -543,21 +543,21 @@ _REPORTSQUERY = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='pagination', full_name='fontbakery.dashboard.ReportsQuery.pagination', index=1,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='include_data', full_name='fontbakery.dashboard.ReportsQuery.include_data', index=2,
       number=5, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -588,7 +588,7 @@ _REPORTIDS = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None),
+      options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -831,529 +831,4 @@ _sym_db.RegisterServiceDescriptor(_REPORTS)
 
 DESCRIPTOR.services_by_name['Reports'] = _REPORTS
 
-try:
-  # THESE ELEMENTS WILL BE DEPRECATED.
-  # Please use the generated *_pb2_grpc.py files instead.
-  import grpc
-  from grpc.beta import implementations as beta_implementations
-  from grpc.beta import interfaces as beta_interfaces
-  from grpc.framework.common import cardinality
-  from grpc.framework.interfaces.face import utilities as face_utilities
-
-
-  class CacheStub(object):
-    """The Cache service
-    """
-
-    def __init__(self, channel):
-      """Constructor.
-
-      Args:
-        channel: A grpc.Channel.
-      """
-      self.Put = channel.stream_stream(
-          '/fontbakery.dashboard.Cache/Put',
-          request_serializer=CacheItem.SerializeToString,
-          response_deserializer=CacheKey.FromString,
-          )
-      self.Get = channel.unary_unary(
-          '/fontbakery.dashboard.Cache/Get',
-          request_serializer=CacheKey.SerializeToString,
-          response_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
-          )
-      self.Purge = channel.unary_unary(
-          '/fontbakery.dashboard.Cache/Purge',
-          request_serializer=CacheKey.SerializeToString,
-          response_deserializer=CacheStatus.FromString,
-          )
-
-
-  class CacheServicer(object):
-    """The Cache service
-    """
-
-    def Put(self, request_iterator, context):
-      """Sends a greeting
-      """
-      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-      context.set_details('Method not implemented!')
-      raise NotImplementedError('Method not implemented!')
-
-    def Get(self, request, context):
-      """Sends another greeting
-      """
-      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-      context.set_details('Method not implemented!')
-      raise NotImplementedError('Method not implemented!')
-
-    def Purge(self, request, context):
-      # missing associated documentation comment in .proto file
-      pass
-      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-      context.set_details('Method not implemented!')
-      raise NotImplementedError('Method not implemented!')
-
-
-  def add_CacheServicer_to_server(servicer, server):
-    rpc_method_handlers = {
-        'Put': grpc.stream_stream_rpc_method_handler(
-            servicer.Put,
-            request_deserializer=CacheItem.FromString,
-            response_serializer=CacheKey.SerializeToString,
-        ),
-        'Get': grpc.unary_unary_rpc_method_handler(
-            servicer.Get,
-            request_deserializer=CacheKey.FromString,
-            response_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
-        ),
-        'Purge': grpc.unary_unary_rpc_method_handler(
-            servicer.Purge,
-            request_deserializer=CacheKey.FromString,
-            response_serializer=CacheStatus.SerializeToString,
-        ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-        'fontbakery.dashboard.Cache', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
-
-
-  class ManifestStub(object):
-    """The Manifest service
-
-    """
-
-    def __init__(self, channel):
-      """Constructor.
-
-      Args:
-        channel: A grpc.Channel.
-      """
-      self.Poke = channel.unary_unary(
-          '/fontbakery.dashboard.Manifest/Poke',
-          request_serializer=PokeRequest.SerializeToString,
-          response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          )
-
-
-  class ManifestServicer(object):
-    """The Manifest service
-
-    """
-
-    def Poke(self, request, context):
-      """FIXME: this is outdated but may have some good bits!
-      check for updates and emit a notice if since the last poke families
-      were updated
-      so if there's a change, we'll download it directly and put the files
-      ordered into a Files message. The sha256 hash is what we emit as
-      a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
-      PokeResponse, is basically nothing, just a OK message ... how to do this
-      best with grpc?
-      Maybe we could directly send this to the cache?
-      If we need to re-run an entiren Collection, because Font Bakery changed,
-      we still need the latest versions of the collection on disk.
-      so, it would be nice to have some form of atomicity between asking the
-      informing the ManifestMaster and running the tests. Therefore, we could
-      just put the entire current state into the cache and then let the
-      ManifestMaster decide which ones to keep and which ones to drop.
-      The Manifest itselt can in the meantime update itself etc.
-      I.e. We create a "Snapshot" of the manifest in the cache, then
-      we can forget about it
-      """
-      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-      context.set_details('Method not implemented!')
-      raise NotImplementedError('Method not implemented!')
-
-
-  def add_ManifestServicer_to_server(servicer, server):
-    rpc_method_handlers = {
-        'Poke': grpc.unary_unary_rpc_method_handler(
-            servicer.Poke,
-            request_deserializer=PokeRequest.FromString,
-            response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-        'fontbakery.dashboard.Manifest', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
-
-
-  class ReportsStub(object):
-    """The Reports service
-
-    Provides interfaces to read the data, get listings/filter.
-    """
-
-    def __init__(self, channel):
-      """Constructor.
-
-      Args:
-        channel: A grpc.Channel.
-      """
-      self.File = channel.unary_unary(
-          '/fontbakery.dashboard.Reports/File',
-          request_serializer=Report.SerializeToString,
-          response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          )
-      self.Query = channel.unary_stream(
-          '/fontbakery.dashboard.Reports/Query',
-          request_serializer=ReportsQuery.SerializeToString,
-          response_deserializer=Report.FromString,
-          )
-      self.Get = channel.unary_stream(
-          '/fontbakery.dashboard.Reports/Get',
-          request_serializer=ReportIds.SerializeToString,
-          response_deserializer=Report.FromString,
-          )
-
-
-  class ReportsServicer(object):
-    """The Reports service
-
-    Provides interfaces to read the data, get listings/filter.
-    """
-
-    def File(self, request, context):
-      """to file the report ("file" as a verb, but by convention first letter uppercased)
-      """
-      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-      context.set_details('Method not implemented!')
-      raise NotImplementedError('Method not implemented!')
-
-    def Query(self, request, context):
-      """Get a list of reports including selection/filtering etc.
-      """
-      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-      context.set_details('Method not implemented!')
-      raise NotImplementedError('Method not implemented!')
-
-    def Get(self, request, context):
-      # missing associated documentation comment in .proto file
-      pass
-      context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-      context.set_details('Method not implemented!')
-      raise NotImplementedError('Method not implemented!')
-
-
-  def add_ReportsServicer_to_server(servicer, server):
-    rpc_method_handlers = {
-        'File': grpc.unary_unary_rpc_method_handler(
-            servicer.File,
-            request_deserializer=Report.FromString,
-            response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        ),
-        'Query': grpc.unary_stream_rpc_method_handler(
-            servicer.Query,
-            request_deserializer=ReportsQuery.FromString,
-            response_serializer=Report.SerializeToString,
-        ),
-        'Get': grpc.unary_stream_rpc_method_handler(
-            servicer.Get,
-            request_deserializer=ReportIds.FromString,
-            response_serializer=Report.SerializeToString,
-        ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-        'fontbakery.dashboard.Reports', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
-
-
-  class BetaCacheServicer(object):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This class was generated
-    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The Cache service
-    """
-    def Put(self, request_iterator, context):
-      """Sends a greeting
-      """
-      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-    def Get(self, request, context):
-      """Sends another greeting
-      """
-      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-    def Purge(self, request, context):
-      # missing associated documentation comment in .proto file
-      pass
-      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-
-
-  class BetaCacheStub(object):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This class was generated
-    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The Cache service
-    """
-    def Put(self, request_iterator, timeout, metadata=None, with_call=False, protocol_options=None):
-      """Sends a greeting
-      """
-      raise NotImplementedError()
-    def Get(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
-      """Sends another greeting
-      """
-      raise NotImplementedError()
-    Get.future = None
-    def Purge(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
-      # missing associated documentation comment in .proto file
-      pass
-      raise NotImplementedError()
-    Purge.future = None
-
-
-  def beta_create_Cache_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This function was
-    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
-    request_deserializers = {
-      ('fontbakery.dashboard.Cache', 'Get'): CacheKey.FromString,
-      ('fontbakery.dashboard.Cache', 'Purge'): CacheKey.FromString,
-      ('fontbakery.dashboard.Cache', 'Put'): CacheItem.FromString,
-    }
-    response_serializers = {
-      ('fontbakery.dashboard.Cache', 'Get'): google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
-      ('fontbakery.dashboard.Cache', 'Purge'): CacheStatus.SerializeToString,
-      ('fontbakery.dashboard.Cache', 'Put'): CacheKey.SerializeToString,
-    }
-    method_implementations = {
-      ('fontbakery.dashboard.Cache', 'Get'): face_utilities.unary_unary_inline(servicer.Get),
-      ('fontbakery.dashboard.Cache', 'Purge'): face_utilities.unary_unary_inline(servicer.Purge),
-      ('fontbakery.dashboard.Cache', 'Put'): face_utilities.stream_stream_inline(servicer.Put),
-    }
-    server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
-    return beta_implementations.server(method_implementations, options=server_options)
-
-
-  def beta_create_Cache_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This function was
-    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
-    request_serializers = {
-      ('fontbakery.dashboard.Cache', 'Get'): CacheKey.SerializeToString,
-      ('fontbakery.dashboard.Cache', 'Purge'): CacheKey.SerializeToString,
-      ('fontbakery.dashboard.Cache', 'Put'): CacheItem.SerializeToString,
-    }
-    response_deserializers = {
-      ('fontbakery.dashboard.Cache', 'Get'): google_dot_protobuf_dot_any__pb2.Any.FromString,
-      ('fontbakery.dashboard.Cache', 'Purge'): CacheStatus.FromString,
-      ('fontbakery.dashboard.Cache', 'Put'): CacheKey.FromString,
-    }
-    cardinalities = {
-      'Get': cardinality.Cardinality.UNARY_UNARY,
-      'Purge': cardinality.Cardinality.UNARY_UNARY,
-      'Put': cardinality.Cardinality.STREAM_STREAM,
-    }
-    stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
-    return beta_implementations.dynamic_stub(channel, 'fontbakery.dashboard.Cache', cardinalities, options=stub_options)
-
-
-  class BetaManifestServicer(object):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This class was generated
-    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The Manifest service
-
-    """
-    def Poke(self, request, context):
-      """FIXME: this is outdated but may have some good bits!
-      check for updates and emit a notice if since the last poke families
-      were updated
-      so if there's a change, we'll download it directly and put the files
-      ordered into a Files message. The sha256 hash is what we emit as
-      a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
-      PokeResponse, is basically nothing, just a OK message ... how to do this
-      best with grpc?
-      Maybe we could directly send this to the cache?
-      If we need to re-run an entiren Collection, because Font Bakery changed,
-      we still need the latest versions of the collection on disk.
-      so, it would be nice to have some form of atomicity between asking the
-      informing the ManifestMaster and running the tests. Therefore, we could
-      just put the entire current state into the cache and then let the
-      ManifestMaster decide which ones to keep and which ones to drop.
-      The Manifest itselt can in the meantime update itself etc.
-      I.e. We create a "Snapshot" of the manifest in the cache, then
-      we can forget about it
-      """
-      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-
-
-  class BetaManifestStub(object):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This class was generated
-    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The Manifest service
-
-    """
-    def Poke(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
-      """FIXME: this is outdated but may have some good bits!
-      check for updates and emit a notice if since the last poke families
-      were updated
-      so if there's a change, we'll download it directly and put the files
-      ordered into a Files message. The sha256 hash is what we emit as
-      a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
-      PokeResponse, is basically nothing, just a OK message ... how to do this
-      best with grpc?
-      Maybe we could directly send this to the cache?
-      If we need to re-run an entiren Collection, because Font Bakery changed,
-      we still need the latest versions of the collection on disk.
-      so, it would be nice to have some form of atomicity between asking the
-      informing the ManifestMaster and running the tests. Therefore, we could
-      just put the entire current state into the cache and then let the
-      ManifestMaster decide which ones to keep and which ones to drop.
-      The Manifest itselt can in the meantime update itself etc.
-      I.e. We create a "Snapshot" of the manifest in the cache, then
-      we can forget about it
-      """
-      raise NotImplementedError()
-    Poke.future = None
-
-
-  def beta_create_Manifest_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This function was
-    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
-    request_deserializers = {
-      ('fontbakery.dashboard.Manifest', 'Poke'): PokeRequest.FromString,
-    }
-    response_serializers = {
-      ('fontbakery.dashboard.Manifest', 'Poke'): google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-    }
-    method_implementations = {
-      ('fontbakery.dashboard.Manifest', 'Poke'): face_utilities.unary_unary_inline(servicer.Poke),
-    }
-    server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
-    return beta_implementations.server(method_implementations, options=server_options)
-
-
-  def beta_create_Manifest_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This function was
-    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
-    request_serializers = {
-      ('fontbakery.dashboard.Manifest', 'Poke'): PokeRequest.SerializeToString,
-    }
-    response_deserializers = {
-      ('fontbakery.dashboard.Manifest', 'Poke'): google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-    }
-    cardinalities = {
-      'Poke': cardinality.Cardinality.UNARY_UNARY,
-    }
-    stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
-    return beta_implementations.dynamic_stub(channel, 'fontbakery.dashboard.Manifest', cardinalities, options=stub_options)
-
-
-  class BetaReportsServicer(object):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This class was generated
-    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The Reports service
-
-    Provides interfaces to read the data, get listings/filter.
-    """
-    def File(self, request, context):
-      """to file the report ("file" as a verb, but by convention first letter uppercased)
-      """
-      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-    def Query(self, request, context):
-      """Get a list of reports including selection/filtering etc.
-      """
-      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-    def Get(self, request, context):
-      # missing associated documentation comment in .proto file
-      pass
-      context.code(beta_interfaces.StatusCode.UNIMPLEMENTED)
-
-
-  class BetaReportsStub(object):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This class was generated
-    only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0."""
-    """The Reports service
-
-    Provides interfaces to read the data, get listings/filter.
-    """
-    def File(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
-      """to file the report ("file" as a verb, but by convention first letter uppercased)
-      """
-      raise NotImplementedError()
-    File.future = None
-    def Query(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
-      """Get a list of reports including selection/filtering etc.
-      """
-      raise NotImplementedError()
-    def Get(self, request, timeout, metadata=None, with_call=False, protocol_options=None):
-      # missing associated documentation comment in .proto file
-      pass
-      raise NotImplementedError()
-
-
-  def beta_create_Reports_server(servicer, pool=None, pool_size=None, default_timeout=None, maximum_timeout=None):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This function was
-    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
-    request_deserializers = {
-      ('fontbakery.dashboard.Reports', 'File'): Report.FromString,
-      ('fontbakery.dashboard.Reports', 'Get'): ReportIds.FromString,
-      ('fontbakery.dashboard.Reports', 'Query'): ReportsQuery.FromString,
-    }
-    response_serializers = {
-      ('fontbakery.dashboard.Reports', 'File'): google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-      ('fontbakery.dashboard.Reports', 'Get'): Report.SerializeToString,
-      ('fontbakery.dashboard.Reports', 'Query'): Report.SerializeToString,
-    }
-    method_implementations = {
-      ('fontbakery.dashboard.Reports', 'File'): face_utilities.unary_unary_inline(servicer.File),
-      ('fontbakery.dashboard.Reports', 'Get'): face_utilities.unary_stream_inline(servicer.Get),
-      ('fontbakery.dashboard.Reports', 'Query'): face_utilities.unary_stream_inline(servicer.Query),
-    }
-    server_options = beta_implementations.server_options(request_deserializers=request_deserializers, response_serializers=response_serializers, thread_pool=pool, thread_pool_size=pool_size, default_timeout=default_timeout, maximum_timeout=maximum_timeout)
-    return beta_implementations.server(method_implementations, options=server_options)
-
-
-  def beta_create_Reports_stub(channel, host=None, metadata_transformer=None, pool=None, pool_size=None):
-    """The Beta API is deprecated for 0.15.0 and later.
-
-    It is recommended to use the GA API (classes and functions in this
-    file not marked beta) for all further purposes. This function was
-    generated only to ease transition from grpcio<0.15.0 to grpcio>=0.15.0"""
-    request_serializers = {
-      ('fontbakery.dashboard.Reports', 'File'): Report.SerializeToString,
-      ('fontbakery.dashboard.Reports', 'Get'): ReportIds.SerializeToString,
-      ('fontbakery.dashboard.Reports', 'Query'): ReportsQuery.SerializeToString,
-    }
-    response_deserializers = {
-      ('fontbakery.dashboard.Reports', 'File'): google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-      ('fontbakery.dashboard.Reports', 'Get'): Report.FromString,
-      ('fontbakery.dashboard.Reports', 'Query'): Report.FromString,
-    }
-    cardinalities = {
-      'File': cardinality.Cardinality.UNARY_UNARY,
-      'Get': cardinality.Cardinality.UNARY_STREAM,
-      'Query': cardinality.Cardinality.UNARY_STREAM,
-    }
-    stub_options = beta_implementations.stub_options(host=host, metadata_transformer=metadata_transformer, request_serializers=request_serializers, response_deserializers=response_deserializers, thread_pool=pool, thread_pool_size=pool_size)
-    return beta_implementations.dynamic_stub(channel, 'fontbakery.dashboard.Reports', cardinalities, options=stub_options)
-except ImportError:
-  pass
 # @@protoc_insertion_point(module_scope)
