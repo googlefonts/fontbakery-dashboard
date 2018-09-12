@@ -57,7 +57,7 @@ In the yaml file, the container is referenced directly by its tag `fontbakery/ba
       - name: fontbakery-worker-checker
         image: fontbakery/base-python:1
         workingDir: /var/python
-        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
 […]
 ```
 
@@ -253,7 +253,7 @@ $ /fontbakery-dashboard/containers/base$ ./update_protobufs.sh
 $ minikube start
 $ . <(minikube docker-env)
 $ docker build -t fontbakery/base-javascript:3 containers/base/javascript/
-$ docker build -t fontbakery/base-python:3 containers/base/python/
+$ docker build -t fontbakery/base-python:4 containers/base/python/
 $ kubectl create namespace fontbakery
 $ alias kf="kubectl -n fontbakery"
 $ ENVIRONMENT_VERSION="$(date)"

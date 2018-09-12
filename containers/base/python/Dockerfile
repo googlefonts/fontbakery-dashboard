@@ -1,7 +1,7 @@
 # bionic == 18.04 LTS
 FROM ubuntu:bionic
 
-RUN touch /tmp/cache_spoof_1
+RUN touch /tmp/cache_spoof_2
 
 
 # START TZCONFIG FIX suggested in:
@@ -12,7 +12,7 @@ RUN touch /tmp/cache_spoof_1
 ENV DEBIAN_FRONTEND noninteractive
 ENV DEBCONF_NONINTERACTIVE_SEEN true
 
-## preesed tzdata, update package index, upgrade packages and install needed software
+## preset tzdata, update package index, upgrade packages and install needed software
 RUN echo "tzdata tzdata/Areas select Europe" > /tmp/preseed.txt; \
     echo "tzdata tzdata/Zones/Europe select Berlin" >> /tmp/preseed.txt; \
     debconf-set-selections /tmp/preseed.txt && \
@@ -36,9 +36,10 @@ RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y curl mono-complete libicu-dev \
                           fontforge-nox python-fontforge git build-essential \
                           libssl-dev libffi-dev python-dev libxmlsec1-dev \
-                          libxml2 libxml2-dev tzdata;
+                          libxml2 libxml2-dev tzdata  python3-minimal;
 
-RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
+# RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
+RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python3 /tmp/get-pip.py;
 
 run pip install --upgrade pip
 
@@ -51,30 +52,23 @@ run pip install --upgrade pip
 # FIXME: need all external dependencies
 # ADD prebuilt/ot-sanitise /usr/local/bin/
 
-# We don't want this to be fetched by every container run! (especially
-# not in development) Though, now we have longer running containers
-# it used to be a massive amount of single job containers before/
-# FIXME: This is a hack, we need a proper way to do this
-RUN curl -o tmp/fontbakery-microsoft-vendorlist.cache https://www.microsoft.com/typography/links/vendorlist.aspx
-
 # This is taking forever to compile, so it slows down reiterations
 # it's a dependency of fontbakery. Adding it early, so it is cached
 # by the docker build
 # This is bad: fontbakery requirements.txt needs a version and setup.py doesn't, we
 # install from both ...
-RUN pip install lxml==3.5.0
-
+RUN pip install lxml; # ==3.5.0
 
 ADD requirements.txt /var/python/requirements.txt
 RUN pip install -r /var/python/requirements.txt
 
-RUN touch /tmp/cache_spoof_17
+RUN touch /tmp/cache_spoof_18
 
 # FIXME: doesn't install all dependencies!
 # RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
 
-# RUN git clone --depth 1 -b minor_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
-RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
+#RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
+RUN git clone --depth 1 -b p3_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
     pip install /var/fontbakery;
 
 RUN cp -r /var/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \
@@ -86,9 +80,12 @@ RUN cp -r /var/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \
     chmod +x /bin/FontValidator.exe; \
     echo 'export LD_PRELOAD=/var/fontbakery/prebuilt/custom_freetype/lib/libfreetype.so' >> ~/.bashrc;
 
-#RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
-#    pip install /var/fontbakery;pip install -r /var/fontbakery/requirements.txt;
+RUN touch /tmp/cache_spoof_2
 
-
+# in update_protobufs.sh the command `python -m grpc_tools.protoc`
+# doesn't create python 3 ready relative imports
+# see: https://github.com/protocolbuffers/protobuf/issues/1491
+# setting PYTHONPATH ths way helps.
+ENV PYTHONPATH="/var/python/protocolbuffers/:${PYTHONPATH}"
 
 ADD . /var/python/

@@ -11,10 +11,10 @@ spec:
     spec:
       containers:
       - name: fontbakery-worker-checker
-        image: fontbakery/base-python:3
+        image: fontbakery/base-python:4
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
         workingDir: /var/python
-        command: ["python2",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
 
