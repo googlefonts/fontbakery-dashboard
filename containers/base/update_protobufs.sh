@@ -9,7 +9,7 @@ PATH="$(pwd)/javascript/node_modules/.bin:$PATH"
 
 
 # created with:
-# $ virtualenv devvenv
+# $ python3 -m venv devvenv
 # $ source devvenv/bin/activate
 # $ pip install --upgrade pip
 # $ pip install -r dev-requirements.txt
@@ -20,13 +20,14 @@ source devvenv/bin/activate
 pushd .;
 cd protocolbuffers;
 
-if [ -d ./tools ]; then
-    pushd .; cd tools && git pull || exit 1; popd;
+if [ -d ./gftools ]; then
+    pushd .; cd gftools && git pull || exit 1; popd;
 else
-    git clone --depth 1 -b master git@github.com:googlefonts/tools.git || exit 1;
+    git clone --depth 1 -b master http://github.com/googlefonts/gftools.git || exit 1;
 fi
-cp tools/Lib/gftools/fonts_public.proto . || exit 1
+cp gftools/Lib/gftools/fonts_public.proto . || exit 1
 
+echo "generating javascript protocolbuffers ..."
 
 # old, replaced by `grpc_tools_node_protoc`
 # protoc --js_out=import_style=commonjs,binary:../javascript/generated_modules/protocolbuffers *.proto;
@@ -35,10 +36,16 @@ grpc_tools_node_protoc --js_out=import_style=commonjs,binary:../javascript/gener
                        --plugin=protoc-gen-grpc=`which grpc_tools_node_protoc_plugin` \
                        *.proto
 
+ls ../javascript/generated_modules/protocolbuffers
+
+echo "generating python protocolbuffers ..."
+
 # protoc --python_out=../python/protocolbuffers *.proto
 python -m grpc_tools.protoc -I./ \
                             --python_out=../python/protocolbuffers \
                             --grpc_python_out=../python/protocolbuffers \
                             *.proto
 
-popd
+ls ../python/protocolbuffers
+
+echo 'DONE!'
