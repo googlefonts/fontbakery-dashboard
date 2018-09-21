@@ -2,9 +2,9 @@
 /* jshint esnext:true, node:true*/
 
 const { Process:Parent } = require('./framework/Process')
-  , { Step } = require('./framework/Step')
-  , { Task, string2statusItem, finishingStatuses } = require('./framework/Task')
-  ;
+    , { Step } = require('./framework/Step')
+    , { Task, string2statusItem, finishingStatuses } = require('./framework/Task')
+    ;
 
 const GetFamilyDataTask = (function(){
 
@@ -26,16 +26,15 @@ _p._activate = function() {
     var familyRequest = new FamilyRequest();
     familyRequest.setSourceid('CSVSpreadsheet')
     familyRequest.setFamilyName(this.process.familyName)
-    this.grpcSourceClient.get(familyRequest)
+    return this.grpcSourceClient.get(familyRequest)
         .then(familyDataMessage => {
             // this is nice, we'll have all the info of the files
             // of the progress available in the document
-            this._logStatus(familyDataSummaryMarkdown);
+            this._setLOG(familyDataSummaryMarkdown);
             return this._setSharedData('familyData', familyDataMessage)
-                .then(()=>this._setStatus(OK, 'Family data is persisted.'))
-        })
-        .then(null, error=>this._setStatus(FAIL, renderError(error)))
-        ;
+                .then(()=>this._setOK('Family data is persisted.'))
+        });
+        // error case will be handled and FAIL will be set
 };
 
 return GetFamilyDataTask;
@@ -73,10 +72,19 @@ _p._createFamilyJob = function(FamilyDataMessage) { // -> FamilyJobMessage
     // include to call "callbackFontBakeryFinished" with a fontbakeryResultMessage
 };
 
+_p._dispatchFamilyJob = function(ticket, familyJob) {
+
+
+};
+
 _p._runFamilyJob = function(familyJob) {
-    this._dispatchFamilyJob(familyJob).then(reportID=>{
+    var callbackTicket = this._setExpectedAnswer('Font Bakery', 'callbackFontBakeryFinished');
+    return this._dispatchFamilyJob(callbackTicket, familyJob)
+    .then(reportID=>{
         this._setPrivateData('reportId', reportId);
-        this._setStatus(PENDING, renderMD('Waiting for Font Bakery [Report '
+        // This improves the information of the PENDING status by showing
+        // the Font Bakery report details.
+        this._setPENDING(renderMD('Waiting for Font Bakery [report '
                         + reportID + '](' + linkToFontbakeryReport + ')' ));
         return reportId;
     });
@@ -101,7 +109,9 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
     }
     this._setPrivateData('fontbakeryResultMessage', fontbakeryResultMessage);
     this._logStatus(renderMD(fontbakeryResultMessage));
-    this._setStatus(Pending, 'Waiting for user interaction.');
+    return this._requestUserInteraction('userInteractionFinalize', 'callbackFinalize');
+
+
     TODO;  // The task is now waiting for user interaction
            // this needs to be communicated to the applicable users
            // as such:
@@ -185,15 +195,15 @@ _userInteractionFinalizeReceive = function(userResponse) {
     finalizeMessage.setReasoning(userResponse.reasoning);
     return finalizeMessage;
 
-    TODO; // _sendToProcessManager('callbackFinalize', finalizeMessage);
+    TODO; // _sendToProcessManager(callbackTicket, finalizeMessage);
 };
 
 _p._activate = function() {
     return this._getSharedData('familyData').then(FamilyDataMessage=>{
         this._createFamilyJob(FamilyDataMessage)
-        .then(FamilyJob=>this._runFamilyJob)
+        .then(familyJob=>this._runFamilyJob(familyJob))
     });
-}
+};
 
 
 // One question is if we're better of structuring a task explicitly

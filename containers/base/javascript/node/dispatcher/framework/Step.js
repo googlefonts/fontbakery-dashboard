@@ -18,6 +18,31 @@ function Step(state, process, taskCtors) {
 
 const _p = Step.prototype;
 
+FIXME;// thinking of permanent user interaction allowed for
+// the active step:
+// always: re-activate any task
+// this may also change the FAIL status of the step;
+// i.e. if the step is FAILed bit not closed, re-running a/the failed task
+// may make the task pass and subsequently the step as well.
+//
+// also, if the step is failed but not closed yet, a user interaction
+// to choose/set up the closing action/message would be good.
+//
+// also, Tasks may need a kind of time out.
+// we can theoretically wait forever for a task to receive an answer
+// but that's not perfect. Options:
+// hard default or custom timeout -> task fails re-activate ui appears
+// soft default or custom timeout: re-activate or manually fail ui (buttons)
+// appears, otherwise the task is just PENDING/waiting until the hard timeout
+//
+// also, a hard-timeout could have a retry count attached???
+// rendering images with browser stack can have the worst availability
+// possible, so, we should be able to query it multiple times over a long
+// period of time.
+//
+// maybe we can have a kind of cron service for a task to schedule re-runs
+// via the execute/callbackTicket interface?
+
 _p._initTasks = function() {
     var tasks = {};
     for(let [key, TaskCtor] of Object.entries(this._taskCtors))
@@ -130,7 +155,8 @@ _p.activate = function() {
     // i.e. if this._state.isActivated === true
     // at the moment, I would assert this._state.isActivated === false
     // Though, we may add a feature to reset a step completely and
-    // reactivate it.
+    // reactivate it. e.g. if for some reasom the expected answer is not
+    // coming in and we want to request it again
     if(this._state.isActivated)
         // At the moment, expect caller to check this.
         throw new Error('Step is already activated.');

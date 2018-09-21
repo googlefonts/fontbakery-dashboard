@@ -1,11 +1,7 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-
-FIXME;// REASSES if this will work AND plan the next steps!
-
 const {mixin: stateManagerMixin} = require('stateManagerMixin');
-
 
 /**
  * Making these items unique objects so it's very explicit what is meant.
@@ -29,7 +25,7 @@ const PENDING = new StatusItem('PENDING')
     // string2statusItem: statusItems.get(string) => statusItem
     //                    statusItems.get('FAILED') => FAILED
   , string2statusItem = string=>statusItems.get(string)
-  , finishingStatuses = new Set([OK, FAILED]);
+  , finishingStatuses = new Set([OK, FAILED])
   ;
 
 exports.PENDING = PENDING;
@@ -59,6 +55,8 @@ function TaskStatus(
 
     if(created) {
         // if present must be a valid date
+        if(!(created instanceof Date))
+            throw new Error('`created` is not an instance of Date "'+created+'".');
         if(isNaN(created.getDate()))
             throw new Error('`created` is an Invalid Date "'+created+'".');
         this.created = created;
@@ -75,7 +73,8 @@ _p.serialize = function() {
     return {
         status: this.status.toString()
       , details: this.details
-      , created: this.created.toISOString()
+                // for use with rethinkDB this can just stay a Date
+      , created: this.created //.toISOString()
       , data: this.data
     };
 };
@@ -87,17 +86,20 @@ TaskStatus.load = function(state) {
     var {
             statusString
           , details
-          , created: createdString
+          , created
           , data
         } = state;
     // stateString :must exist, check in here for a better error message
     if(!statusItems.has(statusString))
         throw new Error('state.status is not a statusItems key: "'+statusString+'"');
 
+    // rethinkdb can store and return dates as it
+    if(typeof created === 'string')
+        created = new Date(created);
     return new TaskStatus(
         statusItems.get(statusString)
       , details
-      , new Date(createdString)
+      , created
       , data
     );
 };
@@ -158,9 +160,16 @@ Object.defineProperties(_p, {
     }
 });
 
+/**
+ * NOTE: after init we have a PENDING status but NO ExpectedAnswer
+ * that's an exception, and the `this.activate` method is used to actually
+ * start the task.
+ * Then, via `this.activate` or `this.execute` `this._runStateChangingMethod`
+ * is executed and an expectedAnswer must be defined if the status is PENDING.
+ */
 _p._initHistory = function() {
-    return this._setPENDING('*initial state*');
-}
+    return [new TaskStatus(PENDING, '*initial state*')];
+};
 
 // FIXME: load takes data from external, so it should check
 //        that it's `state` argument is valid (otherwise it can't be
@@ -176,27 +185,39 @@ const stateDefinition = {
         // could add some validation though...
         init: ()=>new Date()
       , serialize: date=>date
-      , load: dtate=>date
+      , load: date=>date
       , validate: date=>{
+            if(!(date instanceof Date))
+                return [false, ''];
             if(isNaN(date.getTime()))
-                return [false, 'Date "'+date+'" is invalid (getTime=>NaN).']
+                return [false, 'Date "'+date+'" is invalid (getTime=>NaN).'];
             return [true, null];
         }
     }
   , history: {// array of valid taskStatus entries, min len = 1 (see _initState)
-        init: ()=>[new TaskStatus(PENDING, '*initial state*')]
+        init: ()=>_p._initHistory
       , serialize: history=>history.map(taskStatus=>taskStatus.serialize())
       , load: historyStates=>historyStates.map(TaskStatus.load)
     }
   // Can save some internal state data to the database, so that it can
   // validate, keep, and follow its internal state.
-  // this must all somehow got into the rethinkDB database, so stick
+  // this must all somehow go into the rethinkDB database, so stick
   // to its native data types (i.e. JSON compatible + pseudo types like
   // Dates. See: https://rethinkdb.com/docs/data-types/)!
   , private: {
         init: ()=>null//empty
       , serialize: state=>state
       , load: state=>state
+    }
+  , expectedAnswer: {
+        init: ()=>null//empty
+      , serialize: state=>state
+      , load: state=>state
+      // validate: ?? could be done...
+      // must be either null or an 2 item array [callbackName, ticket]
+      // if an array the second entry is the ticket, if somehow
+      // "signed"/"salted" with a "secret" could be validated as well.
+      // I.e. if the secret changes, the loaded state is then invalid …
     }
 };
 
@@ -267,54 +288,141 @@ _p._activate = function() {
  *
  */
 _p.activate = function() {
-    this._setPENDING('*activating*');
     // reset
+    this._setLOG('*activate*');
     this._state.private = null;
+    this._state.expectedAnswer = null;
+    return this._runStateChangingMethod(this._activate);
+};
+
+/**
+ * A task can only expect one answer at any time, to keep it simple.
+ * We may change this if there's a good use case.
+ * If expectedAnswer is already set, either use _unsetExpectedAnswer
+ * or the `force` argument set to true to override.
+ * This needs to be put into _state, so we can serialize it!
+ */
+_p._setExpectedAnswer = function(waitingFor, callbackName, force) {
+    if(force)
+        this._unsetExpectedAnswer();
+
+    if(this._hasExpectedAnswer())
+        throw new Error('Expected answer is already set: "'
+                                    + this._state.expectedAnswer[0] +'".');
+
+    this._setPENDING('Waiting for ' + waitingFor);
+
+    // do we need some random string here? or a secret?
+    // or a date signed with a secret?
+    // If it's random or a salted hash, it will be harder to guess from
+    // outside. What's the value of the salted hash?
+    var ticket = TODO();
+    this._state.expectedAnswer = [callbackName, ticket];
+    //return a "defensive copy" of the array => callbackTicket
+    return this._state.expectedAnswer.slice();
+};
+
+_p._hasExpectedAnswer = function(){
+    return this._state.expectedAnswer !== null;
+};
+
+_p._unsetExpectedAnswer = function() {
+    this._state.expectedAnswer = null;
+};
+
+/**
+ * ticket would be a unique string stored in here
+ */
+_p._isExpectedAnswer = function([callbackName, ticket]) {
+    return this._hasExpectedAnswer()
+                    && this._state.expectedAnswer[0] === callbackName
+                    && this._state.expectedAnswer[1] === ticket
+                    ;
+};
+
+_p._setRequestedUserInteraction = function(userInteractionName, callbackTicket) {
+    TODO;// the result of the user interaction should be
+    // received like: this.execute(userInteractionResultMessage)
+    // where: callbackTicket === actionMessage.getCallbackTicket()
+    // this needs handling in ProcessManager (it needs to be aware of
+    // all required user interactions and possibly about the authorization
+    // situation.
+    // Basically this must be detected and updated after each transition
+    // or after resurrection.
+    //
+    // This is most probably propagated via the step of this task
+    // so that only an active step will be able to request user interaction.
+}
+
+_p._requestUserInteraction = function(userInteractionName, callbackName) {
+    var callbackTicket = this._setExpectedAnswer('user interaction', callbackName);
+    return this._setRequestedUserInteraction(userInteractionName, callbackTicket);
+};
+
+_p._getCallbackMethod = function(callbackName) {
+    //TODO?;
+    return this[callbackName];
+};
+
+_p._runStateChangingMethod = function(method, ...args) {
     var promise;
     try {
         // may return a promise but is not necessary
-        // Promise.resolve will fail if task.activate returns a failing promise.
-        promise = Promise.resolve(this._activate());
+        // Promise.resolve will also fail if method returns a failing promise.
+        promise = Promise.resolve(method.call(this, ...args));
     }
     catch(error) {
         promise = Promise.reject(error);
     }
-    return promise.then(null, error=>this._setFAILED(
-                    renderErrorAsMarkdown('Activation failed:', error)));
+
+    return promise.then(()=>{
+        // a self check ...
+        var status = this.status;
+        if(finishingStatuses.has(status))
+            // all good, it's done
+            return;
+        // if not in a finished state now, we need to be in PENDING
+        if(status !== PENDING)
+            throw new Error('Status is not finished, thus, it must be '
+                + 'PENDING, but it is ' + status + '.');
+        // AND an expectedAnswer must be defined, otherwise, there's
+        // no way the task can ever finish! (we lost the thread)
+        if(!this._hasExpectedAnswer())
+            throw new Error('Lost the thread: the task has not defined '
+                                            + 'an expected answer.');
+    })
+    .then(null, error=>this._setFAILED(renderErrorAsMarkdown(
+                    'Method: ' + method.name + ' failed:', error)));
 };
-
-
-_p._isExpectedAnswer = function(callbackName, pass) {
-    TODO;
-};
-
-_p._getCallbackMethod = function(callbackName){
-    TODO;
-}
 
 _p.execute = function(actionMessage) {
-    var callbackName = actionMessage.getCallback()
+    var callbackTicket = actionMessage.getCallbackTicket()
+      , [callbackName, ticket] = callbackTicket
         // *MAYBE* to verify the answer comes from the dispatched request
-        // e.g. pass would be a unique string stored here, for the
+        // e.g. ticket would be a unique string stored here, for the
         // callback, roundtripping from dispatched request back to
         // here.
-      , pass = actionMessage.getPass()
       , payload = actionMessage.getPayload()
       , data, callbackMethod
-      , [expected, message] = this._isExpectedAnswer(callback, pass)
+      , expected = this._isExpectedAnswer(callbackTicket)
       ;
     if(!expected)
-        throw new Error('Action for "'+callbackName+'" with pass "'+pass+'" '
-            +' is not expected: ' + message);
+        throw new Error('Action for "' + callbackName + '" with ticket "'
+                                    + ticket + '" is not expected.');
     data = JSON.parse(payload);
     callbackMethod = this._getCallbackMethod(callbackName);
-    return callbackFunc.call(this, data);
+    // A ticket is only valid once. If we need more answers for the same
+    // callback, it would be good to make the this._state.expectedAnswer[1]
+    // value a set of allowed tickets and have _setExpectedAnswer be called
+    // with a number indicating the count of expected answers.
+    // But we need a good use case for it first.
+    this._unsetExpectedAnswer();
+    return this._runStateChangingMethod(callbackMethod, data);
 };
 
 _p._setStatus = function(status, markdown, data){
     this._state.history.push(new TaskStatus(status, markdown, null, data));
 };
-
 
 // These are helpers to use _setStatus, so a subclass doesn't need to
 // import the status items.
