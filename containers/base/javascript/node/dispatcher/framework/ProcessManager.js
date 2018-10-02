@@ -56,6 +56,10 @@ _p._unpackCommandMessage = function(commandMessage) {
  * A lock could be written to the process document, but maybe it's
  * just enough to lock it within this service, as long as it runs as a
  * single instance (likely) and no one else writes to the process document.
+ *
+ * TODO: also create a queue, to dispatch all incoming messages to the
+ * process one after another, without turning them down when one request
+ * is processed.
  */
 _p._lock = function(processId) {
     TODO;

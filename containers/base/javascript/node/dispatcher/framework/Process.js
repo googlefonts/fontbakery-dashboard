@@ -4,7 +4,7 @@
 const {mixin: stateManagerMixin} = require('stateManagerMixin');
 
 function Process(state, stepCtors, FailStepCtor, FinallyStepCtor) {
-    this._stepCtors = {}
+    this._stepCtors = {};
     if(stepCtors)
         this._stepCtors.steps = stepCtors;
     if(FailStepCtor)
@@ -73,7 +73,7 @@ const dateTypeDefinition = {
       , load: date=>date
       , validate: date=>{
             if(isNaN(date.getTime()))
-                return [false, 'Date "'+date+'" is invalid (getTime=>NaN).']
+                return [false, 'Date "'+date+'" is invalid (getTime=>NaN).'];
             return [true, null];
         }
 };
@@ -142,13 +142,13 @@ Object.defineProperties(_p, {
  ,  steps: {
         // always return an array, return an empty array if there are no steps
         get: function() {
-            return this._state.steps || []
+            return this._state.steps || [];
         }
     }
     // this is set in this._transition, possible as an effect of
     // this.activate. But it can't be in this._state directly,
     // because it's determined from the state of this._state.steps etc.
-  , isClosed: {TODO}
+  , isFinished: {TODO}
 });
 
 /**
@@ -156,7 +156,7 @@ Object.defineProperties(_p, {
  * This may be a brand new process, which never was activated or
  * one with old state from the database (reactivation).
  *
- * The aim is to set this._activeStep or to set isClosed
+ * The aim is to set this._activeStep or to set isFinished
  *
  * FIXME: UIServer likely needs to call this method BUT without the
  * actual step.activate() call that may happen in this._activateStep
@@ -168,8 +168,8 @@ Object.defineProperties(_p, {
  * need to
  */
 _p.activate = function() {
-    if(this.isClosed)
-        throw new Error('Process is closed.');
+    if(this.isFinished)
+        throw new Error('Process is finished.');
     if(this._activeStep)
         throw new Error('Process is active.');
 
@@ -180,12 +180,6 @@ _p.activate = function() {
     // reActivate when the process is resurrected from persistence?
     // BUT: reActivate would have to work in the activate case as well
     // Thus process.isActive === !! this._activeStep
-    //
-    // so the wrong iteration idea here is that
-    // failStep is only feasible directly after a failed regular step
-    // and finallyStep is only feasible after the last regular step or
-    // directly after failedStep i.e. as the last truly final step
-
     var firstFailedStep = null // ? do we need this?
       , stepToActivate = null
       , steps = this.steps
@@ -194,19 +188,21 @@ _p.activate = function() {
         let step = steps[i];
         if(step.isFailed) {
             firstFailedStep = step;
-            if(this._state.failStep && !this._state.failStep.isClosed)
+            if(this._state.failStep && !this._state.failStep.isFinished)
                 stepToActivate = this._state.failStep;
             // else => … finallyStep
             break;
         }
-        if(!step.isClosed) {
-            stepToActivate = step
+        if(!step.isFinished) {
+            // will have to activate all cases where !step.isFinished
+            // i.e. step.isFailing === true will also be activated
+            stepToActivate = step;
             break;
         }
     }
     // else => … finallyStep
     if(!stepToActivate && this._state.finallyStep
-                                    && !this._state.finallyStep.isClosed)
+                                    && !this._state.finallyStep.isFinished)
         stepToActivate = this._state.finallyStep;
 
     if(stepToActivate)
@@ -226,7 +222,7 @@ _p._isActiveStep = function(step) {
 
 // getter boolean
 Object.defineProperty(_p, 'userInteractionIsRequired', {
-    get: functuion() {
+    get: function() {
         TODO;
         return true || false;
     }
@@ -244,7 +240,7 @@ _p.defineUserInteracion = function(uiConstructors) {
     var uiDescription = {};
     // ...
     return uiDescription;
-}
+};
 
 // this runs in ProcessManager
 _p.receiveUserInteracion = function(userResponse) {
@@ -256,11 +252,12 @@ _p._getActiveStep = function() {
         throw new Error('No active step found');
     //    let activeStep = this._findActiveStep(); ???
     //    return this._activateStep(activeStep)
-    return this._activeStep; TODO; // set on init/load state
+    TODO; // set on init/load state
+    return this._activeStep;
 };
 
 _p._activateStep = function(step) {
-    if(step.isClosed)
+    if(step.isFinished)
         throw new Error('Can\t activate closed step.');
     // we could have a self-check here if step is the valid
     // next step.
@@ -296,10 +293,11 @@ _p._getNextRegularStep = function(step) {
 
 _p._isRegularStep = function(step) {
     return this.steps.indexOf(step) !== -1;
-}
+};
 
 _p._getNextStep = function(step) {
-    var nextRegularStep = this._getNextRegularStep(step)
+    // assert step.isFinished
+    var nextRegularStep = this._getNextRegularStep(step);
     if(!step.isFailed && nextRegularStep)
         return nextRegularStep;
     // step is failed or there's no next regular step
@@ -308,7 +306,7 @@ _p._getNextStep = function(step) {
     // this also ensures that step !== this._state.failStep
     // this._state.failStep must be defined
     else if(step.isFailed && this._isRegularStep(step) && this._state.failStep)
-        return this._state.failStep
+        return this._state.failStep;
     else if(this._state.finallyStep && step !== this._state.finallyStep)
         return this._state.finallyStep;
     else
@@ -320,7 +318,7 @@ _p._transition = function() {
     var activeStep = this._getActiveStep()
       , nextStep = null
       ;
-    if(!activeStep.isClosed)
+    if(!activeStep.isFinished)
         // still pending
         return;
 
@@ -340,12 +338,12 @@ _p._transition = function() {
  */
 _p.execute = function(targetPath, actionMessage) {
     // if(targetPath.step) ? => can we execute directly on path?
-    var step = this._getStep(targetPath.step);TODO: // implement
+    var step = this._getStep(targetPath.step);TODO; // implement
     if(!this._isActiveStep(step)) // TODO: implement
-        throw ... TODO: // implement
+        throw TODO; // implement
     return step.execute(targetPath, actionMessage)// TODO: implement
         .then(()=>this._transition()) //TODO: implement
-        .then(()=>this);
+        ;
 };
 
 /**
