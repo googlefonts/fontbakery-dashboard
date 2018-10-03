@@ -3,7 +3,8 @@
 
 const { Process:Parent } = require('./framework/Process')
     , { Step } = require('./framework/Step')
-    , { Task, string2statusItem, finishingStatuses } = require('./framework/Task')
+    , { Task, finishingStatuses } = require('./framework/Task')
+    , { string2statusCode }  = require('./framework/Status')
     ;
 
 const GetFamilyDataTask = (function(){
@@ -139,7 +140,7 @@ _p.callbackFinalize = function(finalizeMessage) {
     // we should make an extra userInteraction message type for each of
     // these. This gives some certainty about the message content
     var statusName = finalizeMessage.getStatus()
-      , status = string2statusItem(statusName)
+      , status = string2statusCode(statusName)
       , reasoning = finalizeMessage.getReasoning(reasoning)
       ;
     if(!finishingStatuses.has(status))

@@ -21,7 +21,7 @@ const PENDING = new StatusCode('PENDING')
   , FAILED = new StatusCode('FAILED')
   , LOG = new StatusCode('LOG')
   , statusCodes = new Map(Object.entries({PENDING, OK, FAILED, LOG}))
-    // string2statusCode: statusCodes.get(string) => statusItem
+    // string2statusCode: statusCodes.get(string) => statusCode
     //                    statusCodes.get('FAILED') => FAILED
   , string2statusCode = string=>statusCodes.get(string)
   ;
