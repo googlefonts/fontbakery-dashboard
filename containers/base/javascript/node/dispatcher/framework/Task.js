@@ -78,6 +78,11 @@ Object.defineProperties(_p, {
             return this.taskStatus.status;
         }
     }
+  , isFailed: {
+        get: function() {
+            return this.status === FAILED;
+        }
+    }
   , finshed: {
         get: function() {
             return this._finishngStatuses.has(this.status);
@@ -375,7 +380,28 @@ _p._runStateChangingMethod = function(method, ...args) {
                                             + 'an expected answer.');
     })
     .then(null, error=>this._setFAILED(renderErrorAsMarkdown(
-                    'Method: ' + method.name + ' failed:', error)));
+                    'Method: ' + method.name + ' failed:', error)))
+    .then(()=>{
+        if(!this.isFailed)
+            return;
+        return this._failedAction();
+    });
+};
+
+_p.callbackReactivate = function(){
+    return this.activate();
+};
+
+
+TODO;// def uiRetry
+
+_p._failedAction = function() {
+    // Maybe: if(!this._useRetryUI) return;
+    // though, a sub-class could also just re-implement this method
+    // this interface would just sit there, it doesn't have to be used
+    // but if there's a good reason to restart a task, it can be used.
+    TODO;
+    this._setExpectedAnswer('Retry UI', 'callbackReactivate', 'uiRetry');
 };
 
 /**
