@@ -1,24 +1,10 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const {mixin: stateManagerMixin} = require('stateManagerMixin')
-  , crypto = require('crypto')
+const {mixin: stateManagerMixin} = require('./stateManagerMixin')
+  , {expectedAnswersMixin} = require('./expectedAnswersMixin')
   , {Status, PENDING, OK, FAILED, LOG} = require('./Status')
   ;
-
-/**
- * Making these items unique objects so it's very explicit what is meant.
- */
-function StatusItem (status) {
-    Object.defineProperty(this, 'status', {
-        value: status
-      , writable: false
-      , enumerable: true
-    });
-}
-StatusItem.prototype.valueOf = function() {
-    return this.status;
-};
 
     // CAUTION: these are the ones that are allowed to be returned by
     // task.status. **Don't just change this**  it needs a careful review
@@ -26,6 +12,8 @@ StatusItem.prototype.valueOf = function() {
 const validTaskStatuses = new Set([PENDING, OK, FAILED])
   , finishingStatuses = new Set([OK, FAILED])
   ;
+exports.validTaskStatuses = validTaskStatuses;
+exports.finishingStatuses = finishingStatuses;
 
 function Task(state, step) {
     this._step = step;
@@ -36,7 +24,10 @@ function Task(state, step) {
         this._initState();
 }
 
+exports.Task = Task;
 const _p = Task.prototype;
+
+expectedAnswersMixin(_p);
 
 // do this?
 Object.defineProperties(_p, {
@@ -88,30 +79,6 @@ Object.defineProperties(_p, {
             return this._finishngStatuses.has(this.status);
         }
     }
-  , _secret: {
-        get: function() {
-            FIXME;
-            throw new Error('Not implemented "_secret".');
-        }
-    }
-  , _callbackTicket: {
-        get: function() {
-            if(!this._hasExpectedAnswer)
-                return null;
-            return this._state.expectedAnswer.slice(0,2);
-        }
-    }
-  , requestedUserInteraction: {
-        get: function() {
-            if(!this._hasRequestedUserInteraction)
-                return null;
-            // => [requestedUserInteractionName, callbackTicket]
-            return [
-                this._state.expectedAnswer[2]
-              , this._callbackTicket
-            ];
-        }
-    }
 });
 
 /**
@@ -123,55 +90,6 @@ Object.defineProperties(_p, {
  */
 _p._initHistory = function() {
     return [new Status(PENDING, '*initial state*')];
-};
-
-_p._hash = function(...data) {
-    var hash = crypto.createHash('sha256');
-    for(let str of data)
-        hash.update(str);
-    return hash.digest('hex');
-};
-
-/**
- * A hash for ticket only makes sense if it includes the callbackName,
- * a unique/random number or maybe the date, a secret
- * The secret should not accessible with database access,
- * so, "unauthorized" database access cannot enable to make any callback
- * expected.
- * The secret must not be in the git repo, otherwise it's not a secret!
- */
-_p._getTicket = function (callbackName, dateString/*don't use for new tickets*/) {
-    var date = dateString || new Date().toISOString()
-      , hash = this._hash(date, callbackName, this._secret)
-      ;
-    return [date, hash].join(';');
-};
-
-/**
- * Must be either null or an 3 item array:
- *          [callbackName, ticket, requestedUserInteractionName]
- * If an array the second entry is the ticket, if somehow
- * "signed"/"salted" with a "secret" could be validated as well.
- * I.e. if the secret changes, the loaded state would then then be invalid …
- */
-_p._validateExpectedAnswer = function(expectedAnswer) {
-    if(expectedAnswer === null)
-        return [true, null];
-    var [callbackName, ticket, requestedUserInteractionName] = expectedAnswer;
-
-    if(!this._getCallbackMethod(callbackName))
-        return [false, 'Callback "' + callbackName + '" is not defined.'];
-
-    let dateString = ticket.split(';')[0];
-    if(ticket !== this._getTicket(callbackName, dateString))
-        return [false, 'Ticket is invalid.'];
-
-    if(requestedUserInteractionName !== null
-                && !this._hasUserInteraction(requestedUserInteractionName))
-        return [false, 'Requested user Interaction "'
-                    + requestedUserInteractionName + '" is not defined.'];
-
-    return [true, null];
 };
 
 // FIXME: load takes data from external, so it should check
@@ -280,6 +198,15 @@ _p._activate = function() {
     throw new Error('Not implemented `_activate`.');
 };
 
+_p._reActivate = function() {
+    // reset
+    this._setLOG('*activate*');
+    this._state.private = null;
+    this._unsetExpectedAnswer();
+    // activate
+    return this._activate();
+};
+
 /**
  * This is called when the Step is activated.
  * The task must have a thread from here to it's end, which is a
@@ -288,13 +215,10 @@ _p._activate = function() {
  * Returns a promise.
  */
 _p.activate = function() {
-    // reset
-    this._setLOG('*activate*');
-    this._state.private = null;
-    this._state.expectedAnswer = null;
-
-    return this._runStateChangingMethod(this._activate);
+    // just a wrapper
+    return this._runStateChangingMethod(this._reActivate, 'activate');
 };
+
 
 /**
  * A task can only expect one answer at any time, to keep it simple.
@@ -302,68 +226,17 @@ _p.activate = function() {
  *
  * This needs to be put into _state, so we can serialize it!
  */
-_p._setExpectedAnswer = function(waitingFor, callbackName, requestedUserInteractionName) {
-    this._setPENDING('Waiting for ' + waitingFor);
-    var ticket = this._getTicket(callbackName)
-      , expectedAnswer = [callbackName, ticket
-                                , requestedUserInteractionName || null]
-      , [result, message] = this._validateExpectedAnswer(expectedAnswer)
-      ;
-    if(!result)
-        throw new Error('expectedAnswer is invalid: ' + message);
-    this._state.expectedAnswer = expectedAnswer;
-    return this._callbackTicket;
+_p._setExpectedAnswer = function(waitingFor
+                               , callbackName
+                               , requestedUserInteractionName
+                               , setPending /*optional, default: true*/) {
+    if(setPending === undefined || setPending)
+        this._setPENDING('Waiting for ' + waitingFor);
+    return this.__setExpectedAnswer(waitingFor, callbackName, requestedUserInteractionName);
 };
 
-_p._hasExpectedAnswer = function() {
-    return this._state.expectedAnswer !== null;
-};
-
-_p._unsetExpectedAnswer = function() {
-    this._state.expectedAnswer = null;
-};
-
-/**
- * ticket would be a unique string stored in here
- */
-_p._isExpectedAnswer = function([callbackName, ticket]) {
-    return this._hasExpectedAnswer()
-                    && this._state.expectedAnswer[0] === callbackName
-                    && this._state.expectedAnswer[1] === ticket
-                    ;
-};
-
-/**
- * Don't use directly in a Task implementation!
- * Use `_requestUserInteraction` instead.
- */
-_p._hasRequestedUserInteraction = function() {
-    return this._hasExpectedAnswer() && this._state.expectedAnswer[2] !== null;
-};
-
-/**
- * As a convention, callbackName and thus the method name
- * must start with "callback"
- */
-_p._getCallbackMethod = function(callbackName) {
-    return (callbackName.indexOf('callback') !== 0 && this[callbackName])
-            ? this[callbackName]
-            : null
-            ;
-};
-
-_p._runStateChangingMethod = function(method, ...args) {
-    var promise;
-    try {
-        // may return a promise but is not necessary
-        // Promise.resolve will also fail if method returns a failing promise.
-        promise = Promise.resolve(method.call(this, ...args));
-    }
-    catch(error) {
-        promise = Promise.reject(error);
-    }
-
-    return promise.then(()=>{
+_p._handleStateChange = function(methodName, stateChangePromise) {
+    return stateChangePromise.then(()=>{
         // a self check ...
         var status = this.status;
         if(finishingStatuses.has(status))
@@ -380,7 +253,7 @@ _p._runStateChangingMethod = function(method, ...args) {
                                             + 'an expected answer.');
     })
     .then(null, error=>this._setFAILED(renderErrorAsMarkdown(
-                    'Method: ' + method.name + ' failed:', error)))
+                    'Method: ' + methodName + ' failed:', error)))
     .then(()=>{
         if(!this.isFailed)
             return;
@@ -388,8 +261,9 @@ _p._runStateChangingMethod = function(method, ...args) {
     });
 };
 
-_p.callbackReactivate = function(){
-    return this.activate();
+_p.callbackReActivate = function(data) {
+    TODO;// validate data
+    return this.reActivate();
 };
 
 
@@ -400,54 +274,10 @@ _p._failedAction = function() {
     // though, a sub-class could also just re-implement this method
     // this interface would just sit there, it doesn't have to be used
     // but if there's a good reason to restart a task, it can be used.
-    TODO;
-    this._setExpectedAnswer('Retry UI', 'callbackReactivate', 'uiRetry');
-};
-
-/**
- * actionMessage.callbackTicket: To verify a answer comes from the actual
- * request that was dispatched, ticket is a unique, "signed" string stored
- * here We're round tripping it  from dispatched request back to here.
- * A ticket is only valid once. If we need more answers for the same
- * callback, it would be good to make the this._state.expectedAnswer[1]
- * value a set of allowed tickets and have _setExpectedAnswer be called
- * with a number indicating the count of expected answers. But we need a
- * good use case for it first, because it's more complicated to get it right.
- * I.e. we may run into race conditions or otherwise conflicting states
- * when there are parallel expected answers. It's much better to
- * implement concurrency using the step-task model.
- *
- * A requested user interaction callbackMethod must be able to reject
- * an answer and provide hints to the user abut what went wrong,
- * i.e. if there's some validation
- * issue. In that case, we **don't** keep expected answer and
- * request user interaction around for re-use. Instead, the callbackMethod
- * should be like a "monkey form" implementation, calling itself explicitly
- * (via _setExpectedAnswer) until all requirements are met. Then, also,
- * only one client can answer to one expected answer, resolving the
- * race directly here, even before the `callbackMethod` could go async
- * or so.
- */
-_p.execute = function(actionMessage) {
-    var callbackTicket = actionMessage.getCallbackTicket()
-      , [callbackName, ticket] = callbackTicket
-      , payload = actionMessage.getPayload()
-      , data, callbackMethod
-      , expected = this._isExpectedAnswer(callbackTicket)
-      ;
-    if(!expected)
-        throw new Error('Action for "' + callbackName + '" with ticket "'
-                                    + ticket + '" is not expected.');
-    data = JSON.parse(payload);
-    callbackMethod = this._getCallbackMethod(callbackName);
-
-    TODO;// we need to establish a back channel here, that goes directly to
-    // the user interacting, if present! ...
-    // Everything else will be communicated via the changes-feed of
-    // the process. Back channel likely means there's an answer message
-    // for the execute function.
-    this._unsetExpectedAnswer();
-    return this._runStateChangingMethod(callbackMethod, data);
+    this._setExpectedAnswer('Retry UI'
+                           , 'callbackReActivate'
+                           , 'uiRetry'
+                           , false);
 };
 
 _p._setStatus = function(status, markdown, data) {
@@ -456,6 +286,17 @@ _p._setStatus = function(status, markdown, data) {
 
 // These are helpers to use _setStatus, so a subclass doesn't need to
 // import the status items.
+
+
+/**
+ * Right now this is basically an alias of this._executeExpectedAnswer
+ * defined in expectedAnswersMixin, but maybe, as a public interface we'll
+ * have to modify it. Also, not using targetPath at the moment.
+ */
+_p.execute = function(targetPath, actionMessage) {
+    //jshint unused:vars
+    return this._executeExpectedAnswer(actionMessage);
+};
 
 /**
  * This doesn't change the state.
