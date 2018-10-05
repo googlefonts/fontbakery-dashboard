@@ -9,10 +9,9 @@ const crypto = require('crypto');
 function expectedAnswersMixin(_p) {
 
     Object.defineProperties(_p, {
-        _secret: {
+        secret: {
             get: function() {
-                FIXME;
-                throw new Error('Not implemented "_secret".');
+                throw new Error('Not implemented "secret".');
             }
         }
       , _callbackTicket: {
@@ -53,7 +52,7 @@ function expectedAnswersMixin(_p) {
      */
     _p._getTicket = function (callbackName, dateString/*don't use for new tickets*/) {
         var date = dateString || new Date().toISOString()
-          , hash = this._hash(date, callbackName, this._secret)
+          , hash = this._hash(date, callbackName, this.secret)
           ;
         return [date, hash].join(';');
     };
@@ -158,7 +157,6 @@ function expectedAnswersMixin(_p) {
     _p._hasRequestedUserInteraction = function() {
         return this._hasExpectedAnswer() && this._state.expectedAnswer[2] !== null;
     };
-
 
     _p._callPromisified = function(method, ...args) {
         try {

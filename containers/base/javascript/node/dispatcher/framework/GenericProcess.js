@@ -9,7 +9,7 @@ const {Process: Parent} = require('./Process');
  * without any means of changing the actual data. E.g. the Task don't
  * have any actions.
  */
-function GenericProcess(state) {
+function GenericProcess(resources, state) {
     // guessing by the data which step constructors are required by it.
     var stepCtors = null
       , FailStepCtor = 'failStep' in state ? GenericStep : null
@@ -21,7 +21,7 @@ function GenericProcess(state) {
             stepCtors.push(GenericStep);
 
     }
-    Parent.call(this, state, stepCtors, FailStepCtor, FinallyStepCtor);
+    Parent.call(this, resources, state, stepCtors, FailStepCtor, FinallyStepCtor);
 }
 
 GenericProcess.prototype = Object.create(Parent.prototype);

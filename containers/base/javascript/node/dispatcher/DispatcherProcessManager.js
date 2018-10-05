@@ -20,7 +20,7 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
     // Combine ProcessManager and the process definition:FamilyPRDispatcherProcess.
-    processManager = new ProcessManager(setup.logging, setup.db, port, FamilyPRDispatcherProcess);
+    processManager = new ProcessManager(setup.logging, setup.db, port, secret, FamilyPRDispatcherProcess);
     processManager.serve()
         .catch(err => {
             setup.logging.error('Can\'t initialize server.', err);

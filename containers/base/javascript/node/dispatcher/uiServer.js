@@ -107,9 +107,6 @@ _p._getProcess = function(processId) {
     return process;
 };
 
-
-
-
 // how to show a process?
 // -> user goes to dispatcher/process/{processID}
 // -> if pid exists, the ui is loaded.

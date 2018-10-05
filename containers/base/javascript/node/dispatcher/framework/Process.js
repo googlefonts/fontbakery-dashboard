@@ -1,9 +1,37 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const {mixin: stateManagerMixin} = require('stateManagerMixin');
+const {mixin: stateManagerMixin} = require('stateManagerMixin')
+  ,   {Status, OK, FAILED} = require('./Status')
+;
 
-function Process(state, stepCtors, FailStepCtor, FinallyStepCtor) {
+function Process(resources
+                     , state
+                        /*
+                         * The last step should dispatch the PR
+                         */
+                      , stepCtors
+                        /*
+                         * Special step: it runs immediately after the
+                         * first failed step and closes the process.
+                         * => Needs a Task that does this!
+                         *
+                         * I.e. Create an issue somewhere on GitHub.
+                         */
+                      , FailStepCtor
+                        /*
+                         * Special step: it runs always as last step
+                         * it can be used to cleanu up/close/delete/remove
+                         * resources.
+                         *
+                         * Also needs a Task that does this!
+                         */
+                      , FinallyStepCtor) {
+
+    Object.defineProperties(this, {
+        secrect: {get: ()=>resources.secret}
+    });
+
     this._stepCtors = {};
     if(stepCtors)
         this._stepCtors.steps = stepCtors;
@@ -27,7 +55,7 @@ _p.constructor = Process;
 _p._initSteps = function() {
     var steps = [];
     for(let StepCtor of this._stepCtors.steps)
-        steps.push(new StepCtor(null, this));
+        steps.push(new StepCtor(this, null));
     return steps;
 };
 
@@ -42,27 +70,27 @@ _p._loadSteps = function(stepStates) {
                         + 'must match stepCtors.length ('
                         + this._stepCtors.steps.length + ').');
     // TODO: more validation: fingerprints? ids? versions?
-    // built into StepCtor probably.
+    // can be built into StepCtor probably.
     var steps = [];
     for(let [i, StepCtor] of this._stepCtors.steps.entries())
-        steps.push(new StepCtor(stepStates[i], this));
+        steps.push(new StepCtor(this, stepStates[i]));
     return steps;
 };
 
 _p._initFailStep = function() {
-    return new this._stepCtors.FailStep(null, this);
+    return new this._stepCtors.FailStep(this, null);
 };
 
 _p._loadFailStep = function(state) {
-    return new this._stepCtors.FailStep(state, this);
+    return new this._stepCtors.FailStep(this, state);
 };
 
 _p._initFinallyStep = function() {
-    return new this._stepCtors.FinallyStep(null, this);
+    return new this._stepCtors.FinallyStep(this, null);
 };
 
 _p._loadFinallyStep = function(state) {
-    return new this._stepCtors.FinallyStep(state, this);
+    return new this._stepCtors.FinallyStep(this, state);
 };
 
 const dateTypeDefinition = {
@@ -72,6 +100,8 @@ const dateTypeDefinition = {
       , serialize: date=>date
       , load: date=>date
       , validate: date=>{
+            if(!(date instanceof Date))
+                return [false, '`date` is not an instance of `Date`'];
             if(isNaN(date.getTime()))
                 return [false, 'Date "'+date+'" is invalid (getTime=>NaN).'];
             return [true, null];
@@ -81,22 +111,19 @@ const dateTypeDefinition = {
 const serializeStep = step=>step.serialize();
 
 const stateDefinition = {
+    /**
+     * the unique id of the Process document in the database.
+     */
     id: {
         init: null
       , load: val=>val
       , serialize: val=>val
     }
   , created: dateTypeDefinition // date: always on init, can be overridden by loadState
-  , finished: dateTypeDefinition // date: null on init, can be overridden by loadState and set internally
-  , evaluation: {  // markdown, human readable, especially interesting when FAILED
-        FIXME// maybe this is not part of the process state directlty?
-
-    }
-  , status: { // PENDING, OK, FAILED
-        TODO// set this when setting finished? is probably a good thing
-        // to have for faster querying
-        // alongside with some other useful indexed information
-        // we need this for fast and meaningful lists of processes ...
+  , finishedStatus: {
+        init: ()=>null
+      , serialize: status=>status === null ? null : status.serialize()
+      , load: data=>data === null ? null : Status.load(data)
     }
   , steps: { // array, steps statuses, must be compatible with this.constructor.steps
         init: _p._initSteps
@@ -145,22 +172,99 @@ Object.defineProperties(_p, {
             return this._state.steps || [];
         }
     }
+  , failStep: {
+        get: function() {
+            return this._state.failStep;
+        }
+    }
+  , finallyStep: {
+        get: function() {
+            return this._state.finallyStep;
+        }
+    }
     // this is set in this._transition, possible as an effect of
     // this.activate. But it can't be in this._state directly,
     // because it's determined from the state of this._state.steps etc.
-  , isFinished: {TODO}
+    //  => hmm actually to fully finish the process a UI is neeed
+    //     though, if there are no more steps, this needs finishing …
+  , isFinished: {
+        get: function() {
+            return this._state.finishedStatus !== null;
+        }
+    }
 });
+
+/**
+ * Called from this.activate and this._transition if there are no more
+ * steps to activate (either all steps finished successfully or a step
+ * failed)
+ */
+_p._finish = function() {
+    var firstFailedStep = null
+      , status, markdown
+      , okCounter = 0
+      ;
+    if(this.isFinished)
+        throw new Error('Process was already finished at: ' + this._state.finished);
+
+    for(let [i, step] of this.steps.entries()) {
+        if(step.isFailed) {
+            firstFailedStep = [i, step];
+            break;
+        }
+        if(step.isFinished)
+            okCounter += 1;
+    }
+    if(!firstFailedStep) {
+        // these special steps, if they fail, we still fail the while process
+        // even though the result may have been successful.
+        if(this.failStep && this.failStep.isFailed)
+            firstFailedStep = ['fail step', this.failStep];
+        else if(this.finallyStep && this.finallyStep.isFailed)
+            firstFailedStep = ['finally step', this.finallyStep];
+    }
+
+    if(firstFailedStep) {
+        status = FAILED;
+        markdown = '**FAILED!** first failed step: '
+                + firstFailedStep[0]
+                + ' ' + firstFailedStep[0].constructor.name
+                ;
+    }
+    else {
+        // no FAILED step at this point, but maybe this method was called
+        // (for any reason e.g. timeout) before all steps finished.
+        if(okCounter !== this.steps.length
+                // no need to check failStep, because we'd have a firstFailedStep
+                || (this.finallyStep && !this.finallyStep.isFinished)){
+            status = FAILED;
+            markdown = '**FAILED!** not all steps are finished.';
+        }
+        else {
+            status = OK;
+            markdown = '**DONE!** all steps finished OK';
+        }
+    }
+    // rethinkdb allows for nested indexes:
+    // https://www.rethinkdb.com/api/javascript/index_create/
+    // we can do:
+    //          r.table('processes')
+    //           .indexCreate('finished', r.row("finishedStatus")("created"))
+    //           .run(conn, callback)
+    // i.e. => it's finished when finishedStatus was created.
+    this._state.finishedStatus = new Status(status, markdown);
+};
 
 /**
  * Called after the Constructor has created the process object.
  * This may be a brand new process, which never was activated or
- * one with old state from the database (reactivation).
+ * one with old state from the database (re-activation).
  *
  * The aim is to set this._activeStep or to set isFinished
  *
  * FIXME: UIServer likely needs to call this method BUT without the
  * actual step.activate() call that may happen in this._activateStep
- * i.e. UIServer *must not* run action meant to be performed by
+ * i.e. UIServer *must not* run methos meant to be performed by
  * ProcessManager *only*.
  * Maybe, activate must be a unique call once in a step lifetime and
  * _loadState (or equivalent) must be enough to identify and set
@@ -170,6 +274,9 @@ Object.defineProperties(_p, {
 _p.activate = function() {
     if(this.isFinished)
         throw new Error('Process is finished.');
+    // NOTE: this._activeStep is just in memory, the actual active step
+    // is derived from the state (this._state.steps, this.failStep
+    // and this.finallyStep).
     if(this._activeStep)
         throw new Error('Process is active.');
 
@@ -180,16 +287,12 @@ _p.activate = function() {
     // reActivate when the process is resurrected from persistence?
     // BUT: reActivate would have to work in the activate case as well
     // Thus process.isActive === !! this._activeStep
-    var firstFailedStep = null // ? do we need this?
-      , stepToActivate = null
-      , steps = this.steps
-      ;
-    for(let i=0,l=steps.length;i<l;i++) {
-        let step = steps[i];
+    var stepToActivate = null;
+    for(let step of this.steps) {
         if(step.isFailed) {
-            firstFailedStep = step;
-            if(this._state.failStep && !this._state.failStep.isFinished)
-                stepToActivate = this._state.failStep;
+            // var firstFailedStep = step;
+            if(this.failStep && !this.failStep.isFinished)
+                stepToActivate = this.failStep;
             // else => … finallyStep
             break;
         }
@@ -201,9 +304,9 @@ _p.activate = function() {
         }
     }
     // else => … finallyStep
-    if(!stepToActivate && this._state.finallyStep
-                                    && !this._state.finallyStep.isFinished)
-        stepToActivate = this._state.finallyStep;
+    if(!stepToActivate && this.finallyStep
+                                    && !this.finallyStep.isFinished)
+        stepToActivate = this.finallyStep;
 
     if(stepToActivate)
         return this._activateStep(stepToActivate);
@@ -213,11 +316,7 @@ _p.activate = function() {
         // defined steps, which is stupid, but maybe for testing possible
         // so, if we allow that there are no steps at all, activate()
         // could lead to close directly, without activating any steps.
-        return this._close();
-};
-
-_p._isActiveStep = function(step) {
-    return this._getActiveStep() === step;
+        return this._finish();
 };
 
 // getter boolean
@@ -248,12 +347,15 @@ _p.receiveUserInteracion = function(userResponse) {
 };
 
 _p._getActiveStep = function() {
+    // is set on activate and changed on transition
     if(!this._activeStep)
         throw new Error('No active step found');
-    //    let activeStep = this._findActiveStep(); ???
-    //    return this._activateStep(activeStep)
-    TODO; // set on init/load state
     return this._activeStep;
+};
+
+_p._isActiveStep = function(step) {
+    // throws "No active step found"
+    return this._getActiveStep() === step;
 };
 
 _p._activateStep = function(step) {
@@ -275,7 +377,7 @@ _p._activateStep = function(step) {
 };
 
 _p._getNextRegularStep = function(step) {
-    let steps = this.steps
+    var steps = this.steps
       , stepIndex = steps.indexOf(step)
       , lastStepIndex = steps.length - 1
       , nextStepIndex = stepIndex + 1
@@ -283,7 +385,7 @@ _p._getNextRegularStep = function(step) {
     if(stepIndex === -1)
         // didn't find step, so there's no next regular step
         // it's likely that step is failStep or finallyStep
-        // i.e. assert step === this._state.failStep || step === this._state.finallyStep
+        // i.e. assert step === this.failStep || step === this.finallyStep
         return null;
     if(stepIndex === lastStepIndex)
         // that was the last regular step
@@ -301,14 +403,14 @@ _p._getNextStep = function(step) {
     if(!step.isFailed && nextRegularStep)
         return nextRegularStep;
     // step is failed or there's no next regular step
-    // this._state.failStep must be proceeded by a regular step
+    // this.failStep must be proceeded by a regular step
     // i.e. step must be a regular step
-    // this also ensures that step !== this._state.failStep
-    // this._state.failStep must be defined
-    else if(step.isFailed && this._isRegularStep(step) && this._state.failStep)
-        return this._state.failStep;
-    else if(this._state.finallyStep && step !== this._state.finallyStep)
-        return this._state.finallyStep;
+    // this also ensures that step !== this.failStep
+    // this.failStep must be defined
+    else if(step.isFailed && this._isRegularStep(step) && this.failStep)
+        return this.failStep;
+    else if(this.finallyStep && step !== this.finallyStep)
+        return this.finallyStep;
     else
         return null;
 };
@@ -328,7 +430,24 @@ _p._transition = function() {
         return this._activateStep(nextStep);
     else
         // no next step
-        return this._close();
+        return this._finish();
+};
+
+_p._getStep = function(stepPath) {
+    var steps = this.steps
+      , index, step
+      ;
+    if(stepPath === 'fail' && this.failStep)
+        return this.failStep;
+    if(stepPath === 'finally' && this.finallyStep)
+        return this.finallyStep;
+    // catches floats, negatives, NaN, non canonical int formats
+    index = Math.abs(parseInt(stepPath, 10));
+    if(index + '' !== stepPath
+            || steps.length >= index
+            || ( step = steps[index] ) === undefined )
+        throw new Error('Step with path "' + stepPath + '" not found.');
+    return step;
 };
 
 /**
@@ -337,10 +456,16 @@ _p._transition = function() {
  * This is the single mechanism that changes process state.
  */
 _p.execute = function(targetPath, actionMessage) {
-    // if(targetPath.step) ? => can we execute directly on path?
-    var step = this._getStep(targetPath.step);TODO; // implement
+    if(this.isFinished)
+        throw new Error('Process is finished.');
+    var step = this._getStep(targetPath.step);
+    // Throws maybe "No active step found"
+    // BUT: if there's no active step this.isFinished should be true.
+    // OR the caller did not run process.activate() before calling
+    // process.execute().
     if(!this._isActiveStep(step)) // TODO: implement
-        throw TODO; // implement
+        throw new Error('Can\'t execute path "'+targetPath+'" because step '
+                + '"'+targetPath.step+'" is not the active step.');
     return step.execute(targetPath, actionMessage)// TODO: implement
         .then(()=>this._transition()) //TODO: implement
         ;

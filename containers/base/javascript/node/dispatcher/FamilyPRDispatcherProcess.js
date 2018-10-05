@@ -10,8 +10,8 @@ const { Process:Parent } = require('./framework/Process')
 const GetFamilyDataTask = (function(){
 
 const Parent = Task;
-function GetFamilyDataTask() {
-    Parent.call(this);
+function GetFamilyDataTask(step, state) {
+    Parent.call(this, step, state);
 }
 
 const _p = GetFamilyDataTask.prototype = Object.create(Parent.prototype);
@@ -25,15 +25,15 @@ _p.constructor = GetFamilyDataTask;
  */
 _p._activate = function() {
     var familyRequest = new FamilyRequest();
-    familyRequest.setSourceid('CSVSpreadsheet')
-    familyRequest.setFamilyName(this.process.familyName)
+    familyRequest.setSourceid('CSVSpreadsheet');
+    familyRequest.setFamilyName(this.process.familyName);
     return this.grpcSourceClient.get(familyRequest)
         .then(familyDataMessage => {
             // this is nice, we'll have all the info of the files
             // of the progress available in the document
             this._setLOG(familyDataSummaryMarkdown);
             return this._setSharedData('familyData', familyDataMessage)
-                .then(()=>this._setOK('Family data is persisted.'))
+                .then(()=>this._setOK('Family data is persisted.'));
         });
         // error case will be handled and FAIL will be set
 };
@@ -44,24 +44,22 @@ return GetFamilyDataTask;
 
 const InitProcessStep = (function() {
 const Parent = Step;
-function InitProcessStep() {
-    Step.call(this);
+function InitProcessStep(process, state) {
+    Parent.call(this, process, state, {
+        GetFamilyData: GetFamilyDataTask // => where to put the files etc?
+    });
 }
 
 const _p = InitProcessStep.prototype = Object.create(Parent.prototype);
 _p.constructor = InitProcessStep;
-
-InitProcessStep.tasks = {
-    GetFamilyData: GetFamilyDataTask // => where to put the files etc?
-};
 return InitProcessStep;
 })();
 
 
 const FontbakeryTask = (function(){
 const Parent = Task;
-function FontbakeryTask() {
-    Parent.call(this);
+function FontbakeryTask(step, state) {
+    Parent.call(this, step, state);
 }
 
 const _p = FontbakeryTask.prototype = Object.create(Parent.prototype);
@@ -232,48 +230,56 @@ const Parent = Step;
  * because I want to conserve resources. There's no need to run DiffbrowsersTask
  * when FontbakeryTask failed.
  */
-function FontBakeryStep() {
-    Parent.call(this);
+function FontBakeryStep(process, state) {
+    Parent.call(this, process, state, {
+        // needs font files package
+        Fontbakery: FontbakeryTask // queue fontbakery
+                      //   => wait for the result (CleanupJobs will have to call back)
+                      //   => present the result and a form to make it pass or fail
+                      //   => wait for user interaction to judge result
+    });
 }
 
 const _p = FontBakeryStep.prototype = Object.create(Parent.prototype);
 _p.constructor = FontBakeryStep;
 
-FontBakeryStep.tasks = {
-    // needs font files package
-    Fontbakery: FontbakeryTask // queue fontbakery
-                      //   => wait for the result (CleanupJobs will have to call back)
-                      //   => present the result and a form to make it pass or fail
-                      //   => wait for user interaction to judge result
-};
-
 return FontBakeryStep;
 })();
 
 
-function RegressionsStep() {}
+const RegressionsStep = (function(){
+const Parent = Step;
+function RegressionsStep(process, state) {
+    Parent.call(this, process, state, {
+        // needs font files package
+        // produces images
+        // the UI will need the images
+        Diffbrowsers: DiffbrowsersTask // queue diffbrowsers tool (can this run on our workers?)
+                        // OR maybe a simple diffbrowsers service that's not massively parallel
+                        // when we need more we can still scale this
+                        // will call back when done
+                        // wait for user interaction to judge result
+        });
+}
+const _p = RegressionsStep.prototype = Object.create(Parent.prototype);
+_p.constructor = RegressionsStep;
+})();
 
 
-RegressionsStep.tasks = {
-    // needs font files package
-    // produces images
-    // the UI will need the images
-    Diffbrowsers: DiffbrowsersTask // queue diffbrowsers tool (can this run on our workers?)
-                     // OR maybe a simple diffbrowsers service that's not massively parallel
-                     // when we need more we can still scale this
-                     // will call back when done
-                     // wait for user interaction to judge result
-};
-
+const DispatchStep = (function(){
+const Parent = Step;
 /**
  * Make a the PR or manually fail with a reasoning.
  */
-function DispatchStep() {}
-
-DispatchStep.tasks = {
-    DispatchPR: DispatchPRTask // we want this to be done by authorized engineers only
+function DispatchStep(process, state) {
+    Parent.call(this, process, state, {
+        DispatchPR: DispatchPRTask // we want this to be done by authorized engineers only
                     // will create a nice PR with good message
-};
+    });
+}
+const _p = DispatchStep.prototype = Object.create(Parent.prototype);
+_p.constructor = DispatchStep;
+})();
 
 /**
  * This is a special step. It runs immediately after the first failed
@@ -287,21 +293,27 @@ FailStep.tasks = {
     Fail: FailTask
 };
 
-function FamilyPRDispatcherProcess(state) {
-    Parent.call(this, state);
-}
 
+const stepCtors = [
+            InitProcessStep
+          , FontBakeryStep
+          , RegressionsStep
+          , DispatchStep
+        ]
+      , FailStepCtor = FailStep
+      , FinallyStepCtor = null
+      ;
+
+Object.freeze(stepCtors);
+
+function FamilyPRDispatcherProcess(resources, state) {
+    Parent.call(this
+              , resources
+              , state
+              , stepCtors
+              , FailStepCtor
+              , FinallyStepCtor
+    );
+}
 const _p = FamilyPRDispatcherProcess.prototype = Object.create(Parent.prototype);
 _p.constructor = FamilyPRDispatcherProcess;
-
-FamilyPRDispatcherProcess.steps = [
-    InitProcessStep
-  , FontBakeryStep
-  , RegressionsStep
-  , DispatchStep
-];
-
-FamilyPRDispatcherProcess.FailStep = FailStep;
-// optional
-// FamilyPRDispatcherProcess.FinallyStep = FinallyStep;
-

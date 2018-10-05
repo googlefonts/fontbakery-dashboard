@@ -15,13 +15,20 @@ const validTaskStatuses = new Set([PENDING, OK, FAILED])
 exports.validTaskStatuses = validTaskStatuses;
 exports.finishingStatuses = finishingStatuses;
 
-function Task(state, step) {
-    this._step = step;
+function Task(step, state) {
+    Object.defineProperties(this, {
+        step: {value: step}
+        // needed by expectedAnswersMixin
+      , secret: {get: ()=>this.step.secret}
+    });
+
     this._state = null;
-    if(state !== null)
-        this._loadState(state);
-    else
+    if(state === null)
+        // make a new task, i.e. without having any existing state.
         this._initState();
+    else
+        // may fail!
+        this._loadState(state);
 }
 
 exports.Task = Task;
@@ -31,14 +38,9 @@ expectedAnswersMixin(_p);
 
 // do this?
 Object.defineProperties(_p, {
-    step: {
+    process: {
         get: function() {
-            return this._step;
-        }
-    }
-  , process: {
-        get: function() {
-            return this._step.process;
+            return this.step.process;
         }
     }
   , created: {
@@ -92,7 +94,8 @@ _p._initHistory = function() {
     return [new Status(PENDING, '*initial state*')];
 };
 
-// FIXME: load takes data from external, so it should check
+// TODO: More this._state validation
+// load takes data from external, so it should check
 //        that it's `state` argument is valid (otherwise it can't be
 //        deserialized/loaded in a meaningful way???)
 // do we also need a validate method for the deserialized data? everywhere
@@ -215,8 +218,18 @@ _p._reActivate = function() {
  * Returns a promise.
  */
 _p.activate = function() {
-    // just a wrapper
+    // just a wrapper, unlike callbackReActivate this is not
+    // executed from within _runStateChangingMethod, thus it
+    // has to be done explicitly
     return this._runStateChangingMethod(this._reActivate, 'activate');
+};
+
+_p.callbackReActivate = function(data) {
+    //jshint unused:vars
+    // This is executed from within _runStateChangingMethod via execute...
+    // validate data ??? what data do we expect here, seems to me that
+    // his can be just `null` in this case
+    return this.reActivate();
 };
 
 
@@ -231,6 +244,9 @@ _p._setExpectedAnswer = function(waitingFor
                                , requestedUserInteractionName
                                , setPending /*optional, default: true*/) {
     if(setPending === undefined || setPending)
+        // in _failedAction we explicitly don't want to set PENDING
+        // and instead keep the FAILED status. reActivate will set PENDING
+        // when callbackReActivate is executed via uiRetry
         this._setPENDING('Waiting for ' + waitingFor);
     return this.__setExpectedAnswer(waitingFor, callbackName, requestedUserInteractionName);
 };
@@ -260,12 +276,6 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
         return this._failedAction();
     });
 };
-
-_p.callbackReActivate = function(data) {
-    TODO;// validate data
-    return this.reActivate();
-};
-
 
 TODO;// def uiRetry
 

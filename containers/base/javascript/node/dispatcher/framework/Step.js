@@ -7,16 +7,31 @@ const {mixin: stateManagerMixin} = require('./stateManagerMixin')
     , {Status, OK, FAILED, PENDING} = require('./Status')
     ;
 
-
 /**
+ * If all Tasks are OK the Step will automatically finish with a status
+ * of OK.
+ * If there are FAILED tasks:
+ *      - The task itself can/will offer a UI to re-run/re-try/re-activate it.
+ *      - the step can be finished manually using its own UI (uiHandleFailedStep)
+ * Once a step is finished, the Process can proceed to the next step or
+ * run it's procedures to finish itself.
  *
  * Nice to have stuff that is *not* yet implemented:
  *
- * hard and soft timeouts
- *
+ * hard and soft timeouts: could maybe also be done in the tasks at least
+ *     tasks need to be able to reset timeouts depending on their implementation
+ *     and current progress (i.e. in the callbacks).
+ *     This requires ideally some kind of gRPC based cron-service.
+ *     * soft: after the timeout offer a UI to retry or set the FAILED
+ *             status without interaction otherwise: just keep waiting
+ *     * hard: set the FAILED status
  */
-function Step(state, process, taskCtors) {
-    this.parent = process;
+function Step(process, state, taskCtors) {
+    Object.defineProperties(this, {
+        process: {value: process}
+        // needed by expectedAnswersMixin
+      , secret: {get: ()=>this.process.secret}
+    });
     // taskCtors must be an object of {taskName: TaskConstructor}
     this._taskCtors = new Map(Object.entries(taskCtors));
     this._state = null;
@@ -33,58 +48,27 @@ const _p = Step.prototype;
 
 expectedAnswersMixin(_p);
 
-FIXME;// thinking of permanent user interaction allowed for
-// the active step:
-// always: re-activate any task
-// this may also change the FAIL status of the step;
-// i.e. if the step is FAILed but not closed, re-running a/the failed task
-// may make the task pass and subsequently the step as well.
-//
-// also, if the step is failed but not closed yet, a user interaction
-// to choose/set up the closing action/message would be good.
-//
-// also, Tasks may need a kind of time out.
-// we can theoretically wait forever for a task to receive an answer
-// but that's not perfect. Options:
-// hard default or custom timeout -> task fails re-activate ui appears
-// soft default or custom timeout: re-activate or manually fail ui (buttons)
-// appears, otherwise the task is just PENDING/waiting until the hard timeout
-//
-// also, a hard-timeout could have a retry count attached???
-// rendering images with browser stack can have the worst availability
-// possible, so, we should be able to query it multiple times over a long
-// period of time.
-//
-// maybe we can have a kind of cron service for a task to schedule re-runs
-// via the execute/callbackTicket interface? The task implementation itself
-// would use this, or at least configure it.
-//
-// NOTE: re-activation/timeouts could be nicely implemented within task
-// (needs a cron-service though) but there's no reason why a failed or timed
-// out task shouldn't itself decide to call this.activate within it's own
-// callback. A task can be failed AND at the same time request an UI to
-// re-activate...
-
 _p._initTasks = function() {
     var tasks = new Map();
     for(let [key, TaskCtor] of this._taskCtors)
-       tasks.set(key, new TaskCtor(null, this));
+       tasks.set(key, new TaskCtor(this, null));
     return tasks;
 };
 
 _p._loadTasks = function(tasksState) {
         // array of [[key, serializedState], [key, serializedState], ...]
     var tasksStateMap = new Map(tasksState);
-    if(this._taskCtors.size !== tasksState.length)
+    if(this._taskCtors.size !== tasksStateMap.size)
         throw new Error('Incompatible tasksState expected ' + this._taskCtors.size
-                + ' entries but received ' + tasksState.length +'.');
+                + ' entries but received ' + tasksStateMap.size
+                +' (# of unique keys).');
 
     var tasks = new Map();
     for(let [key, TaskCtor] of this._taskCtors) {
         if(!tasksStateMap.has(key))
             throw new Error('Incompatible tasksState: entry for '
                                         + 'key "' + key + '" is missing.');
-        tasks.set(key, new TaskCtor(tasksStateMap.get(key), this));
+        tasks.set(key, new TaskCtor(this, tasksStateMap.get(key)));
     }
     return tasks;
 };
@@ -142,21 +126,20 @@ Object.defineProperties(_p, {
 const stateDefinition = {
     tasks: { // array, task statuses, must be compatible with this._taskCtors
         init: _p._initTasks
-      , serialize: tasks=> {
-            return [...tasks].map(([key, task])=>[key, task.serialize()]);
-        }
+      , serialize: tasks=>
+                    [...tasks].map(([key, task])=>[key, task.serialize()])
       , load: _p._loadTasks
       // always expected
     }
-  , isActivated: {
+  , isActivated: { // boolean
         init: ()=>false
       , serialize: val=>val
       , load: val=>val
     }
-  , isFinished: {
-        init: ()=>false
-      , serialize: val=>val
-      , load: val=>val
+  , finishedStatus: {
+        init: ()=>null
+      , serialize: status=>status === null ? null : status.serialize()
+      , load: data=>data === null ? null : Status.load(data)
     }
     // rejection reason
     // status: PENDING, PASS, FAIL

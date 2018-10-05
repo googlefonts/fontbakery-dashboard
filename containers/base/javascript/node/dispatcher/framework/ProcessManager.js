@@ -34,8 +34,14 @@ function TargetPath(pathString) {
     this.task
 }
 
-function ProcessManager(logging, db, port, ProcessConstructor) {
+function ProcessManager(logging, db, port, secret, ProcessConstructor) {
     this._log = logging;
+    this._processResources = Object.create(null);
+    Object.defineProperties(this._processResources, {
+        secret: {value: secret}
+    });
+
+
     this.ProcessConstructor = ProcessConstructor;
 }
 
@@ -88,13 +94,15 @@ _p._persistProcess = function(process) {
                 process.id = report.generated_keys[0];
             return process
         })
-}
+};
 
 /**
  * Crate a brand new process.
  */
 _p._initProcess = function() {
-    var process = new this.ProcessConstructor(null);
+    var process = new this.ProcessConstructor(
+                                    this._processResources, null);
+     // will also activate the first step and all its tasks
     return process.activate()
         .then(()=>this._persistProcess(process));
 };
@@ -108,13 +116,14 @@ _p._initProcess = function() {
 _p._loadProcess = function(processId) {
     var state = dbFetch(processId);
     try {
-        process = new this.ProcessConstructor(state)//should be enough!
+        process = new this.ProcessConstructor(
+                                    this._processResources, state);
     }
     catch(error) {
         // expecting this to be some kind of state validation issue
         // i.e. the state is (now) incompatible with ProcessConstructor
         try {
-            process = new GenericProcess(state);
+            process = new GenericProcess(this._processResources, state);
         }
         catch(error2) {
             // Loading the GenericProcess should never fail.
