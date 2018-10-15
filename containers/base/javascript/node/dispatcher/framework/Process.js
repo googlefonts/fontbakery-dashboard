@@ -3,6 +3,7 @@
 
 const {mixin: stateManagerMixin} = require('stateManagerMixin')
   ,   {Status, OK, FAILED} = require('./Status')
+  ,   {Path} = require('./Path')
 ;
 
 function Process(resources
@@ -164,6 +165,16 @@ Object.defineProperties(_p, {
         }
       , set: function(id) {
             this._state.id = id || null;
+        }
+    }
+    new Path(...this.process.path
+    // building this on request, because process.id may not be
+    // initially available.
+  , path: {
+        get: function() {
+            if(!this.id)
+                throw new Error('ID is not set yet.');
+            return new Path(this.id);
         }
     }
  ,  steps: {
@@ -431,6 +442,18 @@ _p._transition = function() {
     else
         // no next step
         return this._finish();
+};
+
+_p.getStepPath = function(step) {
+    var index;
+    if(this.failStep && this.failStep === step)
+        return 'fail';
+    if(this.finallyStep && this.finallyStep === step)
+        return 'finally';
+    index = this.steps.indexOf(step);
+    if(index !== -1)
+        return index + '';
+    throw new Error('Step  "' + step + '" not found.');
 };
 
 _p._getStep = function(stepPath) {

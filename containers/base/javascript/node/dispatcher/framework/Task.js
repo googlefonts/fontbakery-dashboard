@@ -4,6 +4,7 @@
 const {mixin: stateManagerMixin} = require('./stateManagerMixin')
   , {expectedAnswersMixin} = require('./expectedAnswersMixin')
   , {Status, PENDING, OK, FAILED, LOG} = require('./Status')
+  , {Path} = require('./Path')
   ;
 
     // CAUTION: these are the ones that are allowed to be returned by
@@ -81,6 +82,20 @@ Object.defineProperties(_p, {
             return this._finishngStatuses.has(this.status);
         }
     }
+
+  , pathPart: {
+        get: function(){
+            return  this.step.getTaskPath(this);
+        }
+    }
+    // building this on request, because process.id may not be
+    // initially available.
+  , path: {
+        get: function() {
+            return new Path(...this.step.path, this.pathPart);
+        }
+    }
+
 });
 
 /**

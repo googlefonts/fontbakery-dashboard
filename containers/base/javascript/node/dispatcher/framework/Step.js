@@ -5,6 +5,7 @@ const {mixin: stateManagerMixin} = require('./stateManagerMixin')
     , {expectedAnswersMixin} = require('./expectedAnswersMixin')
     , {validTaskStatuses } = require('./Task')
     , {Status, OK, FAILED, PENDING} = require('./Status')
+    , {Path} = require('./Path')
     ;
 
 /**
@@ -35,6 +36,8 @@ function Step(process, state, taskCtors) {
     // taskCtors must be an object of {taskName: TaskConstructor}
     this._taskCtors = new Map(Object.entries(taskCtors));
     this._state = null;
+    // local cache for a reversed this._state.tasks map
+    this._reverseTasks = null;
     if(state === null)
         // make a new step, i.e. without having any existing state.
         this._initState();
@@ -119,6 +122,18 @@ Object.defineProperties(_p, {
          */
         get: function() {
             return this._state.finishedStatus !== null;
+        }
+    }
+  , pathPart: {
+        get: function() {
+            return  this.process.getStepPath(this);
+        }
+    }
+    // building this on request, because process.id may not be
+    // initially available.
+  , path: {
+        get: function() {
+            return new Path(...this.process.path, this.pathPart);
         }
     }
 });
@@ -287,6 +302,19 @@ _p._getTask = function(key) {
     if(!this._state.tasks.has(key))
         throw new Error('No taks with key "'+key+'" is defined.');
     return this._state.tasks.get(key);
+};
+
+_p.getTaskPath = function(task) {
+    var path;
+    if(this._reverseTasks === null)
+        this._reverseTasks = new Map(
+                [...this._state.tasks].map(([path, task])=>[task,path]));
+
+    path = this._reverseTasks.get(task);
+    if(path)
+        return path;
+
+    throw new Error('Task  "' + task + '" not found.');
 };
 
 _p._handleStateChange = function(methodName, stateChangePromise) {
