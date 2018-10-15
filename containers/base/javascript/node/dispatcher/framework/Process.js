@@ -474,11 +474,11 @@ _p._getStep = function(stepPath) {
 };
 
 /**
- * validate and perform actionMessage
+ * validate and perform commandMessage
  *
  * This is the single mechanism that changes process state.
  */
-_p.execute = function(targetPath, actionMessage) {
+_p.execute = function(targetPath, commandMessage) {
     if(this.isFinished)
         throw new Error('Process is finished.');
     var step = this._getStep(targetPath.step);
@@ -486,11 +486,11 @@ _p.execute = function(targetPath, actionMessage) {
     // BUT: if there's no active step this.isFinished should be true.
     // OR the caller did not run process.activate() before calling
     // process.execute().
-    if(!this._isActiveStep(step)) // TODO: implement
+    if(!this._isActiveStep(step))
         throw new Error('Can\'t execute path "'+targetPath+'" because step '
                 + '"'+targetPath.step+'" is not the active step.');
-    return step.execute(targetPath, actionMessage)// TODO: implement
-        .then(()=>this._transition()) //TODO: implement
+    return step.execute(targetPath, commandMessage)
+        .then(()=>this._transition())
         ;
 };
 

@@ -147,7 +147,7 @@ function expectedAnswersMixin(_p) {
     /**
      * ticket would be a unique string stored in here
      */
-    _p._isExpectedAnswer = function([callbackName, ticket]) {
+    _p._isExpectedAnswer = function(callbackName, ticket) {
         return this._hasExpectedAnswer()
                         && this._state.expectedAnswer[0] === callbackName
                         && this._state.expectedAnswer[1] === ticket
@@ -182,7 +182,7 @@ function expectedAnswersMixin(_p) {
     };
 
     /**
-     * actionMessage.callbackTicket: To verify a answer comes from the actual
+     * commandMessage.callbackTicket: To verify a answer comes from the actual
      * request that was dispatched, ticket is a unique, "signed" string stored
      * here We're round tripping it  from dispatched request back to here.
      * A ticket is only valid once. If we need more answers for the same
@@ -205,12 +205,12 @@ function expectedAnswersMixin(_p) {
      * race directly here, even before the `callbackMethod` could go async
      * or so.
      */
-    _p._executeExpectedAnswer = function(actionMessage) {
-        var callbackTicket = actionMessage.getCallbackTicket()
-          , [callbackName, ticket] = callbackTicket
-          , payload = actionMessage.getPayload()
+    _p._executeExpectedAnswer = function(commandMessage) {
+        var callbackName = commandMessage.getCallbackName()
+          , ticket = commandMessage.getTicket()
+          , payload = commandMessage.getPayload()
           , data, callbackMethod
-          , expected = this._isExpectedAnswer(callbackTicket)
+          , expected = this._isExpectedAnswer(callbackName, ticket)
           ;
         if(!expected)
             throw new Error('Action for "' + callbackName + '" with ticket "'

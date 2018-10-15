@@ -327,10 +327,10 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
 };
 
 /**
- * Validate and perform `actionMessage`;
+ * Validate and perform `commandMessage`;
  * This (and activate) changes process state.
  */
-_p.execute = function(targetPath, actionMessage) {
+_p.execute = function(targetPath, commandMessage) {
     // The next to self-checks are to verify the
     // parent process is behaving as expected.
     if(!this.isActivated)
@@ -339,9 +339,9 @@ _p.execute = function(targetPath, actionMessage) {
         throw new Error('Step is finished, no changes are possible anymore.');
     return (!targetPath.task
                 // an action aimed at this step directly
-                ? this._executeExpectedAnswer(actionMessage)
+                ? this._executeExpectedAnswer(commandMessage)
                 // If this task is present (and the step is active) it can always
                 // be executed.
-                : this._getTask(targetPath.task).execute(targetPath, actionMessage)
+                : this._getTask(targetPath.task).execute(targetPath, commandMessage)
     ).then(()=>this._transition());
 };

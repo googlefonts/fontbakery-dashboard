@@ -318,9 +318,9 @@ _p._setStatus = function(status, markdown, data) {
  * defined in expectedAnswersMixin, but maybe, as a public interface we'll
  * have to modify it. Also, not using targetPath at the moment.
  */
-_p.execute = function(targetPath, actionMessage) {
+_p.execute = function(targetPath, commandMessage) {
     //jshint unused:vars
-    return this._executeExpectedAnswer(actionMessage);
+    return this._executeExpectedAnswer(commandMessage);
 };
 
 /**

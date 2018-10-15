@@ -30,11 +30,12 @@ const _p = UiApi.prototype;
 // to orchestrate.
 --
 --
-// TODO: NEXT: start sketching the UIServer in here, that loads processes
-// and asks them among other things for their expected user interactions
-// etc. How to do a correct feedback loop that goes through the model (react||process manager)
+// TODO: NEXT: start sketching the UIServer in here, that
+//          * loads processes
+//          * and asks them among other things for their expected user interactions
+//          * etc. How to do a correct feedback loop that goes through the model (react||process manager)
 // ...
-_p.request = function(...uiItems){
+_p.request = function(...uiItems) {
     var userResponsePromise = Promise((resolve, reject)=>{
         // generate the interfaces
 
@@ -118,6 +119,8 @@ _p._getProcess = function(processId) {
 //  the server can send:
 //      * changes to process/step/task statuses
 //          -> task wise, this are mainly only additions to the task history
+//          -> probably easier to just send the whole process state each time
+//             with UI information attached to it: {state: {}, ui: {}}
 //      * user interface requests/removals to process/step/task
 //              -> also responses whether a request was accepted or refused
 //                 or, if applicable if the request failed.
@@ -146,6 +149,7 @@ _p._getProcess = function(processId) {
 // Bad thing so far: it was always very complex to implement these interfaces.
 // especially the report and source interfaces were mad. The dashboard table
 // was a bit better though!
+//          Use: Elm, react or vue.js
 //
 // It may be nice to have a full html report for easy access e.g. to download
 // and archive it, but we don't do this now at all. Maybe we can think
@@ -186,27 +190,47 @@ _p.uiShowProcess = function(request) {
 
 }
 
-_p._subscribe = function(socket, data) {
+
+//TODO: ASAP built the whole pipeline architecture from client to server
+//and then iterate and refine until it's done.
+// TODO: do this so that development is fast w/o docker stuff.
+
+_p._subscribeList = function(selection) {
+    TODO;// what selections are needed?
+    //   * running processes
+    //   * finished processes
+    //   * processes by family
+    //   * processes by user/stakeholder => how do we know that?
+    //   * process that need user interaction/attention
+    //   * processes that need ui/attention by the user authorized for it.
+    // This will be a rather tough thing to do efficiently in the DB
+    TODO(this.grpcClient.subscribeList(selection));
+};
+
+
+
+TODO:// need thge whole pipeline now:
+// client -> uiServer
+//      SocketIO
+//      get the channel sorted...
+//      this will talk JSON
+// uiServer -> PeocessManager
+//      gRPC
+//      this will talk protobufs
+
+// there's a gRPC subscribe in process manager
+_p._subscribeProcess = function(socket, data) {
     var processId = data.id
+    TODO(this.grpcClient.subscribeProcess(processId));
 
-    // first send the process structure, as it will never change for this
-    // process id and we can use that for more rapid development of the interface
-    // i.e. no need to take care of newly inserted steps or tasks or such.
-
-    // then send the data for process, steps, tasks
-
-    // if needed send user interfaces
-
-    // send any updates that came in in the meanwhile
-
-    // can we have a change stream from the processManager that is
-    // semantically more meaningful than one directly from the database?
-    // where is the translation of db changes -> meaningful changes done?
-    // seems like the processmanager could benefit from it, then just send
-    // the changes it translates along to its subscribers...
-
-
-}
+    // TODO: depeneding on authorization the socket will transport
+    // UI messages to this.grpcClient.execute
+    // One thing to consider is that the authorization state can
+    // change ot multiple places:
+    //      user can log in/out
+    //      authorization/role can be changed for user
+    //      authorized users can change for process(family)
+};
 
 
 
@@ -375,6 +399,19 @@ _p._subscribe = function(socket, data) {
 
 // Side tasks: update FB workers to use Python 3.6
 //             fix the db hickup: https://github.com/googlefonts/fontbakery-dashboard/issues/78
+
+//
+// Actions we need:
+// a lot of lists...
+// A list for the font family with all finished processes AND if any the current active one
+// dispatch/start a process
+// show latest/active process
+// if process defines user interactions show and handle them (relay answers)
+// if process is not finished: propagate updates
+//    probably with lists: also propagate updates
+//              (not sure if this is feasible)
+// cancel any subscriptions if not needed anymore...
+//
 
 module.exports.appFactory = appFactory;
 module.exports.Server = Server;
