@@ -8,13 +8,6 @@ const express = require('express')
   , http = require('http')
   ;
 
-function appFactory() {
-    var app = express();
-    app.get('/', (req, res, next)=>res.send('subApp root' + ' originalUrl:' + req.originalUrl + ' ' + 'baseUrl:' + req.baseUrl + ' ' +  'path:' + req.path + ' ' + 'url:' + req.url));
-    app.get('/page', (req, res, next)=>res.send('subApp /page' + ' originalUrl:' + req.originalUrl + ' ' + 'baseUrl:' + req.baseUrl + ' ' +  'path:' + req.path + ' ' + 'url:' + req.url));
-    return app;
-}
-
 const UiApi = (function(){
 
 function UiApi(){}
@@ -28,8 +21,7 @@ const _p = UiApi.prototype;
 // In general. I think the promise construct in here describes nicely
 // the kind of ineraction that is expected. BUT it may be a bit complicated
 // to orchestrate.
---
---
+
 // TODO: NEXT: start sketching the UIServer in here, that
 //          * loads processes
 //          * and asks them among other things for their expected user interactions
@@ -82,30 +74,59 @@ uiApi.request(
  * Initialization starts the server.
  *
  * `Server` is for stand alone use (development, testing). It also documents
- *  how to use `appFactory`.
+ *  how to use `ProcessDispatcher`.
  * `appFactory` is for use as a sub-application in another express.js app.
+ *
+ *
+ * Change of plan:
+ *  * eventually Server will provide all the resources to the appFactory
+ *    functions.
+ *  * appFactory will kind of
+ *
+ *
+ *
+ * What do we want to share betwen the dashboard stuff and the
+ * specific report
+ *
  */
-function Server(logging, portNum, ProcessConstructor) {
+function Server(logging, portNum) {
     this._log = logging;
-    this.ProcessConstructor = ProcessConstructor;
-    this._app = appFactory();
-    this._server = http.createServer(this._app);
+
+    var app = express()
+      , pd = new ProcessUIServer(this, app, logging)
+      ;
+
+    this._server = http.createServer(app);
     this._server.listen(portNum);
 }
 
-var _p = Server.prototype;
+
+
+function ProcessUIServer(server, app, logging) {
+    this._server = server;
+    this._app = app;// === express()
+    this._log = logging;
+
+    this._app.get('/', this._server.serveStandardClient);
+    this._server.registerSocketListener('subscribe-dispatcher-list'
+            , _p._subscribeToCollectionReport, _p._unsubscribeFromCollections);
+    this._server.registerSocketListener('subscribe-dispatcher-process'
+            , _p._subscribeToCollectionReport, _p._unsubscribeFromCollections);
+}
+
+var _p = ProcessUIServer.prototype;
 
 _p._getProcess = function(processId) {
     // what if we have process already loaded?
     // do we keep it at all?
     // we have to update its state when it changes!
     FIXME;// Won't be loaded from the DB but from ProcessManager
-    var state = dbFetch(processId)
-        // .then(process
-      , process = new this.ProcessConstructor(state)
-      ;
-    FIXME;//return process.activate().then(()=>prcoess) ???
-    return process;
+    // var state = dbFetch(processId)
+    //     // .then(process
+    //   , process = new this.ProcessConstructor(state)
+    //   ;
+    // FIXME;//return process.activate().then(()=>prcoess) ???
+    // return process;
 };
 
 // how to show a process?
@@ -184,18 +205,16 @@ _p.uiShowProcess = function(request) {
         uiApi = UiApi();
         uiAPI.request(...process.requestUserInteracion());
     }
-
-
-    respond(processData)
-
-}
+    respond(processData);
+};
 
 
 //TODO: ASAP built the whole pipeline architecture from client to server
 //and then iterate and refine until it's done.
 // TODO: do this so that development is fast w/o docker stuff.
 
-_p._subscribeList = function(selection) {
+_p._subscribeList = function(socket, data) {
+    var selection = data.selection // ???
     TODO;// what selections are needed?
     //   * running processes
     //   * finished processes
@@ -413,7 +432,7 @@ _p._subscribeProcess = function(socket, data) {
 // cancel any subscriptions if not needed anymore...
 //
 
-module.exports.appFactory = appFactory;
+module.exports.ProcessUIServer = ProcessUIServer;
 module.exports.Server = Server;
 
 if (typeof require != 'undefined' && require.main==module) {
