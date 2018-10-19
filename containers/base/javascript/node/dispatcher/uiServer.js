@@ -4,11 +4,12 @@
 /* global require, module */
 /* jshint esnext:true */
 
-const express = require('express')
-  , http = require('http')
+const { _BaseServer, RootService } = require('../_BaseServer')
   ;
 
-const UiApi = (function(){
+/**
+
+const UiApi = (function() {
 
 function UiApi(){}
 const _p = UiApi.prototype;
@@ -28,6 +29,7 @@ const _p = UiApi.prototype;
 //          * etc. How to do a correct feedback loop that goes through the model (react||process manager)
 // ...
 _p.request = function(...uiItems) {
+    // jshint unused:vars
     var userResponsePromise = Promise((resolve, reject)=>{
         // generate the interfaces
 
@@ -36,11 +38,13 @@ _p.request = function(...uiItems) {
 
     });
     return userResponsePromise;
-}
+};
 
 return UiApi;
 })();
+*/
 
+/**
 
 // used like this
 // -> a promise; expecting uiApi.response(userResponse)
@@ -67,7 +71,10 @@ uiApi.request(
     // }
     // // but what is this function supposed to do with
     // user Response
-    ).then(userResponse=>{
+    ).then(userResponse=>{});
+*/
+
+
 
 /**
  * Using a class here, so state variables are managed not on module level
@@ -88,39 +95,50 @@ uiApi.request(
  * What do we want to share betwen the dashboard stuff and the
  * specific report
  *
+ *
+ * This Server is for testing in Development, it's not the production
+ * tool!
  */
-function Server(logging, portNum) {
-    this._log = logging;
+const Server = (function() {
 
-    var app = express()
-      , pd = new ProcessUIServer(this, app, logging)
-      ;
-
-    this._server = http.createServer(app);
-    this._server.listen(portNum);
+function Server(...args) {
+    this._serviceDefinitions = [
+        ['/', RootService, ['server', '*app', 'log']]
+      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log'/* TODO, 'dispatcher' */]]
+    ];
+    _BaseServer.call(this, ...args);
 }
 
+_p = Server.prototype = Object.create(_BaseServer.prototype);
+
+return Server;
+
+})();
 
 
-function ProcessUIServer(server, app, logging) {
+function ProcessUIService(server, app, logging, processManager) {
     this._server = server;
     this._app = app;// === express()
     this._log = logging;
+    this._processManager = processManager;
 
     this._app.get('/', this._server.serveStandardClient);
     this._server.registerSocketListener('subscribe-dispatcher-list'
-            , _p._subscribeToCollectionReport, _p._unsubscribeFromCollections);
+            , this._subscribeToList.bind(this)
+            , this._unsubscribeFromList.bind(this));
     this._server.registerSocketListener('subscribe-dispatcher-process'
-            , _p._subscribeToCollectionReport, _p._unsubscribeFromCollections);
+            , this._subscribeToProcess.bind(this)
+            , this._unsubscribeFromProcess.bind(this));
 }
 
-var _p = ProcessUIServer.prototype;
+var _p = ProcessUIService.prototype;
 
 _p._getProcess = function(processId) {
+    //jshint unused: vars
     // what if we have process already loaded?
     // do we keep it at all?
     // we have to update its state when it changes!
-    FIXME;// Won't be loaded from the DB but from ProcessManager
+    // FIXME;// Won't be loaded from the DB but from ProcessManager
     // var state = dbFetch(processId)
     //     // .then(process
     //   , process = new this.ProcessConstructor(state)
@@ -181,6 +199,7 @@ _p._getProcess = function(processId) {
  * Hmm,  looks like this has a GET/POST API in mind, receiving "request"
  * as an argument...
  */
+
 _p.uiShowProcess = function(request) {
     var processId = request.processId // FIXME: just a sketch
       , process = this._getProcess(processId)
@@ -198,24 +217,24 @@ _p.uiShowProcess = function(request) {
 
 
             // Maybe we can then just re-run this function?
-            return; ... ?
+            return;// ... ?
         }
 
 
-        uiApi = UiApi();
-        uiAPI.request(...process.requestUserInteracion());
+        //uiApi = UiApi();
+        //uiAPI.request(...process.requestUserInteracion());
     }
-    respond(processData);
+    // respond(processData);
 };
-
 
 //TODO: ASAP built the whole pipeline architecture from client to server
 //and then iterate and refine until it's done.
 // TODO: do this so that development is fast w/o docker stuff.
 
 _p._subscribeList = function(socket, data) {
-    var selection = data.selection // ???
-    TODO;// what selections are needed?
+    //jshint unused: vars
+    // var selection = data.selection; // ???
+    // TODO;// what selections are needed?
     //   * running processes
     //   * finished processes
     //   * processes by family
@@ -223,12 +242,12 @@ _p._subscribeList = function(socket, data) {
     //   * process that need user interaction/attention
     //   * processes that need ui/attention by the user authorized for it.
     // This will be a rather tough thing to do efficiently in the DB
-    TODO(this.grpcClient.subscribeList(selection));
+    // TODO(this.grpcClient.subscribeList(selection));
 };
 
 
 
-TODO:// need thge whole pipeline now:
+//TODO:// need thge whole pipeline now:
 // client -> uiServer
 //      SocketIO
 //      get the channel sorted...
@@ -239,8 +258,9 @@ TODO:// need thge whole pipeline now:
 
 // there's a gRPC subscribe in process manager
 _p._subscribeProcess = function(socket, data) {
-    var processId = data.id
-    TODO(this.grpcClient.subscribeProcess(processId));
+    //jshint unused: vars
+    // var processId = data.id;
+    // TODO(this.grpcClient.subscribeProcess(processId));
 
     // TODO: depeneding on authorization the socket will transport
     // UI messages to this.grpcClient.execute
@@ -252,6 +272,31 @@ _p._subscribeProcess = function(socket, data) {
 };
 
 
+/**
+ * socket event 'subscribe-dispatcher-list'
+ */
+_p._subscribeToList = function(socket, data){
+    //jshint unused: vars
+};
+
+_p._unsubscribeFromList = function(socket){
+    //jshint unused: vars
+};
+
+/**
+ * socket event 'subscribe-dispatcher-process'
+ */
+_p._subscribeToProcess = function(socket, data){
+    //jshint unused: vars
+
+    // subscribe at processManager
+};
+
+_p._unsubscribeFromProcess = function(socket){
+    //jshint unused: vars
+
+    // hang up at processManager
+};
 
 // !Plan here!
 // Spent extra time to plan it as minimalistic and efficient as possible!
@@ -432,16 +477,15 @@ _p._subscribeProcess = function(socket, data) {
 // cancel any subscriptions if not needed anymore...
 //
 
-module.exports.ProcessUIServer = ProcessUIServer;
-module.exports.Server = Server;
+module.exports.ProcessUIService = ProcessUIService;
 
 if (typeof require != 'undefined' && require.main==module) {
-    var { getSetup } = require('./util/getSetup')
+    var { getSetup } = require('../util/getSetup')
       , setup = getSetup()
       ;
     setup.logging.info('Init server ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
     // storing in global scope, to make it available for inspection
     // in the debugger.
-    global.server = new Server(setup.logging, 3000);
+    global.server = new Server(setup.logging, 3000, setup);
 }
