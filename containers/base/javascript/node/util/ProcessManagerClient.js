@@ -106,9 +106,39 @@ _p._getStreamAsList = function(method, message) {
  *      doSomething(process); // i.e. send it down a socket
  *
  */
-_p._readableStreamToGenerator = async function* (method, call) { // jshint ignore:line
+_p._readableStreamToGenerator = async function* (method, call, bufferMaxSize) { // jshint ignore:line
     var METHOD = '[' + method.toUpperCase() + ']'
-      , currentResolve, currentReject
+        // Buffer will be only needed if messages are incoming faster then
+        // they can be consumed, otherwise a "waiting" promise will be
+        // available.
+        // Only the latest bufferMaxSize_ items are held in buffer
+        // defaults to 1, meaning that only the latest message is relevant.
+        // This only makes sense if message have no subsequent reference
+        // like a series of diffs, and instead represent the complete
+        // state at once.
+        // Use Infinity if you can't loose any items at all
+        // Use one if only the latest incoming item is interesting.
+      , bufferMaxSize_ = Math.abs(bufferMaxSize) || 1 // default 1
+      , buffer = [] // a FiFo queue
+      , waiting = {}
+      , setWaitingHandlers = (resolve, reject) => {
+            waiting.resolve = resolve;
+            waiting.reject = reject;
+        }
+      , _putMessage = (resolveOrReject, message) => {
+            if(!waiting[resolveOrReject]) {
+                buffer.push(Promise[resolveOrReject](message));
+                let dropped = buffer.splice(0, Math.max(0, buffer.length-bufferMaxSize_));
+                if(dropped.length)
+                    this._log.debug('Dropped', dropped.length, 'buffer items.'
+                                   , 'Buffer size:', buffer.length);
+            }
+            else
+                waiting[resolveOrReject](message);
+            waiting.reject = waiting.resolve = null;
+        }
+      , resolve = message=>_putMessage('resolve', message)
+      , reject = error=>_putMessage('reject', error)
       ;
 
     // TODO:
@@ -117,17 +147,13 @@ _p._readableStreamToGenerator = async function* (method, call) { // jshint ignor
     //
 
     call.on('data', message=>{
-        this._log.debug(METHOD, 'receiving a:', message.toString());
-        console.log('>1 currentResolve');
-        currentResolve(message);
-        console.log('<1 currentResolve', currentResolve);
-        currentResolve = currentReject = null;
+        this._log.debug(METHOD, 'on:DATA', message.toString());
+        resolve(message);
     });
 
     call.on('end', ()=>{
-        this._log.debug(METHOD, 'call ended');
-        currentResolve(null);
-        currentResolve = currentReject = null;
+        this._log.debug(METHOD, 'on:END');
+        resolve(null);//ends the generator
     });
 
     // The 'end' event indicates that the server has finished sending
@@ -140,9 +166,8 @@ _p._readableStreamToGenerator = async function* (method, call) { // jshint ignor
     call.on('error', error => {
         //if(error.code === grpc.status.CANCELLED)
         //    return; // expected
-        this._log.error(METHOD + ' on:error', error);
-        currentReject(error);
-        currentResolve = currentReject = null;
+        this._log.error(METHOD, 'on:ERROR', error);
+        reject(error);
     });
 
     // Only one of 'error' or 'end' will be emitted.
@@ -162,15 +187,15 @@ _p._readableStreamToGenerator = async function* (method, call) { // jshint ignor
     // so, this being a "async generator" the above is happening anyways
     // and all we do is:
     while(true) {
-        let promise = new Promise((resolve, reject)=>{ // jshint ignore:line
-                currentResolve = resolve;
-                currentReject = reject;
-            })
+        if(!buffer.length)
+            // if no promise is buffered we're waiting for new
+            // events to come in
+            buffer.push(new Promise(setWaitingHandlers));
+
+        let promise = buffer.shift()
           , value = null
           ;
-        console.log('>0 await');
         value = await promise; // jshint ignore:line
-        console.log('<0 await');
         if(value === null)
             // ended
             break;
@@ -200,8 +225,8 @@ _p._getStreamAsGenerator = function(method, message){
     return {
         generator :this._readableStreamToGenerator(method, call)
       , cancel: ()=>call.cancel()
-    }
-}
+    };
+};
 
 _p.subscribeProcess = function(processQuery) {
     return this._getStreamAsGenerator('subscribeProcess', processQuery);

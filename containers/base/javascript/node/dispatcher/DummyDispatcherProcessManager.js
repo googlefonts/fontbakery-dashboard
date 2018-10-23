@@ -30,13 +30,35 @@ _p.serve = function() {
 function TODO(val){ return val;}
 
 _p.subscribeProcess = function(call) {
-    var processQuery = call.request;
+    var processQuery = call.request
+      , unsubscribe = ()=>{
+            if(!timeout) // marker if there is an active subscription/call
+                return;
+            // End the subscription and delete the call object.
+            // Do this only once, but, `unsubscribe` may be called more than
+            // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
+            this._log.info('... UNSUBSCRIBE');
+            clearInterval(timeout);
+            timeout = null;
+        }
+      ;
+    // To end a subscription with a failing state, use:
+    //      `call.destroy(new Error('....'))`
+    //      The events in here are in order: FINISH, ERROR, CANCELLED
+    // This will also inform the client of the error details `call.on('error', ...)`
+    // To end a subscription regularly, use:
+    //       `call.end()`
+    //        The events in here are in order: FINISH
+    // When the client hangs up using:
+    //         `call.cancel()`
+    //        The events in here are in order: CANCELLED
+    //        NOTE: no FINISHED :-(
 
     this._log.info('processQuery subscribing to', processQuery.getProcessId());
-    // FIXME: need to keep call in `subscriptions` structure
+    // TODO: need to keep call in `subscriptions` structure
     call.on('error', error=>{
-        this._log.error('FIXME ERROR while streaming response:', error);
-        clearInterval(timeout);
+        this._log.error('on ERROR: subscribeProcess:', error);
+        unsubscribe();
     });
     call.on('cancelled', ()=>{
         // hmm somehow is called after call.on('error'
@@ -44,24 +66,26 @@ _p.subscribeProcess = function(call) {
         // seems like this is called always when the stream is ended
         // we should be careful with not trying to double-cleanup here
         // if the client cancels, there's no error though!
-        this._log.debug('FIXME: on cancelled: subscribeProcess');
-        clearInterval(timeout);
+        this._log.debug('on CANCELLED: subscribeProcess');
+        unsubscribe();
     });
-    call.on('status', (status)=>{
-        this._log.debug('Status:', status);
+
+    call.on('finish', ()=>{
+        this._log.debug('on FINISH: subscribeProcess');
+        unsubscribe();
     });
-    // todo: call.on('end') should cancel the source listener
-    var counter = 0
+
+    var counter = 0, maxIterations = Infinity
       , timeout = setInterval(()=>{
         this._log.debug('subscribeProcess call.write counter:', counter);
         var processState = new ProcessState();
         processState.setProcessId(new Date().toISOString());
 
         counter++;
-        if(counter === 5) {
-            call.destroy(new Error('Just a random server fuckup.'));
+        if(counter === maxIterations) {
+            //call.destroy(new Error('Just a random server fuckup.'));
             //clearInterval(timeout);
-            //call.end();
+            call.end();
         }
         else
             call.write(processState);

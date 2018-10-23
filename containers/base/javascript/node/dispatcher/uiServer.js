@@ -345,10 +345,14 @@ _p._subscribeToProcess = async function(socket, data){ // jshint ignore:line
     this._log.debug('entering the for-await loop!');
 
     try{
+        var counter = 0, maxIterations=Infinity;
     /* jshint ignore:start */
     // Code here will be ignored by JSHint.
         for await(let processState of generator) {
             socket.emit('changes-dispatcher-process', 'process !!!! ' + processState.getProcessId());
+            counter++;
+            if(counter === maxIterations)
+                cancel();
         }
     /* jshint ignore:end */
     }
