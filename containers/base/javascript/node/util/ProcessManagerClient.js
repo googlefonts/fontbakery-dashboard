@@ -14,7 +14,7 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
  */
 function ProcessManagerClient(logging, host, port, credentials) {
     var address = [host, port].join(':');
-    this._logging = logging;
+    this._log = logging;
     // in seconds, we use this to get an error when the channel is broken
     // 30 secconds is a lot time, still, under high load I guess this
     // can take some time. 5 seconds was sometimes not enough on my minikube
@@ -22,7 +22,7 @@ function ProcessManagerClient(logging, host, port, credentials) {
     // TODO: maybe we can have multiple retries with increasing deadlines
     //       and still fail eventually.
     this._deadline = 30;
-    this._logging.info('ProcessManagerClient at:', address);
+    this._log.info('ProcessManagerClient at:', address);
     this._client = new GrpcProcessManagerClient(
                           address
                         , credentials || grpc.credentials.createInsecure()
@@ -34,6 +34,8 @@ function ProcessManagerClient(logging, host, port, credentials) {
 }
 
 var _p = ProcessManagerClient.prototype;
+
+Object.defineProperty(_p, 'statusCANCELLED', {value: grpc.status.CANCELLED});
 
 _p._raiseUnhandledError = function(err) {
     this._log.error(err);
@@ -63,7 +65,7 @@ _p._getStreamAsList = function(method, message) {
         // This event fires with each Feature message object until there are no more messages.
         // Errors in the 'data' callback will not cause the stream to be closed!
         call.on('data', report=>{
-            this._logging.debug(METHOD+' receiving a', [report.getType()
+            this._log.debug(METHOD+' receiving a', [report.getType()
                                , report.getTypeId(), report.getMethod()].join(':')
                                , report.hasReported() && report.getReported().toDate()
                                );
@@ -76,7 +78,7 @@ _p._getStreamAsList = function(method, message) {
 
         // An error has occurred and the stream has been closed.
         call.on('error', error => {
-            this._logging.error('reports ' + METHOD + ' on:error', error);
+            this._log.error('reports ' + METHOD + ' on:error', error);
             reject(error);
         });
 
@@ -84,7 +86,7 @@ _p._getStreamAsList = function(method, message) {
         // Finally, the 'status' event fires when the server sends the status.
         call.on('status', status=>{
             if (status.code !== grpc.status.OK) {
-                this._logging.warning('reports ' + METHOD + ' on:status', status);
+                this._log.warning('reports ' + METHOD + ' on:status', status);
                 // on:error should have rejected already OR on:end already
                 // resolved!
                 // reject(status);
@@ -104,9 +106,8 @@ _p._getStreamAsList = function(method, message) {
  *      doSomething(process); // i.e. send it down a socket
  *
  */
-_p._getStreamAsGenerator = async function* (method, message) { // jshint ignore:line
+_p._readableStreamToGenerator = async function* (method, call) { // jshint ignore:line
     var METHOD = '[' + method.toUpperCase() + ']'
-      , call = this._client[method](message, {deadline: Infinity})
       , currentResolve, currentReject
       ;
 
@@ -116,8 +117,16 @@ _p._getStreamAsGenerator = async function* (method, message) { // jshint ignore:
     //
 
     call.on('data', message=>{
-        this._logging.debug(METHOD, 'receiving a:', message.toString());
+        this._log.debug(METHOD, 'receiving a:', message.toString());
+        console.log('>1 currentResolve');
         currentResolve(message);
+        console.log('<1 currentResolve', currentResolve);
+        currentResolve = currentReject = null;
+    });
+
+    call.on('end', ()=>{
+        this._log.debug(METHOD, 'call ended');
+        currentResolve(null);
         currentResolve = currentReject = null;
     });
 
@@ -129,7 +138,9 @@ _p._getStreamAsGenerator = async function* (method, message) { // jshint ignore:
 
     // An error has occurred and the stream has been closed.
     call.on('error', error => {
-        this._logging.error('reports ' + METHOD + ' on:error', error);
+        //if(error.code === grpc.status.CANCELLED)
+        //    return; // expected
+        this._log.error(METHOD + ' on:error', error);
         currentReject(error);
         currentResolve = currentReject = null;
     });
@@ -137,12 +148,12 @@ _p._getStreamAsGenerator = async function* (method, message) { // jshint ignore:
     // Only one of 'error' or 'end' will be emitted.
     // Finally, the 'status' event fires when the server sends the status.
     call.on('status', status=>{
-        if (status.code !== grpc.status.OK) {
-            this._logging.warning('reports ' + METHOD + ' on:status', status);
+        //if (status.code !== grpc.status.OK) {
+            this._log.info(METHOD + ' on:status', status);
             // on:error should have rejected already OR on:end already
             // resolved!
             // reject(status);
-        }
+        //}
     });
 
     // as a Generator, we should return a {value: promise, done: false}
@@ -152,9 +163,18 @@ _p._getStreamAsGenerator = async function* (method, message) { // jshint ignore:
     // and all we do is:
     while(true) {
         let promise = new Promise((resolve, reject)=>{ // jshint ignore:line
-            currentResolve = resolve;
-            currentReject = reject;
-        });
+                currentResolve = resolve;
+                currentReject = reject;
+            })
+          , value = null
+          ;
+        console.log('>0 await');
+        value = await promise; // jshint ignore:line
+        console.log('<0 await');
+        if(value === null)
+            // ended
+            break;
+        yield value;
         // so we always return a promise here, BUT if the call is ended
         // the promise will never be fullfilled anymore and shouldn't
         // be rejected as well, I guess. So how do we end this generator
@@ -166,7 +186,7 @@ _p._getStreamAsGenerator = async function* (method, message) { // jshint ignore:
             // the function is marked as async already
             // maybe it's just enough to yield the promise directly?
             // and the caller will use await then.
-            yield promise; // jshint ignore:line
+        // yield promise; // jshint ignore:line
         //} catch(e) {
         //    console.log(e); // 30
             // should we throw this?
@@ -174,6 +194,14 @@ _p._getStreamAsGenerator = async function* (method, message) { // jshint ignore:
         //}
     }
 }; // jshint ignore:line
+
+_p._getStreamAsGenerator = function(method, message){
+    var call = this._client[method](message, {deadline: Infinity});
+    return {
+        generator :this._readableStreamToGenerator(method, call)
+      , cancel: ()=>call.cancel()
+    }
+}
 
 _p.subscribeProcess = function(processQuery) {
     return this._getStreamAsGenerator('subscribeProcess', processQuery);

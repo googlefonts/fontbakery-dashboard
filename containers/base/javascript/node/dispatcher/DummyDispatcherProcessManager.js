@@ -27,34 +27,56 @@ _p.serve = function() {
     return this._server.start();
 };
 
-function identity(val){ return val;}
+function TODO(val){ return val;}
 
 _p.subscribeProcess = function(call) {
     var processQuery = call.request;
-    identity(processQuery);
 
     this._log.info('processQuery subscribing to', processQuery.getProcessId());
     // FIXME: need to keep call in `subscriptions` structure
-    call.on('error', error=>this._log.error(
-                            'FIXME ERROR while streaming response:', error));
-    call.on('end', ()=>this._log.DEBUG('FIXME: on END: subscribeProcessList'));
+    call.on('error', error=>{
+        this._log.error('FIXME ERROR while streaming response:', error);
+        clearInterval(timeout);
+    });
+    call.on('cancelled', ()=>{
+        // hmm somehow is called after call.on('error'
+        // at least when triggered by call.destroy(new Error(...))
+        // seems like this is called always when the stream is ended
+        // we should be careful with not trying to double-cleanup here
+        // if the client cancels, there's no error though!
+        this._log.debug('FIXME: on cancelled: subscribeProcess');
+        clearInterval(timeout);
+    });
+    call.on('status', (status)=>{
+        this._log.debug('Status:', status);
+    });
     // todo: call.on('end') should cancel the source listener
-    var timeout = setInterval(()=>{
+    var counter = 0
+      , timeout = setInterval(()=>{
+        this._log.debug('subscribeProcess call.write counter:', counter);
         var processState = new ProcessState();
         processState.setProcessId(new Date().toISOString());
-        call.write(processState);
+
+        counter++;
+        if(counter === 5) {
+            call.destroy(new Error('Just a random server fuckup.'));
+            //clearInterval(timeout);
+            //call.end();
+        }
+        else
+            call.write(processState);
+
     }, 1000);
-    identity(timeout);
 };
 
 _p.subscribeProcessList = function(call) {
     // var processListQuery = call.request;
-    identity(ProcessList);
+    TODO(ProcessList);
     call.end();
 };
 
 _p.execute = function(processCommand) {
-    identity(processCommand);
+    TODO(processCommand);
     return new Empty();
 };
 
