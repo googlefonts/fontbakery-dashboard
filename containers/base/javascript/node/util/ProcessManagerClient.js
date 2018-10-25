@@ -52,6 +52,10 @@ Object.defineProperty(_p, 'deadline', {
     }
 });
 
+/**
+ * Only use this if the expected list is finite, a stream of events may
+ * never end! Use _p._readableStreamToGenerator then.
+ */
 _p._getStreamAsList = function(method, message) {
     var METHOD = '[' + method.toUpperCase() + ']';
     return new Promise((resolve, reject) => {
@@ -98,13 +102,7 @@ _p._getStreamAsList = function(method, message) {
 
 
 /**
- * crucial for a subscription
- *
- * guess what I want to do is:
- *
- * for await(let process of this._getStreamAsGenerator('subscribeProcess', processQuery))
- *      doSomething(process); // i.e. send it down a socket
- *
+ * Async generator for a subscription.
  */
 _p._readableStreamToGenerator = async function* (method, call, bufferMaxSize) { // jshint ignore:line
     var METHOD = '[' + method.toUpperCase() + ']'
@@ -141,86 +139,47 @@ _p._readableStreamToGenerator = async function* (method, call, bufferMaxSize) { 
       , reject = error=>_putMessage('reject', error)
       ;
 
-    // TODO:
-    //        * How can the client hang up?
-    //        * What happens when the server hangs up?
-    //
-
     call.on('data', message=>{
         this._log.debug(METHOD, 'on:DATA', message.toString());
         resolve(message);
     });
 
+    // The 'end' event indicates that the server has finished sending
+    // and no errors occured.
     call.on('end', ()=>{
         this._log.debug(METHOD, 'on:END');
         resolve(null);//ends the generator
     });
 
-    // The 'end' event indicates that the server has finished sending
-    // and no errors occured.
-    // => return an ending promises?
-    //      OR break the while loop?
-    // call.on('end', ()=>resolve(result));
-
     // An error has occurred and the stream has been closed.
     call.on('error', error => {
-        //if(error.code === grpc.status.CANCELLED)
-        //    return; // expected
-        this._log.error(METHOD, 'on:ERROR', error);
+        if(error.code !== grpc.status.CANCELLED)
+            // we expect the client to cancel here, don't log.
+            this._log.error(METHOD, 'on:ERROR', error);
         reject(error);
     });
 
-    // Only one of 'error' or 'end' will be emitted.
     // Finally, the 'status' event fires when the server sends the status.
     call.on('status', status=>{
-        //if (status.code !== grpc.status.OK) {
-            this._log.info(METHOD + ' on:status', status);
-            // on:error should have rejected already OR on:end already
-            // resolved!
-            // reject(status);
-        //}
+        this._log.debug(METHOD + ' on:status', status);
     });
-
-    // as a Generator, we should return a {value: promise, done: false}
-    // whenever gen.next() is called.
-    //
-    // so, this being a "async generator" the above is happening anyways
-    // and all we do is:
     while(true) {
-        if(!buffer.length)
-            // if no promise is buffered we're waiting for new
-            // events to come in
-            buffer.push(new Promise(setWaitingHandlers));
-
-        let promise = buffer.shift()
-          , value = null
+        let value = null
+          , promise = buffer.length
+                        ? buffer.shift()
+                          // If no promise is buffered we're waiting for
+                          // new events to come in
+                        : new Promise(setWaitingHandlers)
           ;
         value = await promise; // jshint ignore:line
         if(value === null)
             // ended
             break;
         yield value;
-        // so we always return a promise here, BUT if the call is ended
-        // the promise will never be fullfilled anymore and shouldn't
-        // be rejected as well, I guess. So how do we end this generator
-        // regularly with an promise being waited for? A falsy value
-        // to resolve comes to my mind? a value that is not the expected
-        // message.
-        //try {
-            // await needed here?
-            // the function is marked as async already
-            // maybe it's just enough to yield the promise directly?
-            // and the caller will use await then.
-        // yield promise; // jshint ignore:line
-        //} catch(e) {
-        //    console.log(e); // 30
-            // should we throw this?
-        //    break;
-        //}
     }
 }; // jshint ignore:line
 
-_p._getStreamAsGenerator = function(method, message){
+_p._getStreamAsGenerator = function(method, message) {
     var call = this._client[method](message, {deadline: Infinity});
     return {
         generator :this._readableStreamToGenerator(method, call)
@@ -241,7 +200,6 @@ _p.execute = function(processCommand) {
             this._client.execute(processCommand, {deadline: this.deadline}, callback))
         .then(null, error=>this._raiseUnhandledError(error));
 };
-
 
 _p.waitForReady = function() {
     return nodeCallback2Promise((callback)=>

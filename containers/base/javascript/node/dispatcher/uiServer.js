@@ -274,33 +274,57 @@ _p._subscribeProcess = function(socket, data) {
     //      authorized users can change for process(family)
 };
 
+_p._handleAsyncGen = async function(generator, cancel, messageHandler) { // jshint ignore:line
+    try {
+    /* jshint ignore:start */
+    // Code here will be ignored by JSHint.
+        for await(let message of generator)
+            messageHandler(message);
+    /* jshint ignore:end */
+    }
+    catch(error) {
+        if(error.code !== this._processManager.statusCANCELLED) //expected
+            this._log.error('generator', error);
+    }
+    finally {
+        // make sure to close the resource
+        cancel();
+    }
+}; // jshint ignore:line
 
 /**
  * socket event 'subscribe-dispatcher-list'
  */
-_p._subscribeToList = function(socket, data){
+_p._subscribeToList = function(socket, data) {
     //jshint unused: vars
+    // subscribe at processManager ...
     var listId = 'TODO'
       , key = [socket.id, 'list', listId].join(':')
-      , interval
+      , processListQuery
+      , messageHandler
       ;
 
     if(this._socketSubscriptions.has(key))
         return;
 
-    interval = setInterval(()=>{
-        socket.emit(
-                'changes-dispatcher-list'
-                , 'list .... ' + new Date().toISOString());
-    }, 1000);
+    processListQuery = new ProcessListQuery();
+    processListQuery.setQuery(listId);
+
+    // I guess this could raise an error.
+    var { generator, cancel } = this._processManager.subscribeProcessList(processListQuery);
 
     this._socketSubscriptions.set(key, ()=>{
-        console.log('clearInterval for listId', listId);
-        clearInterval(interval);
+        this._log.debug('Unsubscribing from gRPC subscription call for processId', listId);
+        cancel();
     });
+    messageHandler = (message)=>socket.emit('changes-dispatcher-list'
+    , 'list !!!!!! ' + message.getProcessesList() //=> [] instances of ProcessListItem
+                              .map(processListItem=>processListItem.getProcessId())
+                              .join('///'));
+    return this._handleAsyncGen(generator, cancel, messageHandler);
 };
 
-_p._unsubscribeFromList = function(socket){
+_p._unsubscribeFromList = function(socket) {
     //jshint unused: vars
     this._log.info('Unsubscribe from List:', socket.id);
     var listId = 'TODO'
@@ -320,53 +344,33 @@ _p._unsubscribeFromList = function(socket){
 /**
  * socket event 'subscribe-dispatcher-process'
  */
-_p._subscribeToProcess = async function(socket, data){ // jshint ignore:line
+_p._subscribeToProcess = function(socket, data) {
     //jshint unused: vars
     // subscribe at processManager ...
     var processId = 'TODO'
       , key = [socket.id, 'process', processId].join(':')
-      , processQuery = new ProcessQuery()
+      , processQuery
+      , messageHandler
       ;
 
     if(this._socketSubscriptions.has(key))
         return;
 
+    processQuery = new ProcessQuery();
     processQuery.setProcessId(processId);
-    if(false) new ProcessListQuery();// FIXME: remove, it's a jshint thing
 
-
-    var {generator, cancel} =  this._processManager.subscribeProcess(processQuery); // jshint ignore:line
+    // I guess this could raise an error.
+    var { generator, cancel } = this._processManager.subscribeProcess(processQuery);
 
     this._socketSubscriptions.set(key, ()=>{
-        this._log.warning('Unsubscribing from gRPC subscription call for processId', processId);
+        this._log.debug('Unsubscribing from gRPC subscription call for processId', processId);
         cancel();
     });
 
-    this._log.debug('entering the for-await loop!');
-
-    try{
-        var counter = 0, maxIterations=Infinity;
-    /* jshint ignore:start */
-    // Code here will be ignored by JSHint.
-        for await(let processState of generator) {
-            socket.emit('changes-dispatcher-process', 'process !!!! ' + processState.getProcessId());
-            counter++;
-            if(counter === maxIterations)
-                cancel();
-        }
-    /* jshint ignore:end */
-    }
-    catch(error) {
-        if(error.code !== this._processManager.statusCANCELLED) //expected
-            this._log.error('Caught one', error);
-    }
-    finally {
-        this._log.debug('FINALLY (out of the for-await loop!)');
-        cancel();
-    }
-
-    this._log.debug('cleared the for-await loop!');
-}; // jshint ignore:line
+    messageHandler = (message)=>socket.emit('changes-dispatcher-process'
+                                , 'process !!!! ' + message.getProcessId());
+    return this._handleAsyncGen(generator, cancel, messageHandler);
+};
 
 _p._unsubscribeFromProcess = function(socket) {
     // jshint unused: vars
