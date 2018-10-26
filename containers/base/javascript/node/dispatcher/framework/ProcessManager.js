@@ -1,7 +1,7 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const AsyncQueue = require(TODO)
+const { AsyncQueue } = require('../util/AsyncQueue')
   , { Path } = require('./Path')
   ;
 
