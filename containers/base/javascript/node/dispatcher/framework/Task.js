@@ -2,7 +2,7 @@
 /* jshint esnext:true, node:true*/
 
 const {mixin: stateManagerMixin} = require('./stateManagerMixin')
-  , {expectedAnswersMixin} = require('./expectedAnswersMixin')
+  , {mixin: expectedAnswersMixin} = require('./expectedAnswersMixin')
   , {Status, PENDING, OK, FAILED, LOG} = require('./Status')
   , {Path} = require('./Path')
   ;
@@ -21,6 +21,7 @@ function Task(step, state) {
         step: {value: step}
         // needed by expectedAnswersMixin
       , secret: {get: ()=>this.step.secret}
+      , log: {value: step.log}
     });
 
     this._state = null;
@@ -266,6 +267,10 @@ _p._setExpectedAnswer = function(waitingFor
     return this.__setExpectedAnswer(waitingFor, callbackName, requestedUserInteractionName);
 };
 
+function renderErrorAsMarkdown(message, error){
+    return '**NOT IMPLEMENTED** (renderErrorAsMarkdown) ' + message + ' ```\n' + error + '\n```';
+}
+
 _p._handleStateChange = function(methodName, stateChangePromise) {
     return stateChangePromise.then(()=>{
         // a self check ...
@@ -292,7 +297,8 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
     });
 };
 
-TODO;// def uiRetry
+function TODO(){}
+TODO();// def uiRetry
 
 _p._failedAction = function() {
     // Maybe: if(!this._useRetryUI) return;

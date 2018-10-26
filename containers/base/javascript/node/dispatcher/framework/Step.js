@@ -2,7 +2,7 @@
 /* jshint esnext:true, node:true*/
 
 const {mixin: stateManagerMixin} = require('./stateManagerMixin')
-    , {expectedAnswersMixin} = require('./expectedAnswersMixin')
+    , {mixin: expectedAnswersMixin} = require('./expectedAnswersMixin')
     , {validTaskStatuses } = require('./Task')
     , {Status, OK, FAILED, PENDING} = require('./Status')
     , {Path} = require('./Path')
@@ -32,6 +32,7 @@ function Step(process, state, taskCtors) {
         process: {value: process}
         // needed by expectedAnswersMixin
       , secret: {get: ()=>this.process.secret}
+      , log: {value: this.process.log}
     });
     // taskCtors must be an object of {taskName: TaskConstructor}
     this._taskCtors = new Map(Object.entries(taskCtors));
@@ -171,9 +172,9 @@ const stateDefinition = {
 
 stateManagerMixin(_p, stateDefinition);
 
-
-TODO;// def uiHandleFailedStep
-TODO;// _p.callbackHandleFailedStep { this._finishedFAILED('md reason')}
+function TODO(){}
+TODO();// def uiHandleFailedStep
+TODO();// _p.callbackHandleFailedStep { this._finishedFAILED('md reason')}
 
 _p.getRequestedUserInteractions = function() {
     var tasks = []
@@ -316,6 +317,11 @@ _p.getTaskPath = function(task) {
 
     throw new Error('Task  "' + task + '" not found.');
 };
+
+
+function renderErrorAsMarkdown(message, error){
+    return '**NOT IMPLEMENTED** (renderErrorAsMarkdown) ' + message + ' ```\n' + error + '\n```';
+}
 
 _p._handleStateChange = function(methodName, stateChangePromise) {
     // We only have callbackHandleFailedStep right now!

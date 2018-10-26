@@ -8,6 +8,36 @@ const { Process:Parent } = require('./framework/Process')
     , { FamilyRequest } = require('protocolbuffers/messages_pb')
     ;
 
+// This is an empty function to temporarily disable jshint
+// "defined but never used" warnings and to mark unfinished
+// business
+function TODO(){}
+
+function renderMD(){
+    return '**NOT IMPLEMENTED:** renderMD';
+}
+
+const EmptyTask = (function(){
+
+// just a placeholder to get infrastructure running before actually
+// implementing this module.
+const Parent = Task;
+function EmptyTask(step, state) {
+    Parent.call(this, step, state);
+}
+
+const _p = EmptyTask.prototype = Object.create(Parent.prototype);
+_p.constructor = EmptyTask;
+
+_p._activate = function() {
+    TODO();
+};
+
+return EmptyTask;
+})();
+
+
+
 const GetFamilyDataTask = (function(){
 
 const Parent = Task;
@@ -32,6 +62,7 @@ _p._activate = function() {
         .then(familyDataMessage => {
             // this is nice, we'll have all the info of the files
             // of the progress available in the document
+            let familyDataSummaryMarkdown = renderMD(familyDataMessage);
             this._setLOG(familyDataSummaryMarkdown);
             return this._setSharedData('familyData', familyDataMessage)
                 .then(()=>this._setOK('Family data is persisted.'));
@@ -68,12 +99,13 @@ _p.constructor = FontbakeryTask;
 
 
 _p._createFamilyJob = function(familyDataMessage) { // -> FamilyJobMessage
-    throw new Error('Not Implemented _createFamilyJob');
+   TODO(familyDataMessage);
+   this.log.error('Not Implemented _createFamilyJob');
     // include to call "callbackFontBakeryFinished" with a fontbakeryResultMessage
 };
 
 _p._dispatchFamilyJob = function(ticket, familyJob) {
-
+    TODO(ticket, familyJob);
 
 };
 
@@ -84,8 +116,13 @@ _p._runFamilyJob = function(familyJob) {
         this._setPrivateData('reportId', reportId);
         // This improves the information of the PENDING status by showing
         // the Font Bakery report details.
-        this._setPENDING(renderMD('Waiting for Font Bakery [report '
-                        + reportId + '](' + linkToFontbakeryReport + ')' ));
+        // FIXME: This is wrong in many ways (but easy). There must be a
+        // better way to define this link maybe we should set special data
+        // to this log entry, that contains the reportId and the uiServer
+        // or client can properly include the report then.
+        let linkToFontbakeryReport = '/report/' + reportId;
+        this._setPENDING('Waiting for Font Bakery [report '
+                        + reportId + '](' + linkToFontbakeryReport + ')' );
         return reportId;
     });
 };
@@ -109,10 +146,8 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
     }
     this._setPrivateData('fontbakeryResultMessage', fontbakeryResultMessage);
     this._logStatus(renderMD(fontbakeryResultMessage));
-    return this._requestUserInteraction('userInteractionFinalize', 'callbackFinalize');
 
-
-    TODO;  // The task is now waiting for user interaction
+    TODO();  // The task is now waiting for user interaction
            // this needs to be communicated to the applicable users
            // as such:
            //       * we MAY send out emails (later)
@@ -122,6 +157,8 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
            //         the action, we should also mark these processes
            //         specially and also put them into a personal list:
            //               processes awaiting your attention
+
+    return this._requestUserInteraction('userInteractionFinalize', 'callbackFinalize');
 };
 
 _p.callbackFinalize = function(finalizeMessage) {
@@ -149,7 +186,7 @@ _p.callbackFinalize = function(finalizeMessage) {
     this._setStatus(status, reasoning);
 };
 
-TODO; // user interactions describe how to display and handle
+TODO(); // user interactions describe how to display and handle
 // required user interactions. These functions are used by the
 // uiServer in contrast to the ProcessManager service.
 // A uiServer will not be allowed to change the Process state directly
@@ -166,20 +203,27 @@ _p._userInteractionFinalizeDefine = function() {
     //      * a select field with the choices [FAIL, OK]
     //      * a text field with the label "Reasoning" (that can't be empty!?)
     return [
-        new uiAPI.Select({
-            id: 'status'
+        //new uiAPI.Select(
+        {
+            type: 'select'
+          , id: 'status'
           , label: 'Set a final status.'
-          , type: 'select'
           , select: [FAIL.toString(), OK.toString()]
-        })
-      , new uiAPI.Text({
+        }
+        //)
+      //new uiAPI.Text(
+      , {
             id: 'reasoning'
-          , label: 'Describe your reasoning for the chosen status.'
           , type: 'text'
+          , label: 'Describe your reasoning for the chosen status.'
         }
     ];
-}
-_userInteractionFinalizeReceive = function(userResponse) {
+};
+
+_p._userInteractionFinalizeReceive = function(userResponse) {
+    TODO(userResponse);
+    // Not sure where and how this was intended to be used!
+
     // hmmm, this should maybe be just a stand alone function
     // coupling it with a promise seems adventurous...
     // at least if we're going to call it multiple times ...
@@ -190,22 +234,23 @@ _userInteractionFinalizeReceive = function(userResponse) {
     // respond.
 
     // This is the result
-    var finalizeMessage = new UserInteractionFontBakeryFinalize();
-    finalizeMessage.setStatus(userResponse.state);
-    finalizeMessage.setReasoning(userResponse.reasoning);
-    return finalizeMessage;
-
-    TODO; // _sendToProcessManager(callbackTicket, finalizeMessage);
+    // var finalizeMessage = new UserInteractionFontBakeryFinalize();
+    // finalizeMessage.setStatus(userResponse.state);
+    // finalizeMessage.setReasoning(userResponse.reasoning);
+    //
+    // TODO(); // _sendToProcessManager(callbackTicket, finalizeMessage);
+    //
+    // return finalizeMessage;
 };
 
 _p._activate = function() {
     return this._getSharedData('familyData').then(FamilyDataMessage=>{
         this._createFamilyJob(FamilyDataMessage)
-        .then(familyJob=>this._runFamilyJob(familyJob))
+        .then(familyJob=>this._runFamilyJob(familyJob));
     });
 };
 
-
+/**
 // One question is if we're better of structuring a task explicitly
 // so that we always know what the next step is (after finishing the
 // previous one.
@@ -219,6 +264,8 @@ callbackFontBakeryFinished // _setPrivateData('fontbakeryResultMessage', fontbak
 // -> request (dispatch) user-interaction _userInteractionFinalize
 // -> waiting for callbackFinalize
 callbackFinalize // this._setStatus(finishingStatus, reasoning);
+
+*/
 
 return FontbakeryTask;
 })();
@@ -247,6 +294,7 @@ _p.constructor = FontBakeryStep;
 return FontBakeryStep;
 })();
 
+const DiffbrowsersTask = EmptyTask;
 
 const RegressionsStep = (function(){
 const Parent = Step;
@@ -267,6 +315,8 @@ _p.constructor = RegressionsStep;
 })();
 
 
+const DispatchPRTask = EmptyTask;
+
 const DispatchStep = (function(){
 const Parent = Step;
 /**
@@ -280,7 +330,27 @@ function DispatchStep(process, state) {
 }
 const _p = DispatchStep.prototype = Object.create(Parent.prototype);
 _p.constructor = DispatchStep;
+return DispatchStep;
 })();
+
+
+const TempTaskIntit = EmptyTask;
+
+const TempStepIntit = (function(){
+const Parent = Step;
+/**
+ * Make a the PR or manually fail with a reasoning.
+ */
+function TempStepIntit(process, state) {
+    Parent.call(this, process, state, {
+        TempIntit: TempTaskIntit
+    });
+}
+const _p = TempStepIntit.prototype = Object.create(Parent.prototype);
+_p.constructor = TempStepIntit;
+return TempStepIntit;
+})();
+
 
 /**
  * This is a special step. It runs immediately after the first failed
@@ -289,28 +359,23 @@ _p.constructor = DispatchStep;
  * Create an issue somewhere on GitHub.
  */
 
-const FailTask = (function(){
+const FailTask = EmptyTask;
 
-const Parent = Task;
-function FailTask(step, state) {
-    Parent.call(this, step, state);
+const FailStep = (function(){
+const Parent = Step;
+/**
+ * Make a the PR or manually fail with a reasoning.
+ */
+function FailStep(process, state) {
+    Parent.call(this, process, state, {
+        Fail: FailTask
+    });
 }
-
-const _p = FailTask.prototype = Object.create(Parent.prototype);
-_p.constructor = FailTask;
-
-_p._activate = function() {
-    TODO;
-};
-
-return FailTask;
+const _p = FailStep.prototype = Object.create(Parent.prototype);
+_p.constructor = FailStep;
+return FailStep;
 })();
 
-function FailStep(){}
-
-FailStep.tasks = {
-    Fail: FailTask
-};
 
 
 const stepCtors = [
@@ -318,10 +383,16 @@ const stepCtors = [
           , FontBakeryStep
           , RegressionsStep
           , DispatchStep
-        ]
-      , FailStepCtor = FailStep
-      , FinallyStepCtor = null
-      ;
+    ]
+    // using these to make sure we have a lean development environment
+    // above will have to be implemented when the system actually works
+    // reduces the compexity to deal with at a time.
+  , tmpStepCtors = [
+        TempStepIntit
+    ]
+  , FailStepCtor = FailStep
+  , FinallyStepCtor = null
+  ;
 
 Object.freeze(stepCtors);
 
@@ -329,7 +400,7 @@ function FamilyPRDispatcherProcess(resources, state) {
     Parent.call(this
               , resources
               , state
-              , stepCtors
+              , tmpStepCtors
               , FailStepCtor
               , FinallyStepCtor
     );

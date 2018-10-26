@@ -1,7 +1,7 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const {mixin: stateManagerMixin} = require('stateManagerMixin')
+const {mixin: stateManagerMixin} = require('./stateManagerMixin')
   ,   {Status, OK, FAILED} = require('./Status')
   ,   {Path} = require('./Path')
 ;
@@ -31,6 +31,7 @@ function Process(resources
 
     Object.defineProperties(this, {
         secrect: {get: ()=>resources.secret}
+      , log: {value: resources.log}
     });
 
     this._stepCtors = {};
@@ -50,6 +51,7 @@ function Process(resources
         this._loadState(state);
 }
 
+exports.Process = Process;
 const _p = Process.prototype;
 _p.constructor = Process;
 
@@ -167,7 +169,6 @@ Object.defineProperties(_p, {
             this._state.id = id || null;
         }
     }
-    new Path(...this.process.path
     // building this on request, because process.id may not be
     // initially available.
   , path: {
@@ -333,7 +334,7 @@ _p.activate = function() {
 // getter boolean
 Object.defineProperty(_p, 'userInteractionIsRequired', {
     get: function() {
-        TODO;
+        this.log.error('NOT IMPLEMENTED get userInteractionIsRequired');
         return true || false;
     }
 });
@@ -345,6 +346,8 @@ Object.defineProperty(_p, 'userInteractionIsRequired', {
  * get it directly via gRPC from ProcessManager ???
  */
 _p.defineUserInteracion = function(uiConstructors) {
+    // jshint unused:vars
+    this.log.error('NOT IMPLEMENTED defineUserInteracion');
     if(!this.userInteractionIsRequired)
         throw new Error('User Interaction is not requested.');
     var uiDescription = {};
@@ -352,9 +355,14 @@ _p.defineUserInteracion = function(uiConstructors) {
     return uiDescription;
 };
 
+
+
+
+
 // this runs in ProcessManager
 _p.receiveUserInteracion = function(userResponse) {
-
+    // jshint unused:vars
+    this.log.error('NOT IMPLEMENTED receiveUserInteracion');
 };
 
 _p._getActiveStep = function() {
@@ -528,3 +536,5 @@ _p.deleteSharedData = function(key) {
     // jshint unused: vars
     throw new Error('Not implememnted: deleteSharedData');
 };
+
+

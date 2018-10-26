@@ -1,7 +1,7 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const { AsyncQueue } = require('../util/AsyncQueue')
+const { AsyncQueue } = require('../../util/AsyncQueue')
   , { Path } = require('./Path')
   , grpc = require('grpc')
   , { ProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
@@ -24,6 +24,7 @@ function ProcessManager(logging, db, port, secret, ProcessConstructor) {
 
     Object.defineProperties(this._processResources, {
         secret: {value: secret}
+      , log: {value: this._log}
     });
     Object.defineProperties(this, {
         ProcessConstructor: {value: ProcessConstructor}
@@ -38,6 +39,7 @@ function ProcessManager(logging, db, port, secret, ProcessConstructor) {
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 }
 
+exports.ProcessManager = ProcessManager;
 const _p = ProcessManager.prototype;
 
 _p._persistProcess = function(process) {
@@ -111,8 +113,10 @@ _p._loadProcessFromDB = function(processId) {
         .then(state=>this._initProcessWithState(state));
 };
 
+function TODO(){}
+
 _p._getProcess = function(processId) {
-    TODO;// concept and implementation of process cache and cache invalidation
+    TODO();// concept and implementation of process cache and cache invalidation
     // i.e. when is a process removed from _activeProcesses/memory
     // this *needs* more info about how process is used!
     var process = this._activeProcesses.get(processId);
@@ -221,7 +225,7 @@ _p.publishUpdates = function(process) {
     if(!subscriptions)
         return;
     for(let subscription of subscriptions)
-        TODOpublish(subscription, processMessage);
+        TODO('publish(subscription, processMessage);')
 
 };
 
@@ -342,7 +346,7 @@ _p.subscribeProcessList = function(call) {
         for(let i=0,l=3;i<l;i++) {
             let processListItem = new ProcessListItem();
             processListItem.setProcessId(
-                            '#' + i + '>>>' + new Date().toISOString());
+                            '#' + i + '+++' + new Date().toISOString());
             processList.addProcesses(processListItem);
         }
 
