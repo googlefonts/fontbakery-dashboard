@@ -3,6 +3,11 @@
 
 const { AsyncQueue } = require('../util/AsyncQueue')
   , { Path } = require('./Path')
+  , grpc = require('grpc')
+  , { ProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
+  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
+  , { ProcessList, ProcessListItem, ProcessState } = require('protocolbuffers/messages_pb')
+  , { GenericProcess } = require('./GenericProcess')
   ;
 
 /**
@@ -23,6 +28,14 @@ function ProcessManager(logging, db, port, secret, ProcessConstructor) {
     Object.defineProperties(this, {
         ProcessConstructor: {value: ProcessConstructor}
     });
+
+    this._server = new grpc.Server({
+        'grpc.max_send_message_length': 80 * 1024 * 1024
+      , 'grpc.max_receive_message_length': 80 * 1024 * 1024
+    });
+
+    this._server.addService(ProcessManagerService, this);
+    this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 }
 
 const _p = ProcessManager.prototype;
@@ -114,7 +127,7 @@ _p._getProcess = function(processId) {
     return Promise.resolve(process);
 };
 
-    FIXME;
+    // TODO;
     // first fetch the process document
     // then check for each path element if we are allowed to change it
     //          => status is important:
@@ -207,34 +220,148 @@ _p.publishUpdates = function(process) {
       ;
     if(!subscriptions)
         return;
-    for(subscription of subscriptions)
+    for(let subscription of subscriptions)
         TODOpublish(subscription, processMessage);
 
 };
 
-_p.subscribeList = function(call){
-    var selection = call.request.getSelection();
-    // all subscriptions in here follow the same scheme. That means
-    // a subscriber needs to renew periodically.
-    // MAYBE: hat renewing seems a bit overcomplicated. The subscription
-    // can also just end when the client hangs up and the call is ended.
-    // we still need no extra unsubscribe call.
+////////////////
+// gRPC related:
+
+_p.serve = function() {
+    return this._server.start();
+};
+
+/**
+ * The unsubscribe function may be called multiple times during the
+ * ending of a call, e.g. when finishing with an error three times.
+ * make sure it is prepared.
+ */
+_p._subscribeCall = function(type, call, unsubscribe) {
+    // To end a subscription with a failing state, use:
+    //      `call.destroy(new Error('....'))`
+    //      The events in here are in order: FINISH, ERROR, CANCELLED
+    // This will also inform the client of the error details `call.on('error', ...)`
+    // To end a subscription regularly, use:
+    //       `call.end()`
+    //        The events in here are in order: FINISH
+    // When the client hangs up using:
+    //         `call.cancel()`
+    //        The events in here are in order: CANCELLED
+    //        NOTE: *no* FINISH :-(
+    //        If the client produces an error e.g.
+    //              `call.on('data', ()=>throw new Error())`
+    //        It also seems to result in a cancel, as well as when the
+    //        client just shuts down. There is not really a way to send
+    //        errors to the server as it seems.
+
+
+    // TODO: need to keep call in `subscriptions` structure
+    call.on('error', error=>{
+        this._log.error('on ERROR: subscribeCall('+type+'):', error);
+        unsubscribe();
+    });
+    call.on('cancelled', ()=>{
+        // hmm somehow is called after the `call.on('error',...)` handler,
+        // at least when triggered by `call.destroy(new Error(...))`
+        // seems like this is called always when the stream is ended
+        // we should be careful with not trying to double-cleanup here
+        // if the client cancels, there's no error though!
+        this._log.debug('on CANCELLED: subscribeCall('+type+')');
+        unsubscribe();
+    });
+
+    call.on('finish', ()=>{
+        this._log.debug('on FINISH: subscribeCall('+type+')');
+        unsubscribe();
+    });
 };
 
 // Interestingly, the User Interface will be based on the Font Family
-// not on the Proess. Similarly, the Fontbakery reports should not be
+// not on the Process. Similarly, the Font Bakery reports should not be
 // accessed via the report ID only. Rather via a family page, or the
 // dashboard...
 // the idea is that the client pieces this together.
 _p.subscribeProcess = function(call) {
-    // a subscruption times out/has to be renewed by the subscriber after
-    // an amount of time. that way we don't need an explicit unsubscribe
-    // also, we send the whole process state after each change, not just
-    // the change set.
-    // The renewal is done via the incoming stream, not by calling subscribe
-    // again.
-    var processId = call.request.getProcessId();
-    // send an initial process directly
+    var processQuery = call.request
+      , unsubscribe = ()=> {
+            if(!timeout) // marker if there is an active subscription/call
+                return;
+            // End the subscription and delete the call object.
+            // Do this only once, but, `unsubscribe` may be called more than
+            // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
+            this._log.info('... UNSUBSCRIBE');
+            clearInterval(timeout);
+            timeout = null;
+        }
+      ;
 
+    this._log.info('processQuery subscribing to', processQuery.getProcessId());
+    this._subscribeCall('process', call, unsubscribe);
 
+    var counter = 0, maxIterations = Infinity
+      , timeout = setInterval(()=>{
+        this._log.debug('subscribeProcess call.write counter:', counter);
+        var processState = new ProcessState();
+        processState.setProcessId(new Date().toISOString());
+
+        counter++;
+        if(counter === maxIterations) {
+            //call.destroy(new Error('Just a random server fuckup.'));
+            //clearInterval(timeout);
+            call.end();
+        }
+        else
+            call.write(processState);
+
+    }, 1000);
 };
+
+_p.subscribeProcessList = function(call) {
+    var processListQuery = call.request
+      , unsubscribe = ()=> {
+            if(!timeout) // marker if there is an active subscription/call
+                return;
+            // End the subscription and delete the call object.
+            // Do this only once, but, `unsubscribe` may be called more than
+            // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
+            this._log.info('... UNSUBSCRIBE');
+            clearInterval(timeout);
+            timeout = null;
+        }
+      ;
+
+    this._log.info('processQuery subscribing to', processListQuery.getQuery());
+    this._subscribeCall('process', call, unsubscribe);
+
+    var counter = 0, maxIterations = Infinity
+      , timeout = setInterval(()=>{
+        this._log.debug('subscribeProcessList call.write counter:', counter);
+
+        var processList = new ProcessList();
+        for(let i=0,l=3;i<l;i++) {
+            let processListItem = new ProcessListItem();
+            processListItem.setProcessId(
+                            '#' + i + '>>>' + new Date().toISOString());
+            processList.addProcesses(processListItem);
+        }
+
+        counter++;
+        if(counter === maxIterations) {
+            //call.destroy(new Error('Just a random server fuckup.'));
+            //clearInterval(timeout);
+            call.end();
+        }
+        else
+            call.write(processList);
+
+    }, 1000);
+};
+
+_p.execute = function(processCommand) {
+    //jshint unused:vars
+    // TODO(processCommand);
+    return new Empty();
+};
+
+
