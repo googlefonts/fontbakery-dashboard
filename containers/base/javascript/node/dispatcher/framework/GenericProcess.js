@@ -25,3 +25,5 @@ function GenericProcess(resources, state) {
 }
 
 GenericProcess.prototype = Object.create(Parent.prototype);
+
+exports.GenericProcess = GenericProcess;
