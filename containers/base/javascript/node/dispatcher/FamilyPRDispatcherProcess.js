@@ -4,7 +4,8 @@
 const { Process:Parent } = require('./framework/Process')
     , { Step } = require('./framework/Step')
     , { Task, finishingStatuses } = require('./framework/Task')
-    , { string2statusCode }  = require('./framework/Status')
+    , { string2statusCode, FAIL, OK } = require('./framework/Status')
+    , { FamilyRequest } = require('protocolbuffers/messages_pb')
     ;
 
 const GetFamilyDataTask = (function(){
@@ -66,7 +67,7 @@ const _p = FontbakeryTask.prototype = Object.create(Parent.prototype);
 _p.constructor = FontbakeryTask;
 
 
-_p._createFamilyJob = function(FamilyDataMessage) { // -> FamilyJobMessage
+_p._createFamilyJob = function(familyDataMessage) { // -> FamilyJobMessage
     throw new Error('Not Implemented _createFamilyJob');
     // include to call "callbackFontBakeryFinished" with a fontbakeryResultMessage
 };
@@ -79,12 +80,12 @@ _p._dispatchFamilyJob = function(ticket, familyJob) {
 _p._runFamilyJob = function(familyJob) {
     var callbackTicket = this._setExpectedAnswer('Font Bakery', 'callbackFontBakeryFinished');
     return this._dispatchFamilyJob(callbackTicket, familyJob)
-    .then(reportID=>{
+    .then(reportId=>{
         this._setPrivateData('reportId', reportId);
         // This improves the information of the PENDING status by showing
         // the Font Bakery report details.
         this._setPENDING(renderMD('Waiting for Font Bakery [report '
-                        + reportID + '](' + linkToFontbakeryReport + ')' ));
+                        + reportId + '](' + linkToFontbakeryReport + ')' ));
         return reportId;
     });
 };
@@ -287,6 +288,24 @@ _p.constructor = DispatchStep;
  *
  * Create an issue somewhere on GitHub.
  */
+
+const FailTask = (function(){
+
+const Parent = Task;
+function FailTask(step, state) {
+    Parent.call(this, step, state);
+}
+
+const _p = FailTask.prototype = Object.create(Parent.prototype);
+_p.constructor = FailTask;
+
+_p._activate = function() {
+    TODO;
+};
+
+return FailTask;
+})();
+
 function FailStep(){}
 
 FailStep.tasks = {
@@ -317,3 +336,5 @@ function FamilyPRDispatcherProcess(resources, state) {
 }
 const _p = FamilyPRDispatcherProcess.prototype = Object.create(Parent.prototype);
 _p.constructor = FamilyPRDispatcherProcess;
+
+exports.FamilyPRDispatcherProcess = FamilyPRDispatcherProcess;
