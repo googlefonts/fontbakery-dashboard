@@ -181,9 +181,9 @@ _p.sendQueueMessage = function (queueName, message) {
     function sendMessage() {
         // jshint validthis:true
         this._log.info('sendToQueue: ', queueName);
-        return this._amqp.channel.sendToQueue(queueName, message, options);
+        return this.amqp.channel.sendToQueue(queueName, message, options);
     }
-    return this._amqp.channel.assertQueue(queueName, {durable: true})
+    return this.amqp.channel.assertQueue(queueName, {durable: true})
            .then(sendMessage.bind(this))
            ;
 };
@@ -200,12 +200,12 @@ _p.dispatchFamilyJob = function(cacheKey, docid) {
 };
 
 _p.queueListen = function(channelName, consumer) {
-    return this._amqp.channel.assertQueue(channelName)
-        .then(reply=>this._amqp.channel.consume(reply.queue, consumer));
+    return this.amqp.channel.assertQueue(channelName)
+        .then(reply=>this.amqp.channel.consume(reply.queue, consumer));
 };
 
 _p.ackQueueMessage = function(message) {
-    this._amqp.channel.ack(message);
+    this.amqp.channel.ack(message);
 };
 
 exports.IOOperations = IOOperations;
