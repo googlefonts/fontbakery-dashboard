@@ -16,6 +16,10 @@ StatusCode.prototype.valueOf = function() {
     return this.status;
 };
 
+StatusCode.prototype.toString = function() {
+    return this.status;
+};
+
 const PENDING = new StatusCode('PENDING')
   , OK = new StatusCode('OK')
   , FAILED = new StatusCode('FAILED')

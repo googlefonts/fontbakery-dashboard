@@ -52,8 +52,9 @@ function expectedAnswersMixin(_p) {
      */
     _p._getTicket = function (callbackName, dateString/*don't use for new tickets*/) {
         var date = dateString || new Date().toISOString()
-          , hash = this._hash(date, callbackName, this.secret)
+          , hash
           ;
+        hash = this._hash(date, callbackName, this.secret);
         return [date, hash].join(';');
     };
 
@@ -62,7 +63,7 @@ function expectedAnswersMixin(_p) {
      * must start with "ui"
      */
     _p._hasUserInteraction = function(uiName) {
-        return uiName.indexOf('ui') !== 0 && this[uiName];
+        return !!(uiName.indexOf('ui') === 0 && this[uiName]);
     };
 
     /**
@@ -70,7 +71,7 @@ function expectedAnswersMixin(_p) {
      * must start with "callback"
      */
     _p._hasCallbackMethod = function(callbackName) {
-        return callbackName.indexOf('callback') !== 0 && this[callbackName];
+        return !!(callbackName.indexOf('callback') === 0 && this[callbackName]);
     };
 
     _p._getCallbackMethod = function(callbackName) {

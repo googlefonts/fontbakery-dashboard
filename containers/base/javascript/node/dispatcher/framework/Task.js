@@ -20,7 +20,7 @@ function Task(step, state) {
     Object.defineProperties(this, {
         step: {value: step}
         // needed by expectedAnswersMixin
-      , secret: {get: ()=>this.step.secret}
+      , secret: {value: step.secret}
       , log: {value: step.log}
     });
 
@@ -57,10 +57,10 @@ Object.defineProperties(_p, {
                 // LOG doesn't change the status of the task
                 if(taskStatus.status === LOG)
                     continue;
-                if(!validTaskStatuses.has(taskStatus))
+                if(!validTaskStatuses.has(taskStatus.status))
                     // Other code depends on the task status to be one
                     // of OK, FAILED, PENDING at any time.
-                    throw new Error('Task status "'+taskStatus+'" is not allowed.');
+                    throw new Error('Task status "'+taskStatus.status+'" is not allowed.');
                 return taskStatus;
             }
             // This should never happen, it's more like a self-health-test.
@@ -107,6 +107,7 @@ Object.defineProperties(_p, {
  * is executed and an expectedAnswer must be defined if the status is PENDING.
  */
 _p._initHistory = function() {
+    console.log('Task', this, '_initHistory');
     return [new Status(PENDING, '*initial state*')];
 };
 
@@ -135,7 +136,7 @@ const stateDefinition = {
         }
     }
   , history: {// array of valid taskStatus entries, min len = 1 (see _initState)
-        init: ()=>_p._initHistory
+        init: _p._initHistory
       , serialize: history=>history.map(taskStatus=>taskStatus.serialize())
       , load: historyStates=>historyStates.map(Status.load)
     }

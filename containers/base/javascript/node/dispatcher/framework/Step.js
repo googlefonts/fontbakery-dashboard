@@ -31,9 +31,10 @@ function Step(process, state, taskCtors) {
     Object.defineProperties(this, {
         process: {value: process}
         // needed by expectedAnswersMixin
-      , secret: {get: ()=>this.process.secret}
-      , log: {value: this.process.log}
+      , secret: {value: process.secret}
+      , log: {value: process.log}
     });
+
     // taskCtors must be an object of {taskName: TaskConstructor}
     this._taskCtors = new Map(Object.entries(taskCtors));
     this._state = null;
@@ -172,9 +173,14 @@ const stateDefinition = {
 
 stateManagerMixin(_p, stateDefinition);
 
-function TODO(){}
-TODO();// def uiHandleFailedStep
-TODO();// _p.callbackHandleFailedStep { this._finishedFAILED('md reason')}
+_p.uiHandleFailedStep = function(){
+    this.log.ERROR('NOT IMPLEMENTED uiHandleFailedStep');
+};
+
+_p.callbackHandleFailedStep = function() {
+    this.log.ERROR('NOT IMPLEMENTED callbackHandleFailedStep');
+    this._finishedFAILED('**NOT IMPLEMENTED**md reason');
+};
 
 _p.getRequestedUserInteractions = function() {
     var tasks = []
@@ -210,10 +216,12 @@ _p.activate = function() {
         throw new Error('Step is already activated.');
     this.isActivated = true;
     var promises = [];
-    for(let task of this._state.tasks.values())
+    for(let task of this._state.tasks.values()){
+        this.log.debug('task activate', task);
         // these never raise, Task.prototype.activate catches exceptions
         // and puts them into rejected promises
         promises.push(task.activate());
+    }
     // Using reflectPromise because we don't want to have Promise.all
     // fail directly, instead wait for all promises to be finished,
     // regardless of being resolved or rejected. `task.activate()` does

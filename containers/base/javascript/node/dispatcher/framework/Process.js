@@ -30,7 +30,7 @@ function Process(resources
                       , FinallyStepCtor) {
 
     Object.defineProperties(this, {
-        secrect: {get: ()=>resources.secret}
+        secret: {value: resources.secret}
       , log: {value: resources.log}
     });
 
@@ -118,7 +118,7 @@ const stateDefinition = {
      * the unique id of the Process document in the database.
      */
     id: {
-        init: null
+        init: ()=>null
       , load: val=>val
       , serialize: val=>val
     }
