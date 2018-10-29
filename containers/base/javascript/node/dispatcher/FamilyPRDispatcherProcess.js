@@ -30,7 +30,7 @@ const _p = EmptyTask.prototype = Object.create(Parent.prototype);
 _p.constructor = EmptyTask;
 
 _p._activate = function() {
-    TODO();
+    this._setOK('EmptyTask is OK on activate.');
 };
 
 return EmptyTask;
@@ -391,7 +391,7 @@ const stepCtors = [
         TempStepIntit
     ]
   , FailStepCtor = FailStep
-  , FinallyStepCtor = null
+  , FinallyStepCtor = TempStepIntit
   ;
 
 Object.freeze(stepCtors);

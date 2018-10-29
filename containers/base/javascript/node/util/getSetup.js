@@ -25,6 +25,7 @@ function getSetup() {
                 family: 'familytests'
               , collection: 'collectiontests'
               , statusreport: 'statusreports'
+              , dispatcherprocesses: 'dispatcherprocesses'
             }
         }
       , amqpSetup = {
@@ -170,6 +171,10 @@ function initDB(log, dbSetup) {
               , createTableIndex('statusreport', ['reported_id'
                                         , [r.row('reported'), r.row('id')]])
             ]);
+        })
+        .then(()=>{
+            //  create indexes for dbSetup.tables.dispatcherprocesses
+            return Promise.resolve(true);// placeholder
         })
         .then(function(){return r;})
         .catch(function(err) {

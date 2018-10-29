@@ -8,6 +8,7 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , { ProcessList, ProcessListItem, ProcessState } = require('protocolbuffers/messages_pb')
   , { GenericProcess } = require('./GenericProcess')
+  , { IOOperations } = require('../../util/IOOperations')
   ;
 
 /**
@@ -17,10 +18,12 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
  * How are state changes propagated?
  */
 
-function ProcessManager(logging, db, port, secret, ProcessConstructor) {
+function ProcessManager(logging, dbSetup, amqpSetup, port, secret, ProcessConstructor) {
     this._log = logging;
+    this._io = new IOOperations(logging, dbSetup, amqpSetup);
     this._processResources = Object.create(null);
     this._processSubscriptions = new Map();
+    this._activeProcesses = new Map();
 
     Object.defineProperties(this._processResources, {
         secret: {value: secret}
@@ -47,13 +50,22 @@ _p._persistProcess = function(process) {
         // instead of `replace`, `update` could speed up the action
         // but it would mean we only update changes, which is more effort
         // to implement.
-    var method = process.id ? 'replace' : 'insert';
-
-    table
+    var processData = process.serialize()
+      , method = process.id ? 'replace' : 'insert'
+      ;
+    if(method === 'insert')
+        // Otherwise we get this Error:
+        //          "Primary keys must be either a number, string, bool,
+        //           pseudotype or array (got type NULL)"
+        delete processData.id;
+    return this._io.query('dispatcherprocesses')
         // Insert a document into the table users, replacing the document
         // if it already exists.
-        [method](process.serialize(), {conflict: "replace"})
+        [method](processData, {conflict: "replace"})
         .then(report=>{
+            if(report.errors)
+                throw new Error(report.first_error);
+
             if(report.generated_keys && report.generated_keys.length)
                 // assert report.inserted === 1
                 // assert process.id === null
@@ -70,7 +82,11 @@ _p._initProcess = function() {
                                     this._processResources, null);
      // will also activate the first step and all its tasks
     return process.activate()
-        .then(()=>this._persistProcess(process));
+        .then(()=>this._persistProcess(process))
+        // FIXME: do this here? Maybe the caller of _initProcess should do!
+        .then(process=>this._setProcess(process.id, process, null))
+        .then(processData=>processData.process)
+        ;
 };
 
 /**
@@ -80,6 +96,7 @@ _p._initProcess = function() {
  * has now APIs to change it's state.
  */
 _p._initProcessWithState = function(state) {
+    this._log.debug('_initProcessWithState state:', JSON.stringify(state));
     var process;
     try {
         process = new this.ProcessConstructor(
@@ -98,37 +115,74 @@ _p._initProcessWithState = function(state) {
         catch(error2) {
             // Loading the GenericProcess should never fail.
             // Probably something very basic changed.
-            throw new Error('Can\'t create Process from state with error: '
-                            +  error + '\n'
-                            + 'Also, can\t initiate GenericProcess from '
-                            + 'state with error:' + error2);
+            error.message = 'Can\'t create Process from state with error: '
+                            +  error.message + '\n'
+                            + 'Also, can\'t initiate GenericProcess from '
+                            + 'state with error:' + error2
+                            ;
+            throw error;
         }
     }
-    return process.activate()
-        .then(()=>process);
+    // FIXME: only activate the process if it is *NOT* finished
+    return process.isFinished
+        ?   process
+        :   process.activate().then(()=>process)
+        ;
 };
 
 _p._loadProcessFromDB = function(processId) {
-    return dbFetch(processId)
-        .then(state=>this._initProcessWithState(state));
+    return this._io.query('dispatcherprocesses')
+        .get(processId)
+        .then(state=>{
+            if(state === null)
+                throw new Error('Process not found! With id: '+processId);
+            return this._initProcessWithState(state);
+        });
 };
 
 function TODO(){}
+
+_p._setProcess = function(processId, process, promise) {
+    var assertion = (process === null || promise === null) && process !== promise
+      , processData
+      ;
+    if(!assertion)
+        throw new Error('`process` and `promise` must be mutually exclusive, '
+                      + 'one must be null.\n'
+                      + '(process: '+process+') (promise: '+promise+')');
+
+
+    processData = this._activeProcesses.get(processId);
+    if(!processData) {
+        processData = {
+            process: null
+          , promise: null
+          , queue: new AsyncQueue()
+        };
+        this._activeProcesses.set(processId, processData);
+    }
+    processData.process = process;
+    processData.promise = promise;
+    return processData;
+};
 
 _p._getProcess = function(processId) {
     TODO();// concept and implementation of process cache and cache invalidation
     // i.e. when is a process removed from _activeProcesses/memory
     // this *needs* more info about how process is used!
-    var process = this._activeProcesses.get(processId);
-    if(!process) {
+    var processData = this._activeProcesses.get(processId);
+    if(!processData) {
         // may fail!
-        process = this._loadProcessFromDB(processId)
-            .then(process=>{
-                this._activeProcesses.set(processId, {process, queue: new AsyncQueue()});
-                return process;
-            });
+        let promise = this._loadProcessFromDB(processId)
+            // replace the promise with the actual value
+            // could also just remain the resolved promise, but
+            // this way seems more explicit.
+            // => processData
+            .then(process=>this._setProcess(processId, process, null))
+            ;
+        processData = this._setProcess(processId, null, promise);
     }
-    return Promise.resolve(process);
+    return processData.promise || Promise.resolve(processData);
 };
 
     // TODO;
@@ -225,15 +279,17 @@ _p.publishUpdates = function(process) {
     if(!subscriptions)
         return;
     for(let subscription of subscriptions)
-        TODO('publish(subscription, processMessage);')
+        TODO(subscription, 'publish(subscription, processMessage);');
 
 };
 
 ////////////////
 // gRPC related:
 
-_p.serve = function() {
-    return this._server.start();
+_p.serve =  function() {
+    // Start serving when the database is ready
+    return this._io.init()
+        .then(()=>this._server.start());
 };
 
 /**
@@ -287,8 +343,17 @@ _p._subscribeCall = function(type, call, unsubscribe) {
 // dashboard...
 // the idea is that the client pieces this together.
 _p.subscribeProcess = function(call) {
+
+    this._getProcess('__bd87384a-6f07-4c7f-8605-43cfb2b70d0a').then(
+        ({process, queue})=>{
+            this._log.debug('got a process by id', process.id);
+            this._log.debug(JSON.stringify(process.serialize()));
+        }
+      , error=>this._log.error(error)
+    );
+
     var processQuery = call.request
-      , unsubscribe = ()=> {
+      , unsubscribe = ()=>{
             if(!timeout) // marker if there is an active subscription/call
                 return;
             // End the subscription and delete the call object.

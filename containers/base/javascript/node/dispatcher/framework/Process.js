@@ -142,17 +142,17 @@ const stateDefinition = {
       , serialize: serializeStep
       , load: _p._loadFailStep
       , isExpected: function() {
-            // only if there is a FailStepCtor
-            return ('FailStepCtor' in this._stepCtors);
+            // only if there is a FailStep Ctor
+            return ('FailStep' in this._stepCtors);
         }
     }
   , finallyStep: {
         init: _p._initFinallyStep
       , serialize: serializeStep
-      , load: _p._loadFinallyStepStep
+      , load: _p._loadFinallyStep
       , isExpected: function() {
-            // only if there is a FinallyStepCtor
-            return ('FinallyStepCtor' in this._stepCtors);
+            // only if there is a FinallyStep Ctor
+            return ('FinallyStep' in this._stepCtors);
         }
     }
 };

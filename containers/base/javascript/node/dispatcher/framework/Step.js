@@ -275,7 +275,7 @@ _p._transition = function() {
         return;
     }
     // no FAILED, this is any case we don't need the FailedUI anymore.
-    this.this._unsetExpectedAnswer();
+    this._unsetExpectedAnswer();
 
     var okCounter = 0;
     for(let task of this._state.tasks.values()) {

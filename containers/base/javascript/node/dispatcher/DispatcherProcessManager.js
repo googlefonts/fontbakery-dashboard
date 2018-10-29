@@ -25,7 +25,26 @@ if (typeof require != 'undefined' && require.main==module) {
     if(!secret.length || secret.indexOf('TODO:') !== -1)
         setup.logging.warning('You really should define a proper secret');
     // Combine ProcessManager and the process definition:FamilyPRDispatcherProcess.
-    processManager = new ProcessManager(setup.logging, setup.db, port
-                                    , secret, FamilyPRDispatcherProcess);
-    processManager.serve();
+
+
+    // FIXME: temprorary local setup overrides.
+    setup.db.rethink.host = '127.0.0.1';
+    setup.db.rethink.port = '32769';
+    setup.amqp = null;
+
+
+    processManager = new ProcessManager(setup.logging
+                                      , setup.db
+                                      , setup.amqp
+                                      , port
+                                      , secret
+                                      , FamilyPRDispatcherProcess);
+    processManager.serve()
+        .then(
+            ()=>setup.logging.info('Server ready!')
+          , err => {
+                setup.logging.error('Can\'t initialize server.', err);
+                process.exit(1);
+            }
+        );
 }

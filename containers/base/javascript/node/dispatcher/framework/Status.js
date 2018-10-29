@@ -85,7 +85,7 @@ _p.serialize = function() {
  */
 Status.load = function(state) {
     var {
-            statusString
+            status: statusString
           , details
           , created
           , data
