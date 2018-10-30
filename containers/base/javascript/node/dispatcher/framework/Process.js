@@ -355,10 +355,6 @@ _p.defineUserInteracion = function(uiConstructors) {
     return uiDescription;
 };
 
-
-
-
-
 // this runs in ProcessManager
 _p.receiveUserInteracion = function(userResponse) {
     // jshint unused:vars

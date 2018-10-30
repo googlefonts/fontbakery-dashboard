@@ -53,9 +53,22 @@ function stateManagerMixin(_p, stateDefinition) {
      * FIXME: This implies state can go bad after the process was created,
      * from within. Not sure we need this and not sure how to implement...
      * A self-health test would be nice to have though.
+     *
+     * TODO: this is not used anywhere! do we need it?
      */
     _p.validateState = function() {
         throw new Error('Not implemented!');
+    };
+
+    _p._callAndCatch = function(func, ...args) {
+        try {
+            return [true, func.call(this, ...args)];
+        }
+        catch(error) {
+            // I don't want the original error stack trace to be lost completely.
+            this.log.warning(error);
+            return [false, error.message];
+        }
     };
 
     /**
@@ -65,6 +78,9 @@ function stateManagerMixin(_p, stateDefinition) {
      */
     _p._loadState = function(state) {
         this._state = {};
+        var errorMessages = []
+          , indent = str=>str.split('\n').map(line=>'    '+line).join('\n')
+          ;
         for(let [key, definition] of Object.entries(stateDefinition)) {
             // some simple validation
             if(!this._isExpectedState(key)) {
@@ -73,12 +89,14 @@ function stateManagerMixin(_p, stateDefinition) {
                     throw new Error('State is incompatible, key "'
                                         + key +'" is NOT EXPECTED but present.');
                 else
+                    // all good: not expected and not in state
                     continue;
             }
             else if(!(key in state)) {
                 throw new Error('State is incompatible, key "'
                                         + key +'" is expected but NOT PRESENT.');
             }
+            // expected and in state
 
             // In this case validate ensures the data for key can be loaded,
             // but not, that the result is valid. So maybe we need a single
@@ -90,12 +108,25 @@ function stateManagerMixin(_p, stateDefinition) {
             // If we never use `validate` remove it again!
             if('validate' in definition) {
                 let [result, message] = definition.validate.call(this, state[key]);
-                if(!result)
-                    throw new Error('State for key"' + key + '" did not validate '
-                                    +' with message: ' + message);
+                if(!result) {
+                    errorMessages.push(key + '(validate): ' + message);
+                    continue;
+                }
             }
-            this._state[key] = definition.load.call(this, state[key]);
+            // try/catch and collect these as well, as in valiation.
+            // because e.g. in load of a 'tasks' key of Step this validation
+            // will happen as well, but in this case,
+            let [result, valueOrMessage] = this._callAndCatch(definition.load, state[key]);
+            if(!result) {
+                errorMessages.push(key + '(load): ' + valueOrMessage);
+                continue;
+            }
+            else
+                this._state[key] = valueOrMessage;
         }
+        if(errorMessages.length)
+            throw new Error('State to load had the following errors: \n'
+                            + errorMessages.map(indent).join('\n'));
     };
 }
 

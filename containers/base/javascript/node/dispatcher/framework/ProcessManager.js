@@ -94,6 +94,16 @@ _p._initProcess = function() {
  * ProcessConstructor fails (e.g. because it's incompatible with the state)
  * a GenericProcess will be created, which should be fine for viewing but
  * has now APIs to change it's state.
+ * If a GenericProcess is required, and the process is *not* finished
+ * we have potentially a problem: there's no UI to close it. Thusly,
+ * the one API to change it's state should be probably something to finish
+ * it and potentially to start another process for that font family.
+ * Otherwise, likely, the dispatcher for that library may be stuck waiting
+ * for the outdated process. Though, eventually timeouts or other tools
+ * external to processes can help here, too.
+ * ALSO, the idea of this right now may be over-complicated, maybe it's
+ * simpler to just pass the state to the client (which we'll do probably
+ * anyways with all processes).
  */
 _p._initProcessWithState = function(state) {
     this._log.debug('_initProcessWithState state:', JSON.stringify(state));
@@ -105,25 +115,35 @@ _p._initProcessWithState = function(state) {
     catch(error) {
         // FIXME: Since we can't use this state anymore, we should
         // "force finish" it. That way, a new process for the family can
-        // be initiated.
-
+        // be started.
         // expecting this to be some kind of state validation issue
         // i.e. the state is (now) incompatible with ProcessConstructor
-        try {
-            process = new GenericProcess(this._processResources, state);
-        }
-        catch(error2) {
-            // Loading the GenericProcess should never fail.
-            // Probably something very basic changed.
-            error.message = 'Can\'t create Process from state with error: '
-                            +  error.message + '\n'
-                            + 'Also, can\'t initiate GenericProcess from '
-                            + 'state with error:' + error2
-                            ;
-            throw error;
-        }
+        // thus, maybe GenericProcess should not validate or not be
+        // a `Process` at all, just a container for unloaded state.
+
+        // FIXME: we should add the ERROR to the state of
+        // GenericProcess somehow. At least it shouldn't be muted!
+        // This warning will at least put the stack trace into the logs,
+        // but that may become log-pollution...
+        this._log.warning('Can\'t init regular Process with state',
+                              'trying GenericProcess.', error);
+
+        // NOTE: This can and probably will eventually fail, but,
+        // loading the GenericProcess should never fail.
+        // If it fails, probably something very basic changed.
+        // The solution is not to mute errors in GenericProcess though
+        // rather do sth. more appropriate that captures the intention
+        // of the class.
+        process = new GenericProcess(this._processResources, state);
     }
     // FIXME: only activate the process if it is *NOT* finished
+    // TODO: activate *GenericProcess* ??? sounds all wrong to me
+    // but could be used to set a finishing status. If the GenericProcess
+    // is finished already, it seems to load fine already, e.g. without
+    // errors. But this is most likely not true for all cases,
+    // e.g. if an expectedAwnser is set, but there's no callback(s) for
+    // it, state validation will fail. Maybe, we need to skip stateManager
+    // validation for the Generic{Process|Step|Task} classes
     return process.isFinished
         ?   process
         :   process.activate().then(()=>process)
@@ -344,7 +364,7 @@ _p._subscribeCall = function(type, call, unsubscribe) {
 // the idea is that the client pieces this together.
 _p.subscribeProcess = function(call) {
 
-    this._getProcess('__bd87384a-6f07-4c7f-8605-43cfb2b70d0a').then(
+    this._getProcess('bd87384a-6f07-4c7f-8605-43cfb2b70d0a').then(
         ({process, queue})=>{
             this._log.debug('got a process by id', process.id);
             this._log.debug(JSON.stringify(process.serialize()));
