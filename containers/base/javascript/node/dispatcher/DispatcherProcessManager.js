@@ -2,9 +2,59 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const { ProcessManager } = require('./framework/ProcessManager')
+const { ProcessManager:Parent } = require('./framework/ProcessManager')
   , { FamilyPRDispatcherProcess } = require('./FamilyPRDispatcherProcess')
+  , { DispatcherProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
+  , { ProcessList, ProcessListItem } = require('protocolbuffers/messages_pb')
   ;
+
+function DispatcherProcessManager(...args) {
+    Parent.call(this, ...args);
+    this._server.addService(DispatcherProcessManagerService, this);
+}
+
+const _p = DispatcherProcessManager.prototype = Object.create(Parent.prototype);
+
+_p.subscribeProcessList = function(call) {
+    var processListQuery = call.request
+      , unsubscribe = ()=> {
+            if(!timeout) // marker if there is an active subscription/call
+                return;
+            // End the subscription and delete the call object.
+            // Do this only once, but, `unsubscribe` may be called more than
+            // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
+            this._log.info('... UNSUBSCRIBE');
+            clearInterval(timeout);
+            timeout = null;
+        }
+      ;
+
+    this._log.info('processQuery subscribing to', processListQuery.getQuery());
+    this._subscribeCall('process', call, unsubscribe);
+
+    var counter = 0, maxIterations = Infinity
+      , timeout = setInterval(()=>{
+        this._log.debug('subscribeProcessList call.write counter:', counter);
+
+        var processList = new ProcessList();
+        for(let i=0,l=3;i<l;i++) {
+            let processListItem = new ProcessListItem();
+            processListItem.setProcessId(
+                            '#' + i + '+-+' + new Date().toISOString());
+            processList.addProcesses(processListItem);
+        }
+
+        counter++;
+        if(counter === maxIterations) {
+            //call.destroy(new Error('Just a random server fuckup.'));
+            //clearInterval(timeout);
+            call.end();
+        }
+        else
+            call.write(processList);
+
+    }, 1000);
+};
 
 if (typeof require != 'undefined' && require.main==module) {
     var { getSetup } = require('../util/getSetup')
@@ -33,7 +83,8 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.amqp = null;
 
 
-    processManager = new ProcessManager(setup.logging
+    processManager = new DispatcherProcessManager(
+                                        setup.logging
                                       , setup.db
                                       , setup.amqp
                                       , port

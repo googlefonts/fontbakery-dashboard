@@ -53,6 +53,7 @@ function GenericProcess(resources, state) {
 }
 
 GenericProcess.prototype = Object.create(Parent.prototype);
+GenericProcess.prototype.constructor = GenericProcess;
 return GenericProcess;
 })();
 

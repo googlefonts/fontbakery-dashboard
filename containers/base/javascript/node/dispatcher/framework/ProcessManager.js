@@ -6,7 +6,7 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
   , grpc = require('grpc')
   , { ProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
-  , { ProcessList, ProcessListItem, ProcessState } = require('protocolbuffers/messages_pb')
+  , { ProcessState } = require('protocolbuffers/messages_pb')
   , { GenericProcess } = require('./GenericProcess')
   , { IOOperations } = require('../../util/IOOperations')
   ;
@@ -106,7 +106,6 @@ _p._initProcess = function() {
  * anyways with all processes).
  */
 _p._initProcessWithState = function(state) {
-    this._log.debug('_initProcessWithState state:', JSON.stringify(state));
     var process;
     try {
         process = new this.ProcessConstructor(
@@ -364,12 +363,22 @@ _p._subscribeCall = function(type, call, unsubscribe) {
 // the idea is that the client pieces this together.
 _p.subscribeProcess = function(call) {
 
-    this._getProcess('bd87384a-6f07-4c7f-8605-43cfb2b70d0a').then(
-        ({process, queue})=>{
-            this._log.debug('got a process by id', process.id);
-            this._log.debug(JSON.stringify(process.serialize()));
-        }
-      , error=>this._log.error(error)
+    //this._initProcess().then(process=>{
+    //    this._log.debug('new process', process.constructor.name,'id:', process.id);
+    //    return  process.id;
+    //})
+    // 'bd87384a-6f07-4c7f-8605-43cfb2b70d0a' => now becomes a GenericProcess
+    // '3b325ffc-d30c-43e2-a273-bf3dabe52645' => added a "family" key to process
+    Promise.resolve('3b325ffc-d30c-43e2-a273-bf3dabe52645')
+    .then(processId=>
+
+        this._getProcess(processId).then(
+            ({process, queue})=>{
+                this._log.debug('got a process by id', process.constructor.name, process.id);
+                this._log.debug(JSON.stringify(process.serialize()));
+            }
+          , error=>this._log.error(error)
+        )
     );
 
     var processQuery = call.request
@@ -402,47 +411,6 @@ _p.subscribeProcess = function(call) {
         }
         else
             call.write(processState);
-
-    }, 1000);
-};
-
-_p.subscribeProcessList = function(call) {
-    var processListQuery = call.request
-      , unsubscribe = ()=> {
-            if(!timeout) // marker if there is an active subscription/call
-                return;
-            // End the subscription and delete the call object.
-            // Do this only once, but, `unsubscribe` may be called more than
-            // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
-            this._log.info('... UNSUBSCRIBE');
-            clearInterval(timeout);
-            timeout = null;
-        }
-      ;
-
-    this._log.info('processQuery subscribing to', processListQuery.getQuery());
-    this._subscribeCall('process', call, unsubscribe);
-
-    var counter = 0, maxIterations = Infinity
-      , timeout = setInterval(()=>{
-        this._log.debug('subscribeProcessList call.write counter:', counter);
-
-        var processList = new ProcessList();
-        for(let i=0,l=3;i<l;i++) {
-            let processListItem = new ProcessListItem();
-            processListItem.setProcessId(
-                            '#' + i + '+++' + new Date().toISOString());
-            processList.addProcesses(processListItem);
-        }
-
-        counter++;
-        if(counter === maxIterations) {
-            //call.destroy(new Error('Just a random server fuckup.'));
-            //clearInterval(timeout);
-            call.end();
-        }
-        else
-            call.write(processList);
 
     }, 1000);
 };
