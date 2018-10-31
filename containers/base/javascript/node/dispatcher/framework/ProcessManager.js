@@ -5,7 +5,7 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
   , { Path } = require('./Path')
   , grpc = require('grpc')
   , { ProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
-  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
+//  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , { ProcessState } = require('protocolbuffers/messages_pb')
   , { GenericProcess } = require('./GenericProcess')
   , { IOOperations } = require('../../util/IOOperations')
@@ -75,11 +75,24 @@ _p._persistProcess = function(process) {
 };
 
 /**
- * Create a brand new process.
+ * This should be implemented by the specific implementation of ProcessManager
  */
-_p._initProcess = function() {
+_p._examineProcessInitMessage = function(initMessage) {
+    // jshint unused:vars
+    // Does the familyName exist?
+    // Is the requester authorized to do this?
+    // Is it OK to init the process now or are there any rules why not?
+    return [true, null, {}]; // [result, message, initArgs]
+};
+
+/**
+ * Create a brand new process.
+ *
+ * TODO: need to inject here implementation specific metadata somehow
+ */
+_p._initProcess = function(initArgs) {
     var process = new this.ProcessConstructor(
-                                    this._processResources, null);
+                                    this._processResources, null, initArgs);
      // will also activate the first step and all its tasks
     return process.activate()
         .then(()=>this._persistProcess(process))
@@ -231,6 +244,51 @@ _p._getProcess = function(processId) {
     // maybe it's own access log could get a message about this attempt
     // though, that could help with debugging
 
+_p.publishUpdates = function(process) {
+    var subscriptions = this._processSubscriptions.get(process)
+        // create this once for each subscriber
+        // would be nice to have it also just serialzied once.
+      , processMessage = new ProcessMessage(process)
+      ;
+    if(!subscriptions)
+        return;
+    for(let subscription of subscriptions)
+        TODO(subscription, 'publish(subscription, processMessage);');
+
+};
+
+////////////////
+// gRPC related:
+
+_p.serve =  function() {
+    // Start serving when the database is ready
+    return this._io.init()
+        .then(()=>this._server.start());
+};
+
+/**
+ * see also _p.execute for back-channel considerations
+ */
+_p.initProcess = function(call) {
+    var anyProcessInitMessage = call.request
+        //, payload = processInitMessage.getPayload()
+        // see cacheClient._getMessageFromAny ...
+        // the specific implementation has to define this!
+        // including allowed/expected types
+        // FIXME: pull any handling from cache client and make it a mixin
+        // or internal service, i.e. `this._any._getMessage(any)`!
+        //, typeName = any.getTypeName()
+        //, Type = this._getTypeForTypeName(typeName)
+        //, initArgsMessage = any.unpack(Type.deserializeBinary, typeName)
+      , initMessage = this._anyInitMessage.unpack(anyProcessInitMessage)
+      , [result, message, initArgs] = this._examineProcessInitMessage(initMessage)
+      ;
+    if(!result)
+        // Do this?? Or send another answer?
+        throw new Error(message);
+    TODO; // back channel etc.
+    this._initProcess(initArgs);
+};
 
 /**
  * GRPC api "execute" … (could be called action or command as well)
@@ -287,28 +345,6 @@ _p.execute = function(commandMessage) {
                     return process;
                 });
         });
-};
-
-_p.publishUpdates = function(process) {
-    var subscriptions = this._processSubscriptions.get(process)
-        // create this once for each subscriber
-        // would be nice to have it also just serialzied once.
-      , processMessage = new ProcessMessage(process)
-      ;
-    if(!subscriptions)
-        return;
-    for(let subscription of subscriptions)
-        TODO(subscription, 'publish(subscription, processMessage);');
-
-};
-
-////////////////
-// gRPC related:
-
-_p.serve =  function() {
-    // Start serving when the database is ready
-    return this._io.init()
-        .then(()=>this._server.start());
 };
 
 /**
@@ -413,12 +449,6 @@ _p.subscribeProcess = function(call) {
             call.write(processState);
 
     }, 1000);
-};
-
-_p.execute = function(processCommand) {
-    //jshint unused:vars
-    // TODO(processCommand);
-    return new Empty();
 };
 
 

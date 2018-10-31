@@ -15,6 +15,20 @@ function DispatcherProcessManager(...args) {
 
 const _p = DispatcherProcessManager.prototype = Object.create(Parent.prototype);
 
+_p._examineProcessInitMessage = function(initMessage) {
+    var familyName = initMessage.getFamilyName()
+      , requester = initMessage.getRequester()
+      // ... tbc.
+      , initArgs = { familyName, requester /*more ...*/ }
+      ;
+
+    TODO;
+    // Does the familyName exist?
+    // Is the requester authorized to do this?
+    // Is it OK to init the process now or are there any rules why not?
+    return [true, null, initArgs];
+};
+
 _p.subscribeProcessList = function(call) {
     var processListQuery = call.request
       , unsubscribe = ()=> {

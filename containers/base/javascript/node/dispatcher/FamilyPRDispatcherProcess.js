@@ -397,7 +397,7 @@ const stepCtors = [
 
 Object.freeze(stepCtors);
 
-function FamilyPRDispatcherProcess(resources, state) {
+function FamilyPRDispatcherProcess(resources, state, initArgs) {
     Parent.call(this
               , resources
               , state
@@ -405,7 +405,11 @@ function FamilyPRDispatcherProcess(resources, state) {
               , FailStepCtor
               , FinallyStepCtor
     );
+
+    var { familyName } = initArgs;
+    this._state.familyName = value;
 }
+
 const _p = FamilyPRDispatcherProcess.prototype = Object.create(Parent.prototype);
 _p.constructor = FamilyPRDispatcherProcess;
 
@@ -417,7 +421,7 @@ stateManagerMixin(_p, {
      * BUT, how do we teach ProcessManager to handle (set/evaluate etc) these?
      * It would be proper cool the have them as arguments to activate!
      *
-     * Although, the family in this case also is important to check if
+     * Although, the familyName in this case also is important to check if
      * the process is allowed to get created at all OR if there's another
      * active process, blocking new creation (maybe not implemented
      * immediately, as we'll have authorization for this).
@@ -427,7 +431,7 @@ stateManagerMixin(_p, {
      * to ask an engineer (task ui) to authorize if the initiator is not
      * properly authorized.
      *
-     * family will be a secondary index in the database and e.g.
+     * familyName will be a secondary index in the database and e.g.
      * the processManager.subscribeProcessList method will need to know
      * how to query for it.
      * This is an interesting problem! Separating the specific Process
@@ -436,11 +440,20 @@ stateManagerMixin(_p, {
      * Could implement a specific ProcessManager, it's probably the most
      * straight forward.
      */
-    family: {
+    familyName: {
         init: ()=>null
       , load: val=>val
       , serialize: val=>val
     }
+});
+
+Object.defineProperties(_p, {
+    familyName:{
+        get: function() {
+            return this._state.familyName;
+        }
+    }
+
 });
 
 exports.FamilyPRDispatcherProcess = FamilyPRDispatcherProcess;
