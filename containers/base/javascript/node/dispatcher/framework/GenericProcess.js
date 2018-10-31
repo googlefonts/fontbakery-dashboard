@@ -4,12 +4,58 @@
 const { Task } = require('./Task')
   , { Step } = require('./Step')
   , { Process } = require('./Process')
+  , {mixin: stateManagerMixin} = require('./stateManagerMixin')
   ;
 
+
+/**
+ * This is really not elegant, but I think it will do it's
+ * job just fine.
+ */
+function manipulateStateManagerValidation(state, ignore) {
+    // jshint validthis: true
+    var forgivingStateDefinitions = {}
+      , stateDefKeys = new Set()
+      , isAlwaysValid = ()=>[true, null]
+      , isTrue = ()=>true
+      , isFalse = ()=>false
+        // EXPECTED and present
+      , acceptingDefinition = {
+            init: ()=>null
+          , serialize: state=>state
+          , load: state=>state
+        }
+      ;
+    for(let [key, definition] of this._stateDefEntries()) {
+        if(ignore && ignore.has(key))
+            continue;
+        stateDefKeys.add(key);
+        let newDef = Object.create(definition);
+        if('validate' in definition)
+            newDef.validate = isAlwaysValid;
+
+        if(!(key in state))
+            newDef.isExpected = isFalse;
+        else if('isExpected' in definition)
+            newDef.isExpected = isTrue;
+
+        if(Object.keys(newDef).length)
+            // only needed if there are any `ownProperties`
+            forgivingStateDefinitions[key] = newDef;
+    }
+    for(let key in state){
+        if(ignore && ignore.has(key))
+            continue;
+        if(!stateDefKeys.has(key))
+            forgivingStateDefinitions[key] = acceptingDefinition;
+    }
+    stateManagerMixin(this, forgivingStateDefinitions);
+}
 
 const GenericTask = (function(){
 const Parent = Task;
 function GenericTask(step, state){
+    manipulateStateManagerValidation.call(this, state);
     Parent.call(this, step, state);
 }
 GenericTask.prototype = Object.create(Parent.prototype);
@@ -23,6 +69,7 @@ function GenericStep(process, state){
     var taskCtors = {};
     for(let [key/*, taskState*/] of state.tasks)
         taskCtors[key] = GenericTask;
+    manipulateStateManagerValidation.call(this, state, new Set('tasks'));
     Parent.call(this, process, state, taskCtors);
 }
 GenericStep.prototype = Object.create(Parent.prototype);
@@ -49,6 +96,8 @@ function GenericProcess(resources, state) {
             stepCtors.push(GenericStep);
 
     }
+    manipulateStateManagerValidation.call(this, state
+                        , new Set('steps', 'failStep', 'finallyStep'));
     Parent.call(this, resources, state, stepCtors, FailStepCtor, FinallyStepCtor);
 }
 
