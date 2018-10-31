@@ -6,6 +6,7 @@ const { Process:Parent } = require('./framework/Process')
     , { Task, finishingStatuses } = require('./framework/Task')
     , { string2statusCode, FAIL, OK } = require('./framework/Status')
     , { FamilyRequest } = require('protocolbuffers/messages_pb')
+    , {mixin: stateManagerMixin} = require('./framework/stateManagerMixin')
     ;
 
 // This is an empty function to temporarily disable jshint
@@ -407,5 +408,39 @@ function FamilyPRDispatcherProcess(resources, state) {
 }
 const _p = FamilyPRDispatcherProcess.prototype = Object.create(Parent.prototype);
 _p.constructor = FamilyPRDispatcherProcess;
+
+stateManagerMixin(_p, {
+    /**
+     * The name of the font family for the process document in the database.
+     *
+     * We'll likely add other metadata here, think e.g. process initiator.
+     * BUT, how do we teach ProcessManager to handle (set/evaluate etc) these?
+     * It would be proper cool the have them as arguments to activate!
+     *
+     * Although, the family in this case also is important to check if
+     * the process is allowed to get created at all OR if there's another
+     * active process, blocking new creation (maybe not implemented
+     * immediately, as we'll have authorization for this).
+     *
+     * We'll want to check n case of process initiator if they are
+     * authorized to perform that action. (a useful first step could be
+     * to ask an engineer (task ui) to authorize if the initiator is not
+     * properly authorized.
+     *
+     * family will be a secondary index in the database and e.g.
+     * the processManager.subscribeProcessList method will need to know
+     * how to query for it.
+     * This is an interesting problem! Separating the specific Process
+     * implementation from the ProcessManager, still allowing ProcessManager
+     * to use specific queries for the Process...
+     * Could implement a specific ProcessManager, it's probably the most
+     * straight forward.
+     */
+    family: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+    }
+});
 
 exports.FamilyPRDispatcherProcess = FamilyPRDispatcherProcess;
