@@ -98,6 +98,7 @@ function stateManagerMixin(_p, stateDefinition) {
         }
         catch(error) {
             // I don't want the original error stack trace to be lost completely.
+            // Make this a `this.log.debug(error);`?
             this.log.warning(error);
             return [false, error.message];
         }
@@ -111,9 +112,11 @@ function stateManagerMixin(_p, stateDefinition) {
     _p._loadState = function(state) {
         this._state = {};
         var errorMessages = []
+          , stateDefKeys = new Set()
           , indent = str=>str.split('\n').map(line=>'    '+line).join('\n')
           ;
         for(let [key, definition] of this._stateDefEntries()) {
+            stateDefKeys.add(key);
             // some simple validation
             if(!this._isExpectedState(key)) {
                 // if there's a state now for this key it's not compatible
@@ -158,8 +161,17 @@ function stateManagerMixin(_p, stateDefinition) {
             else
                 this._state[key] = valueOrMessage;
         }
+
+        let notDefKeys = [];
+        for(let key in state)
+            if(!(stateDefKeys.has(key)))
+                notDefKeys.push(key);
+        if(notDefKeys.length)
+            errorMessages.push('* State defines unspecified keys: '
+                                                + notDefKeys.join(', '));
+
         if(errorMessages.length)
-            throw new Error('State to load had the following errors:\n'
+            throw new Error('State to load had the following issues:\n'
                             + '===============\n'
                             + errorMessages.map(indent).join('\n')
                             + '\n==============='
