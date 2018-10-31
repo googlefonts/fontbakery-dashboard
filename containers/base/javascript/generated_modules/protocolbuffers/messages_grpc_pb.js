@@ -331,19 +331,6 @@ var ProcessManagerService = exports.ProcessManagerService = {
     responseSerialize: serialize_fontbakery_dashboard_ProcessState,
     responseDeserialize: deserialize_fontbakery_dashboard_ProcessState,
   },
-  // returns the ProcessList for the current query and then an updated
-  // ProcessList when the list changes.
-  subscribeProcessList: {
-    path: '/fontbakery.dashboard.ProcessManager/subscribeProcessList',
-    requestStream: false,
-    responseStream: true,
-    requestType: messages_pb.ProcessListQuery,
-    responseType: messages_pb.ProcessList,
-    requestSerialize: serialize_fontbakery_dashboard_ProcessListQuery,
-    requestDeserialize: deserialize_fontbakery_dashboard_ProcessListQuery,
-    responseSerialize: serialize_fontbakery_dashboard_ProcessList,
-    responseDeserialize: deserialize_fontbakery_dashboard_ProcessList,
-  },
   // issue a state change for a Process. `ticket` will be used to make
   // sure only expected commands are executed.
   execute: {
@@ -360,3 +347,28 @@ var ProcessManagerService = exports.ProcessManagerService = {
 };
 
 exports.ProcessManagerClient = grpc.makeGenericClientConstructor(ProcessManagerService);
+// This service is added next to the ProcessManager service, it
+// implements specific interfaces for the Font Bakery DispatcherProcessManager
+// In this case things that can't be done without specific knowledge about
+// how the specific process implementation (FamilyPRDispatcherProcess)
+// is stored in the database and thus, how to query them.
+// FamilyPRDispatcherProcess adds an important "family" name key to it's
+// state which is used as a secondary key in the database and has no
+// semantic/use in other implementations.
+var DispatcherProcessManagerService = exports.DispatcherProcessManagerService = {
+  // returns the ProcessList for the current query and then an updated
+  // ProcessList when the list changes.
+  subscribeProcessList: {
+    path: '/fontbakery.dashboard.DispatcherProcessManager/subscribeProcessList',
+    requestStream: false,
+    responseStream: true,
+    requestType: messages_pb.ProcessListQuery,
+    responseType: messages_pb.ProcessList,
+    requestSerialize: serialize_fontbakery_dashboard_ProcessListQuery,
+    requestDeserialize: deserialize_fontbakery_dashboard_ProcessListQuery,
+    responseSerialize: serialize_fontbakery_dashboard_ProcessList,
+    responseDeserialize: deserialize_fontbakery_dashboard_ProcessList,
+  },
+};
+
+exports.DispatcherProcessManagerClient = grpc.makeGenericClientConstructor(DispatcherProcessManagerService);

@@ -257,11 +257,6 @@ class ProcessManagerStub(object):
         request_serializer=messages__pb2.ProcessQuery.SerializeToString,
         response_deserializer=messages__pb2.ProcessState.FromString,
         )
-    self.subscribeProcessList = channel.unary_stream(
-        '/fontbakery.dashboard.ProcessManager/subscribeProcessList',
-        request_serializer=messages__pb2.ProcessListQuery.SerializeToString,
-        response_deserializer=messages__pb2.ProcessList.FromString,
-        )
     self.execute = channel.unary_unary(
         '/fontbakery.dashboard.ProcessManager/execute',
         request_serializer=messages__pb2.ProcessCommand.SerializeToString,
@@ -277,14 +272,6 @@ class ProcessManagerServicer(object):
   def subscribeProcess(self, request, context):
     """returns the current Process state initially and on each change of
     the Process state a new Process
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
-
-  def subscribeProcessList(self, request, context):
-    """returns the ProcessList for the current query and then an updated
-    ProcessList when the list changes.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -306,11 +293,6 @@ def add_ProcessManagerServicer_to_server(servicer, server):
           request_deserializer=messages__pb2.ProcessQuery.FromString,
           response_serializer=messages__pb2.ProcessState.SerializeToString,
       ),
-      'subscribeProcessList': grpc.unary_stream_rpc_method_handler(
-          servicer.subscribeProcessList,
-          request_deserializer=messages__pb2.ProcessListQuery.FromString,
-          response_serializer=messages__pb2.ProcessList.SerializeToString,
-      ),
       'execute': grpc.unary_unary_rpc_method_handler(
           servicer.execute,
           request_deserializer=messages__pb2.ProcessCommand.FromString,
@@ -319,4 +301,61 @@ def add_ProcessManagerServicer_to_server(servicer, server):
   }
   generic_handler = grpc.method_handlers_generic_handler(
       'fontbakery.dashboard.ProcessManager', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))
+
+
+class DispatcherProcessManagerStub(object):
+  """This service is added next to the ProcessManager service, it
+  implements specific interfaces for the Font Bakery DispatcherProcessManager
+  In this case things that can't be done without specific knowledge about
+  how the specific process implementation (FamilyPRDispatcherProcess)
+  is stored in the database and thus, how to query them.
+  FamilyPRDispatcherProcess adds an important "family" name key to it's
+  state which is used as a secondary key in the database and has no
+  semantic/use in other implementations.
+  """
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.subscribeProcessList = channel.unary_stream(
+        '/fontbakery.dashboard.DispatcherProcessManager/subscribeProcessList',
+        request_serializer=messages__pb2.ProcessListQuery.SerializeToString,
+        response_deserializer=messages__pb2.ProcessList.FromString,
+        )
+
+
+class DispatcherProcessManagerServicer(object):
+  """This service is added next to the ProcessManager service, it
+  implements specific interfaces for the Font Bakery DispatcherProcessManager
+  In this case things that can't be done without specific knowledge about
+  how the specific process implementation (FamilyPRDispatcherProcess)
+  is stored in the database and thus, how to query them.
+  FamilyPRDispatcherProcess adds an important "family" name key to it's
+  state which is used as a secondary key in the database and has no
+  semantic/use in other implementations.
+  """
+
+  def subscribeProcessList(self, request, context):
+    """returns the ProcessList for the current query and then an updated
+    ProcessList when the list changes.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_DispatcherProcessManagerServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'subscribeProcessList': grpc.unary_stream_rpc_method_handler(
+          servicer.subscribeProcessList,
+          request_deserializer=messages__pb2.ProcessListQuery.FromString,
+          response_serializer=messages__pb2.ProcessList.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'fontbakery.dashboard.DispatcherProcessManager', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
