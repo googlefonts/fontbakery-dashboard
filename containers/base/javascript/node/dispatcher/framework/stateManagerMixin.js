@@ -5,12 +5,44 @@
  * Providing some helper methods to normalize how state that is going to
  * be persisted in the DB is handled.
  */
+const stateDef = Symbol('stateDefinition');
 function stateManagerMixin(_p, stateDefinition) {
+    var isFirstMixing = !(stateDef in _p);
+    if(isFirstMixing) {
+        // truly new, stateDef is not in the prototype chain
+         _p[stateDef] = Object.create(null);
+    }
+    else if(Object.getOwnPropertySymbols(_p).indexOf(stateDef) === -1) {
+        // Inherited, because stateDef is in the prototype chain,
+        // but not in getOwnPropertySymbols.
+        // Inherit from _p[stateDef], instead of changing the
+        // inherited version:
+        _p[stateDef] = Object.create(_p[stateDef]);
+    }
+
+    for(let [key, definition] of Object.entries(stateDefinition))
+        // should we log a `info` or `debug` when overriding?
+        // NOTE: at this point log levels etc. are not available
+        // since this is Class definition meta programming not
+        // initialization.
+        _p[stateDef][key] = definition;
+
+    // no need to extend prototype again
+    if(!isFirstMixing)
+        return;
+
+    _p._stateDefEntries = function* () {
+        // this uses a for ... in loop, so we get the keys from the
+        // prototype chain.
+        for(let k in this[stateDef])
+            yield [k, this[stateDef][k]];
+    };
+
     _p._isExpectedState = function(key) {
         var definition;
-        if(!(key in stateDefinition))
+        if(!(key in this[stateDef]))
             return false;
-        definition = stateDefinition[key];
+        definition = this[stateDef][key];
         if(!('isExpected' in definition))
             return true;
         return definition.isExpected.call(this);
@@ -22,7 +54,7 @@ function stateManagerMixin(_p, stateDefinition) {
      */
     _p._initState = function() {
         this._state = {};
-        for(let [key, definition] of Object.entries(stateDefinition)) {
+        for(let [key, definition] of this._stateDefEntries()) {
             if(!this._isExpectedState(key))
                 continue;
             this._state[key] = definition.init.call(this);
@@ -31,7 +63,7 @@ function stateManagerMixin(_p, stateDefinition) {
 
     _p.serialize = function() {
         var state = {};
-        for(let [key, definition] of Object.entries(stateDefinition)) {
+        for(let [key, definition] of this._stateDefEntries()) {
             if(!this._isExpectedState(key))
                 // we could iterate just over the keys of this._state
                 // instead and only expected keys would appear, see
@@ -81,20 +113,22 @@ function stateManagerMixin(_p, stateDefinition) {
         var errorMessages = []
           , indent = str=>str.split('\n').map(line=>'    '+line).join('\n')
           ;
-        for(let [key, definition] of Object.entries(stateDefinition)) {
+        for(let [key, definition] of this._stateDefEntries()) {
             // some simple validation
             if(!this._isExpectedState(key)) {
                 // if there's a state now for this key it's not compatible
                 if(key in state)
-                    throw new Error('State is incompatible, key "'
-                                        + key +'" is NOT EXPECTED but present.');
-                else
-                    // all good: not expected and not in state
-                    continue;
+                    errorMessages.push('* ' + key + ' (key): '
+                                           + 'State is incompatible, key "'
+                                           + key +'" is NOT EXPECTED but present.');
+                // else: all good: not expected and not in state
+                continue;
             }
             else if(!(key in state)) {
-                throw new Error('State is incompatible, key "'
-                                        + key +'" is expected but NOT PRESENT.');
+                errorMessages.push('* ' + key + ' (key): '
+                                       +'State is incompatible, key "'
+                                       + key +'" is expected but NOT PRESENT.');
+                continue;
             }
             // expected and in state
 
@@ -109,7 +143,7 @@ function stateManagerMixin(_p, stateDefinition) {
             if('validate' in definition) {
                 let [result, message] = definition.validate.call(this, state[key]);
                 if(!result) {
-                    errorMessages.push(key + '(validate): ' + message);
+                    errorMessages.push('* ' + key + ' (validate): ' + message);
                     continue;
                 }
             }
@@ -118,15 +152,18 @@ function stateManagerMixin(_p, stateDefinition) {
             // will happen as well, but in this case,
             let [result, valueOrMessage] = this._callAndCatch(definition.load, state[key]);
             if(!result) {
-                errorMessages.push(key + '(load): ' + valueOrMessage);
+                errorMessages.push('* ' + key + ' (load): ' + valueOrMessage);
                 continue;
             }
             else
                 this._state[key] = valueOrMessage;
         }
         if(errorMessages.length)
-            throw new Error('State to load had the following errors: \n'
-                            + errorMessages.map(indent).join('\n'));
+            throw new Error('State to load had the following errors:\n'
+                            + '===============\n'
+                            + errorMessages.map(indent).join('\n')
+                            + '\n==============='
+                            );
     };
 }
 
