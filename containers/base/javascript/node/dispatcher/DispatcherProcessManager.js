@@ -5,10 +5,17 @@
 const { ProcessManager:Parent } = require('./framework/ProcessManager')
   , { FamilyPRDispatcherProcess } = require('./FamilyPRDispatcherProcess')
   , { DispatcherProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
-  , { ProcessList, ProcessListItem } = require('protocolbuffers/messages_pb')
+  , { ProcessList, ProcessListItem, DispatcherInitProcess } = require('protocolbuffers/messages_pb')
   ;
 
 function DispatcherProcessManager(...args) {
+
+    var anySetup = {
+        knownTypes: { DispatcherInitProcess }
+      , typesNamespace: 'fontbakery.dashboard'
+    };
+
+    args.push(anySetup, FamilyPRDispatcherProcess);
     Parent.call(this, ...args);
     this._server.addService(DispatcherProcessManagerService, this);
 }
@@ -16,10 +23,18 @@ function DispatcherProcessManager(...args) {
 const _p = DispatcherProcessManager.prototype = Object.create(Parent.prototype);
 
 _p._examineProcessInitMessage = function(initMessage) {
+    // This is a basic validation, the super class does not do this.
+    // Especially if it knows how to get other message types from an Any,
+    // it is possible to send other types here, probably nothing security
+    // relevant, but a Murphy's law case after all.
+    // Type annotations would be a winner here ;-)
+    if(!(initMessage instanceof DispatcherInitProcess))
+        throw new Error('Expected initMessage to be an instance of '
+                        + 'DispatcherInitProcess, which it isn\'t.');
     var familyName = initMessage.getFamilyName()
       , requester = initMessage.getRequester()
-      // ... tbc.
-      , initArgs = { familyName, requester /*more ...*/ }
+      // ... tbc. ?
+      , initArgs = { familyName, requester /*more ... ?*/ }
       ;
 
     TODO;
@@ -28,6 +43,8 @@ _p._examineProcessInitMessage = function(initMessage) {
     // Is it OK to init the process now or are there any rules why not?
     return [true, null, initArgs];
 };
+// The superclass will check this :-)
+_p._examineProcessInitMessage.expectedArgumentType = DispatcherInitProcess;
 
 _p.subscribeProcessList = function(call) {
     var processListQuery = call.request
@@ -102,8 +119,7 @@ if (typeof require != 'undefined' && require.main==module) {
                                       , setup.db
                                       , setup.amqp
                                       , port
-                                      , secret
-                                      , FamilyPRDispatcherProcess);
+                                      , secret);
     processManager.serve()
         .then(
             ()=>setup.logging.info('Server ready!')

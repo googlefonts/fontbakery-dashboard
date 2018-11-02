@@ -6,9 +6,10 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
   , grpc = require('grpc')
   , { ProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
 //  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
-  , { ProcessState } = require('protocolbuffers/messages_pb')
+  , { ProcessState, ProcessCommandResult } = require('protocolbuffers/messages_pb')
   , { GenericProcess } = require('./GenericProcess')
   , { IOOperations } = require('../../util/IOOperations')
+  , { ProtobufAnyHandler } = require('../../util/ProtobufAnyHandler')
   ;
 
 /**
@@ -18,13 +19,13 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
  * How are state changes propagated?
  */
 
-function ProcessManager(logging, dbSetup, amqpSetup, port, secret, ProcessConstructor) {
+function ProcessManager(logging, dbSetup, amqpSetup, port, secret, anySetup, ProcessConstructor) {
     this._log = logging;
     this._io = new IOOperations(logging, dbSetup, amqpSetup);
     this._processResources = Object.create(null);
     this._processSubscriptions = new Map();
     this._activeProcesses = new Map();
-
+    this._any = new ProtobufAnyHandler(anySetup.knownTypes, anySetup.typesNamespace);
     Object.defineProperties(this._processResources, {
         secret: {value: secret}
       , log: {value: this._log}
@@ -76,6 +77,9 @@ _p._persistProcess = function(process) {
 
 /**
  * This should be implemented by the specific implementation of ProcessManager
+ *
+ * It is important to check that the type od initMessage is an instance
+ * of the expected protocol buffers message type.
  */
 _p._examineProcessInitMessage = function(initMessage) {
     // jshint unused:vars
@@ -246,14 +250,16 @@ _p._getProcess = function(processId) {
 
 _p.publishUpdates = function(process) {
     var subscriptions = this._processSubscriptions.get(process)
-        // create this once for each subscriber
-        // would be nice to have it also just serialzied once.
-      , processMessage = new ProcessMessage(process)
+      , processState
       ;
     if(!subscriptions)
         return;
+
+    // create this once for all subscribers
+    // would be nice to have it also just serialzied once.
+    processState = new ProcessState(process);
     for(let subscription of subscriptions)
-        TODO(subscription, 'publish(subscription, processMessage);');
+        TODO(subscription, 'publish', processState);
 
 };
 
@@ -269,7 +275,7 @@ _p.serve =  function() {
 /**
  * see also _p.execute for back-channel considerations
  */
-_p.initProcess = function(call) {
+_p.initProcess = function(call, callback) {
     var anyProcessInitMessage = call.request
         //, payload = processInitMessage.getPayload()
         // see cacheClient._getMessageFromAny ...
@@ -280,14 +286,35 @@ _p.initProcess = function(call) {
         //, typeName = any.getTypeName()
         //, Type = this._getTypeForTypeName(typeName)
         //, initArgsMessage = any.unpack(Type.deserializeBinary, typeName)
-      , initMessage = this._anyInitMessage.unpack(anyProcessInitMessage)
+      , initMessage = this._any.unpack(anyProcessInitMessage)
       , [result, message, initArgs] = this._examineProcessInitMessage(initMessage)
+      , promise
       ;
     if(!result)
         // Do this?? Or send another answer?
         throw new Error(message);
-    TODO; // back channel etc.
-    this._initProcess(initArgs);
+    // this is the back channel.
+    // and still a stub
+    try {
+        promise = this._initProcess(initArgs);
+    }
+    catch(error){
+        promise = Promise.reject(error);
+    }
+
+    promise.then(process=>[true, process], error=>[false, error])
+    .then(([result, processOrError])=>{
+        var resultMessage = new ProcessCommandResult();
+        if(result) {
+            resultMessage.setResult(ProcessCommandResult.Result.OK);
+            resultMessage.setMessage(processOrError.id);
+        }
+        else{
+            resultMessage.setResult(ProcessCommandResult.Result.FAIL);
+            resultMessage.setMessage(processOrError.message);
+        }
+        callback(null, resultMessage);
+    });
 };
 
 /**
@@ -309,7 +336,7 @@ _p.initProcess = function(call) {
  *      payload = JSON.parse(commandMessage.getPayload())
  *      targetPath = Path.fromString(commandMessage.getTargetPath())
  */
-_p.execute = function(commandMessage) {
+_p.execute = function(commandMessage, callback) {
     // aside from the managennet,, queueing etc.
     // it's probably the task of each element in the process hierarchy
     // to check whether the command is applicable or not.
@@ -343,7 +370,27 @@ _p.execute = function(commandMessage) {
                     // interesting here to handle that.
                     this.publishUpdates(process);
                     return process;
-                });
+                })
+                ;
+        })
+        // this is *a stub* of the back channel
+        .then(
+            ()=>[true, null]
+            // if this is a serious problem, we should log it
+            // ot take care that it has been logged already
+          , error=>[false, error]
+        )
+        .then(([result, error])=>{
+            var message = new ProcessCommandResult();
+            if(result) {
+                message.setResult(ProcessCommandResult.Result.OK);
+                message.setMessage();
+            }
+            else {
+                message.setResult(ProcessCommandResult.Result.FAIL);
+                message.setMessage(error.message);
+            }
+            callback(null, message);
         });
 };
 
