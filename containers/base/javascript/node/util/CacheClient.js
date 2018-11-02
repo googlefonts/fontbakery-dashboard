@@ -9,7 +9,7 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , messages_pb = require('protocolbuffers/messages_pb')
   , { CacheItem, Files, File } = messages_pb
   , { CacheClient: GrpcCacheClient } = require('protocolbuffers/messages_grpc_pb')
-  , any_pb = require('google-protobuf/google/protobuf/any_pb.js')
+  , { ProtobufAnyHandler } = require('./ProtobufAnyHandler')
   ;
 
 /**
@@ -38,11 +38,8 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
                             , 'grpc.max_receive_message_length': 80 * 1024 * 1024
                           }
                         );
-    this._knownTypes = knownTypes || {};
-    this._typesNamespace = typesNamespace && typesNamespace.slice(-1) === '.'
-                ? typesNamespace.slice(0, -1)
-                : typesNamespace
-                ;
+
+    this._any = new ProtobufAnyHandler(knownTypes, typesNamespace);
 }
 
 var _p = CacheClient.prototype;
@@ -50,16 +47,6 @@ var _p = CacheClient.prototype;
 _p._raiseUnhandledError = function(err) {
     this._log.error(err);
     throw err;
-};
-
-
-_p._getTypeNameForMessage = function(message) {
-    var name;
-    for(name in this._knownTypes)
-        if(message instanceof this._knownTypes[name])
-            return [this._typesNamespace, name].join('.');
-    this._logging.debug('Unknown message type', message);
-    throw new Error('Can\'t find type name for message');
 };
 
 _p._getTypeForTypeName = function(typeName) {
@@ -112,14 +99,14 @@ _p.put = function (payloads) {
         call.end();
     }
 
+
+
     function sendMessage(call, result, payload, index) {
         /*jshint validthis: true*/
-        var any = new any_pb.Any()
-          , typeName = this._getTypeNameForMessage(payload) // 'fontbakery.dashboard.Files'
+        var any = this._any.pack(payload)
           , cacheItem = new CacheItem()
           , clientid = '' + index // must be a string for message
           ;
-        any.pack(payload.serializeBinary(), typeName);
         cacheItem.setPayload(any);
         cacheItem.setClientid(clientid);
         result[clientid] = false;
@@ -145,17 +132,10 @@ _p.put = function (payloads) {
     }.bind(this));
 };
 
-_p._getMessageFromAny = function(any) {
-    var typeName = any.getTypeName()
-      , Type = this._getTypeForTypeName(typeName)
-      ;
-    return any.unpack(Type.deserializeBinary, typeName);
-};
-
 _p.get = function(cacheKey) {
     var func = this._client.get.bind(this._client);
     return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline})
-           .then(this._getMessageFromAny.bind(this))
+           .then(any=>this.any.unpack(any))
            .then(null, error=>this._raiseUnhandledError(error))
            ;
 };
