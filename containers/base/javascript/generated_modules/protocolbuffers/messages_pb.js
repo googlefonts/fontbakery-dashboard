@@ -19,11 +19,14 @@ goog.exportSymbol('proto.fontbakery.dashboard.CacheItem', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CacheKey', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CacheStatus', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CollectionFamilyJob', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.DispatcherInitProcess', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyData', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyJob', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.PokeRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ProcessCommand', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.ProcessCommandResult', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.ProcessCommandResult.Result', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ProcessList', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ProcessListItem', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ProcessListQuery', null, global);
@@ -2987,6 +2990,352 @@ proto.fontbakery.dashboard.ReportIds.prototype.clearIdsList = function() {
  * @extends {jspb.Message}
  * @constructor
  */
+proto.fontbakery.dashboard.ProcessCommandResult = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.fontbakery.dashboard.ProcessCommandResult, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.fontbakery.dashboard.ProcessCommandResult.displayName = 'proto.fontbakery.dashboard.ProcessCommandResult';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.ProcessCommandResult.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.fontbakery.dashboard.ProcessCommandResult} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    result: jspb.Message.getFieldWithDefault(msg, 1, 0),
+    message: jspb.Message.getFieldWithDefault(msg, 2, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.fontbakery.dashboard.ProcessCommandResult}
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.fontbakery.dashboard.ProcessCommandResult;
+  return proto.fontbakery.dashboard.ProcessCommandResult.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.fontbakery.dashboard.ProcessCommandResult} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.fontbakery.dashboard.ProcessCommandResult}
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {!proto.fontbakery.dashboard.ProcessCommandResult.Result} */ (reader.readEnum());
+      msg.setResult(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setMessage(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.fontbakery.dashboard.ProcessCommandResult.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.fontbakery.dashboard.ProcessCommandResult} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getResult();
+  if (f !== 0.0) {
+    writer.writeEnum(
+      1,
+      f
+    );
+  }
+  f = message.getMessage();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+};
+
+
+/**
+ * @enum {number}
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.Result = {
+  FAIL: 0,
+  OK: 1
+};
+
+/**
+ * optional Result result = 1;
+ * @return {!proto.fontbakery.dashboard.ProcessCommandResult.Result}
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.prototype.getResult = function() {
+  return /** @type {!proto.fontbakery.dashboard.ProcessCommandResult.Result} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
+};
+
+
+/** @param {!proto.fontbakery.dashboard.ProcessCommandResult.Result} value */
+proto.fontbakery.dashboard.ProcessCommandResult.prototype.setResult = function(value) {
+  jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional string message = 2;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.ProcessCommandResult.prototype.getMessage = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.ProcessCommandResult.prototype.setMessage = function(value) {
+  jspb.Message.setField(this, 2, value);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.fontbakery.dashboard.DispatcherInitProcess, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.fontbakery.dashboard.DispatcherInitProcess.displayName = 'proto.fontbakery.dashboard.DispatcherInitProcess';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.DispatcherInitProcess.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.fontbakery.dashboard.DispatcherInitProcess} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    familyName: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    requester: jspb.Message.getFieldWithDefault(msg, 2, "")
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.fontbakery.dashboard.DispatcherInitProcess}
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.fontbakery.dashboard.DispatcherInitProcess;
+  return proto.fontbakery.dashboard.DispatcherInitProcess.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.fontbakery.dashboard.DispatcherInitProcess} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.fontbakery.dashboard.DispatcherInitProcess}
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFamilyName(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRequester(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.fontbakery.dashboard.DispatcherInitProcess.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.fontbakery.dashboard.DispatcherInitProcess} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getFamilyName();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getRequester();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string family_name = 1;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getFamilyName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setFamilyName = function(value) {
+  jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional string requester = 2;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getRequester = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setRequester = function(value) {
+  jspb.Message.setField(this, 2, value);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
 proto.fontbakery.dashboard.ProcessQuery = function(opt_data) {
   jspb.Message.initialize(this, opt_data, 0, -1, null, null);
 };
@@ -3724,12 +4073,38 @@ proto.fontbakery.dashboard.ProcessList.prototype.clearProcessesList = function()
  * @constructor
  */
 proto.fontbakery.dashboard.ProcessCommand = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+  jspb.Message.initialize(this, opt_data, 0, -1, null, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_);
 };
 goog.inherits(proto.fontbakery.dashboard.ProcessCommand, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
   proto.fontbakery.dashboard.ProcessCommand.displayName = 'proto.fontbakery.dashboard.ProcessCommand';
 }
+/**
+ * Oneof group definitions for this message. Each group defines the field
+ * numbers belonging to that group. When of these fields' value is set, all
+ * other fields in the group are cleared. During deserialization, if multiple
+ * fields are encountered for a group, only the last value seen will be kept.
+ * @private {!Array<!Array<number>>}
+ * @const
+ */
+proto.fontbakery.dashboard.ProcessCommand.oneofGroups_ = [[5,6]];
+
+/**
+ * @enum {number}
+ */
+proto.fontbakery.dashboard.ProcessCommand.PayloadCase = {
+  PAYLOAD_NOT_SET: 0,
+  JSON: 5,
+  PB: 6
+};
+
+/**
+ * @return {proto.fontbakery.dashboard.ProcessCommand.PayloadCase}
+ */
+proto.fontbakery.dashboard.ProcessCommand.prototype.getPayloadCase = function() {
+  return /** @type {proto.fontbakery.dashboard.ProcessCommand.PayloadCase} */(jspb.Message.computeOneofCase(this, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0]));
+};
+
 
 
 if (jspb.Message.GENERATE_TO_OBJECT) {
@@ -3762,7 +4137,9 @@ proto.fontbakery.dashboard.ProcessCommand.toObject = function(includeInstance, m
     ticket: jspb.Message.getFieldWithDefault(msg, 1, ""),
     targetPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
     callbackName: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    payload: jspb.Message.getFieldWithDefault(msg, 4, "")
+    requester: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    json: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    pb: (f = msg.getPb()) && google_protobuf_any_pb.Any.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -3813,7 +4190,16 @@ proto.fontbakery.dashboard.ProcessCommand.deserializeBinaryFromReader = function
       break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPayload(value);
+      msg.setRequester(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setJson(value);
+      break;
+    case 6:
+      var value = new google_protobuf_any_pb.Any;
+      reader.readMessage(value,google_protobuf_any_pb.Any.deserializeBinaryFromReader);
+      msg.setPb(value);
       break;
     default:
       reader.skipField();
@@ -3865,11 +4251,26 @@ proto.fontbakery.dashboard.ProcessCommand.serializeBinaryToWriter = function(mes
       f
     );
   }
-  f = message.getPayload();
+  f = message.getRequester();
   if (f.length > 0) {
     writer.writeString(
       4,
       f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 5));
+  if (f != null) {
+    writer.writeString(
+      5,
+      f
+    );
+  }
+  f = message.getPb();
+  if (f != null) {
+    writer.writeMessage(
+      6,
+      f,
+      google_protobuf_any_pb.Any.serializeBinaryToWriter
     );
   }
 };
@@ -3921,17 +4322,76 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.setCallbackName = function(v
 
 
 /**
- * optional string payload = 4;
+ * optional string requester = 4;
  * @return {string}
  */
-proto.fontbakery.dashboard.ProcessCommand.prototype.getPayload = function() {
+proto.fontbakery.dashboard.ProcessCommand.prototype.getRequester = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.ProcessCommand.prototype.setPayload = function(value) {
+proto.fontbakery.dashboard.ProcessCommand.prototype.setRequester = function(value) {
   jspb.Message.setField(this, 4, value);
+};
+
+
+/**
+ * optional string json = 5;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.ProcessCommand.prototype.getJson = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.ProcessCommand.prototype.setJson = function(value) {
+  jspb.Message.setOneofField(this, 5, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
+};
+
+
+proto.fontbakery.dashboard.ProcessCommand.prototype.clearJson = function() {
+  jspb.Message.setOneofField(this, 5, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.fontbakery.dashboard.ProcessCommand.prototype.hasJson = function() {
+  return jspb.Message.getField(this, 5) != null;
+};
+
+
+/**
+ * optional google.protobuf.Any pb = 6;
+ * @return {?proto.google.protobuf.Any}
+ */
+proto.fontbakery.dashboard.ProcessCommand.prototype.getPb = function() {
+  return /** @type{?proto.google.protobuf.Any} */ (
+    jspb.Message.getWrapperField(this, google_protobuf_any_pb.Any, 6));
+};
+
+
+/** @param {?proto.google.protobuf.Any|undefined} value */
+proto.fontbakery.dashboard.ProcessCommand.prototype.setPb = function(value) {
+  jspb.Message.setOneofWrapperField(this, 6, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
+};
+
+
+proto.fontbakery.dashboard.ProcessCommand.prototype.clearPb = function() {
+  this.setPb(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {!boolean}
+ */
+proto.fontbakery.dashboard.ProcessCommand.prototype.hasPb = function() {
+  return jspb.Message.getField(this, 6) != null;
 };
 
 

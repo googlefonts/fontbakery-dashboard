@@ -252,15 +252,20 @@ class ProcessManagerStub(object):
     Args:
       channel: A grpc.Channel.
     """
-    self.subscribeProcess = channel.unary_stream(
-        '/fontbakery.dashboard.ProcessManager/subscribeProcess',
+    self.SubscribeProcess = channel.unary_stream(
+        '/fontbakery.dashboard.ProcessManager/SubscribeProcess',
         request_serializer=messages__pb2.ProcessQuery.SerializeToString,
         response_deserializer=messages__pb2.ProcessState.FromString,
         )
-    self.execute = channel.unary_unary(
-        '/fontbakery.dashboard.ProcessManager/execute',
+    self.Execute = channel.unary_unary(
+        '/fontbakery.dashboard.ProcessManager/Execute',
         request_serializer=messages__pb2.ProcessCommand.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        response_deserializer=messages__pb2.ProcessCommandResult.FromString,
+        )
+    self.InitProcess = channel.unary_unary(
+        '/fontbakery.dashboard.ProcessManager/InitProcess',
+        request_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
+        response_deserializer=messages__pb2.ProcessCommandResult.FromString,
         )
 
 
@@ -269,7 +274,7 @@ class ProcessManagerServicer(object):
 
   """
 
-  def subscribeProcess(self, request, context):
+  def SubscribeProcess(self, request, context):
     """returns the current Process state initially and on each change of
     the Process state a new Process
     """
@@ -277,9 +282,21 @@ class ProcessManagerServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
-  def execute(self, request, context):
+  def Execute(self, request, context):
     """issue a state change for a Process. `ticket` will be used to make
     sure only expected commands are executed.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def InitProcess(self, request, context):
+    """the any will have to unpack to a specific message defined in the
+    ProcessManagerImplementation. e.g. DispatcherProcessManager will
+    expect here a DispatcherInitProcess
+    this may also be part of making it possible to create different
+    kinds of processes in the same process manager.
+    but right now we only deal with one process implementation at a time!
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -288,15 +305,20 @@ class ProcessManagerServicer(object):
 
 def add_ProcessManagerServicer_to_server(servicer, server):
   rpc_method_handlers = {
-      'subscribeProcess': grpc.unary_stream_rpc_method_handler(
-          servicer.subscribeProcess,
+      'SubscribeProcess': grpc.unary_stream_rpc_method_handler(
+          servicer.SubscribeProcess,
           request_deserializer=messages__pb2.ProcessQuery.FromString,
           response_serializer=messages__pb2.ProcessState.SerializeToString,
       ),
-      'execute': grpc.unary_unary_rpc_method_handler(
-          servicer.execute,
+      'Execute': grpc.unary_unary_rpc_method_handler(
+          servicer.Execute,
           request_deserializer=messages__pb2.ProcessCommand.FromString,
-          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+          response_serializer=messages__pb2.ProcessCommandResult.SerializeToString,
+      ),
+      'InitProcess': grpc.unary_unary_rpc_method_handler(
+          servicer.InitProcess,
+          request_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
+          response_serializer=messages__pb2.ProcessCommandResult.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
@@ -321,8 +343,8 @@ class DispatcherProcessManagerStub(object):
     Args:
       channel: A grpc.Channel.
     """
-    self.subscribeProcessList = channel.unary_stream(
-        '/fontbakery.dashboard.DispatcherProcessManager/subscribeProcessList',
+    self.SubscribeProcessList = channel.unary_stream(
+        '/fontbakery.dashboard.DispatcherProcessManager/SubscribeProcessList',
         request_serializer=messages__pb2.ProcessListQuery.SerializeToString,
         response_deserializer=messages__pb2.ProcessList.FromString,
         )
@@ -339,7 +361,7 @@ class DispatcherProcessManagerServicer(object):
   semantic/use in other implementations.
   """
 
-  def subscribeProcessList(self, request, context):
+  def SubscribeProcessList(self, request, context):
     """returns the ProcessList for the current query and then an updated
     ProcessList when the list changes.
     """
@@ -350,8 +372,8 @@ class DispatcherProcessManagerServicer(object):
 
 def add_DispatcherProcessManagerServicer_to_server(servicer, server):
   rpc_method_handlers = {
-      'subscribeProcessList': grpc.unary_stream_rpc_method_handler(
-          servicer.subscribeProcessList,
+      'SubscribeProcessList': grpc.unary_stream_rpc_method_handler(
+          servicer.SubscribeProcessList,
           request_deserializer=messages__pb2.ProcessListQuery.FromString,
           response_serializer=messages__pb2.ProcessList.SerializeToString,
       ),

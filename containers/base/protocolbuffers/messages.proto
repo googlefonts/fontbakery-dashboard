@@ -190,7 +190,8 @@ service ProcessManager {
   // the any will have to unpack to a specific message defined in the
   // ProcessManagerImplementation. e.g. DispatcherProcessManager will
   // expect here a DispatcherInitProcess
-  // this may also make it possible to create different kinds of processes
+  // this may also be part of making it possible to create different
+  // kinds of processes in the same process manager.
   // but right now we only deal with one process implementation at a time!
   rpc InitProcess (google.protobuf.Any) returns (ProcessCommandResult) {};
 }
@@ -210,18 +211,21 @@ service DispatcherProcessManager {
 }
 
 message ProcessCommandResult {
-    // the "back channel" to the actual client
-    // to have a structured response format
-    // TODO
-    // - status (Enum?) OK/FAIL
-    // - message (string/not set)
-    // more??? maybe not needed
+    enum Result {
+        FAIL = 0;
+        OK = 1;
+    };
+    Result result = 1;
+    string message = 2; // string/not set
+    // could add maybe structured data (JSON) for special cases
+    // but then again, in these cases the message field can transport
+    // the data.
 }
 
 // whatever we need to get a dispatcher process rolling!
 message DispatcherInitProcess {
     string family_name = 1;
-    string requester = 2;
+    string requester = 2; // for authorization
 }
 
 message ProcessQuery {
@@ -253,5 +257,11 @@ message ProcessCommand {
     string ticket = 1;
     string target_path = 2;
     string callback_name = 3;
-    string payload = 4;
+    string requester = 4; // for authorization if needed
+    oneof payload {
+      // This way we can do better structured protobuf messages OR
+      // faster to initially implemented JSON.
+      string json = 5;
+      google.protobuf.Any pb = 6;
+    }
 }

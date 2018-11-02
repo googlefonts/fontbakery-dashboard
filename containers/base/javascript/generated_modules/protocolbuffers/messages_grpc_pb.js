@@ -85,6 +85,17 @@ function deserialize_fontbakery_dashboard_ProcessCommand(buffer_arg) {
   return messages_pb.ProcessCommand.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_ProcessCommandResult(arg) {
+  if (!(arg instanceof messages_pb.ProcessCommandResult)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ProcessCommandResult');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ProcessCommandResult(buffer_arg) {
+  return messages_pb.ProcessCommandResult.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_ProcessList(arg) {
   if (!(arg instanceof messages_pb.ProcessList)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessList');
@@ -321,7 +332,7 @@ var ProcessManagerService = exports.ProcessManagerService = {
   // returns the current Process state initially and on each change of
   // the Process state a new Process
   subscribeProcess: {
-    path: '/fontbakery.dashboard.ProcessManager/subscribeProcess',
+    path: '/fontbakery.dashboard.ProcessManager/SubscribeProcess',
     requestStream: false,
     responseStream: true,
     requestType: messages_pb.ProcessQuery,
@@ -334,15 +345,32 @@ var ProcessManagerService = exports.ProcessManagerService = {
   // issue a state change for a Process. `ticket` will be used to make
   // sure only expected commands are executed.
   execute: {
-    path: '/fontbakery.dashboard.ProcessManager/execute',
+    path: '/fontbakery.dashboard.ProcessManager/Execute',
     requestStream: false,
     responseStream: false,
     requestType: messages_pb.ProcessCommand,
-    responseType: google_protobuf_empty_pb.Empty,
+    responseType: messages_pb.ProcessCommandResult,
     requestSerialize: serialize_fontbakery_dashboard_ProcessCommand,
     requestDeserialize: deserialize_fontbakery_dashboard_ProcessCommand,
-    responseSerialize: serialize_google_protobuf_Empty,
-    responseDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_fontbakery_dashboard_ProcessCommandResult,
+    responseDeserialize: deserialize_fontbakery_dashboard_ProcessCommandResult,
+  },
+  // the any will have to unpack to a specific message defined in the
+  // ProcessManagerImplementation. e.g. DispatcherProcessManager will
+  // expect here a DispatcherInitProcess
+  // this may also be part of making it possible to create different
+  // kinds of processes in the same process manager.
+  // but right now we only deal with one process implementation at a time!
+  initProcess: {
+    path: '/fontbakery.dashboard.ProcessManager/InitProcess',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_any_pb.Any,
+    responseType: messages_pb.ProcessCommandResult,
+    requestSerialize: serialize_google_protobuf_Any,
+    requestDeserialize: deserialize_google_protobuf_Any,
+    responseSerialize: serialize_fontbakery_dashboard_ProcessCommandResult,
+    responseDeserialize: deserialize_fontbakery_dashboard_ProcessCommandResult,
   },
 };
 
@@ -359,7 +387,7 @@ var DispatcherProcessManagerService = exports.DispatcherProcessManagerService = 
   // returns the ProcessList for the current query and then an updated
   // ProcessList when the list changes.
   subscribeProcessList: {
-    path: '/fontbakery.dashboard.DispatcherProcessManager/subscribeProcessList',
+    path: '/fontbakery.dashboard.DispatcherProcessManager/SubscribeProcessList',
     requestStream: false,
     responseStream: true,
     requestType: messages_pb.ProcessListQuery,
