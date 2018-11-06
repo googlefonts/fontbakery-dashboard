@@ -302,16 +302,16 @@ _p.initProcess = function(call, callback) {
         promise = Promise.reject(error);
     }
 
-    promise.then(process=>[true, process], error=>[false, error])
-    .then(([result, processOrError])=>{
+    promise.then(process=>[process, null], error=>[null, error])
+    .then(([process, error])=>{
         var resultMessage = new ProcessCommandResult();
-        if(result) {
+        if(process) {
             resultMessage.setResult(ProcessCommandResult.Result.OK);
-            resultMessage.setMessage(processOrError.id);
+            resultMessage.setMessage(process.id);
         }
         else{
             resultMessage.setResult(ProcessCommandResult.Result.FAIL);
-            resultMessage.setMessage(processOrError.message);
+            resultMessage.setMessage(error.message);
         }
         callback(null, resultMessage);
     });
@@ -452,50 +452,67 @@ _p.subscribeProcess = function(call) {
     //})
     // 'bd87384a-6f07-4c7f-8605-43cfb2b70d0a' => now becomes a GenericProcess
     // '3b325ffc-d30c-43e2-a273-bf3dabe52645' => added a "family" key to process
-    Promise.resolve('3b325ffc-d30c-43e2-a273-bf3dabe52645')
-    .then(processId=>
-
-        this._getProcess(processId).then(
-            ({process, queue})=>{
-                this._log.debug('got a process by id', process.constructor.name, process.id);
-                this._log.debug(JSON.stringify(process.serialize()));
-            }
-          , error=>this._log.error(error)
-        )
-    );
+    //Promise.resolve('3b325ffc-d30c-43e2-a273-bf3dabe52645')
+    //.then(processId=>
+    //
+    //    this._getProcess(processId).then(
+    //        ({process, queue})=>{
+    //            this._log.debug('got a process by id', process.constructor.name, process.id);
+    //            this._log.debug(JSON.stringify(process.serialize()));
+    //        }
+    //      , error=>this._log.error(error)
+    //    )
+    //);
 
     var processQuery = call.request
+      , timeout = null
       , unsubscribe = ()=>{
             if(!timeout) // marker if there is an active subscription/call
                 return;
             // End the subscription and delete the call object.
             // Do this only once, but, `unsubscribe` may be called more than
             // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
-            this._log.info('... UNSUBSCRIBE');
+            this._log.info('subscribeProcess ... UNSUBSCRIBE');
             clearInterval(timeout);
             timeout = null;
         }
       ;
 
+    var dummyUpdates = ()=>{
+        var counter = 0, maxIterations = 5;//Infinity;
+        timeout = setInterval(()=>{
+            this._log.debug('subscribeProcess call.write counter:', counter);
+            var processState = new ProcessState();
+            processState.setProcessId(new Date().toISOString());
+
+            counter++;
+            if(counter === maxIterations) {
+                //call.destroy(new Error('Just a random server fuckup.'));
+                //clearInterval(timeout);
+                call.end();
+            }
+            else
+                call.write(processState);
+
+        }, 1000);
+    };
+
+    //892fd622-acc2-41c7-b3cb-a9e60f889b09
     this._log.info('processQuery subscribing to', processQuery.getProcessId());
     this._subscribeCall('process', call, unsubscribe);
 
-    var counter = 0, maxIterations = Infinity
-      , timeout = setInterval(()=>{
-        this._log.debug('subscribeProcess call.write counter:', counter);
-        var processState = new ProcessState();
-        processState.setProcessId(new Date().toISOString());
+    this._getProcess(processQuery.getProcessId()).then(
+            ({process, queue})=>{
+                this._log.debug('got a process by id', process.constructor.name, process.id);
+                this._log.debug(JSON.stringify(process.serialize()));
+                dummyUpdates();
+            }
+          , error=>{
+                this._log.error(error);
+                call.destroy(error);
+            }
+        );
 
-        counter++;
-        if(counter === maxIterations) {
-            //call.destroy(new Error('Just a random server fuckup.'));
-            //clearInterval(timeout);
-            call.end();
-        }
-        else
-            call.write(processState);
-
-    }, 1000);
 };
 
 
