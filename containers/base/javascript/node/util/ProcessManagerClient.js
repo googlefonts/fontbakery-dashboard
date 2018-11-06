@@ -7,12 +7,13 @@
 const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , grpc = require('grpc')
   , { ProcessManagerClient: GrpcProcessManagerClient } = require('protocolbuffers/messages_grpc_pb')
+  , { ProtobufAnyHandler } = require('./ProtobufAnyHandler')
   ;
 
 /**
- * new ProcessManagerClient(logging, 'localhost', 1234)
+ * new ProcessManagerClient(logging, 'localhost', 1234, null, anySetup)
  */
-function ProcessManagerClient(logging, host, port, credentials) {
+function ProcessManagerClient(logging, host, port, credentials, anySetup) {
     var address = [host, port].join(':');
     this._log = logging;
     // in seconds, we use this to get an error when the channel is broken
@@ -23,6 +24,8 @@ function ProcessManagerClient(logging, host, port, credentials) {
     //       and still fail eventually.
     this._deadline = 30;
     this._log.info('ProcessManagerClient at:', address);
+
+    this._any = new ProtobufAnyHandler(anySetup.knownTypes, anySetup.typesNamespace);
 
     this._grpcClientArgs = [
         address
@@ -195,6 +198,15 @@ _p._getStreamAsGenerator = function(client, method, message) {
 _p.subscribeProcess = function(processQuery) {
     return this._getStreamAsGenerator(this._client
                                     , 'subscribeProcess', processQuery);
+};
+
+_p.initProcess = function(initMessage) {
+    // InitProcess (google.protobuf.Any) returns (ProcessCommandResult)
+    var anyInitMessage = this._any.pack(initMessage);
+     return nodeCallback2Promise((callback)=>
+            this._client.initProcess(anyInitMessage
+                                    , {deadline: this.deadline}, callback))
+            .then(null, error=>this._raiseUnhandledError(error));
 };
 
 _p.execute = function(processCommand) {

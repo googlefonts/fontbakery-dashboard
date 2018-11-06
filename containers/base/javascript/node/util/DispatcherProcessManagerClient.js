@@ -8,13 +8,18 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , { ProcessManagerClient:Parent } = require('./ProcessManagerClient')
   , { DispatcherProcessManagerClient: GrpcDispatcherProcessManagerClient
                         } = require('protocolbuffers/messages_grpc_pb')
+  , { DispatcherInitProcess } = require('protocolbuffers/messages_pb')
   ;
 
 /**
  * new DispatcherProcessManagerClient(logging, 'localhost', 1234)
  */
 function DispatcherProcessManagerClient(...args) {
-    Parent.call(this, ...args);
+    var anySetup = {
+        knownTypes: { DispatcherInitProcess }
+      , typesNamespace: 'fontbakery.dashboard'
+    };
+    Parent.call(this, ...args, null, anySetup);
     // In a GRPC server I can add many services, but for the client, it
     // seems that I have to initialize separate clients.
     this._clientDispatcher = new GrpcDispatcherProcessManagerClient(...this._grpcClientArgs);
