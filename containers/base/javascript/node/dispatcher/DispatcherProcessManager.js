@@ -37,7 +37,7 @@ _p._examineProcessInitMessage = function(initMessage) {
       , initArgs = { familyName, requester /*more ... ?*/ }
       ;
 
-    TODO;
+    // TODO;
     // Does the familyName exist?
     // Is the requester authorized to do this?
     // Is it OK to init the process now or are there any rules why not?
@@ -54,14 +54,14 @@ _p.subscribeProcessList = function(call) {
             // End the subscription and delete the call object.
             // Do this only once, but, `unsubscribe` may be called more than
             // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
-            this._log.info('... UNSUBSCRIBE');
+            this._log.info('subscribeProcessList ... UNSUBSCRIBE');
             clearInterval(timeout);
             timeout = null;
         }
       ;
 
-    this._log.info('processQuery subscribing to', processListQuery.getQuery());
-    this._subscribeCall('process', call, unsubscribe);
+    this._log.info('processListQuery subscribing to', processListQuery.getQuery());
+    this._subscribeCall('process-list', call, unsubscribe);
 
     var counter = 0, maxIterations = Infinity
       , timeout = setInterval(()=>{
