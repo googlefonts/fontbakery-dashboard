@@ -405,9 +405,14 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
               , FailStepCtor
               , FinallyStepCtor
     );
+    if(state)
+        return;
+    // else if(initArgs) … !
+    this.log.debug('new FamilyPRDispatcherProcess initArgs:', initArgs, 'state:', state);
+    var { familyName, requester } = initArgs;
+    this._state.familyName = familyName;
+    this._state.requester = requester;
 
-    var { familyName } = initArgs;
-    this._state.familyName = value;
 }
 
 const _p = FamilyPRDispatcherProcess.prototype = Object.create(Parent.prototype);
@@ -445,12 +450,27 @@ stateManagerMixin(_p, {
       , load: val=>val
       , serialize: val=>val
     }
+    /**
+     * For authorization purposes, maybe just the requester ID/handle,
+     * (a string) so that we can get the roles of the requester
+     * from the DB.
+     */
+  , requester: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+    }
 });
 
 Object.defineProperties(_p, {
     familyName:{
         get: function() {
             return this._state.familyName;
+        }
+    }
+   , requester:{
+        get: function() {
+            return this._state.requester;
         }
     }
 
