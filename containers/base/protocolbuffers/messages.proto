@@ -234,9 +234,11 @@ message ProcessQuery {
 
 message ProcessState {
   string process_id = 1;
-  // TODO ...
-  // This will also have to contain required user interaction descriptions
+  // JSON serialized actual process data
+  string process_data = 2;
+  // JSON required user interaction descriptions
   // i.e. a structure that allows us to build forms for user interactions
+  string user_interface = 3;
 }
 
 message ProcessListQuery {

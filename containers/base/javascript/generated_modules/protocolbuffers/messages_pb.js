@@ -3514,7 +3514,9 @@ proto.fontbakery.dashboard.ProcessState.prototype.toObject = function(opt_includ
  */
 proto.fontbakery.dashboard.ProcessState.toObject = function(includeInstance, msg) {
   var f, obj = {
-    processId: jspb.Message.getFieldWithDefault(msg, 1, "")
+    processId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    processData: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    userInterface: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -3555,6 +3557,14 @@ proto.fontbakery.dashboard.ProcessState.deserializeBinaryFromReader = function(m
       var value = /** @type {string} */ (reader.readString());
       msg.setProcessId(value);
       break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setProcessData(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setUserInterface(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -3591,6 +3601,20 @@ proto.fontbakery.dashboard.ProcessState.serializeBinaryToWriter = function(messa
       f
     );
   }
+  f = message.getProcessData();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+  f = message.getUserInterface();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -3606,6 +3630,36 @@ proto.fontbakery.dashboard.ProcessState.prototype.getProcessId = function() {
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessState.prototype.setProcessId = function(value) {
   jspb.Message.setField(this, 1, value);
+};
+
+
+/**
+ * optional string process_data = 2;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.ProcessState.prototype.getProcessData = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.ProcessState.prototype.setProcessData = function(value) {
+  jspb.Message.setField(this, 2, value);
+};
+
+
+/**
+ * optional string user_interface = 3;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.ProcessState.prototype.getUserInterface = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.ProcessState.prototype.setUserInterface = function(value) {
+  jspb.Message.setField(this, 3, value);
 };
 
 
