@@ -4148,8 +4148,8 @@ proto.fontbakery.dashboard.ProcessCommand.oneofGroups_ = [[5,6]];
  */
 proto.fontbakery.dashboard.ProcessCommand.PayloadCase = {
   PAYLOAD_NOT_SET: 0,
-  JSON: 5,
-  PB: 6
+  JSON_PAYLOAD: 5,
+  PB_PAYLOAD: 6
 };
 
 /**
@@ -4192,8 +4192,8 @@ proto.fontbakery.dashboard.ProcessCommand.toObject = function(includeInstance, m
     targetPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
     callbackName: jspb.Message.getFieldWithDefault(msg, 3, ""),
     requester: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    json: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    pb: (f = msg.getPb()) && google_protobuf_any_pb.Any.toObject(includeInstance, f)
+    jsonPayload: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    pbPayload: (f = msg.getPbPayload()) && google_protobuf_any_pb.Any.toObject(includeInstance, f)
   };
 
   if (includeInstance) {
@@ -4248,12 +4248,12 @@ proto.fontbakery.dashboard.ProcessCommand.deserializeBinaryFromReader = function
       break;
     case 5:
       var value = /** @type {string} */ (reader.readString());
-      msg.setJson(value);
+      msg.setJsonPayload(value);
       break;
     case 6:
       var value = new google_protobuf_any_pb.Any;
       reader.readMessage(value,google_protobuf_any_pb.Any.deserializeBinaryFromReader);
-      msg.setPb(value);
+      msg.setPbPayload(value);
       break;
     default:
       reader.skipField();
@@ -4319,7 +4319,7 @@ proto.fontbakery.dashboard.ProcessCommand.serializeBinaryToWriter = function(mes
       f
     );
   }
-  f = message.getPb();
+  f = message.getPbPayload();
   if (f != null) {
     writer.writeMessage(
       6,
@@ -4391,21 +4391,21 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.setRequester = function(valu
 
 
 /**
- * optional string json = 5;
+ * optional string json_payload = 5;
  * @return {string}
  */
-proto.fontbakery.dashboard.ProcessCommand.prototype.getJson = function() {
+proto.fontbakery.dashboard.ProcessCommand.prototype.getJsonPayload = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.ProcessCommand.prototype.setJson = function(value) {
+proto.fontbakery.dashboard.ProcessCommand.prototype.setJsonPayload = function(value) {
   jspb.Message.setOneofField(this, 5, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
 };
 
 
-proto.fontbakery.dashboard.ProcessCommand.prototype.clearJson = function() {
+proto.fontbakery.dashboard.ProcessCommand.prototype.clearJsonPayload = function() {
   jspb.Message.setOneofField(this, 5, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], undefined);
 };
 
@@ -4414,29 +4414,29 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.clearJson = function() {
  * Returns whether this field is set.
  * @return {!boolean}
  */
-proto.fontbakery.dashboard.ProcessCommand.prototype.hasJson = function() {
+proto.fontbakery.dashboard.ProcessCommand.prototype.hasJsonPayload = function() {
   return jspb.Message.getField(this, 5) != null;
 };
 
 
 /**
- * optional google.protobuf.Any pb = 6;
+ * optional google.protobuf.Any pb_payload = 6;
  * @return {?proto.google.protobuf.Any}
  */
-proto.fontbakery.dashboard.ProcessCommand.prototype.getPb = function() {
+proto.fontbakery.dashboard.ProcessCommand.prototype.getPbPayload = function() {
   return /** @type{?proto.google.protobuf.Any} */ (
     jspb.Message.getWrapperField(this, google_protobuf_any_pb.Any, 6));
 };
 
 
 /** @param {?proto.google.protobuf.Any|undefined} value */
-proto.fontbakery.dashboard.ProcessCommand.prototype.setPb = function(value) {
+proto.fontbakery.dashboard.ProcessCommand.prototype.setPbPayload = function(value) {
   jspb.Message.setOneofWrapperField(this, 6, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
 };
 
 
-proto.fontbakery.dashboard.ProcessCommand.prototype.clearPb = function() {
-  this.setPb(undefined);
+proto.fontbakery.dashboard.ProcessCommand.prototype.clearPbPayload = function() {
+  this.setPbPayload(undefined);
 };
 
 
@@ -4444,7 +4444,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.clearPb = function() {
  * Returns whether this field is set.
  * @return {!boolean}
  */
-proto.fontbakery.dashboard.ProcessCommand.prototype.hasPb = function() {
+proto.fontbakery.dashboard.ProcessCommand.prototype.hasPbPayload = function() {
   return jspb.Message.getField(this, 6) != null;
 };
 

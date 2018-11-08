@@ -263,7 +263,7 @@ message ProcessCommand {
     oneof payload {
       // This way we can do better structured protobuf messages OR
       // faster to initially implemented JSON.
-      string json = 5;
-      google.protobuf.Any pb = 6;
+      string json_payload = 5;
+      google.protobuf.Any pb_payload = 6;
     }
 }
