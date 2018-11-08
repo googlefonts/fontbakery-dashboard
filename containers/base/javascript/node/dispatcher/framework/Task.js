@@ -150,12 +150,6 @@ const stateDefinition = {
       , serialize: state=>state
       , load: state=>state
     }
-  , expectedAnswer: {
-        init: ()=>null//empty
-      , serialize: state=>state
-      , load: state=>state
-      , validate: _p._validateExpectedAnswer
-    }
 };
 
 stateManagerMixin(_p, stateDefinition);

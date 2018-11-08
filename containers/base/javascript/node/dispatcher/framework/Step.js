@@ -163,12 +163,6 @@ const stateDefinition = {
     // but this status comes basically directly from the tasks status
     // so maybe we can calculate this and don't put into the DB
     // depends whether we need to query the step state at this level.
-  , expectedAnswer: {
-        init: ()=>null//empty
-      , serialize: state=>state
-      , load: state=>state
-      , validate: _p._validateExpectedAnswer
-    }
 };
 
 stateManagerMixin(_p, stateDefinition);

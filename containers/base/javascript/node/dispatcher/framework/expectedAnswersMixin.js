@@ -1,12 +1,25 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const crypto = require('crypto');
+const crypto = require('crypto')
+  , {mixin: stateManagerMixin} = require('./stateManagerMixin')
+  ;
 
 /**
  * Providing some helper methods to unify how to work with expected answers.
  */
 function expectedAnswersMixin(_p) {
+
+    const stateDefinition: {
+        expectedAnswer: {
+            init: ()=>null//empty
+          , serialize: state=>state
+          , load: state=>state
+          , validate: _p._validateExpectedAnswer
+        }
+    };
+
+    stateManagerMixin(_p, stateDefinition);
 
     Object.defineProperties(_p, {
         secret: {
