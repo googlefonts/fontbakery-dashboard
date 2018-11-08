@@ -248,25 +248,25 @@ _p._getProcess = function(processId) {
     // maybe it's own access log could get a message about this attempt
     // though, that could help with debugging
 
-_p.publishUpdates = function(process) {
-    var subscriptions = this._processSubscriptions.get(process)
+_p._publishUpdates = function(process) {
+    var subscriptions = this._processSubscriptions.get(process.id)
       , processState
       ;
-    if(!subscriptions)
+    if(!subscriptions || !subscriptions.size)
         return;
 
     // create this once for all subscribers
     // would be nice to have it also just serialzied once.
-    processState = new ProcessState(process);
-    for(let subscription of subscriptions)
-        TODO(subscription, 'publish', processState);
+    processState = this._getProcessStateForClient(process);
+    for(let call of subscriptions)
+        call.write(processState);
 
 };
 
 ////////////////
 // gRPC related:
 
-_p.serve =  function() {
+_p.serve = function() {
     // Start serving when the database is ready
     return this._io.init()
         .then(()=>this._server.start());
@@ -368,7 +368,7 @@ _p.execute = function(commandMessage, callback) {
                     // should also not return a promise (otherwise, a fail
                     // would create an unhandled promise, and it's not
                     // interesting here to handle that.
-                    this.publishUpdates(process);
+                    this._publishUpdates(process);
                     return process;
                 })
                 ;
@@ -444,6 +444,41 @@ _p._subscribeCall = function(type, call, unsubscribe) {
 // accessed via the report ID only. Rather via a family page, or the
 // dashboard...
 // the idea is that the client pieces this together.
+
+
+_p._getProcessStateForClient = function(process) {
+    var processState = new ProcessState();
+    processState.setProcessId(process.id);
+    // TODO: we wan't some filtering here, e.g. expected answers
+    // are not meant to be in the process data visible by the client.
+    // An important exception are the user interface requests, but they
+    // are separated from the actual process data.
+    processState.setProcessData(JSON.stringify(process.serialize()));
+    processState.setUserInterface(JSON.stringify(null));
+    return processState;
+};
+
+_p._addCallToProcessSubscriptions = function(processId, call) {
+    var processSubscriptions = this._processSubscriptions.get(processId);
+    if(!processSubscriptions){
+        processSubscriptions = new Set();
+        this._processSubscriptions.set(processId, processSubscriptions);
+    }
+    processSubscriptions.add(call);
+};
+
+_p._removeCallFromProcessSubscriptions = function(processId, call) {
+    var processSubscriptions = this._processSubscriptions.get(processId);
+    // End the subscription and delete the call object.
+    // Do this only once, but, `unsubscribe` may be called more than
+    // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
+    if(!processSubscriptions)
+        return;
+    processSubscriptions.delete(call);
+    if(!processSubscriptions.size)
+        this._processSubscriptions.delete(processId);
+};
+
 _p.subscribeProcess = function(call) {
 
     //this._initProcess().then(process=>{
@@ -465,47 +500,48 @@ _p.subscribeProcess = function(call) {
     //);
 
     var processQuery = call.request
-      , timeout = null
+      , processId = processQuery.getProcessId()
       , unsubscribe = ()=>{
-            if(!timeout) // marker if there is an active subscription/call
-                return;
-            // End the subscription and delete the call object.
-            // Do this only once, but, `unsubscribe` may be called more than
-            // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
-            this._log.info('subscribeProcess ... UNSUBSCRIBE');
-            clearInterval(timeout);
-            timeout = null;
+            this._log.info('subscribeProcess ... UNSUBSCRIBE', processId);
+            this._removeCallFromProcessSubscriptions(processId, call);
         }
       ;
 
-    var dummyUpdates = ()=>{
-        var counter = 0, maxIterations = 5;//Infinity;
-        timeout = setInterval(()=>{
-            this._log.debug('subscribeProcess call.write counter:', counter);
-            var processState = new ProcessState();
-            processState.setProcessId(new Date().toISOString());
-
-            counter++;
-            if(counter === maxIterations) {
-                //call.destroy(new Error('Just a random server fuckup.'));
-                //clearInterval(timeout);
-                call.end();
-            }
-            else
-                call.write(processState);
-
-        }, 1000);
-    };
+    //var dummyUpdates = ()=>{
+    //    var counter = 0, maxIterations = 5;//Infinity;
+    //    timeout = setInterval(()=>{
+    //        this._log.debug('subscribeProcess call.write counter:', counter);
+    //        var processState = new ProcessState();
+    //        processState.setProcessId(new Date().toISOString());
+    //
+    //        counter++;
+    //        if(counter === maxIterations) {
+    //            //call.destroy(new Error('Just a random server fuckup.'));
+    //            //clearInterval(timeout);
+    //            call.end();
+    //        }
+    //        else
+    //            call.write(processState);
+    //
+    //    }, 1000);
+    //};
 
     //892fd622-acc2-41c7-b3cb-a9e60f889b09
-    this._log.info('processQuery subscribing to', processQuery.getProcessId());
+    this._log.info('processQuery subscribing to', processId);
     this._subscribeCall('process', call, unsubscribe);
 
-    this._getProcess(processQuery.getProcessId()).then(
-            ({process, queue})=>{
-                this._log.debug('got a process by id', process.constructor.name, process.id);
-                this._log.debug(JSON.stringify(process.serialize()));
-                dummyUpdates();
+    this._getProcess(processId).then(
+            ({process /*, queue*/})=>{
+                this._log.debug('got a',  process.constructor.name ,'by id', process.id);
+                var processState = this._getProcessStateForClient(process);
+                // subscribing now in case that maybe, at some point in
+                // the future `_getProcess` may cause itself updates
+                // to the process (if _loadProcessFromDB fails and
+                // changes the process state (to FINISHED?) then maybe
+                // a combination of _persistProcess/_publishUpdates
+                // would be necessary.
+                this._addCallToProcessSubscriptions(process.id, call);
+                call.write(processState);
             }
           , error=>{
                 this._log.error(error);

@@ -334,7 +334,7 @@ _p._initProcess = function(initMessage) {
         });
 };
 
-_p._initRoom = function(generator, cancel, emit) {
+_p._initRoom = function(generator, cancel, emit, process/*optional*/) {
     var room = {
             sockets: new Set()
           , cancel: cancel
@@ -342,10 +342,14 @@ _p._initRoom = function(generator, cancel, emit) {
           , emit: emit
         }
       , messageHandler = (message)=>{
-            room.lastMessage = message;
+            // We can do optional pre-processing of the message here
+            // so we don't have to create the actually emitted data
+            // on each call to emit.
+            var processed = process ? process(message) : message;
+            room.lastMessage = processed;
             for(let socketId of room.sockets) {
                 let socket = this._sockets.get(socketId).socket;
-                room.emit(socket, message);
+                room.emit(socket, processed);
             }
         }
       ;
@@ -400,12 +404,17 @@ _p._getProcessRoom = function(processId) {
     if(!room) {
         let processQuery = new ProcessQuery();
         processQuery.setProcessId(processId);
-        let { generator, cancel } = this._processManager.subscribeProcess(processQuery)
+        let process = message=>[
+                message.getProcessId()
+              , JSON.parse(message.getProcessData())
+              , JSON.parse(message.getUserInterface())
+            ]
+          , { generator, cancel } = this._processManager.subscribeProcess(processQuery)
             // TODO: this will need more effort
           , emit = (socket, message)=>socket.emit('changes-dispatcher-process'
-                                    , 'process !!!! ' + message.getProcessId())
+                                    , 'process !!!! ', ... message)
           ;
-        room = this._initRoom(generator, cancel, emit);
+        room = this._initRoom(generator, cancel, emit, process);
         this._rooms.set(roomId, room);
     }
     return roomId;
@@ -471,7 +480,8 @@ _p._subscribeToProcess = function(socket, data) {
 
 
     //.then(processId=>{
-    var processId = '892fd622-acc2-41c7-b3cb-a9e60f889b09' // = data ?
+    this._log.info('_subscribeToProcess data:', data);
+    var processId = data.processId
       , roomId = this._getProcessRoom(processId)
       ;
     this._registerSocketInRoom(socket, roomId);
@@ -479,7 +489,7 @@ _p._subscribeToProcess = function(socket, data) {
 
 _p._unsubscribeFromProcess = function(socket, data) {
     // jshint unused:vars
-    var processId = '892fd622-acc2-41c7-b3cb-a9e60f889b09' // = data ?
+    var processId = data.processId
       , roomId = this._getProcessRoomId(processId)
       ;
     this._removeSocketFromRoom(socket, roomId);

@@ -207,11 +207,11 @@ define([
 
         var l = null, p = null;
 
-        this.onChange = function(data) {
-            if(data[0] === 'p')
-                p = data
+        this.onChange = function(...data) {
+            if(data[0][0] === 'p')
+                p = '<ol>' + data.map(item=>'<li><pre>'+JSON.stringify(item, null, 2)+'</pre></li>').join('\n') + '</ul>';
             else l = data;
-            container.innerHTML = [l,p].join('<br />')
+            container.innerHTML = [l,p].join('<br />');
         };
     }
     function initDispatcher(data) {
@@ -223,7 +223,9 @@ define([
         socket.on('changes-dispatcher-list', dispatcher.onChange.bind(dispatcher));
         socket.on('changes-dispatcher-process', dispatcher.onChange.bind(dispatcher));
         socket.emit('subscribe-dispatcher-list', {});
-        socket.emit('subscribe-dispatcher-process', {});
+        socket.emit('subscribe-dispatcher-process', {
+                    processId: '892fd622-acc2-41c7-b3cb-a9e60f889b09'
+        });
     }
 
     function getInterfaceMode() {
