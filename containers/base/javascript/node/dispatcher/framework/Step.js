@@ -6,6 +6,7 @@ const {mixin: stateManagerMixin} = require('./stateManagerMixin')
     , {validTaskStatuses } = require('./Task')
     , {Status, OK, FAILED, PENDING} = require('./Status')
     , {Path} = require('./Path')
+    , { ProtobufAnyHandler } = require('../../util/ProtobufAnyHandler')
     ;
 
 /**
@@ -27,7 +28,18 @@ const {mixin: stateManagerMixin} = require('./stateManagerMixin')
  *             status without interaction otherwise: just keep waiting
  *     * hard: set the FAILED status
  */
-function Step(process, state, taskCtors) {
+function Step(process, state, taskCtors, anySetup) {
+    // expectedAnswersMixin can extract a pbMessage from a commandMessage
+    // in _executeExpectedAnswer, but the concrete implementation must
+    // define the message Classes and namespace.
+    var anySetup_ = anySetup
+            ? anySetup
+            : {
+                knownTypes: {}
+              , typesNamespace: '(no namespace)'
+              };
+    this._any = new ProtobufAnyHandler(anySetup_.knownTypes, anySetup_.typesNamespace);
+
     Object.defineProperties(this, {
         process: {value: process}
         // needed by expectedAnswersMixin

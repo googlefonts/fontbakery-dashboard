@@ -331,12 +331,21 @@ _p.initProcess = function(call, callback) {
  * result of the command. Especially fails, but also just success.
  *
  * commandMessage interfaces needed so far:
- *      callbackName = commandMessage.getCallbackName()
-        ticket = commandMessage.getTicket()
- *      payload = JSON.parse(commandMessage.getPayload())
+ *      ticket = commandMessage.getTicket()
  *      targetPath = Path.fromString(commandMessage.getTargetPath())
+ *      callbackName = commandMessage.getCallbackName()
+ *      requester = commandMessage.getRequester()
+ *      if(commandMessage.hasJsonPayload())
+ *          payload = JSON.parse(commandMessage.getJsonPayload())
+ *      else if(commandMessage.hasPbPayload())
+ *          anyPayload = commandMessage.getPbPayload() // => Any
+ *      else
+ *          // though! maybe there is no payload needed, e.g. when
+ *          // the message is just something like: "resource ready now".
+ *          throw new Error('No Payload');
  */
-_p.execute = function(commandMessage, callback) {
+_p.execute = function(call, callback) {
+    var commandMessage = call.request;
     // aside from the managennet,, queueing etc.
     // it's probably the task of each element in the process hierarchy
     // to check whether the command is applicable or not.

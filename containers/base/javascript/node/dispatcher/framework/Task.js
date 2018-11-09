@@ -5,6 +5,7 @@ const {mixin: stateManagerMixin} = require('./stateManagerMixin')
   , {mixin: expectedAnswersMixin} = require('./expectedAnswersMixin')
   , {Status, PENDING, OK, FAILED, LOG} = require('./Status')
   , {Path} = require('./Path')
+  , { ProtobufAnyHandler } = require('../../util/ProtobufAnyHandler')
   ;
 
     // CAUTION: these are the ones that are allowed to be returned by
@@ -16,7 +17,17 @@ const validTaskStatuses = new Set([PENDING, OK, FAILED])
 exports.validTaskStatuses = validTaskStatuses;
 exports.finishingStatuses = finishingStatuses;
 
-function Task(step, state) {
+function Task(step, state, anySetup) {
+    // expectedAnswersMixin can extract a pbMessage from a commandMessage
+    // in _executeExpectedAnswer, but the concrete implementation must
+    // define the message Classes and namespace.
+    var anySetup_ = anySetup
+            ? anySetup
+            : {
+                knownTypes: {}
+              , typesNamespace: '(no namespace)'
+              };
+    this._any = new ProtobufAnyHandler(anySetup_.knownTypes, anySetup_.typesNamespace);
     Object.defineProperties(this, {
         step: {value: step}
         // needed by expectedAnswersMixin

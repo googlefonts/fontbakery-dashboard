@@ -226,23 +226,35 @@ function expectedAnswersMixin(_p) {
     _p._executeExpectedAnswer = function(commandMessage) {
         var callbackName = commandMessage.getCallbackName()
           , ticket = commandMessage.getTicket()
-          , payload = commandMessage.getPayload()
-          , data, callbackMethod
+          , payload
+          , callbackMethod
           , expected = this._isExpectedAnswer(callbackName, ticket)
           ;
+
         if(!expected)
             throw new Error('Action for "' + callbackName + '" with ticket "'
                                         + ticket + '" is not expected.');
-        data = JSON.parse(payload);
+
+        if(commandMessage.hasJsonPayload())
+            payload = JSON.parse(commandMessage.getJsonPayload());
+        else if(commandMessage.hasPbPayload()) {
+            let anyPayload = commandMessage.getPbPayload(); // => Any
+            payload = this._any.unpack(anyPayload);
+        }
+        else
+            // though! maybe there is no payload needed, e.g. when
+            // the message is just something like: "resource ready now".
+            throw new Error('No payload in commandMessage');
+
         callbackMethod = this._getCallbackMethod(callbackName);
 
-        TODO;// we need to establish a back channel here, that goes directly to
-        // the user interacting, if present! ...
+        this.log.debug('TODO we need to establish a back channel here, '
+            + 'that goes directly to the user interacting, if present! ...');
         // Everything else will be communicated via the changes-feed of
         // the process. Back channel likely means there's an answer message
         // for the execute function.
         this._unsetExpectedAnswer();
-        return this._runStateChangingMethod(callbackMethod, callbackName, data);
+        return this._runStateChangingMethod(callbackMethod, callbackName, payload);
     };
 }
 exports.mixin = expectedAnswersMixin;
