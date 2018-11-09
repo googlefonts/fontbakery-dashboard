@@ -473,7 +473,7 @@ _p._getProcessStateForClient = function(process) {
     // An important exception are the user interface requests, but they
     // are separated from the actual process data.
     processState.setProcessData(JSON.stringify(process.serialize()));
-    processState.setUserInterface(JSON.stringify(null));
+    processState.setUserInterface(JSON.stringify(process.getRequestedUserInteractions()));
     return processState;
 };
 
