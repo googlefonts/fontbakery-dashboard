@@ -7,6 +7,7 @@ define([
   , 'StatusController'
   , 'CollectionReport'
   , 'DashboardController'
+  , 'DispatcherController'
 ], function(
     dom
   , socketio
@@ -16,6 +17,7 @@ define([
   , StatusController
   , CollectionReport
   , DashboardController
+  , DispatcherController
 ) {
     "use strict";
     /*global document, window, FileReader*/
@@ -202,30 +204,12 @@ define([
         onQueryFilterChange();
     }
 
-    function DispatcherController(container, templatesContainer, data) {
-        //jshint unused:vars
-
-        var l = null, p = null;
-
-        this.onChange = function(...data) {
-            if(data[0][0] === 'p')
-                p = '<ol>' + data.map(item=>'<li><pre>'+JSON.stringify(item, null, 2)+'</pre></li>').join('\n') + '</ul>';
-            else l = data;
-            container.innerHTML = [l,p].join('<br />');
-        };
-    }
     function initDispatcher(data) {
         var container = activateTemplate('dispatcher-interface')
          , templatesContainer = getTemplatesContainer('dispatcher-templates')
          , socket = socketio('/')
-         , dispatcher = new DispatcherController(container, templatesContainer, data)
+         , dispatcher = new DispatcherController(container, templatesContainer, socket, data)
          ;
-        socket.on('changes-dispatcher-list', dispatcher.onChange.bind(dispatcher));
-        socket.on('changes-dispatcher-process', dispatcher.onChange.bind(dispatcher));
-        socket.emit('subscribe-dispatcher-list', {});
-        socket.emit('subscribe-dispatcher-process', {
-                    processId: '892fd622-acc2-41c7-b3cb-a9e60f889b09'
-        });
     }
 
     function getInterfaceMode() {
