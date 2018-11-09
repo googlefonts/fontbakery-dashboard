@@ -52,9 +52,9 @@ _p._persistProcess = function(process) {
         // but it would mean we only update changes, which is more effort
         // to implement.
     var processData = process.serialize()
-      , method = process.id ? 'replace' : 'insert'
+      , conflict = process.id ? 'replace' : 'error'
       ;
-    if(method === 'insert')
+    if(!process.id)
         // Otherwise we get this Error:
         //          "Primary keys must be either a number, string, bool,
         //           pseudotype or array (got type NULL)"
@@ -62,7 +62,7 @@ _p._persistProcess = function(process) {
     return this._io.query('dispatcherprocesses')
         // Insert a document into the table users, replacing the document
         // if it already exists.
-        [method](processData, {conflict: "replace"})
+        .insert(processData, {conflict: conflict})
         .then(report=>{
             if(report.errors)
                 throw new Error(report.first_error);
@@ -274,6 +274,13 @@ _p.serve = function() {
 
 /**
  * see also _p.execute for back-channel considerations
+ *
+ * FIXME: there's a race condition. *If we want to have only one active
+ * process for a family at a time.* (which is not enforced yet).
+ * That is: Between the call to initProcess to registering the process
+ * as an activeProcess there's plenty time to call initProcess again.
+ * Hence, a promise for that process should be stored immediately in
+ * initProcess and that should resolve by calling back all requesting calls.
  */
 _p.initProcess = function(call, callback) {
     var anyProcessInitMessage = call.request
@@ -365,13 +372,15 @@ _p.execute = function(call, callback) {
                 // on success return promise
                 .then(
                     ()=>process
-                  , error=>this._log.error(error, 'targetPath: ' + targetPath)
+                  , error=>{
+                        this._log.error(error, 'targetPath: ' + targetPath);
+                        throw error;
+                    }
                 )
                 // persist after each execute, maybe even after each activate,
                 // especially when activate(also error handling in _initProcessWithState)
                 // changed the process state, e.g. set it to a finished state.
-                .then(process=>
-                        this._persistProcess(process).then(()=>process))
+                .then(process=>this._persistProcess(process).then(()=>process))
                 .then(process=>{
                     // don't wait for this to finish
                     // should also not return a promise (otherwise, a fail
@@ -393,9 +402,10 @@ _p.execute = function(call, callback) {
             var message = new ProcessCommandResult();
             if(result) {
                 message.setResult(ProcessCommandResult.Result.OK);
-                message.setMessage();
+                message.setMessage('All good!');
             }
             else {
+                this._log.error('PM.execute', error, error.message);
                 message.setResult(ProcessCommandResult.Result.FAIL);
                 message.setMessage(error.message);
             }

@@ -251,7 +251,7 @@ _p.callbackReActivate = function(data) {
     // This is executed from within _runStateChangingMethod via execute...
     // validate data ??? what data do we expect here, seems to me that
     // his can be just `null` in this case
-    return this.reActivate();
+    return this._reActivate();
 };
 
 
@@ -294,8 +294,12 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
             throw new Error('Lost the thread: the task has not defined '
                                             + 'an expected answer.');
     })
-    .then(null, error=>this._setFAILED(renderErrorAsMarkdown(
-                    'Method: ' + methodName + ' failed:', error)))
+    .then(null, error=> {
+            this.log.error('State change failed:',error);
+            this._setFAILED(renderErrorAsMarkdown(
+                            'Method: ' + methodName + ' failed:', error))
+        }
+    )
     .then(()=>{
         if(!this.isFailed)
             return;
