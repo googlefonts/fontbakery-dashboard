@@ -177,19 +177,17 @@ _p.callbackHandleFailedStep = function() {
 };
 
 _p.getRequestedUserInteractions = function() {
-    var tasks = []
-      , step = this.requestedUserInteraction // null if there is none
-      ;
+    var results = [];
     if(this.isFinished)
-        return [null, null];
+        return results;
 
-    for(let [key, task] of this._state.tasks) {
-        let rui = task.requestedUserInteraction;
-        if(!rui) // null if there is none
-            continue;
-        tasks.push([key, rui]);
-    }
-    return {step, tasks};
+    if(this.hasRequestedUserInteraction)
+        results.push(this);
+
+    for(let task of this._state.tasks.values())
+        if(task.hasRequestedUserInteraction)
+            results.push(task);
+    return results;
 };
 
 // copied from manifestSources/_Source.js
@@ -258,9 +256,8 @@ _p._transition = function() {
         // whether to re-run any tasks or execute the uiHandleFailedStep
         // and finish the step for good.
 
-        // currently, a step has only one possible _setExpectedAnswer
-        // and that is set here.
-
+        // *IMPORTANT!* Currently, a step has only one possible
+        // _setExpectedAnswer and that is set here.
         if(!this._hasRequestedUserInteraction())// no need to re-request it
             this._setExpectedAnswer('Failed Step'
                                  // this must call this _finishedFAILED

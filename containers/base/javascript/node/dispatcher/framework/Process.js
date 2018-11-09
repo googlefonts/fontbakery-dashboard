@@ -240,7 +240,7 @@ _p._finish = function() {
         status = FAILED;
         markdown = '**FAILED!** first failed step: '
                 + firstFailedStep[0]
-                + ' ' + firstFailedStep[0].constructor.name
+                + ' ' + firstFailedStep[1].constructor.name
                 ;
     }
     else {
@@ -340,25 +340,40 @@ Object.defineProperty(_p, 'userInteractionIsRequired', {
 });
 
 /**
- * return an dict of {path: [...user interface description]}
- * this runs probably only in UIServer, but then we need the information
- * of which UIs are requested to either survive serialisation, or to
- * get it directly via gRPC from ProcessManager ???
- */
-_p.defineUserInteracion = function(uiConstructors) {
-    // jshint unused:vars
-    this.log.error('NOT IMPLEMENTED defineUserInteracion');
-    if(!this.userInteractionIsRequired)
-        throw new Error('User Interaction is not requested.');
-    var uiDescription = {};
-    // ...
-    return uiDescription;
-};
+ * return null or an array of dicts.
+ *
+ * [
+ *     {
+ *          targetPath: (string)
+ *        , callbackName: (string)
+ *        , ticket: (string)
+ *        , ui: (object: user interface description)
+ *     }
+ *   , ...
+ * ]
 
-// this runs in ProcessManager
-_p.receiveUserInteracion = function(userResponse) {
-    // jshint unused:vars
-    this.log.error('NOT IMPLEMENTED receiveUserInteracion');
+ */
+_p.getRequestedUserInteractions = function() {
+    var items
+      , result = []
+      ;
+    if(!this._activeStep)
+        return null;
+
+    items = this._activeStep.getRequestedUserInteractions();
+    for(let item of items) {
+        let [
+                requestedUserInteractionName
+              , [callbackName, ticket]
+            ] = item.requestedUserInteraction
+          , ui = item[requestedUserInteractionName]()// => definition
+          ;
+        if(!ui)
+            throw new Error(requestedUserInteractionName + ' did not return anything.');
+        result.push({targetPath: item.path.toString(), callbackName, ticket, ui: ui});
+    }
+
+    return result.length ? result : null;
 };
 
 _p._getActiveStep = function() {
@@ -470,9 +485,14 @@ _p._getStep = function(stepPath) {
         return this.finallyStep;
     // catches floats, negatives, NaN, non canonical int formats
     index = Math.abs(parseInt(stepPath, 10));
-    if(index + '' !== stepPath
-            || steps.length >= index
-            || ( step = steps[index] ) === undefined )
+    if(index + '' !== stepPath)
+        throw new Error('Step stepPath is not an unsigne int "' + stepPath + '" != '+ index +'.');
+
+    if( index >= steps.length)
+         throw new Error('Step index out of range: '+index+' >= '+steps.length+'.');
+
+    step = steps[index];
+    if(!step)
         throw new Error('Step with path "' + stepPath + '" not found.');
     return step;
 };

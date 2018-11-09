@@ -34,6 +34,11 @@ function expectedAnswersMixin(_p) {
                 return this._state.expectedAnswer.slice(0,2);
             }
         }
+      , hasRequestedUserInteraction: {
+            get: function() {
+                return this._hasRequestedUserInteraction();
+            }
+        }
       , requestedUserInteraction: {
             get: function() {
                 if(!this._hasRequestedUserInteraction())
@@ -76,7 +81,7 @@ function expectedAnswersMixin(_p) {
      * must start with "ui"
      */
     _p._hasUserInteraction = function(uiName) {
-        return !!(uiName.indexOf('ui') === 0 && this[uiName]);
+        return !!(uiName.indexOf('ui') === 0 && uiName in this);
     };
 
     /**
