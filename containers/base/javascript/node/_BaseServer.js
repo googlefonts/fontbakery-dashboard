@@ -194,15 +194,16 @@ _p.fbIndex = function(req, res, next) {
  * this._sio.on('connection', this._onSocketConnect.bind(this));
  *
  */
-_p._socketOnSubscribe = function(socket, eventName, handler, data) {
+_p._socketOnSubscribe = function(socket, eventName, handler, ...data_callback) {
+    var [data, ...moredata_callback] = data_callback;
     this._log.info('_onSocketConnect: socket', socket.id ,'subscription '
-                                        + 'requested for', eventName, data);
+                                        + 'requested for', eventName, data, ...moredata_callback);
     if(typeof data.id !== 'string')
         // this is actually required (historically)
         // ??? why can't we fix this with an error?
         // and at the position where data.id is actually needed/evaluated?
         data.id = '';
-    handler.call(this, socket, data);
+    handler.call(this, socket, data, ...moredata_callback);
 };
 
 _p._socketOnDisconnect = function(socket, reason) {
@@ -218,8 +219,8 @@ _p._socketOnDisconnect = function(socket, reason) {
 
 
 _p._subscribeToSocketEvent = function(socket, eventName, eventHandler) {
-    socket.on(eventName, data=>this._socketOnSubscribe(
-                socket, eventName, eventHandler, data));
+    socket.on(eventName, (...data_callback)=>this._socketOnSubscribe(
+                socket, eventName, eventHandler, ...data_callback));
 };
 
 _p._onSocketConnect = function(socket) {
