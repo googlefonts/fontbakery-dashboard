@@ -9,8 +9,34 @@ const crypto = require('crypto')
  * Providing some helper methods to unify how to work with expected answers.
  */
 function expectedAnswersMixin(_p) {
+    /**
+     * Must be either null or an 3 item array:
+     *          [callbackName, ticket, requestedUserInteractionName]
+     * If an array the second entry is the ticket, if somehow
+     * "signed"/"salted" with a "secret" could be validated as well.
+     * I.e. if the secret changes, the loaded state would then then be invalid …
+     */
+    _p._validateExpectedAnswer = function(expectedAnswer) {
+        if(expectedAnswer === null)
+            return [true, null];
+        var [callbackName, ticket, requestedUserInteractionName] = expectedAnswer;
 
-    const stateDefinition: {
+        if(!this._hasCallbackMethod(callbackName))
+            return [false, 'Callback "' + callbackName + '" is not defined.'];
+
+        let dateString = ticket.split(';')[0];
+        if(ticket !== this._getTicket(callbackName, dateString))
+            return [false, 'Ticket is invalid.'];
+
+        if(requestedUserInteractionName !== null
+                    && !this._hasUserInteraction(requestedUserInteractionName))
+            return [false, 'Requested user Interaction "'
+                        + requestedUserInteractionName + '" is not defined.'];
+
+        return [true, null];
+    };
+
+    const stateDefinition = {
         expectedAnswer: {
             init: ()=>null//empty
           , serialize: state=>state
@@ -97,33 +123,6 @@ function expectedAnswersMixin(_p) {
                 ? this[callbackName]
                 : null
                 ;
-    };
-
-    /**
-     * Must be either null or an 3 item array:
-     *          [callbackName, ticket, requestedUserInteractionName]
-     * If an array the second entry is the ticket, if somehow
-     * "signed"/"salted" with a "secret" could be validated as well.
-     * I.e. if the secret changes, the loaded state would then then be invalid …
-     */
-    _p._validateExpectedAnswer = function(expectedAnswer) {
-        if(expectedAnswer === null)
-            return [true, null];
-        var [callbackName, ticket, requestedUserInteractionName] = expectedAnswer;
-
-        if(!this._hasCallbackMethod(callbackName))
-            return [false, 'Callback "' + callbackName + '" is not defined.'];
-
-        let dateString = ticket.split(';')[0];
-        if(ticket !== this._getTicket(callbackName, dateString))
-            return [false, 'Ticket is invalid.'];
-
-        if(requestedUserInteractionName !== null
-                    && !this._hasUserInteraction(requestedUserInteractionName))
-            return [false, 'Requested user Interaction "'
-                        + requestedUserInteractionName + '" is not defined.'];
-
-        return [true, null];
     };
 
     _p._hasExpectedAnswer = function() {
