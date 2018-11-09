@@ -180,12 +180,21 @@ const stateDefinition = {
 stateManagerMixin(_p, stateDefinition);
 
 _p.uiHandleFailedStep = function(){
-    this.log.ERROR('NOT IMPLEMENTED uiHandleFailedStep');
+    return [
+        {
+            type: 'line' // input type:text
+          , label: 'What is your reasoning?'
+        }
+      , {
+            type: 'send' // input type checkbox
+          , text: 'Let this step fail.'
+        }
+    ];
 };
 
-_p.callbackHandleFailedStep = function() {
-    this.log.ERROR('NOT IMPLEMENTED callbackHandleFailedStep');
-    this._finishedFAILED('**NOT IMPLEMENTED**md reason');
+_p.callbackHandleFailedStep = function(args) {
+    var [reason] = args;
+    this._finishedFAILED('Failing with reason: ' + reason);
 };
 
 _p.getRequestedUserInteractions = function() {

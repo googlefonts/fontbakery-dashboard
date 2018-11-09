@@ -307,8 +307,17 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
     });
 };
 
-function TODO(){}
-TODO();// def uiRetry
+_p.uiRetry = function (){
+    return [
+        {
+            type: 'send' // a button (does't have to be a <button>) that sends the form.
+          , label: 'Restart Task:'
+          , text: 'Try again!'
+          //, value: null // null is the default
+        }
+
+    ];
+};
 
 _p._failedAction = function() {
     // Maybe: if(!this._useRetryUI) return;
