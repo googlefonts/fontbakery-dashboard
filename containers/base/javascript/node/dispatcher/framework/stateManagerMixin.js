@@ -143,7 +143,10 @@ function stateManagerMixin(_p, stateDefinition) {
             // or booleans, but more complex types like steps would fail when
             // loading bad state instead, doing internal validation.
             // If we never use `validate` remove it again!
-            if('validate' in definition) {
+            if('validate' in definition && !definition.validate)
+                // this is likely a programming error
+                this.log.warning('"validate" is falsy in', key, 'of', this.constructor.name);
+            if(definition.validate) {
                 let [result, message] = definition.validate.call(this, state[key]);
                 if(!result) {
                     errorMessages.push('* ' + key + ' (validate): ' + message);
