@@ -101,8 +101,13 @@ function GenericProcess(resources, state) {
     Parent.call(this, resources, state, stepCtors, FailStepCtor, FinallyStepCtor);
 }
 
-GenericProcess.prototype = Object.create(Parent.prototype);
-GenericProcess.prototype.constructor = GenericProcess;
+const _p = GenericProcess.prototype = Object.create(Parent.prototype);
+_p.constructor = GenericProcess;
+
+_p.getRequestedUserInteractions = function() {
+    return null
+}
+
 return GenericProcess;
 })();
 
