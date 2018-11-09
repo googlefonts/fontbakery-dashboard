@@ -159,7 +159,7 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
            //         specially and also put them into a personal list:
            //               processes awaiting your attention
 
-    return this._requestUserInteraction('userInteractionFinalize', 'callbackFinalize');
+    return this._setExpectedAnswer('Finalize UI', 'callbackFinalize', 'uiFinalize');
 };
 
 _p.callbackFinalize = function(finalizeMessage) {
@@ -195,7 +195,7 @@ TODO(); // user interactions describe how to display and handle
 
 // Instead of registering these explicitly, we will look for methods
 // starting with "_userInteraction" that don't return false when called.
-_p._userInteractionFinalizeDefine = function() {
+_p.uiFinalize = function() {
     // this should be managed differently!
     // if(!this._hasPrivateData('fontbakeryResultMessage'))
     //    return false;
@@ -204,44 +204,16 @@ _p._userInteractionFinalizeDefine = function() {
     //      * a select field with the choices [FAIL, OK]
     //      * a text field with the label "Reasoning" (that can't be empty!?)
     return [
-        //new uiAPI.Select(
         {
-            type: 'select'
-          , id: 'status'
+            type: 'choice'
           , label: 'Set a final status.'
-          , select: [FAIL.toString(), OK.toString()]
+          , options: [[FAIL.toString(), FAIL.toString()], [OK.toString(), OK.toString()]]
         }
-        //)
-      //new uiAPI.Text(
       , {
-            id: 'reasoning'
-          , type: 'text'
+            type: 'line'
           , label: 'Describe your reasoning for the chosen status.'
         }
     ];
-};
-
-_p._userInteractionFinalizeReceive = function(userResponse) {
-    TODO(userResponse);
-    // Not sure where and how this was intended to be used!
-
-    // hmmm, this should maybe be just a stand alone function
-    // coupling it with a promise seems adventurous...
-    // at least if we're going to call it multiple times ...
-    // if not multiple times, we may have to delete the promise
-    // alongside with the instance of the process.
-    // so in a model where the request for a UI is decoupled from
-    // the response from the UI, e.g. another frontend server can
-    // respond.
-
-    // This is the result
-    // var finalizeMessage = new UserInteractionFontBakeryFinalize();
-    // finalizeMessage.setStatus(userResponse.state);
-    // finalizeMessage.setReasoning(userResponse.reasoning);
-    //
-    // TODO(); // _sendToProcessManager(callbackTicket, finalizeMessage);
-    //
-    // return finalizeMessage;
 };
 
 _p._activate = function() {
@@ -335,6 +307,84 @@ return DispatchStep;
 })();
 
 
+const DummyFeedbackTask = (function(){
+
+// just a placeholder to get infrastructure running before actually
+// implementing this module.
+const Parent = Task;
+function DummyFeedbackTask(step, state) {
+    Parent.call(this, step, state);
+}
+
+const _p = DummyFeedbackTask.prototype = Object.create(Parent.prototype);
+_p.constructor = DummyFeedbackTask;
+
+_p._activate = function() {
+    this._setLOG('requesting a user interaction …');
+    return this._setExpectedAnswer('Dummy UI'
+                                      , 'callbackDummyUI'
+                                      , 'uiDummyUI');
+};
+
+_p.uiDummyUI = function() {
+    return [
+        {   type:'choice' // => could be a select or a radio
+          , label: 'Pick one:'
+          , options: [['I\'m a teapot.', 'teapot'], ['I like Unicorns.', 'unicorn']]
+          , default: 'unicorn' // 0 => the first item is the default
+        }
+      , {
+            type: 'line' // input type:text
+          , label: 'What is your name?'
+        }
+      , {
+            type: 'binary' // input type checkbox
+          , label: 'Let this task fail?'
+          , default: false // false is the default
+        }
+    ];
+};
+
+_p.callbackDummyUI = function(args) {
+    this.log.debug('callbackDummyUI:', ...args);
+    var [choice, name, fail] = args
+      , choices = {
+          teapot: 'are a teapot'
+        , unicorn: 'like unicorns'
+        }
+      , strippedName = name.trim()
+      ;
+
+    if(!strippedName)
+        strippedName = '(anonymus)';
+
+    // Pretend this didn't resolve i.e. a monkey form
+    // HMM, for a monkey form, it would be nice to show the last
+    // made entries by the user again. This is probably possible
+    // with something like the virtual DOM of reactJS, would all happen
+    // in the client though!.
+    // TODO: here -> send a message to the actual client that called
+    // this method. Like: call.write('Hello from the process manager.').
+    // this is a direct anser to the client, either describing problems
+    // or just stating that all was fine-> the client will probably have
+    // a personalized log/messages window/element to render this.
+    this._setLOG('Hello '+ strippedName + ' '
+        + 'you ' + choices[choice] + ' '
+        + 'and you ' + (fail ? 'want to see the world burn' : 'will do it again')
+        + '!');
+    if(!fail)
+        return this._setExpectedAnswer('Dummy UI'
+                                      , 'callbackDummyUI'
+                                      , 'uiDummyUI');
+    else
+        this._setFAILED(strippedName + ' decided to FAIL this task.');
+};
+
+return DummyFeedbackTask;
+})();
+
+
+
 const TempTaskIntit = EmptyTask;
 
 const TempStepIntit = (function(){
@@ -345,6 +395,7 @@ const Parent = Step;
 function TempStepIntit(process, state) {
     Parent.call(this, process, state, {
         TempIntit: TempTaskIntit
+      , DummyFeedback: DummyFeedbackTask
     });
 }
 const _p = TempStepIntit.prototype = Object.create(Parent.prototype);
