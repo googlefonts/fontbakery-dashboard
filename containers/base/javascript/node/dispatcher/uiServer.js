@@ -8,6 +8,7 @@ const { _BaseServer, RootService } = require('../_BaseServer')
   , {
         ProcessListQuery
       , ProcessQuery
+      , ProcessCommand
       , ProcessCommandResult
       , DispatcherInitProcess
     } = require('protocolbuffers/messages_pb')
@@ -141,8 +142,16 @@ function ProcessUIService(server, app, logging, processManager) {
             , this._unsubscribeFromList.bind(this)
             , null);
 
+    this._server.registerSocketListener('init-dispatcher-process'
+            , this._initProcess.bind(this)
+            , null);
+
     this._server.registerSocketListener('subscribe-dispatcher-process'
             , this._subscribeToProcess.bind(this)
+            , null);
+
+    this._server.registerSocketListener('execute-dispatcher-process'
+            , this._execute.bind(this)
             , null);
 
     this._server.registerSocketListener('unsubscribe-dispatcher-process'
@@ -316,24 +325,6 @@ _p._handleAsyncGen = async function(generator, cancel, messageHandler) { // jshi
     return true;
 }; // jshint ignore:line
 
-_p._initProcess = function(initMessage) {
-    return this._processManager.initProcess(initMessage)
-        .then(processCommandResult=>{
-            this._log.debug('processCommandResult', processCommandResult);
-            var result = processCommandResult.getResult(), processId, error;
-
-            if(result === ProcessCommandResult.Result.OK) {
-                processId = processCommandResult.getMessage();
-            }
-            else {
-                error = processCommandResult.getMessage();
-                this._log.error('processCommandResult', error);
-                throw new Error(error);
-            }
-            return processId;
-        });
-};
-
 _p._initRoom = function(generator, cancel, emit, process/*optional*/) {
     var room = {
             sockets: new Set()
@@ -395,6 +386,75 @@ _p._getListRoom = function(listId) {
 
 _p._getProcessRoomId = function(processId) {
     return ['process', processId].join(':');
+};
+
+_p._initProcess = function(socket, data, answerCallback) {
+    var initMessage = new DispatcherInitProcess();
+    initMessage.setFamilyName(data.familyName);
+    //*CAUTION* don't ever use data.requster!!!
+    // requester must come from the authentication service
+    initMessage.setRequester('(this is a stub requester)');
+
+    return this._processManager.initProcess(initMessage)
+        .then(processCommandResult=>{
+            this._log.debug('processCommandResult', processCommandResult);
+            var result = processCommandResult.getResult(), processId, error;
+
+            if(result === ProcessCommandResult.Result.OK) {
+                processId = processCommandResult.getMessage();
+                answerCallback(processId, null);
+            }
+            else {
+                error = processCommandResult.getMessage();
+                this._log.error('processCommandResult', error);
+                answerCallback(null, error.message);
+                throw new Error(error); // needed???
+            }
+            return processId;
+        });
+};
+
+/**
+ * Send a command to execute in process manager.
+ *
+ * message ProcessCommand {
+ *     string ticket = 1;
+ *     string target_path = 2;
+ *     string callback_name = 3;
+ *     string requester = 4; // for authorization if needed
+ *     oneof payload {
+ *       // This way we can do better structured protobuf messages OR
+ *       // faster to initially implemented JSON.
+ *       string json_payload = 5;
+ *       google.protobuf.Any pb_payload = 6;
+ *     }
+ * }
+ */
+_p._execute = function(socket, commandData, answerCallback) {
+    var processCommand = new ProcessCommand();
+    processCommand.setTicket(commandData.ticket);
+    processCommand.setTargetPath(commandData.targetPath);
+    processCommand.setCallbackName(commandData.callbackName);
+    processCommand.setRequester('(there are no authenticated requesters yet)');
+    //processCommand.setPbPayload(anyPayload) // new Any
+    processCommand.setJsonPayload(JSON.stringify(commandData.payload));
+    return this._processManager.execute(processCommand)
+        .then(processCommandResult=>{
+            this._log.debug('processCommandResult', processCommandResult);
+            var result = processCommandResult.getResult(), message, error;
+
+            if(result === ProcessCommandResult.Result.OK) {
+                message = processCommandResult.getMessage();
+                answerCallback(message, null);
+                return true;
+            }
+            else {
+                error = processCommandResult.getMessage();
+                this._log.error('processCommandResult', error);
+                answerCallback(null, error);
+                return false;
+            }
+        });
 };
 
 _p._getProcessRoom = function(processId) {
@@ -468,18 +528,7 @@ _p._unsubscribeFromList = function(socket, data) {
 _p._subscribeToProcess = function(socket, data) {
     //jshint unused: vars
     // subscribe at processManager ...
-//    var initMessage = new DispatcherInitProcess();
-//
-//    initMessage.setFamilyName('(undefined family)');
-//    initMessage.setRequester('(this is a stub requester)');
-//
-//    this._initProcess(initMessage).then(
-//          message=>this._log.info(message)
-//        , error=>this._log.error(error)
-//    );
 
-
-    //.then(processId=>{
     this._log.info('_subscribeToProcess data:', data);
     var processId = data.processId
       , roomId = this._getProcessRoom(processId)
