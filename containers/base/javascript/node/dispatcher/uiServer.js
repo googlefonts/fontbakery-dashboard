@@ -403,14 +403,14 @@ _p._initProcess = function(socket, data, answerCallback) {
             if(result === ProcessCommandResult.Result.OK) {
                 processId = processCommandResult.getMessage();
                 answerCallback(processId, null);
+                return true;
             }
             else {
                 error = processCommandResult.getMessage();
                 this._log.error('processCommandResult', error);
                 answerCallback(null, error.message);
-                throw new Error(error); // needed???
+                return false;
             }
-            return processId;
         });
 };
 

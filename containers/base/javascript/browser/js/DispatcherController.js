@@ -72,7 +72,8 @@ define([
         );
 
         // To test if it loads (seserializes) well
-        // onInitAnswer('a9963e5b-b3fc-4b2d-9199-1856fa666e6f', null);
+        //onInitAnswer('b56d226d-8333-41e1-80da-ad973b8ab0c6', null)
+        // finished: onInitAnswer('a9963e5b-b3fc-4b2d-9199-1856fa666e6f', null);
 
         container.addEventListener('destroy', (e)=>{
             console.log('OH, Hey!, the destroy event got received by DispatcherController');
@@ -248,9 +249,9 @@ define([
           , commandData
           , function(result, error) {
                 if(error)
-                    console.error('execute backchannel error:', error);
+                    console.error('execute back channel error:', error);
                 else
-                    console.log('execute backchannel answer:', result);
+                    console.log('execute back channel answer:', result);
             }
         );
     };

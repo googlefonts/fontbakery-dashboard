@@ -111,7 +111,7 @@ _p._initProcess = function(initArgs) {
  * ProcessConstructor fails (e.g. because it's incompatible with the state)
  * a GenericProcess will be created, which should be fine for viewing but
  * has now APIs to change it's state.
- * If a GenericProcess is required, and the process is *not* finished
+ * TODO: If a GenericProcess is required, and the process is *not* finished
  * we have potentially a problem: there's no UI to close it. Thusly,
  * the one API to change it's state should be probably something to finish
  * it and potentially to start another process for that font family.
@@ -359,18 +359,26 @@ _p.execute = function(call, callback) {
     // so this command trickles down and is checked by each item on it's
     // way …
     var targetPath = Path.fromString(commandMessage.getTargetPath());
+    this._log.debug('PM.execute at targetPath:', targetPath);
     return this._getProcess(targetPath.processId)// => {process, queue}
         .then(({process, queue})=>{
             // Do we need a gate keeper? Are we allowed to perform an action on target?
             // process should be designed in a way, that it doesn't end in a
             // unrecoverable state, i.e. if the state is FUBAR, the process
-            // should be marked as failed an don't accept new commands.
+            // should be marked as failed and don't accept new commands.
             // The implementation of process is intended to take care of
             // this.
             var job = ()=>process.execute(targetPath, commandMessage);
             return queue.schedule(job)
                 // on success return promise
                 .then(
+                    // TODO: the command must be able to return a
+                    // human readable message here (and maybe some structured
+                    // data, and we'll have to forward it to the back channel
+                    // ProcessCommandResult should be extended to have:
+                    // always: the status code
+                    // maybe: structured data (JSON) (new, we use message for this right now)
+                    // maybe: a human readable message
                     ()=>process
                   , error=>{
                         this._log.error(error, 'targetPath: ' + targetPath);
@@ -400,7 +408,7 @@ _p.execute = function(call, callback) {
         )
         .then(([result, error])=>{
             var message = new ProcessCommandResult();
-            if(result) {
+            if(!error) {
                 message.setResult(ProcessCommandResult.Result.OK);
                 message.setMessage('All good!');
             }

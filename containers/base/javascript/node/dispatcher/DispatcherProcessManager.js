@@ -46,6 +46,32 @@ _p._examineProcessInitMessage = function(initMessage) {
 // The superclass will check this :-)
 _p._examineProcessInitMessage.expectedArgumentType = DispatcherInitProcess;
 
+
+/**
+ * What are the basics that we want to query:
+ *      - all processes for a family
+ *      - closed/pending/failed processes
+ *      - processes with pending user interactions
+ *      - processes with pending user interactions, that can be answered
+ *        by the authenticated user (role based, where one role is e.g
+ *        maintainer:creepster for special cases ...)
+ *
+ *      - order by last change date
+ *      - order by creation
+ *      - (more?)
+ *      - it should be possible to combine most of the the above!
+ *
+ *      Do this together with the caching strategy. It's questionable if
+ *      we want to go via the Database at all for some of these queries
+ *      if the state of the ProcessManager is the canonical state, or,
+ *      if using the DB can be fine.
+ *      It should be fine to use the DB change feed for lists, as the
+ *      process manager put's changes immediately into the persistence
+ *      layer. The DB has good options to query, even for live feeds
+ *      the interface should be superior than what reasonably can be
+ *      implemented in the process manager.
+ *
+ */
 _p.subscribeProcessList = function(call) {
     var processListQuery = call.request
       , unsubscribe = ()=> {
