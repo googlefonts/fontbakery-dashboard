@@ -13,6 +13,6 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker-distributor
-        image: gcr.io/fontbakery-168509/base-python:31
+        image: gcr.io/fontbakery-168509/base-python:32
         workingDir: /var/python
         command: ["python3",  "-u", "fontbakery-worker-distributor.py"]

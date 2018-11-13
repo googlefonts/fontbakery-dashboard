@@ -1,7 +1,7 @@
 # bionic == 18.04 LTS
 FROM ubuntu:bionic
 
-RUN touch /tmp/cache_spoof_2
+RUN touch /tmp/cache_spoof_1
 
 
 # START TZCONFIG FIX suggested in:
@@ -33,7 +33,7 @@ RUN rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y software-properties-common \
     && apt-get update \
-    && apt-get install -y curl mono-complete libicu-dev \
+    && apt-get install -y curl libicu-dev \
                           fontforge-nox python-fontforge git build-essential \
                           libssl-dev libffi-dev python-dev libxmlsec1-dev \
                           libxml2 libxml2-dev tzdata  python3-minimal;
@@ -67,18 +67,15 @@ RUN touch /tmp/cache_spoof_18
 # FIXME: doesn't install all dependencies!
 # RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
 
+#RUN git clone --depth 1 -b p3_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
 #RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
-RUN git clone --depth 1 -b p3_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
-    pip install /var/fontbakery;
+#    pip install /var/fontbakery;
 
-RUN cp -r /var/fontbakery/prebuilt/ots-sanitize /bin/ots-sanitize; \
-    echo "#! /bin/bash"  > /bin/ftxvalidator; \
+RUN pip install fontbakery;
+
+RUN echo "#! /bin/bash"  > /bin/ftxvalidator; \
     echo ">&2 echo 'ftxvalidator is not available!'; exit 1" >> /bin/ftxvalidator; \
-    chmod +x /bin/ftxvalidator; \
-    echo "#! /bin/bash"  > /bin/FontValidator.exe; \
-    echo "mono /var/fontbakery/prebuilt/fval/FontValidator.exe \$@" >> /bin/FontValidator.exe; \
-    chmod +x /bin/FontValidator.exe; \
-    echo 'export LD_PRELOAD=/var/fontbakery/prebuilt/custom_freetype/lib/libfreetype.so' >> ~/.bashrc;
+    chmod +x /bin/ftxvalidator;
 
 RUN touch /tmp/cache_spoof_2
 
