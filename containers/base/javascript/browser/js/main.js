@@ -202,6 +202,30 @@ define([
         onQueryFilterChange();
     }
 
+    function DispatcherController(container, templatesContainer, data) {
+        //jshint unused:vars
+
+        var l = null, p = null;
+
+        this.onChange = function(data) {
+            if(data[0] === 'p')
+                p = data
+            else l = data;
+            container.innerHTML = [l,p].join('<br />')
+        };
+    }
+    function initDispatcher(data) {
+        var container = activateTemplate('dispatcher-interface')
+         , templatesContainer = getTemplatesContainer('dispatcher-templates')
+         , socket = socketio('/')
+         , dispatcher = new DispatcherController(container, templatesContainer, data)
+         ;
+        socket.on('changes-dispatcher-list', dispatcher.onChange.bind(dispatcher));
+        socket.on('changes-dispatcher-process', dispatcher.onChange.bind(dispatcher));
+        socket.emit('subscribe-dispatcher-list', {});
+        socket.emit('subscribe-dispatcher-process', {});
+    }
+
     function getInterfaceMode() {
         var data = null
           , defaultMode = 'drag-and-drop'
@@ -220,6 +244,7 @@ define([
               , 'collection-report': initCollectionReportInterface
               , 'drag-and-drop': initDNDSendingInterface
               , 'dashboard': initDashboard
+              , 'dispatcher': initDispatcher
             }
           ;
         mode = defaultMode;

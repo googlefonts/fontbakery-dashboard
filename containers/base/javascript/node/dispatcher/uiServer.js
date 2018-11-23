@@ -129,6 +129,8 @@ function ProcessUIService(server, app, logging, processManager) {
     this._server.registerSocketListener('subscribe-dispatcher-process'
             , this._subscribeToProcess.bind(this)
             , this._unsubscribeFromProcess.bind(this));
+
+    this._socketSubscriptions = new Map();
 }
 
 var _p = ProcessUIService.prototype;
@@ -277,10 +279,40 @@ _p._subscribeProcess = function(socket, data) {
  */
 _p._subscribeToList = function(socket, data){
     //jshint unused: vars
+    var listId = 'TODO'
+      , key = [socket.id, 'list', listId].join(':')
+      , interval
+      ;
+
+    if(this._socketSubscriptions.has(key))
+        return;
+
+    interval = setInterval(()=>socket.emit(
+                'changes-dispatcher-list'
+                , 'list .... ' + new Date().toISOString())
+    , 1000);
+
+    this._socketSubscriptions.set(key, ()=>{
+        console.log('clearInterval for listId', listId);
+        clearInterval(interval);
+    });
 };
 
 _p._unsubscribeFromList = function(socket){
     //jshint unused: vars
+    this._log.info('Unsubscribe from List:', socket.id);
+    var listId = 'TODO'
+      , key = [socket.id, 'list', listId].join(':')
+      ;
+    if(!this._socketSubscriptions.has(key))
+        return;
+
+    try {
+        this._socketSubscriptions.get(key)();
+    }
+    finally {
+        this._socketSubscriptions.delete(key);
+    }
 };
 
 /**
@@ -288,14 +320,42 @@ _p._unsubscribeFromList = function(socket){
  */
 _p._subscribeToProcess = function(socket, data){
     //jshint unused: vars
+    // subscribe at processManager ...
+    var processId = 'TODO'
+      , key = [socket.id, 'process', processId].join(':')
+      , interval
+      ;
 
-    // subscribe at processManager
+    if(this._socketSubscriptions.has(key))
+        return;
+
+    interval = setInterval(()=>socket.emit(
+                'changes-dispatcher-process'
+                , 'process .... ' + new Date().toISOString())
+    , 1000);
+
+    this._socketSubscriptions.set(key, ()=>{
+        console.log('clearInterval for processId', processId);
+        clearInterval(interval);
+    });
 };
 
-_p._unsubscribeFromProcess = function(socket){
-    //jshint unused: vars
-
+_p._unsubscribeFromProcess = function(socket) {
+    // jshint unused: vars
     // hang up at processManager
+    this._log.info('Unsubscribe from Process:', socket.id);
+    var processId = 'TODO'
+      , key = [socket.id, 'process', processId].join(':')
+      ;
+    if(!this._socketSubscriptions.has(key))
+        return;
+
+    try {
+        this._socketSubscriptions.get(key)();
+    }
+    finally {
+        this._socketSubscriptions.delete(key);
+    }
 };
 
 // !Plan here!
