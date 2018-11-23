@@ -1,8 +1,6 @@
 #! /usr/bin/env node
 "use strict";
-// this is expected to run in nodejs
-/* global require */
-/* jshint esnext:true */
+/* jshint esnext:true, node:true */
 
 const express = require('express')
   , http = require('http')
