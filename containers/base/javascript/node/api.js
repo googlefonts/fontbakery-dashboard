@@ -103,13 +103,13 @@ function DashboardAPIService(server, app, logging,  io, cache, reports) {
     this._app.get('/status-report/:id', this.fbStatusReport.bind(this));
 
     this.registerSocketListener('subscribe-report'
-            , _p._subscribeToFamilytestReport/* , no unsubscribe! */);
+            , this._subscribeToFamilytestReport.bind(this)/* , no disconnect! */);
     this.registerSocketListener('subscribe-collection'
             , this._subscribeToCollectionReport.bind(this)
-            , this._unsubscribeFromCollections.bind(this));
+            , this._disconectFromCollections.bind(this));
     this.registerSocketListener('subscribe-dashboard'
             , this._subscribeToDashboard.bind(this)
-            , this._unsubscribeFromDashboard.bind(this));
+            , this._disconnectFromDashboard.bind(this));
 
 
 }
@@ -866,7 +866,7 @@ _p._makeCollectionConsumer = function(socket) {
  *              and then delete it
  *      and then delete it
  */
-_p._unsubscribeFromCollections = function(socket) {
+_p._disconectFromCollections = function(socket) {
     var socketId = socket.id
       , consumer = this._collectionConsumers.get(socketId)
       ;
@@ -964,7 +964,7 @@ _p._subscribeToCollectionReport = function(socket, data) {
     this._sendInitialCollectionSubscription(collectionId, socket.id);
 };
 
-_p._unsubscribeFromDashboard = function(socket) {
+_p._disconnectFromDashboard = function(socket) {
     var socketId = socket.id
       , consumers, consumer;
 
@@ -1068,7 +1068,7 @@ _p._subscribeToDashboard = function(socket, data) {
     if(consumer) {
         // is already subscribed ... ?
         // reset the consumer: unsbscribe all
-        // also this is what we to do on a hang up, see _unsubscribeFromDashboard
+        // also this is what we to do on a hang up, see _disconnectFromDashboard
         consumer.unsubscribe_callbacks.forEach(unsubscribe => unsubscribe());
         consumer.unsubscribe_callbacks = new Map();
     }

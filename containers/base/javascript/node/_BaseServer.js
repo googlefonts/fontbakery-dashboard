@@ -205,28 +205,32 @@ _p._socketOnSubscribe = function(socket, eventName, handler, data) {
     handler.call(this, socket, data);
 };
 
-_p._socketOnDisconnect = function(socket, eventName, handler, reason) {
-    this._log.debug('socket:', socket.id
+_p._socketOnDisconnect = function(socket, reason) {
+    for(let [eventName, , disconnectHandler] of this._socketListeners) {
+        if(!disconnectHandler)
+            continue;
+        this._log.debug('socket:', socket.id
                         , 'disconnecting from:', eventName
                         , 'reason:', reason);
-    handler.call(this, socket);
+        disconnectHandler.call(this, socket);
+    }
 };
 
 
-_p._subscribeToSocketEvent = function(socket, eventName
-                                    , eventHandler, disconnectHandler) {
+_p._subscribeToSocketEvent = function(socket, eventName, eventHandler) {
     socket.on(eventName, data=>this._socketOnSubscribe(
                 socket, eventName, eventHandler, data));
-    if(disconnectHandler)
-        socket.on('disconnecting',reason=>this._socketOnDisconnect(
-                socket, eventName, disconnectHandler, reason));
 };
 
 _p._onSocketConnect = function(socket) {
     // wait for docid request ...
     // extracting [HEAD, ...TAIL] from the values of this._socketListeners
-    for(let [eventName, ...handlers] of this._socketListeners)
-        this._subscribeToSocketEvent(socket, eventName, ...handlers);
+    for(let [eventName, eventHandler, ] of this._socketListeners) {
+        if(!eventHandler)
+            continue;
+        this._subscribeToSocketEvent(socket, eventName, eventHandler);
+    }
+    socket.on('disconnecting',reason=>this._socketOnDisconnect(socket, reason));
 };
 
 function RootService(server, app, logging) {
