@@ -539,7 +539,7 @@ _p.fbSocketConnect = function(socket) {
  *      close changefeed
  */
 _p._updateFamilytestReport = function(cursor, socket, data) {
-    var channel = 'changes';
+    var channel = 'changes-report';
     socket.emit(channel, data);
     // This is a simple familytest subscription, we don't organize these
     // to talk to multiple sockets yet. Even if we did, the reason for
@@ -871,7 +871,7 @@ _p._primeCollectionSubscription = function(collectionId) {
 _p._sendCollectionDocChange = function(collectionId, family_name) {
     var collectionSubscription = this._collectionSubscriptions.get(collectionId)
       , doc = collectionSubscription.documents.get(family_name)
-      , channel = 'changes'
+      , channel = 'changes-collection'
       ;
     collectionSubscription.consumers.forEach(socketId => {
         let consumer = this._collectionConsumers.get(socketId);
@@ -882,7 +882,7 @@ _p._sendCollectionDocChange = function(collectionId, family_name) {
 _p._sendInitialCollectionSubscription = function(collectionId, socketId) {
     var collectionSubscription = this._collectionSubscriptions.get(collectionId)
       , consumer = this._collectionConsumers.get(socketId)
-      , channel = 'changes'
+      , channel = 'changes-collection'
       ;
     // if there is any data, it is ready to emit!
     for(let [/*family_name*/, doc] of collectionSubscription.documents)
@@ -1067,7 +1067,7 @@ _p._updateDashboardCollectionDoc = function(isPriming, doc) {
 };
 
 _p._sendToDashboardConsumer = function(consumer, collectiontest_data) {
-    var channel = 'changes'
+    var channel = 'changes-dashboard'
       , familytests_id = collectiontest_data.familytests_id
       ;
 
