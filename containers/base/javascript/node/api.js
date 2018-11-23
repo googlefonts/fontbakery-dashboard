@@ -1154,7 +1154,6 @@ if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.info('Init server ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    setup.logging.debug('Loglevel', setup.logging.loglevel);
     // storing in global scope, to make it available for inspection
     // in the debugger.
     global.server = new Server(setup.logging, 3000, setup.amqp, setup.db
