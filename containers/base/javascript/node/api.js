@@ -80,6 +80,9 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup
     }.bind(this));
 
     var serveStandardClient = this.fbIndex.bind(this);
+    Object.defineProperty(this, 'serveStandardClient', {
+        value: serveStandardClient
+    });
 
     // the client decides what to serve here as default
     this._app.get('/', serveStandardClient);
@@ -118,10 +121,22 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup
     // status report document (client renders into html for now);
     this._app.get('/status-report/:id', this.fbStatusReport.bind(this));
 
+    this._socketListeners = [];
+    this.registerSocketListener('subscribe-report'
+            , _p._subscribeToFamilytestReport/* , no unsubscribe! */);
+    this.registerSocketListener('subscribe-collection'
+            , _p._subscribeToCollectionReport, _p._unsubscribeFromCollections);
+    this.registerSocketListener('subscribe-dashboard'
+            , _p._unsubscribeFromDashboard, _p._unsubscribeFromDashboard);
+
     this._sio.on('connection', this.fbSocketConnect.bind(this));
 }
 
 var _p = Server.prototype;
+
+_p.registerSocketListener = function(eventName, eventHandler, disconnectHandler){
+    this._socketListeners.push(eventName, eventHandler, disconnectHandler);
+};
 
 _p._listen = function() {
     this._server.listen(this._portNum);
@@ -489,40 +504,42 @@ _p.fbDNDReceive = function(req, res, next) {
  * this._sio.on('connection', this.fbSocketConnect.bind(this));
  *
  */
+_p._socketOnSubscribe = function(socket, eventName, handler, data){
+    this._log.info('fbSocketConnect socket', socket.id ,'subscription '
+                                        + 'requested for', eventName, data);
+    if(typeof data.id !== 'string')
+        // this is actually required (historically)
+        // ??? why can't we fix this with an error?
+        // and at the position where data.id is actually needed/evaluated?
+        data.id = '';
+    handler.call(this, socket, data);
+};
+
+_p._socketOnDisconnect = function(socket, eventName, handler, reason) {
+    this._log.debug('socket:', socket.id
+                        , 'disconnecting from:', eventName
+                        , 'reason:', reason);
+    handler.call(this, socket);
+};
+
+
+_p._subscribeToSocketEvent = function(socket, eventName
+                                    , eventHandler, disconnectHandler) {
+    socket.on(eventName, data=>this._socketOnSubscribe(
+                socket, eventName, eventHandler, data));
+    if(disconnectHandler)
+        socket.on('disconnecting',reason=>this._socketOnDisconnect(
+                socket, eventName, disconnectHandler, reason));
+};
+
 _p.fbSocketConnect = function(socket) {
     // wait for docid request ...
-    function onSubscribe(type, data) {
-        //jshint validthis: true
-        this._log.info('fbSocketConnect socket', socket.id ,'subscription '
-                                            + 'requested for', type, data);
-
-        if(typeof data.id !== 'string')
-            // this is actually required
-            data.id = '';
-        if(type === 'report')
-            this._subscribeToFamilytestReport(socket, data);
-        else if(type === 'collection') {
-            this._subscribeToCollectionReport(socket, data);
-            // do this only once on connect.
-            socket.on('disconnecting', (reason) => {
-                // jshint unused:vars
-                this._log.debug('socket', socket.id ,'disconnecting from collections');
-                this._unsubscribeFromCollections(socket.id);
-            });
-        }
-        else if(type === 'dashboard') {
-            this._subscribeToDashboard(socket, data);
-            socket.on('disconnecting', (reason) => {
-                // jshint unused:vars
-                this._log.debug('socket', socket.id ,'disconnecting from dashboard');
-                this._unsubscribeFromDashboard(socket.id);
-            });
-        }
-    }
-    socket.on('subscribe-report', data => onSubscribe.call(this, 'report', data));
-    socket.on('subscribe-collection', data => onSubscribe.call(this, 'collection', data));
-    socket.on('subscribe-dashboard', data => onSubscribe.call(this, 'dashboard', data));
+    // extracting [HEAD, ...TAIL] from the values of this._socketListeners
+    for(let [eventName, ...handlers] of this._socketListeners)
+        this._subscribeToSocketEvent(socket, eventName, ...handlers);
 };
+
+
 
 /**
  *  rethink chnangefeed
@@ -549,6 +566,17 @@ _p._updateFamilytestReport = function(cursor, socket, data) {
          // but currentltly the client is only subscribed to one of
          // this kind at a time.
         this._closeCursor(cursor);
+        // FIXME: we'll use the socket for different channels
+        // so, a socket will probably need a counter of users,
+        // if users is zero, we can disconnect.
+        // We should be using "namespaces" and close=false
+        // because: "close (Boolean) whether to close the underlying connection
+        //           [...]
+        //           Disconnects this client. If value of close is true,
+        //           closes the underlying connection. Otherwise, it just
+        //           disconnects the namespace.
+        //           "
+        // from: https://socket.io/docs/server-api/#socket-disconnect-close
         var close=true;
         socket.disconnect(close);
     }
@@ -562,8 +590,13 @@ _p._subscribeToFamilytestReport = function(socket, data) {
         .get(data.id + '')
         .changes({includeInitial: true, squash: 1})
         .run((err, cursor) => {
-            if(err)
+            if(err) {
+                // FIXME: see socket.disconnect in this._updateFamilytestReport
+                socket.disconnect(true);
                 this._raiseUnhandledError('Can\'t acquire change feed.', err);
+            }
+            // got a cursor
+            socket.on('disconnecting', (/*reason*/)=>this._closeCursor(cursor));
             cursor.each((err, data) => {
                 if(err)
                     this._raiseUnhandledError('Change feed cursor error:', err);
@@ -932,8 +965,10 @@ _p._makeCollectionConsumer = function(socket) {
  *              and then delete it
  *      and then delete it
  */
-_p._unsubscribeFromCollections = function(socketId) {
-    var consumer = this._collectionConsumers.get(socketId);
+_p._unsubscribeFromCollections = function(socket) {
+    var socketId = socket.id
+      , consumer = this._collectionConsumers.get(socketId)
+      ;
     for(let collectionId of consumer.subscriptions)
         this._unsubscribeFromCollection(socketId, collectionId);
 };
@@ -1028,8 +1063,9 @@ _p._subscribeToCollectionReport = function(socket, data) {
     this._sendInitialCollectionSubscription(collectionId, socket.id);
 };
 
-_p._unsubscribeFromDashboard = function(socketId) {
-    var consumers, consumer;
+_p._unsubscribeFromDashboard = function(socket) {
+    var socketId = socket.id
+      , consumers, consumer;
 
     if(!this._dashboardSubscription)
         return;
