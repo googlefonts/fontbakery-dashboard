@@ -21,6 +21,7 @@
   "dependencies": {
     "requirejs": "~2.3.2",
     "marked": "~0.3.4",
-    "jiff": "~0.7.3"
+    "jiff": "~0.7.3",
+    "ansi_up": "https://github.com/drudru/ansi_up.git"
   }
 }

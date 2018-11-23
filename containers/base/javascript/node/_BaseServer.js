@@ -156,7 +156,7 @@ _p._listen = function() {
 };
 
 _p.registerSocketListener = function(eventName, eventHandler, disconnectHandler){
-    this._socketListeners.push(eventName, eventHandler, disconnectHandler);
+    this._socketListeners.push([eventName, eventHandler, disconnectHandler]);
 };
 
 /**
