@@ -74,6 +74,61 @@ function deserialize_fontbakery_dashboard_PokeRequest(buffer_arg) {
   return messages_pb.PokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_ProcessCommand(arg) {
+  if (!(arg instanceof messages_pb.ProcessCommand)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ProcessCommand');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ProcessCommand(buffer_arg) {
+  return messages_pb.ProcessCommand.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_ProcessList(arg) {
+  if (!(arg instanceof messages_pb.ProcessList)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ProcessList');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ProcessList(buffer_arg) {
+  return messages_pb.ProcessList.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_ProcessListQuery(arg) {
+  if (!(arg instanceof messages_pb.ProcessListQuery)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ProcessListQuery');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ProcessListQuery(buffer_arg) {
+  return messages_pb.ProcessListQuery.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_ProcessQuery(arg) {
+  if (!(arg instanceof messages_pb.ProcessQuery)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ProcessQuery');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ProcessQuery(buffer_arg) {
+  return messages_pb.ProcessQuery.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_ProcessState(arg) {
+  if (!(arg instanceof messages_pb.ProcessState)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ProcessState');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_ProcessState(buffer_arg) {
+  return messages_pb.ProcessState.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_Report(arg) {
   if (!(arg instanceof messages_pb.Report)) {
     throw new Error('Expected argument of type fontbakery.dashboard.Report');
@@ -260,3 +315,48 @@ var ReportsService = exports.ReportsService = {
 
 exports.ReportsClient = grpc.makeGenericClientConstructor(ReportsService);
 // Provides interfaces to read the data, get listings/filter.
+// The Process Manager service ...
+//
+var ProcessManagerService = exports.ProcessManagerService = {
+  // returns the current Process state initially and on each change of
+  // the Process state a new Process
+  subscribeProcess: {
+    path: '/fontbakery.dashboard.ProcessManager/subscribeProcess',
+    requestStream: false,
+    responseStream: true,
+    requestType: messages_pb.ProcessQuery,
+    responseType: messages_pb.ProcessState,
+    requestSerialize: serialize_fontbakery_dashboard_ProcessQuery,
+    requestDeserialize: deserialize_fontbakery_dashboard_ProcessQuery,
+    responseSerialize: serialize_fontbakery_dashboard_ProcessState,
+    responseDeserialize: deserialize_fontbakery_dashboard_ProcessState,
+  },
+  // returns the ProcessList for the current query and then an updated
+  // ProcessList when the list changes.
+  subscribeProcessList: {
+    path: '/fontbakery.dashboard.ProcessManager/subscribeProcessList',
+    requestStream: false,
+    responseStream: true,
+    requestType: messages_pb.ProcessListQuery,
+    responseType: messages_pb.ProcessList,
+    requestSerialize: serialize_fontbakery_dashboard_ProcessListQuery,
+    requestDeserialize: deserialize_fontbakery_dashboard_ProcessListQuery,
+    responseSerialize: serialize_fontbakery_dashboard_ProcessList,
+    responseDeserialize: deserialize_fontbakery_dashboard_ProcessList,
+  },
+  // issue a state change for a Process. `ticket` will be used to make
+  // sure only expected commands are executed.
+  execute: {
+    path: '/fontbakery.dashboard.ProcessManager/execute',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.ProcessCommand,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_fontbakery_dashboard_ProcessCommand,
+    requestDeserialize: deserialize_fontbakery_dashboard_ProcessCommand,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+};
+
+exports.ProcessManagerClient = grpc.makeGenericClientConstructor(ProcessManagerService);

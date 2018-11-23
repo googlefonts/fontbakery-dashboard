@@ -219,7 +219,7 @@ _p.subscribeList = function(call){
     // MAYBE: hat renewing seems a bit overcomplicated. The subscription
     // can also just end when the client hangs up and the call is ended.
     // we still need no extra unsubscribe call.
-}
+};
 
 // Interestingly, the User Interface will be based on the Font Family
 // not on the Proess. Similarly, the Fontbakery reports should not be
@@ -237,4 +237,4 @@ _p.subscribeProcess = function(call) {
     // send an initial process directly
 
 
-}
+};

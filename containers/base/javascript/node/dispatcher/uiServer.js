@@ -5,6 +5,7 @@
 /* jshint esnext:true */
 
 const { _BaseServer, RootService } = require('../_BaseServer')
+  , { ProcessListQuery, ProcessQuery } = require('protocolbuffers/messages_pb')
   ;
 
 /**
@@ -104,7 +105,7 @@ const Server = (function() {
 function Server(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
-      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log'/* TODO, 'dispatcher' */]]
+      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher']]
     ];
     _BaseServer.call(this, ...args);
 }
@@ -318,27 +319,31 @@ _p._unsubscribeFromList = function(socket){
 /**
  * socket event 'subscribe-dispatcher-process'
  */
-_p._subscribeToProcess = function(socket, data){
+_p._subscribeToProcess = async function(socket, data){ // jshint ignore:line
     //jshint unused: vars
     // subscribe at processManager ...
     var processId = 'TODO'
       , key = [socket.id, 'process', processId].join(':')
-      , interval
+      , processQuery = new ProcessQuery()
       ;
 
+    processQuery.setProcessId(processId);
+    if(false) new ProcessListQuery();
+
+
+    /* jshint ignore:start */
+    // Code here will be ignored by JSHint.
+    for await(let processState of this._processManager.subscribeProcess(processQuery)) {
+        socket.emit('changes-dispatcher-process', 'process !!!! ' + processState.getProcessId());
+    }
+    /* jshint ignore:end */
     if(this._socketSubscriptions.has(key))
         return;
 
-    interval = setInterval(()=>socket.emit(
-                'changes-dispatcher-process'
-                , 'process .... ' + new Date().toISOString())
-    , 1000);
-
     this._socketSubscriptions.set(key, ()=>{
-        console.log('clearInterval for processId', processId);
-        clearInterval(interval);
+        console.log('FIXME: unsubscribe from gRPC subscription call for processId', processId);
     });
-};
+}; // jshint ignore:line
 
 _p._unsubscribeFromProcess = function(socket) {
     // jshint unused: vars
@@ -547,5 +552,7 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.log('Loglevel', setup.logging.loglevel);
     // storing in global scope, to make it available for inspection
     // in the debugger.
+    setup = Object.create(setup);
+    setup.dispatcher ={host: '127.0.0.1', port: '1234'};
     global.server = new Server(setup.logging, 3000, setup);
 }

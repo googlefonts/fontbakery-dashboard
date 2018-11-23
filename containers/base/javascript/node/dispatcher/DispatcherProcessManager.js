@@ -7,7 +7,8 @@ const { ProcessManager } = require('./dispatcher/framework/ProcessManager')
   ;
 
 if (typeof require != 'undefined' && require.main==module) {
-    var setup = getSetup(), processManager, port=50051;
+    var { getSetup } = require('../util/getSetup')
+      , setup = getSetup(), processManager, port=50051;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
         if(process.argv[i] === '-p' && i+1<l) {

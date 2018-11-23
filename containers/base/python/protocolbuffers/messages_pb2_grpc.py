@@ -239,3 +239,84 @@ def add_ReportsServicer_to_server(servicer, server):
   generic_handler = grpc.method_handlers_generic_handler(
       'fontbakery.dashboard.Reports', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
+
+
+class ProcessManagerStub(object):
+  """The Process Manager service ...
+
+  """
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.subscribeProcess = channel.unary_stream(
+        '/fontbakery.dashboard.ProcessManager/subscribeProcess',
+        request_serializer=messages__pb2.ProcessQuery.SerializeToString,
+        response_deserializer=messages__pb2.ProcessState.FromString,
+        )
+    self.subscribeProcessList = channel.unary_stream(
+        '/fontbakery.dashboard.ProcessManager/subscribeProcessList',
+        request_serializer=messages__pb2.ProcessListQuery.SerializeToString,
+        response_deserializer=messages__pb2.ProcessList.FromString,
+        )
+    self.execute = channel.unary_unary(
+        '/fontbakery.dashboard.ProcessManager/execute',
+        request_serializer=messages__pb2.ProcessCommand.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
+
+
+class ProcessManagerServicer(object):
+  """The Process Manager service ...
+
+  """
+
+  def subscribeProcess(self, request, context):
+    """returns the current Process state initially and on each change of
+    the Process state a new Process
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def subscribeProcessList(self, request, context):
+    """returns the ProcessList for the current query and then an updated
+    ProcessList when the list changes.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def execute(self, request, context):
+    """issue a state change for a Process. `ticket` will be used to make
+    sure only expected commands are executed.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_ProcessManagerServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'subscribeProcess': grpc.unary_stream_rpc_method_handler(
+          servicer.subscribeProcess,
+          request_deserializer=messages__pb2.ProcessQuery.FromString,
+          response_serializer=messages__pb2.ProcessState.SerializeToString,
+      ),
+      'subscribeProcessList': grpc.unary_stream_rpc_method_handler(
+          servicer.subscribeProcessList,
+          request_deserializer=messages__pb2.ProcessListQuery.FromString,
+          response_serializer=messages__pb2.ProcessList.SerializeToString,
+      ),
+      'execute': grpc.unary_unary_rpc_method_handler(
+          servicer.execute,
+          request_deserializer=messages__pb2.ProcessCommand.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'fontbakery.dashboard.ProcessManager', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))

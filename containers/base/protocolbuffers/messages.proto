@@ -177,3 +177,49 @@ message ReportsQuery {
 message ReportIds {
     repeated string ids = 1;
 }
+
+// The Process Manager service ...
+
+service ProcessManager {
+  // returns the current Process state initially and on each change of
+  // the Process state a new Process
+  rpc subscribeProcess (ProcessQuery) returns (stream ProcessState) {};
+  // returns the ProcessList for the current query and then an updated
+  // ProcessList when the list changes.
+  rpc subscribeProcessList (ProcessListQuery) returns (stream ProcessList) {};
+  // issue a state change for a Process. `ticket` will be used to make
+  // sure only expected commands are executed.
+  rpc execute (ProcessCommand) returns (google.protobuf.Empty) {};
+}
+
+message ProcessQuery {
+    string process_id = 1;
+}
+
+message ProcessState {
+  string process_id = 1;
+  // TODO ...
+  // This will also have to contain required user interaction descriptions
+  // i.e. a structure that allows us to build forms for user interactions
+}
+
+message ProcessListQuery {
+    string query = 1;// TODO!
+}
+
+message ProcessListItem {
+  string process_id = 1;
+  // TODO ...
+}
+
+message ProcessList {
+    // TODO!
+    repeated ProcessListItem processes = 6;
+}
+
+message ProcessCommand {
+    string ticket = 1;
+    string target_path = 2;
+    string callback_name = 3;
+    string payload = 4;
+}
