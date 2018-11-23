@@ -5,7 +5,12 @@
 /* jshint esnext:true */
 
 const { _BaseServer, RootService } = require('../_BaseServer')
-  , { ProcessListQuery, ProcessQuery } = require('protocolbuffers/messages_pb')
+  , {
+        ProcessListQuery
+      , ProcessQuery
+      , ProcessCommandResult
+      , DispatcherInitProcess
+    } = require('protocolbuffers/messages_pb')
   ;
 
 /**
@@ -124,14 +129,29 @@ function ProcessUIService(server, app, logging, processManager) {
     this._processManager = processManager;
 
     this._app.get('/', this._server.serveStandardClient);
+
+    this._sockets = new Map();
+    this._rooms = new Map();
+
     this._server.registerSocketListener('subscribe-dispatcher-list'
             , this._subscribeToList.bind(this)
-            , this._unsubscribeFromList.bind(this));
+            , null);
+
+    this._server.registerSocketListener('unsubscribe-dispatcher-list'
+            , this._unsubscribeFromList.bind(this)
+            , null);
+
     this._server.registerSocketListener('subscribe-dispatcher-process'
             , this._subscribeToProcess.bind(this)
-            , this._unsubscribeFromProcess.bind(this));
+            , null);
 
-    this._socketSubscriptions = new Map();
+    this._server.registerSocketListener('unsubscribe-dispatcher-process'
+            , this._unsubscribeFromProcess.bind(this)
+            , null);
+
+    this._server.registerSocketListener('disconnect-dispatcher-socket'
+            , null
+            , this._disconnectFromRooms.bind(this));
 }
 
 var _p = ProcessUIService.prototype;
@@ -283,14 +303,135 @@ _p._handleAsyncGen = async function(generator, cancel, messageHandler) { // jshi
     /* jshint ignore:end */
     }
     catch(error) {
-        if(error.code !== this._processManager.statusCANCELLED) //expected
+        // statusCANCELLED is expected
+        if(error.code !== this._processManager.statusCANCELLED) {
             this._log.error('generator', error);
+            throw error;
+        }
     }
     finally {
         // make sure to close the resource
         cancel();
     }
+    return true;
 }; // jshint ignore:line
+
+_p._initProcess = function(initMessage) {
+    return this._processManager.initProcess(initMessage)
+        .then(processCommandResult=>{
+            this._log.debug('processCommandResult', processCommandResult);
+            var result = processCommandResult.getResult(), processId, error;
+
+            if(result === ProcessCommandResult.Result.OK) {
+                processId = processCommandResult.getMessage();
+            }
+            else {
+                error = processCommandResult.getMessage();
+                this._log.error('processCommandResult', error);
+                throw new Error(error);
+            }
+            return processId;
+        });
+};
+
+_p._initRoom = function(generator, cancel, emit) {
+    var room = {
+            sockets: new Set()
+          , cancel: cancel
+          , lastMessage: null
+          , emit: emit
+        }
+      , messageHandler = (message)=>{
+            room.lastMessage = message;
+            for(let socketId of room.sockets) {
+                let socket = this._sockets.get(socketId).socket;
+                room.emit(socket, message);
+            }
+        }
+      ;
+    // ALLRIGHT! when the process is not found or there's any other
+    // error the second handler is called! Thus we should use this
+    // to tell the client about the misfortune of not being able
+    // to enter/open/stay in/init the room!
+    //
+    // also, generally, when the generator ends, this will be informed
+    // via the result handler. I.e. the processManager can just
+    // hang up using `call.end()`
+    this._handleAsyncGen(generator, cancel, messageHandler).then(
+        (...args)=>console.log('!!!!Well ended generator:', args)
+      , (...args)=> console.log('¡¡¡¡Exceptionally ended generator:', args)
+    );
+    return room;
+};
+
+_p._getListRoomId = function(listId){
+    return ['list', listId].join(':');
+};
+
+_p._getListRoom = function(listId) {
+    var roomId = this._getListRoomId(listId)
+      , room = this._rooms.get(roomId)
+      ;
+    if(!room) {
+        let processListQuery = new ProcessListQuery();
+        processListQuery.setQuery(listId);
+        let { generator, cancel } = this._processManager.subscribeProcessList(processListQuery)
+            // TODO: this will need more effort
+          , emit = (socket, message)=>socket.emit('changes-dispatcher-list'
+                        , 'list !!!!!! ' + message.getProcessesList()
+                              //=> [instances of ProcessListItem]
+                              .map(processListItem=>processListItem.getProcessId())
+                              .join('///'))
+          ;
+        room = this._initRoom(generator, cancel, emit);
+        this._rooms.set(roomId, room);
+    }
+    return roomId;
+};
+
+_p._getProcessRoomId = function(processId) {
+    return ['process', processId].join(':');
+};
+
+_p._getProcessRoom = function(processId) {
+    var roomId = this._getProcessRoomId(processId)
+      , room = this._rooms.get(roomId)
+      ;
+    if(!room) {
+        let processQuery = new ProcessQuery();
+        processQuery.setProcessId(processId);
+        let { generator, cancel } = this._processManager.subscribeProcess(processQuery)
+            // TODO: this will need more effort
+          , emit = (socket, message)=>socket.emit('changes-dispatcher-process'
+                                    , 'process !!!! ' + message.getProcessId())
+          ;
+        room = this._initRoom(generator, cancel, emit);
+        this._rooms.set(roomId, room);
+    }
+    return roomId;
+};
+
+_p._registerSocketInRoom = function(socket, roomId) {
+    var socketData = this._sockets.get(socket.id)
+      , room = this._rooms.get(roomId)
+      ;
+    if(!socketData) {
+        socketData = {
+            socket: socket
+          , rooms: new Set()
+        };
+        this._sockets.set(socket.id, socketData);
+    }
+
+    socketData.rooms.add(roomId);
+    if(!room.sockets.has(socket.id)){
+        room.sockets.add(socket.id);
+        if(room.lastMessage !== null){
+            // if available send an initial change state
+            room.emit(socket, room.lastMessage);
+        }
+    }
+};
 
 /**
  * socket event 'subscribe-dispatcher-list'
@@ -298,47 +439,18 @@ _p._handleAsyncGen = async function(generator, cancel, messageHandler) { // jshi
 _p._subscribeToList = function(socket, data) {
     //jshint unused: vars
     // subscribe at processManager ...
-    var listId = 'TODO'
-      , key = [socket.id, 'list', listId].join(':')
-      , processListQuery
-      , messageHandler
+    var listId = 'TODO no such thing as a List ID' // = data ?
+      , roomId = this._getListRoom(listId)
       ;
-
-    if(this._socketSubscriptions.has(key))
-        return;
-
-    processListQuery = new ProcessListQuery();
-    processListQuery.setQuery(listId);
-
-    // I guess this could raise an error.
-    var { generator, cancel } = this._processManager.subscribeProcessList(processListQuery);
-
-    this._socketSubscriptions.set(key, ()=>{
-        this._log.debug('Unsubscribing from gRPC subscription call for processId', listId);
-        cancel();
-    });
-    messageHandler = (message)=>socket.emit('changes-dispatcher-list'
-    , 'list !!!!!! ' + message.getProcessesList() //=> [] instances of ProcessListItem
-                              .map(processListItem=>processListItem.getProcessId())
-                              .join('///'));
-    return this._handleAsyncGen(generator, cancel, messageHandler);
+    this._registerSocketInRoom(socket, roomId);
 };
 
-_p._unsubscribeFromList = function(socket) {
-    //jshint unused: vars
-    this._log.info('Unsubscribe from List:', socket.id);
-    var listId = 'TODO'
-      , key = [socket.id, 'list', listId].join(':')
+_p._unsubscribeFromList = function(socket, data) {
+    // jshint unused:vars
+    var listId = 'TODO no such thing as a List ID' // = data ?
+      , roomId = this._getListRoomId(listId)
       ;
-    if(!this._socketSubscriptions.has(key))
-        return;
-
-    try {
-        this._socketSubscriptions.get(key)();
-    }
-    finally {
-        this._socketSubscriptions.delete(key);
-    }
+    this._removeSocketFromRoom(socket, roomId);
 };
 
 /**
@@ -347,47 +459,65 @@ _p._unsubscribeFromList = function(socket) {
 _p._subscribeToProcess = function(socket, data) {
     //jshint unused: vars
     // subscribe at processManager ...
-    var processId = 'TODO'
-      , key = [socket.id, 'process', processId].join(':')
-      , processQuery
-      , messageHandler
+//    var initMessage = new DispatcherInitProcess();
+//
+//    initMessage.setFamilyName('(undefined family)');
+//    initMessage.setRequester('(this is a stub requester)');
+//
+//    this._initProcess(initMessage).then(
+//          message=>this._log.info(message)
+//        , error=>this._log.error(error)
+//    );
+
+
+    //.then(processId=>{
+    var processId = '892fd622-acc2-41c7-b3cb-a9e60f889b09' // = data ?
+      , roomId = this._getProcessRoom(processId)
       ;
-
-    if(this._socketSubscriptions.has(key))
-        return;
-
-    processQuery = new ProcessQuery();
-    processQuery.setProcessId(processId);
-
-    // I guess this could raise an error.
-    var { generator, cancel } = this._processManager.subscribeProcess(processQuery);
-
-    this._socketSubscriptions.set(key, ()=>{
-        this._log.debug('Unsubscribing from gRPC subscription call for processId', processId);
-        cancel();
-    });
-
-    messageHandler = (message)=>socket.emit('changes-dispatcher-process'
-                                , 'process !!!! ' + message.getProcessId());
-    return this._handleAsyncGen(generator, cancel, messageHandler);
+    this._registerSocketInRoom(socket, roomId);
 };
 
-_p._unsubscribeFromProcess = function(socket) {
-    // jshint unused: vars
-    // hang up at processManager
-    this._log.info('Unsubscribe from Process:', socket.id);
-    var processId = 'TODO'
-      , key = [socket.id, 'process', processId].join(':')
+_p._unsubscribeFromProcess = function(socket, data) {
+    // jshint unused:vars
+    var processId = '892fd622-acc2-41c7-b3cb-a9e60f889b09' // = data ?
+      , roomId = this._getProcessRoomId(processId)
       ;
-    if(!this._socketSubscriptions.has(key))
+    this._removeSocketFromRoom(socket, roomId);
+};
+
+_p._removeSocketFromRoom = function(socket, roomId) {
+    var room = this._rooms.get(roomId)
+      , socketData = this._sockets.get(socket.id)
+      ;
+    if(room) {
+        room.sockets.delete(socket.id);
+        if(!room.sockets.size) {
+            // No more listeners: hang up at processManager.
+            // I.e.: After each unsubscribe, we must check if there are
+            // still clients connected, otherwise, close the subscription:
+            room.cancel();
+            this._rooms.delete(roomId);
+        }
+    }
+
+    if(socketData) {
+        socketData.rooms.delete(roomId);
+        if(!socketData.rooms.size)
+            // If the socket is in no more rooms, we can remove it from
+            // the this._sockets map.
+            this._sockets.delete(socket.id);
+    }
+};
+
+_p._disconnectFromRooms = function(socket) {
+    this._log.info('Disconnect socket from all dispatcher rooms:', socket.id);
+    var socketData = this._sockets.get(socket.id);
+    if(!socketData)
         return;
 
-    try {
-        this._socketSubscriptions.get(key)();
-    }
-    finally {
-        this._socketSubscriptions.delete(key);
-    }
+    for(let roomId of socketData.rooms)
+        this._removeSocketFromRoom(socket, roomId);
+    // assert !this._sockets.has(socket.id);
 };
 
 // !Plan here!
