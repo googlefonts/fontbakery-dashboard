@@ -42,50 +42,115 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup
     this._log = logging;
     this._portNum = portNum;
     this._app = express();
-    this._server = http.createServer(this._app);
     this._sio = socketio(this._server);
-    this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
-                            , messages_pb, 'fontbakery.dashboard');
-    this._reports = new ReportsClient(logging, reportsSetup.host
-                                                    , reportsSetup.port);
-
-    this._io = new IOOperations(logging, dbSetup, amqpSetup);
-
-    // Start serving when the database and rabbitmq queue is ready
-    Promise.all([
-                 this._io.init()
-               , this._cache.waitForReady()
-               , this._reports.waitForReady()
-               ])
-    //.then(function(resources) {
-    //    // [r, amqp] = resources[0] ;
-    //}.bind(this))
-    .then(this._listen.bind(this))
-    .catch(function(err) {
-        this._log.error('Can\'t initialize server.', err);
-        process.exit(1);
-    }.bind(this));
+    this._server = http.createServer(this._app);
 
     var serveStandardClient = this.fbIndex.bind(this);
     Object.defineProperty(this, 'serveStandardClient', {
         value: serveStandardClient
     });
 
-    // this is the main app ATM, no need to register it elsewhere
-    var dashboardAPIServer = new DashboardAPIServer(this, this._app, this._log
-                                        , this._io, this._cache, this._reports)
-      ;
+    // dependency injection resources
+    //         name: [builder, initFunctionName]
+    this._DIResourceBuilders = new Map([
+        ['server', [()=>this, null]]
+      , ['log', [()=>this._log, null]]
+      , ['io', [
+                ()=>new IOOperations(this._log, dbSetup, amqpSetup)
+              , 'init'
+            ]
+        ]
+      , ['cache', [
+                ()=>new CacheClient(
+                                this._log
+                              , cacheSetup.host, cacheSetup.port
+                              , messages_pb, 'fontbakery.dashboard')
+              , 'waitForReady'
+            ]
+        ]
+      , ['reports', [()=>new ReportsClient(
+                                this._log, reportsSetup.host
+                              , reportsSetup.port)
+              , 'waitForReady'
+            ]
+        ]
+    ]);
+    this._DIResourcesCache = new Map();
+    this._DIResourcesCache.set('*app:/', this._app); // root express app
+    var promises;
+    [this._services, promises] = this._initServices();
 
-    // unused currently
-    this._implementations = [];
-    this._implementations.push(dashboardAPIServer);
+    // Start serving when the database and rabbitmq queue is ready
+    Promise.all(promises)
+    .then(this._listen.bind(this))
+    .catch(function(err) {
+        this._log.error('Can\'t initialize server.', err);
+        process.exit(1);
+    }.bind(this));
 
     this._sio.on('connection', this._onSocketConnect.bind(this));
-
     this._server = http.createServer(this._app);
 }
 
 var _p = Server.prototype;
+
+_p._serviceDefinitions = [];
+
+_p._getServiceDependency = function(appLocation, name) {
+    var promise = null;
+    let key = name === '*app'
+                        ? [name, appLocation].join(':')
+                        : name
+                        ;
+    if(!this._DIResourcesCache.has(key)) {
+        if(name === '*app') {
+            // a special case
+            // name is e.g. : *app:/dispatcher
+            let subApp = express();
+            this._app.get(appLocation, subApp); // register with root app
+            this._DIResourcesCache.set(key, subApp);
+        }
+        else if (this._DIResourceBuilders.has(key)) {
+            let [builder, initFunc] = this._DIResourceBuilders.get(key)
+              , resource = builder.call(this)
+              ;
+            // initFinc is e.g. 'waitForReady' for gRPC clients
+            if(initFunc)
+                promise = resource[initFunc]();
+            this._DIResourcesCache.set(key, resource);
+        }
+        else
+            throw new Error('Don\'t know how to get resource named "'+name+'".');
+    }
+    return [this._DIResourcesCache.get(key), promise];
+};
+
+_p._initService = function(appLocation, Constructor, dependencies) {
+    var service
+      , promises = []
+      , args = []
+      ;
+    for(let name of dependencies) {
+        let [dependency, promise] = this._getServiceDependency(appLocation, name);
+        args.push(dependency);
+        if(promise)
+            promises.push(promise);
+    }
+    service = new Constructor(...args);
+    return [service, promises];
+};
+
+_p._initServices = function() {
+    var services = []
+      , promises = []
+      ;
+    for(let definition of this._serviceDefinitions) {
+        let [service, promises_] = this._initService(...definition);
+        services.push(service);
+        promises.push(...promises_);
+    }
+    return [services, promises];
+};
 
 _p._listen = function() {
     this._server.listen(this._portNum);
@@ -171,6 +236,22 @@ return Server;
 })();
 
 
+const FontBakeryServer = (function(){
+
+function FontBakeryServer(...args) {
+    this._serviceDefinitions = [
+        ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports']]
+    ];
+    Server.call(this, ...args);
+}
+
+_p = FontBakeryServer.prototype = Object.create(Server.prototype);
+
+return FontBakeryServer;
+
+})();
+
+
 /**
  * TODO: historically this hosts the logic of many parts of the dashboard.
  * To simplify reading and understanding of these parts, it would be nice
@@ -181,7 +262,7 @@ return Server;
  *      - fontbakery drag and drop
  *      - status reports
  */
-function DashboardAPIServer(server, app, logging,  io, cache, reports) {
+function DashboardAPIService(server, app, logging,  io, cache, reports) {
     this._server = server;
     this._app = app;
     this._log = logging;
@@ -245,14 +326,16 @@ function DashboardAPIServer(server, app, logging,  io, cache, reports) {
     this.registerSocketListener('subscribe-report'
             , _p._subscribeToFamilytestReport/* , no unsubscribe! */);
     this.registerSocketListener('subscribe-collection'
-            , _p._subscribeToCollectionReport, _p._unsubscribeFromCollections);
+            , this._subscribeToCollectionReport.bind(this)
+            , this._unsubscribeFromCollections.bind(this));
     this.registerSocketListener('subscribe-dashboard'
-            , _p._unsubscribeFromDashboard, _p._unsubscribeFromDashboard);
+            , this._subscribeToDashboard.bind(this)
+            , this._unsubscribeFromDashboard.bind(this));
 
 
 }
 
-var _p = DashboardAPIServer.prototype;
+var _p = DashboardAPIService.prototype;
 
 _p.fbSendServsersideRenderedPage = function(htmlSnipped, req, res, next) {
     fs.readFile(path.join(ROOT_PATH, 'browser/html/client.html'), (err, page) => {
