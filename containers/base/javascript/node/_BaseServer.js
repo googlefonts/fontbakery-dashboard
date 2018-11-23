@@ -10,6 +10,7 @@ const express = require('express')
   , { IOOperations } = require('./util/IOOperations')
   , { CacheClient }  = require('./util/CacheClient')
   , { ReportsClient } = require('./util/ReportsClient')
+  , { ProcessManagerClient } = require('./util/ProcessManagerClient')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   ;
 
@@ -61,15 +62,14 @@ function _BaseServer(logging, portNum, setup) {
               , 'waitForReady'
             ]
         ]
-      // TODO
-      //, ['dispatcher', [
-      //          ()=>new DispatcherClient(
-      //                          this._log
-      //                        , setup.dispatcher.host
-      //                        , setup.dispatcher.port)
-      //        , 'waitForReady'
-      //      ]
-      //  ]
+      , ['dispatcher', [
+                ()=>new ProcessManagerClient(
+                                this._log
+                              , setup.dispatcher.host
+                              , setup.dispatcher.port)
+              , 'waitForReady'
+            ]
+        ]
     ]);
     this._resources = new Map();
     this._resources.set('*app:/', this._app); // root express app
