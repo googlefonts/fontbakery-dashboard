@@ -25,14 +25,14 @@ const express = require('express')
  * actual business logic implementation.
  * The sub-apps and this are rather tightly coupled.
  */
-function _BaseServer(logging, portNum, amqpSetup, dbSetup, cacheSetup
-                                , reportsSetup) {
+function _BaseServer(logging, portNum, setup) {
     //jshint validthis:true
     this._log = logging;
     this._portNum = portNum;
     this._app = express();
     this._httpServer = http.createServer(this._app);
     this._sio = socketio(this._httpServer);
+    this._socketListeners = [];
 
     var serveStandardClient = this.fbIndex.bind(this);
     Object.defineProperty(this, 'serveStandardClient', {
@@ -45,27 +45,36 @@ function _BaseServer(logging, portNum, amqpSetup, dbSetup, cacheSetup
         ['server', [()=>this, null]]
       , ['log', [()=>this._log, null]]
       , ['io', [
-                ()=>new IOOperations(this._log, dbSetup, amqpSetup)
+                ()=>new IOOperations(this._log, setup.db, setup.amqp)
               , 'init'
             ]
         ]
       , ['cache', [
                 ()=>new CacheClient(
                                 this._log
-                              , cacheSetup.host, cacheSetup.port
+                              , setup.cache.host, setup.cache.port
                               , messages_pb, 'fontbakery.dashboard')
               , 'waitForReady'
             ]
         ]
       , ['reports', [()=>new ReportsClient(
-                                this._log, reportsSetup.host
-                              , reportsSetup.port)
+                                this._log, setup.reports.host
+                              , setup.reports.port)
               , 'waitForReady'
             ]
         ]
+      // TODO
+      //, ['dispatcher', [
+      //          ()=>new DispatcherClient(
+      //                          this._log
+      //                        , setup.dispatcher.host
+      //                        , setup.dispatcher.port)
+      //        , 'waitForReady'
+      //      ]
+      //  ]
     ]);
-    this._DIResourcesCache = new Map();
-    this._DIResourcesCache.set('*app:/', this._app); // root express app
+    this._resources = new Map();
+    this._resources.set('*app:/', this._app); // root express app
     var promises;
     [this._services, promises] = this._initServices();
 
@@ -90,13 +99,13 @@ _p._getServiceDependency = function(appLocation, name) {
                         ? [name, appLocation].join(':')
                         : name
                         ;
-    if(!this._DIResourcesCache.has(key)) {
+    if(!this._resources.has(key)) {
         if(name === '*app') {
             // a special case
             // name is e.g. : *app:/dispatcher
             let subApp = express();
-            this._app.get(appLocation, subApp); // register with root app
-            this._DIResourcesCache.set(key, subApp);
+            this._app.use(appLocation, subApp); // register with root app
+            this._resources.set(key, subApp);
         }
         else if (this._DIResourceBuilders.has(key)) {
             let [builder, initFunc] = this._DIResourceBuilders.get(key)
@@ -105,15 +114,16 @@ _p._getServiceDependency = function(appLocation, name) {
             // initFinc is e.g. 'waitForReady' for gRPC clients
             if(initFunc)
                 promise = resource[initFunc]();
-            this._DIResourcesCache.set(key, resource);
+            this._resources.set(key, resource);
         }
         else
-            throw new Error('Don\'t know how to get resource named "'+name+'".');
+            throw new Error('Don\'t know how to acquire resource named "'+name+'".');
     }
-    return [this._DIResourcesCache.get(key), promise];
+    return [this._resources.get(key), promise];
 };
 
 _p._initService = function(appLocation, Constructor, dependencies) {
+    this._log.info('Initializing service', Constructor.name, 'at', appLocation);
     var service
       , promises = []
       , args = []
@@ -219,4 +229,14 @@ _p._onSocketConnect = function(socket) {
         this._subscribeToSocketEvent(socket, eventName, ...handlers);
 };
 
+function RootService(server, app, logging) {
+    this._server = server;
+    this._app = app;
+    this._log = logging;
+    // the client decides what to serve here as default
+    this._app.get('/', this._server.serveStandardClient);
+    this._app.use('/browser', express.static('browser'));
+}
+
 exports._BaseServer = _BaseServer;
+exports.RootService = RootService;
