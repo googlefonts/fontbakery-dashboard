@@ -18,15 +18,17 @@
   "dependencies": {
     "amqplib": "^0.5.2",
     "body-parser": "^1.18.3",
+    "cookie-parser": "^1.4.3",
     "csv-parse": "^2.2.0",
     "express": "^4.16.3",
     "google-protobuf": "^3.5.0",
     "grpc": "^1.12.3",
     "marked": "^0.4.0",
-    "nodegit": "^0.22.1",
+    "nodegit": "^0.23.0",
     "rethinkdbdash": "^2.3.31",
     "socketio": "^1.0.0",
-    "tmp": "0.0.33"
+    "tmp": "0.0.33",
+    "uid-safe": "^2.1.5"
   },
   "devDependencies": {
     "grpc-tools": "^1.6.6"

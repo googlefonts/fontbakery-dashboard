@@ -267,3 +267,53 @@ message ProcessCommand {
       google.protobuf.Any pb_payload = 6;
     }
 }
+
+
+///////
+// Authorization/GitHub OAuth stuff
+///////
+
+service AuthService {
+  rpc init_session (google.protobuf.Empty) returns (AuthStatus) {};
+  rpc logout (SessionId) returns (google.protobuf.Empty) {};
+  rpc authorize (AuthorzizeRequest) returns (AuthStatus) {};
+  rpc check_session (SessionId) returns (AuthStatus) {};
+}
+
+message AuthStatus {
+    enum StatusCode {
+        ERROR = 0;
+        OK = 1;
+        INITIAL = 2;
+        NOT_READY = 3;
+        NO_SESSION = 4;
+        WRONG_AUTHORIZE_STATE = 5;
+        TIMED_OUT = 6;
+    };
+    // always
+    StatusCode status = 1;
+    // only if OK or INITIAL
+    string session_id = 2;
+    // only if INITIAL
+    string authorize_url = 3;
+    // only if *not* OK or INITIAL,
+    // To help the user finding out what
+    // went wrong. Otherwise, "just working"
+    // authentication is enough of a message.
+    string message = 4;
+    // only if OK
+    string user_name = 5;
+    // only if OK
+    string avatar_url = 6;
+}
+
+message AuthorizeRequest {
+    string o_auth_code = 1;
+    string session_id = 2;
+    string authorize_state = 3;
+}
+
+message SessionId {
+    string session_id = 1;
+}
+

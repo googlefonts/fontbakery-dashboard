@@ -1,10 +1,9 @@
 #! /usr/bin/env node
 "use strict";
-// this is expected to run in nodejs
-/* global require, module */
-/* jshint esnext:true */
+/* jshint esnext:true, node:true */
 
 const { _BaseServer, RootService } = require('../_BaseServer')
+  , { GithubOAuthService } = require('../apiServices/GithubOAuth')
   , {
         ProcessListQuery
       , ProcessQuery
@@ -112,6 +111,7 @@ function Server(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
       , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher']]
+      , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log']]
     ];
     _BaseServer.call(this, ...args);
 }
