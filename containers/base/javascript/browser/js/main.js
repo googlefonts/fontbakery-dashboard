@@ -109,7 +109,7 @@ define([
           , report = new Report(container, templatesContainer, data)
           ;
 
-        socket.on('changes', report.onChange.bind(report));
+        socket.on('changes-report', report.onChange.bind(report));
         socket.emit('subscribe-report', { id: data.id });
     }
 
@@ -134,7 +134,7 @@ define([
           , report = new CollectionReport(container, templatesContainer, data)
           ;
 
-        socket.on('changes', report.onChange.bind(report));
+        socket.on('changes-collection', report.onChange.bind(report));
         socket.emit('subscribe-collection', { id: data.id });
     }
 
@@ -144,7 +144,7 @@ define([
          , socket = socketio('/')
          , dashboard = new DashboardController(container, templatesContainer, data)
          ;
-        socket.on('changes', dashboard.onChange.bind(dashboard));
+        socket.on('changes-dashboard', dashboard.onChange.bind(dashboard));
         console.log('subscribe-dashboard');
         socket.emit('subscribe-dashboard', {});
     }
