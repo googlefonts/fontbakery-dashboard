@@ -1,8 +1,6 @@
 #! /usr/bin/env node
 "use strict";
-// this is expected to run in nodejs
-/* global require, module */
-/* jshint esnext:true */
+/* jshint esnext:true, node:true */
 
 const path = require('path')
   , fs = require('fs')
@@ -620,6 +618,57 @@ _p._getDashboardFamilytestQuery = function(familytests_id) {
         ;
 };
 
+// https://github.com/sindresorhus/escape-string-regexp/blob/master/index.js
+const _matchOperatorsRe = /[|\\{}()[\]^$+*?.]/g;
+function _escapeStringRegexp (str) {
+    return str.replace(_matchOperatorsRe, '\\$&');
+}
+
+const _matchDoubleQuotes = /"/g;
+function _escapeDoubleQuotes(str) {
+    return str.replace(_matchDoubleQuotes, '\\$&');
+}
+_p._getDashboardFamilytestQueryFilterChecks = function(familytests_id, searchedChecks) {
+    var query = this._io.query('family')
+     , search = searchedChecks
+                    .map(_escapeStringRegexp)
+                    .map(_escapeDoubleQuotes)
+                    // we'll be searching in the key of the checks
+                    // make sure to select just the matching "check"
+                    .map(str=> '"check":' + '"' + str + '"')
+                    .join('|') // RegeExp "or" operator
+      ;
+    // this way we can create a changefeed for the whole table
+    // and have a single point of truth for the query
+    if(familytests_id)
+        query = query.get(familytests_id);
+
+    query.merge(doc=>{
+            var results = doc('tests').keys()
+                     // this is a list of all keys we are interested in.
+                    .filter(key=>key.match(search)
+                        // If the check did not run yet (either brand new
+                        // or an exception in the worker) it has no
+                        // result.
+                       .and(doc('tests')(key).hasFields('result')))
+                    .map(key=>doc('tests')(key)('result'))
+              ;
+            return {
+                results: results.fold({},
+                           (acc, key)=>acc.merge(this._io.r.object(key, acc(key).default(0).add(1))))
+              , total: results.count()
+              , '#fonts': doc('iterargs')('font').count().default(null)
+
+            };
+        })
+
+        // more?
+        .pluck('id', 'results', 'finished', 'created', 'started'
+             , 'exception', 'total' , '#fonts')
+        .merge({type: 'familytest'})
+        ;
+};
+
 _p._updateFamilytestDoc = function(isPriming, data) {
     var familyDoc = this._familyDocs.get(data.new_val.id);
 
@@ -661,18 +710,15 @@ _p._subscribeToFamilyDocChanges = function() {
         }, {cursor: true});
 };
 
-_p._subscribeToFamilyDoc = function(familytests_id, callback/*, args ... */) {
+_p._subscribeToFamilyDoc = function(familytests_id, callback, ...args) {
     var familyDoc = this._familyDocs.get(familytests_id)
       , subscription = {
             familytests_id: familytests_id
           , callback: callback
-          , args: []
+          , args: args
         }
-        , subscriptions
-        , args = subscription.args, i, l
-        ;
-    for(i=2,l=arguments.length;i<l;i++)
-        args.push(arguments[i]);
+      , subscriptions
+      ;
 
     if(this._familyDocsSubscriptionCursor === null) {
         this._familyDocsSubscriptionCursor = 'pending';
