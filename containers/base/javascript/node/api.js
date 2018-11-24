@@ -13,6 +13,7 @@ const path = require('path')
 
   , { getSetup } = require('./util/getSetup')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
+  , { ProcessUIService } = require('./dispatcher/ProcessUIService')
   , { _BaseServer, RootService } = require('./_BaseServer')
   ;
 
@@ -22,6 +23,7 @@ function FontBakeryServer(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
       , ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports']]
+      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher']]
     ];
     _BaseServer.call(this, ...args);
 }
