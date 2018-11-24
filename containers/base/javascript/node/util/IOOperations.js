@@ -6,7 +6,7 @@
 
 
 const { initDB, initAmqp }= require('./getSetup')
-  , messages_pb = require('protocolbuffers/messages_pb')
+  , { FamilyJob } = require('protocolbuffers/messages_pb')
   ;
 
 function IOOperations(logging, dbSetup, amqpSetup) {
@@ -190,7 +190,7 @@ _p.sendQueueMessage = function (queueName, message) {
 
 _p.dispatchFamilyJob = function(cacheKey, docid) {
     this._log.debug('dispatchFamilyJob:', docid);
-    var job = new messages_pb.FamilyJob()
+    var job = new FamilyJob()
      , buffer
      ;
     job.setDocid(docid);

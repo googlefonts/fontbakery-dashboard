@@ -8,6 +8,7 @@ const { initAmqp }= require('./getSetup')
   , { CacheClient } = require('./CacheClient')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
+  , { File, Files, CollectionFamilyJob, FamilyData } = messages_pb
   , services_pb = require('protocolbuffers/messages_grpc_pb')
   , ManifestService = services_pb.ManifestService
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
@@ -120,7 +121,7 @@ _p.update = function(sourceId) {
  *          [ [string filename, Uint8Array fileData], ... ]
  */
 _p._wrapFamilyData = function(filesData) {
-    var filesMessage = new messages_pb.Files();
+    var filesMessage = new Files();
 
     // sort by file name
     function sortFilesData(a, b) {
@@ -130,7 +131,7 @@ _p._wrapFamilyData = function(filesData) {
     }
 
     function makeFile(item) {
-        var file = new messages_pb.File()
+        var file = new File()
           , [filename, arrBuff] = item
           ;
         file.setName(filename);
@@ -176,7 +177,7 @@ _p._sendAMQPMessage = function (queueName, message) {
 
 _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
     var collectionId = [this._id, sourceid].join('/')
-      , job = new messages_pb.CollectionFamilyJob()
+      , job = new CollectionFamilyJob()
       , timestamp = new Timestamp()
       , buffer
       ;
@@ -262,7 +263,7 @@ _p.get = function(call, callback) {
     (err ? Promise.reject(err)
          : this._sources[sourceId].get(familyName))
     .then(([familyName, filesData, metadata])=>{
-        var familyData = new messages_pb.FamilyData()
+        var familyData = new FamilyData()
           , collectionId = [this._id, sourceId].join('/')
           , filesMessage = this._wrapFamilyData(filesData)
           , timestamp = new Timestamp()

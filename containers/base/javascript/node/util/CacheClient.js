@@ -7,6 +7,7 @@
 const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
+  , { CacheItem, Files, File } = messages_pb
   , { CacheClient: GrpcCacheClient } = require('protocolbuffers/messages_grpc_pb')
   , any_pb = require('google-protobuf/google/protobuf/any_pb.js')
   ;
@@ -115,7 +116,7 @@ _p.put = function (payloads) {
         /*jshint validthis: true*/
         var any = new any_pb.Any()
           , typeName = this._getTypeNameForMessage(payload) // 'fontbakery.dashboard.Files'
-          , cacheItem = new messages_pb.CacheItem()
+          , cacheItem = new CacheItem()
           , clientid = '' + index // must be a string for message
           ;
         any.pack(payload.serializeBinary(), typeName);
@@ -199,8 +200,8 @@ if (typeof require != 'undefined' && require.main==module) {
       , messages = []
       ;
      for(let i=0;i<10;i++) {
-       let file = new messages_pb.File()
-         , files = new messages_pb.Files()
+       let file = new File()
+         , files = new Files()
          ;
        file.setName('Hello_' + i +'.ttf');
        file.setData(new Uint8Array(Buffer.from('My Data ' + i + ' äöÄ€»«', 'utf8')));
