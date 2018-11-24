@@ -4,8 +4,7 @@
 /* global require, module */
 /* jshint esnext:true */
 
-const express = require('express')
-  , path = require('path')
+const path = require('path')
   , fs = require('fs')
   , bodyParser = require('body-parser')
   , messages_pb = require('protocolbuffers/messages_pb')
@@ -17,14 +16,15 @@ const express = require('express')
 
   , { getSetup } = require('./util/getSetup')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
-  , { _BaseServer } = require('./_BaseServer')
+  , { _BaseServer, RootService } = require('./_BaseServer')
   ;
 
-const FontBakeryServer = (function(){
+const FontBakeryServer = (function() {
 
 function FontBakeryServer(...args) {
     this._serviceDefinitions = [
-        ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports']]
+        ['/', RootService, ['server', '*app', 'log']]
+      , ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports']]
     ];
     _BaseServer.call(this, ...args);
 }
@@ -69,16 +69,13 @@ function DashboardAPIService(server, app, logging,  io, cache, reports) {
 
     var serveStandardClient = this._server.serveStandardClient;
 
-    // the client decides what to serve here as default
-    this._app.get('/', serveStandardClient);
-
     // these just need to exist, they serve the normal client
     this._app.get('/collections', serveStandardClient); // currently index "mode"
     // probably dashboard is later index, or a more general landing page
     this._app.get('/drag-and-drop', serveStandardClient);
     this._app.get('/dashboard', serveStandardClient);
 
-    this._app.use('/browser', express.static('browser'));
+
     this._app.get('/report/:id', this.fbFamilyReport.bind(this));
 
     this._app.use('/runchecks', bodyParser.raw(
@@ -106,7 +103,6 @@ function DashboardAPIService(server, app, logging,  io, cache, reports) {
     // status report document (client renders into html for now);
     this._app.get('/status-report/:id', this.fbStatusReport.bind(this));
 
-    this._socketListeners = [];
     this.registerSocketListener('subscribe-report'
             , _p._subscribeToFamilytestReport/* , no unsubscribe! */);
     this.registerSocketListener('subscribe-collection'
@@ -1098,6 +1094,5 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.log('Loglevel', setup.logging.loglevel);
     // storing in global scope, to make it available for inspection
     // in the debugger.
-    global.server = new FontBakeryServer(setup.logging, 3000, setup.amqp, setup.db
-            , setup.cache, setup.reports);
+    global.server = new FontBakeryServer(setup.logging, 3000, setup);
 }
