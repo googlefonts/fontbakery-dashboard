@@ -7,11 +7,10 @@
 const path = require('path')
   , fs = require('fs')
   , bodyParser = require('body-parser')
-  , messages_pb = require('protocolbuffers/messages_pb')
 
   , marked = require('marked')
 
-  , { ReportsQuery, ReportIds } = messages_pb
+  , { ReportsQuery, ReportIds, Files } = require('protocolbuffers/messages_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
 
   , { getSetup } = require('./util/getSetup')
@@ -353,12 +352,12 @@ _p.fbCollectionReport = function(req, res, next) {
 };
 
 _p._getFilesMessage = function(buffer) {
-    var filesMessage = messages_pb.Files.deserializeBinary(
+    var filesMessage = Files.deserializeBinary(
                                                 new Uint8Array(buffer))
         // reconstruct the filesMessage to have all files sorted by name
         // and to discard duplicates (which is possible with this message
         // format
-      , newMessage = new messages_pb.Files()
+      , newMessage = new Files()
       , i, l, file, seen = new Set()
       , files = filesMessage.getFilesList()
       , newFilesList = []
