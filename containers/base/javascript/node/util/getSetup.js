@@ -42,6 +42,11 @@ function getSetup() {
             host: process.env.FONTBAKERY_REPORTS_SERVICE_HOST
           , port: process.env.FONTBAKERY_REPORTS_SERVICE_PORT
         }
+      , dispatcherSetup = {
+            // call it: "fontbakery-dispatcher"
+            host: process.env.FONTBAKERY_DISPATCHER_HOST
+          , port: process.env.FONTBAKERY_DISPATCHER_PORT
+        }
       , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
       , develFamilyWhitelist = null
       ;
@@ -71,6 +76,7 @@ function getSetup() {
       , db: dbSetup
       , cache: cacheSetup
       , reports: reportsSetup
+      , dispatcher: dispatcherSetup
       , logging: logging
       , develFamilyWhitelist: develFamilyWhitelist
     };
