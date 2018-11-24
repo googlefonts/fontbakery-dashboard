@@ -23,14 +23,19 @@ function ProcessManagerClient(logging, host, port, credentials) {
     //       and still fail eventually.
     this._deadline = 30;
     this._log.info('ProcessManagerClient at:', address);
-    this._client = new GrpcProcessManagerClient(
-                          address
-                        , credentials || grpc.credentials.createInsecure()
-                        , {
-                              'grpc.max_send_message_length': 80 * 1024 * 1024
-                            , 'grpc.max_receive_message_length': 80 * 1024 * 1024
-                          }
-                        );
+
+    this._grpcClientArgs = [
+        address
+      , credentials || grpc.credentials.createInsecure()
+      , {
+            'grpc.max_send_message_length': 80 * 1024 * 1024
+          , 'grpc.max_receive_message_length': 80 * 1024 * 1024
+        }
+
+    ];
+    // In a GRPC server I can add many services, but for the client, it
+    // seems I have to initialize separate clients.
+    this._client = new GrpcProcessManagerClient(...this._grpcClientArgs);
 }
 
 var _p = ProcessManagerClient.prototype;
@@ -56,12 +61,12 @@ Object.defineProperty(_p, 'deadline', {
  * Only use this if the expected list is finite, a stream of events may
  * never end! Use _p._readableStreamToGenerator then.
  */
-_p._getStreamAsList = function(method, message) {
+_p._getStreamAsList = function(client, method, message) {
     var METHOD = '[' + method.toUpperCase() + ']';
     return new Promise((resolve, reject) => {
         // Instead of passing the method a request and callback, we pass it
         // a request and get a Readable stream object back.
-        var call = this._client[method](message, {deadline: this.deadline})
+        var call = client[method](message, {deadline: this.deadline})
           , result = []
           ;
 
@@ -179,8 +184,8 @@ _p._readableStreamToGenerator = async function* (method, call, bufferMaxSize) { 
     }
 }; // jshint ignore:line
 
-_p._getStreamAsGenerator = function(method, message) {
-    var call = this._client[method](message, {deadline: Infinity});
+_p._getStreamAsGenerator = function(client, method, message) {
+    var call = client[method](message, {deadline: Infinity});
     return {
         generator :this._readableStreamToGenerator(method, call)
       , cancel: ()=>call.cancel()
@@ -188,16 +193,14 @@ _p._getStreamAsGenerator = function(method, message) {
 };
 
 _p.subscribeProcess = function(processQuery) {
-    return this._getStreamAsGenerator('subscribeProcess', processQuery);
-};
-
-_p.subscribeProcessList = function(processListQuery) {
-    return this._getStreamAsGenerator('subscribeProcessList', processListQuery);
+    return this._getStreamAsGenerator(this._client
+                                    , 'subscribeProcess', processQuery);
 };
 
 _p.execute = function(processCommand) {
     return nodeCallback2Promise((callback)=>
-            this._client.execute(processCommand, {deadline: this.deadline}, callback))
+            this._client.execute(processCommand
+                                    , {deadline: this.deadline}, callback))
         .then(null, error=>this._raiseUnhandledError(error));
 };
 
