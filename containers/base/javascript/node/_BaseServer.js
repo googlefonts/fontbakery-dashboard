@@ -10,7 +10,7 @@ const express = require('express')
   , { IOOperations } = require('./util/IOOperations')
   , { CacheClient }  = require('./util/CacheClient')
   , { ReportsClient } = require('./util/ReportsClient')
-  , { ProcessManagerClient } = require('./util/ProcessManagerClient')
+  , { DispatcherProcessManagerClient } = require('./util/DispatcherProcessManagerClient')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   ;
 
@@ -63,7 +63,7 @@ function _BaseServer(logging, portNum, setup) {
             ]
         ]
       , ['dispatcher', [
-                ()=>new ProcessManagerClient(
+                ()=>new DispatcherProcessManagerClient(
                                 this._log
                               , setup.dispatcher.host
                               , setup.dispatcher.port)
