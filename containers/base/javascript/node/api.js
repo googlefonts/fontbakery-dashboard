@@ -29,40 +29,27 @@ const express = require('express')
  * Using a class here, so state variables are managed not on module level
  * Initialization starts the server.
  *
+ * NOTE: this is in a state of rewrite to better separate the concerns
+ * of providing resources and connection to the outside word versus the
+ * actual business logic implementation.
+ * The sub-apps and this are rather tightly coupled.
  */
+
+const Server = (function() {
+
 function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup
                                                      , reportsSetup) {
     this._log = logging;
     this._portNum = portNum;
-
-    // familytests_id => data
-    this._collectionFamilyDocs = new Map();
-    // collectionId => data
-    this._collectionSubscriptions = new Map();
-    // socket.id => data
-    this._collectionConsumers = new Map();
-    // familytests_id => familyDoc
-    this._familyDocs = new Map();
-    this._dashboardSubscription = null; // an object if there are consumers
-    this._familyDocsSubscriptionCursor = null;
-
-    this.__updateCollectionFamilyDoc = this._updateCollectionFamilyDoc.bind(this);
-
     this._app = express();
     this._server = http.createServer(this._app);
     this._sio = socketio(this._server);
-
     this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
                             , messages_pb, 'fontbakery.dashboard');
-
     this._reports = new ReportsClient(logging, reportsSetup.host
                                                     , reportsSetup.port);
 
-    this._dbSetup = dbSetup;
-
     this._io = new IOOperations(logging, dbSetup, amqpSetup);
-
-    this._collectionQueueName = 'init_collecton_test_queue';
 
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
@@ -83,6 +70,139 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup
     Object.defineProperty(this, 'serveStandardClient', {
         value: serveStandardClient
     });
+
+    // this is the main app ATM, no need to register it elsewhere
+    var dashboardAPIServer = new DashboardAPIServer(this, this._app, this._log
+                                        , this._io, this._cache, this._reports)
+      ;
+
+    // unused currently
+    this._implementations = [];
+    this._implementations.push(dashboardAPIServer);
+
+    this._sio.on('connection', this._onSocketConnect.bind(this));
+
+    this._server = http.createServer(this._app);
+}
+
+var _p = Server.prototype;
+
+_p._listen = function() {
+    this._server.listen(this._portNum);
+    this._log.info('Listening to port', this._portNum);
+};
+
+_p.registerSocketListener = function(eventName, eventHandler, disconnectHandler){
+    this._socketListeners.push(eventName, eventHandler, disconnectHandler);
+};
+
+/**
+ * GET
+ *
+ * CLIENT
+ *  : say hello
+ *  : initiate the d'n'd interface to post fonts
+ *        on success
+ *        change url to docid url
+ *        init socketio connection for docid (with answer from post)
+ */
+_p.fbIndex = function(req, res, next) {
+    // jshint unused:vars
+    return res.sendFile('browser/html/client.html',
+                                                    {root: ROOT_PATH});
+};
+
+/**
+ * socketio connect
+  SERVER
+    : on connect
+        test if docid exists
+        create rethinkdb change feed for docid
+        store change feed and connection together
+    : on disconnect
+        (implicitly: close socket)
+        close changefeed
+    : on error???
+        close changefeed
+        close socket
+ *
+ * wrap in:
+ *
+ * this._sio.on('connection', this._onSocketConnect.bind(this));
+ *
+ */
+_p._socketOnSubscribe = function(socket, eventName, handler, data) {
+    this._log.info('_onSocketConnect: socket', socket.id ,'subscription '
+                                        + 'requested for', eventName, data);
+    if(typeof data.id !== 'string')
+        // this is actually required (historically)
+        // ??? why can't we fix this with an error?
+        // and at the position where data.id is actually needed/evaluated?
+        data.id = '';
+    handler.call(this, socket, data);
+};
+
+_p._socketOnDisconnect = function(socket, eventName, handler, reason) {
+    this._log.debug('socket:', socket.id
+                        , 'disconnecting from:', eventName
+                        , 'reason:', reason);
+    handler.call(this, socket);
+};
+
+
+_p._subscribeToSocketEvent = function(socket, eventName
+                                    , eventHandler, disconnectHandler) {
+    socket.on(eventName, data=>this._socketOnSubscribe(
+                socket, eventName, eventHandler, data));
+    if(disconnectHandler)
+        socket.on('disconnecting',reason=>this._socketOnDisconnect(
+                socket, eventName, disconnectHandler, reason));
+};
+
+_p._onSocketConnect = function(socket) {
+    // wait for docid request ...
+    // extracting [HEAD, ...TAIL] from the values of this._socketListeners
+    for(let [eventName, ...handlers] of this._socketListeners)
+        this._subscribeToSocketEvent(socket, eventName, ...handlers);
+};
+
+
+return Server;
+})();
+
+
+/**
+ * TODO: historically this hosts the logic of many parts of the dashboard.
+ * To simplify reading and understanding of these parts, it would be nice
+ * to break this up into separated subApps:
+ *      - fontbakery report
+ *      - fontbakery dashboard + collection (they are similar, but only if
+ *        they share data structures, otherwise they can be separated)
+ *      - fontbakery drag and drop
+ *      - status reports
+ */
+function DashboardAPIServer(server, app, logging,  io, cache, reports) {
+    this._server = server;
+    this._app = app;
+    this._log = logging;
+    this._io = io;
+    this._cache = cache;
+    this._reports = reports;
+
+    // familytests_id => data
+    this._collectionFamilyDocs = new Map();
+    // collectionId => data
+    this._collectionSubscriptions = new Map();
+    // socket.id => data
+    this._collectionConsumers = new Map();
+    // familytests_id => familyDoc
+    this._familyDocs = new Map();
+    this._dashboardSubscription = null; // an object if there are consumers
+    this._familyDocsSubscriptionCursor = null;
+
+    this.__updateCollectionFamilyDoc = this._updateCollectionFamilyDoc.bind(this);
+
+    var serveStandardClient = this._server.serveStandardClient;
 
     // the client decides what to serve here as default
     this._app.get('/', serveStandardClient);
@@ -129,34 +249,10 @@ function Server(logging, portNum,  amqpSetup, dbSetup, cacheSetup
     this.registerSocketListener('subscribe-dashboard'
             , _p._unsubscribeFromDashboard, _p._unsubscribeFromDashboard);
 
-    this._sio.on('connection', this.fbSocketConnect.bind(this));
+
 }
 
-var _p = Server.prototype;
-
-_p.registerSocketListener = function(eventName, eventHandler, disconnectHandler){
-    this._socketListeners.push(eventName, eventHandler, disconnectHandler);
-};
-
-_p._listen = function() {
-    this._server.listen(this._portNum);
-    this._log.info('Listening to port', this._portNum);
-};
-
-/**
- * GET
- *
- * CLIENT
- *  : say hello
- *  : initiate the d'n'd interface to post fonts
- *        on success
- *        change url to docid url
- *        init socketio connection for docid (with answer from post)
- */
-_p.fbIndex = function(req, res) {
-    return res.sendFile('browser/html/client.html',
-                                                    {root: ROOT_PATH});
-};
+var _p = DashboardAPIServer.prototype;
 
 _p.fbSendServsersideRenderedPage = function(htmlSnipped, req, res, next) {
     fs.readFile(path.join(ROOT_PATH, 'browser/html/client.html'), (err, page) => {
@@ -356,7 +452,7 @@ _p._fbCheckIndexExists = function(dbTable, indexName, req, res, next) {
             if(found)
                 // This is the same client as the index page,
                 // after the id was returned
-                return this.fbIndex(req, res, next);
+                return this._server.serveStandardClient(req, res, next);
             // answer 404: NotFound
             return res.status(404).send('Not found');
         }
@@ -483,63 +579,6 @@ _p.fbDNDReceive = function(req, res, next) {
         .then(makeDoc.bind(this))
         ;
 };
-
-
-/**
- * socketio connect
-  SERVER
-    : on connect
-        test if docid exists
-        create rethinkdb change feed for docid
-        store change feed and connection together
-    : on disconnect
-        (implicitly: close socket)
-        close changefeed
-    : on error???
-        close changefeed
-        close socket
- *
- * wrap in:
- *
- * this._sio.on('connection', this.fbSocketConnect.bind(this));
- *
- */
-_p._socketOnSubscribe = function(socket, eventName, handler, data){
-    this._log.info('fbSocketConnect socket', socket.id ,'subscription '
-                                        + 'requested for', eventName, data);
-    if(typeof data.id !== 'string')
-        // this is actually required (historically)
-        // ??? why can't we fix this with an error?
-        // and at the position where data.id is actually needed/evaluated?
-        data.id = '';
-    handler.call(this, socket, data);
-};
-
-_p._socketOnDisconnect = function(socket, eventName, handler, reason) {
-    this._log.debug('socket:', socket.id
-                        , 'disconnecting from:', eventName
-                        , 'reason:', reason);
-    handler.call(this, socket);
-};
-
-
-_p._subscribeToSocketEvent = function(socket, eventName
-                                    , eventHandler, disconnectHandler) {
-    socket.on(eventName, data=>this._socketOnSubscribe(
-                socket, eventName, eventHandler, data));
-    if(disconnectHandler)
-        socket.on('disconnecting',reason=>this._socketOnDisconnect(
-                socket, eventName, disconnectHandler, reason));
-};
-
-_p.fbSocketConnect = function(socket) {
-    // wait for docid request ...
-    // extracting [HEAD, ...TAIL] from the values of this._socketListeners
-    for(let [eventName, ...handlers] of this._socketListeners)
-        this._subscribeToSocketEvent(socket, eventName, ...handlers);
-};
-
-
 
 /**
  *  rethink chnangefeed
