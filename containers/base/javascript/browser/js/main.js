@@ -19,6 +19,7 @@ define([
 ) {
     "use strict";
     /*global document, window, FileReader*/
+    // jshint browser:true
 
     function makeFileInput(fileOnLoad, element) {
         var hiddenFileInput = dom.createChildElement(element, 'input'
@@ -138,15 +139,65 @@ define([
         socket.emit('subscribe-collection', { id: data.id });
     }
 
+
+    // also used on the server, but useful in the client as well
+    function _dashboarNormalizeFilter(userInputfilter) {
+        return userInputfilter
+            ? userInputfilter.split(',')
+                  .map(function(s){return s.trim();})
+                  .filter(function(s){return !!s;})
+                  .sort()
+                  .join(',')
+            : ''
+            ;
+    }
+
     function initDashboard(data) {
-        var container = activateTemplate('dashboard-interface')
-         , templatesContainer = getTemplatesContainer('dashboard-templates')
-         , socket = socketio('/')
-         , dashboard = new DashboardController(container, templatesContainer, data)
+        var socket = socketio('/')
+         , lastQuery = null
+         , socketChangeHandler = null
          ;
-        socket.on('changes-dashboard', dashboard.onChange.bind(dashboard));
-        console.log('subscribe-dashboard');
-        socket.emit('subscribe-dashboard', {});
+        function onQueryFilterChange() {
+            var hash = window.location.hash()
+              , marker = '#filter:'
+              , userInputFilter = ''
+              , queryFilter
+              ;
+            if(hash.indexOf( marker) === 0)
+                userInputFilter = hash.slice(marker.length);
+            // did it really change?
+            queryFilter = _dashboarNormalizeFilter(userInputFilter);
+            if(lastQuery === queryFilter)
+                return;
+            lastQuery = queryFilter;
+
+            // we don't want to act on this event.
+            // thought, we should catch it with the check above;
+            window.location.hash = marker + queryFilter;
+
+            if(socketChangeHandler) {
+                socket.off('changes-dashboard', socketChangeHandler);
+                socketChangeHandler = null;
+            }
+            // replace the whole thing!
+            var container = activateTemplate('dashboard-interface')
+              , templatesContainer = getTemplatesContainer('dashboard-templates')
+              , dashboard = new DashboardController(container, templatesContainer, data)
+              ;
+
+            window.addEventListener('hashchange', onQueryFilterChange, false);
+            container.addEventListener('destroy', function(){
+                window.removeEventListener('hashchange', onQueryFilterChange, false);
+            }, false);
+
+            console.log('subscribe-dashboard, filter:' + queryFilter);
+            socketChangeHandler = dashboard.onChange.bind(dashboard);
+            socket.on('changes-dashboard', socketChangeHandler);
+            socket.emit('subscribe-dashboard', {filter: queryFilter});
+        }
+
+        // init
+        onQueryFilterChange();
     }
 
     function getInterfaceMode() {
