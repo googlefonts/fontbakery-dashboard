@@ -102,12 +102,12 @@ function DashboardAPIService(server, app, logging,  io, cache, reports) {
     // status report document (client renders into html for now);
     this._app.get('/status-report/:id', this.fbStatusReport.bind(this));
 
-    this.registerSocketListener('subscribe-report'
+    this._server.registerSocketListener('subscribe-report'
             , this._subscribeToFamilytestReport.bind(this)/* , no disconnect! */);
-    this.registerSocketListener('subscribe-collection'
+    this._server.registerSocketListener('subscribe-collection'
             , this._subscribeToCollectionReport.bind(this)
             , this._disconectFromCollections.bind(this));
-    this.registerSocketListener('subscribe-dashboard'
+    this._server.registerSocketListener('subscribe-dashboard'
             , this._subscribeToDashboard.bind(this)
             , this._disconnectFromDashboard.bind(this));
 
