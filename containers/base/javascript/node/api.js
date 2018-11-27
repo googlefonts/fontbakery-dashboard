@@ -618,7 +618,7 @@ _p._getDashboardFamilytestQueryUnfiltered = function(familytests_id) {
         query = query.get(familytests_id);
 
     return query.merge(doc => {return {
-                total: doc('tests').count().default(null)
+                total: doc('tests').default({}).count().default(null)
               , '#fonts': doc('iterargs')('font').count().default(null)
             };
         });
@@ -636,7 +636,7 @@ function _escapeDoubleQuotes(str) {
 }
 _p._getDashboardFamilytestQueryFilterChecks = function(familytests_id, searchedChecks) {
     var query = this._io.query('family')
-     , search = searchedChecks
+     , search = searchedChecks.split(',')
                     .map(_escapeStringRegexp)
                     .map(_escapeDoubleQuotes)
                     // we'll be searching in the key of the checks
@@ -644,27 +644,29 @@ _p._getDashboardFamilytestQueryFilterChecks = function(familytests_id, searchedC
                     .map(str=> '"check":' + '"' + str + '"')
                     .join('|') // RegeExp "or" operator
       ;
+
     // this way we can create a changefeed for the whole table
     // and have a single point of truth for the query
     if(familytests_id)
         query = query.get(familytests_id);
 
-    return query.merge(doc=>{
-            var results = doc('tests').keys()
+    return query
+        .without('results')
+        .merge(doc=>{
+            var results = doc('tests').default({}).keys()
                      // this is a list of all keys we are interested in.
                     .filter(key=>key.match(search)
                         // If the check did not run yet (either brand new
                         // or an exception in the worker) it has no
                         // result.
-                       .and(doc('tests')(key).hasFields('result')))
-                    .map(key=>doc('tests')(key)('result'))
+                       .and(doc('tests').default({})(key).hasFields('result')))
+                    .map(key=>doc('tests').default({})(key)('result'))
               ;
             return {
                 results: results.fold({},
                            (acc, key)=>acc.merge(this._io.r.object(key, acc(key).default(0).add(1))))
               , total: results.count()
               , '#fonts': doc('iterargs')('font').count().default(null)
-
             };
         });
 };
@@ -725,7 +727,7 @@ _p._subscribeToFamilyDocChanges = function(queryFilter) {
 
 _p._subscribeToFamilyDoc = function(familytests_id, queryFilter, callback, ...args) {
     var familyDocs = this._familyDocs[queryFilter]
-      , familyDoc = familyDocs && this._familyDocs.get(familytests_id)
+      , familyDoc = familyDocs && familyDocs.get(familytests_id)
       , subscription = {
             familytests_id: familytests_id
           , callback: callback
@@ -761,7 +763,7 @@ _p._subscribeToFamilyDoc = function(familytests_id, queryFilter, callback, ...ar
     familyDoc.subscriptions.add(subscription);
     if(familyDoc.data)
         _callbackFamilyDocSubscubscriber(subscription, familyDoc.data);
-    return this._unsubscribeFromFamilyDoc.bind(this, subscription);
+    return this._unsubscribeFromFamilyDoc.bind(this, queryFilter, subscription);
 };
 
 // This triggers no change notifications itself, but it implies that
@@ -934,13 +936,14 @@ _p._disconectFromCollections = function(socket) {
     var socketId = socket.id
       , consumer = this._collectionConsumers.get(socketId)
       ;
-    for(let collectionId of consumer.subscriptions)
-        this._unsubscribeFromCollection(socketId, collectionId);
+    if(consumer)
+        for(let collectionId of consumer.subscriptions)
+            this._unsubscribeFromCollection(socketId, collectionId);
 };
 
 _p._clearCollectionConsumers = function(collectionId) {
     // assert !this._collectionSubscriptions.has(collectionId);
-    for(let [socketId, consumer] in this._collectionConsumers)
+    for(let [socketId, consumer] of this._collectionConsumers)
         if(consumer.subscriptions.has(collectionId))
             this._unsubscribeFromCollection(socketId, collectionId);
 };
@@ -956,7 +959,7 @@ _p._unsubscribeFromCollection = function(socketId, collectionId) {
         // if no consumers are left, close the change feeds
         this._closeCursor(collectionSubscription.collectionCursor);
         this._collectionSubscriptions.delete(collectionId);
-        for(let [family_name, doc] in collectionSubscription.documents)
+        for(let [family_name, doc] of collectionSubscription.documents)
             this._unsubscribeFromCollectionFamilyDoc(doc.new_val.familytests_id
                                             , collectionId, family_name);
         // NOTE: this is important, otherwise the recursive call never ends:
@@ -1108,8 +1111,6 @@ _p._subscribeToDashboard = function(socket, data) {
       , normalizedFilter = _normalizeCheckFilter(data.filter)
       ;
 
-
-
     if(!this._dashboardSubscription) {
         this._dashboardSubscription = {
             cursor: null
@@ -1153,12 +1154,13 @@ _p._subscribeToDashboard = function(socket, data) {
         // also this is what we to do on a hang up, see _disconnectFromDashboard
         consumer.unsubscribe_callbacks.forEach(unsubscribe => unsubscribe());
         consumer.unsubscribe_callbacks = new Map();
+        consumer.queryFilter = normalizedFilter;
     }
     else {
         consumer = {
             socket: socket
           , unsubscribe_callbacks: new Map()
-          , queryFilter: normalizedFilter || ''// => empty string: no filter
+          , queryFilter: normalizedFilter
         };
         this._dashboardSubscription.consumers.set(socket.id, consumer);
     }
