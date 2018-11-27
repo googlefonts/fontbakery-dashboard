@@ -1056,17 +1056,25 @@ _p._updateDashboardCollectionDoc = function(isPriming, doc) {
     var collectionDocs = this._dashboardSubscription.collectionDocs
       , consumers = this._dashboardSubscription.consumers
       , key = [doc.collection_id, doc.family_name].join('...')
-      , current = collectionDocs.get(key)
+      , lastDoc = collectionDocs.get(key)
       ;
     // Do this check, because of us not using includeInitial
     // and the "priming" request
-    if(isPriming && current)
+    if(isPriming && lastDoc)
         // the change feed was faster
         return;
 
     collectionDocs.set(key, doc);
     // send updates to each consumers;
     consumers.forEach((consumer) => {
+        if(lastDoc && lastDoc.familytests_id !== doc.familytests_id) {
+            // familytests_id has changed for collection/family_name
+            let familytests_id = lastDoc.familytests_id
+              , unsubscribe = consumer.unsubscribe_callbacks.get(familytests_id)
+              ;
+            unsubscribe();
+            consumer.unsubscribe_callbacks.delete(familytests_id);
+        }
         this._sendToDashboardConsumer(consumer, doc);
     });
 };
