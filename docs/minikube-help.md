@@ -252,8 +252,8 @@ $ /fontbakery-dashboard/containers/base$ ./update_protobufs.sh
 ```
 $ minikube start
 $ . <(minikube docker-env)
-$ docker build -t fontbakery/base-javascript:3 containers/base/javascript/
-$ docker build -t fontbakery/base-python:4 containers/base/python/
+$ docker build -t fontbakery/base-javascript:4 containers/base/javascript/
+$ docker build -t fontbakery/base-python:5 containers/base/python/
 $ kubectl create namespace fontbakery
 $ alias kf="kubectl -n fontbakery"
 $ ENVIRONMENT_VERSION="$(date)"
@@ -272,8 +272,9 @@ $ kf apply -f kubernetes/minikube-fontbakery-api.yaml
 # SKIP: (do not need right now)
 # $ kf apply -f kubernetes/minikube-fontbakery-manifest-gfapi.yaml
 # $ kf apply -f kubernetes/minikube-fontbakery-manifest-githubgf.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-manifest-csvupstream.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
+
 
 
 ```
