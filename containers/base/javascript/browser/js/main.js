@@ -158,22 +158,24 @@ define([
          , socketChangeHandler = null
          ;
         function onQueryFilterChange() {
-            var hash = window.location.hash()
+            ignoreNextPopState = true;
+            var hash = decodeURIComponent(window.location.hash) // it's a firefox bug apparently
               , marker = '#filter:'
               , userInputFilter = ''
               , queryFilter
               ;
             if(hash.indexOf( marker) === 0)
                 userInputFilter = hash.slice(marker.length);
-            // did it really change?
+
+
             queryFilter = _dashboarNormalizeFilter(userInputFilter);
+            // set the normalized value
+            window.location.hash = queryFilter ? marker.slice(1) + queryFilter : '';
+
+            // did it really change?
             if(lastQuery === queryFilter)
                 return;
             lastQuery = queryFilter;
-
-            // we don't want to act on this event.
-            // thought, we should catch it with the check above;
-            window.location.hash = marker + queryFilter;
 
             if(socketChangeHandler) {
                 socket.off('changes-dashboard', socketChangeHandler);
@@ -252,6 +254,7 @@ define([
         return [data, init];
     }
 
+    var ignoreNextPopState = false;// bad hack;
     return function main() {
         // here's a early difference:
         // either we want to bootstrap the sending interface OR the
@@ -265,8 +268,13 @@ define([
         init(data);
         // Using pushstate changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushstate was not used.
-        window.onpopstate = function(e) {
+        window.onpopstate = function(event) {
             // jshint unused:vars
+            if(ignoreNextPopState) {
+                ignoreNextPopState = false;
+                event.preventDefault();
+                return;
+            }
             window.location.reload();
         };
     };
