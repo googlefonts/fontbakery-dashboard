@@ -416,6 +416,11 @@
             bottom: 0;
             z-index: -1;
         }
+
+        .dashboard-interface .filter-query-ui input.filter-query {
+            /* Needs some space, these queries are a bit long. */
+            width: 70%;
+        }
     </style>
     <script>
     require(['/browser/js/bootstrap.js'], function(require) {
@@ -455,6 +460,7 @@
     </div>
 
     <div class="dashboard-interface">
+    <!-- insert: filter-query -->
     <!-- insert: toggle-percentages -->
     <!-- insert: dashboard -->
     </div>
@@ -475,6 +481,15 @@
 </div>
 
 <div class="dashboard-templates" style="display:none">
+    <form class="filter-query-ui">
+        <label>Filter by check-ids: <input
+                      class="filter-query"
+                      title="Enter comma separated check-ids."
+                      placeholder="{check-if}, {check-id}, …"
+                      type="text"
+                      name="filter_checks" /></label>
+        <button type="submit" class="apply-filter-query">Apply!</button>
+    </form>
 </div>
 
 <div class="collection-report-templates" style="display:none">

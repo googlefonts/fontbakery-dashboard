@@ -1,8 +1,6 @@
 #! /usr/bin/env node
 "use strict";
-// this is expected to run in nodejs
-/* global require, module */
-/* jshint esnext:true */
+/* jshint esnext:true, node:true */
 
 const path = require('path')
   , fs = require('fs')
@@ -59,10 +57,13 @@ function DashboardAPIService(server, app, logging,  io, cache, reports) {
     this._collectionSubscriptions = new Map();
     // socket.id => data
     this._collectionConsumers = new Map();
-    // familytests_id => familyDoc
-    this._familyDocs = new Map();
+    // [queryFilter]Map(familytests_id => familyDoc)
+    this._familyDocs = {};
+    //[queryFilter] => cursor
+    this._familyDocsSubscriptionCursor = {};
+
     this._dashboardSubscription = null; // an object if there are consumers
-    this._familyDocsSubscriptionCursor = null;
+
 
     this.__updateCollectionFamilyDoc = this._updateCollectionFamilyDoc.bind(this);
 
@@ -572,24 +573,32 @@ _p._subscribeToCollectionFamilyDoc = function(familytests_id, collectionId
 
     if(!doc.unsubscribe) {
         // called immediately if there is already data
-        let callback = this.__updateCollectionFamilyDoc;
+        let callback = this.__updateCollectionFamilyDoc
+          , queryFilter = ''//TODO
+          ;
         doc.unsubscribe = this._subscribeToFamilyDoc(familytests_id
-                                            , callback, familytests_id);
+                                , queryFilter, callback, familytests_id);
     }
 };
 
-_p._unsubscribeFromFamilyDoc = function(subscription) {
+_p._unsubscribeFromFamilyDoc = function(queryFilter, subscription) {
     var familytests_id = subscription.familytests_id
-      , familyDoc = this._familyDocs.get(familytests_id)
+      , familyDocs = this._familyDocs[queryFilter]
+      , familyDoc = familyDocs && familyDocs.get(familytests_id)
       ;
+
+    if(!familyDoc)
+        return;
+
     familyDoc.subscriptions.delete(subscription);
     if(!familyDoc.subscriptions.size) {
-        this._familyDocs.delete(familytests_id);
+        familyDocs.delete(familytests_id);
 
-        if(!this._familyDocs.size) {
+        if(!familyDocs.size) {
             // close the change feed if there are no more subscribers
-            this._closeCursor(this._familyDocsSubscriptionCursor);
-            this._familyDocsSubscriptionCursor = null;
+            this._closeCursor(this._familyDocsSubscriptionCursor[queryFilter]);
+            delete this._familyDocsSubscriptionCursor[queryFilter];
+            delete this._familyDocs[queryFilter];
         }
     }
 };
@@ -601,7 +610,7 @@ function _callbackFamilyDocSubscubscriber(subscription, data) {
 }
 
 
-_p._getDashboardFamilytestQuery = function(familytests_id) {
+_p._getDashboardFamilytestQueryUnfiltered = function(familytests_id) {
     var query = this._io.query('family');
     // this way we can create a changefeed for the whole table
     // and have a single point of truth for the query
@@ -609,19 +618,73 @@ _p._getDashboardFamilytestQuery = function(familytests_id) {
         query = query.get(familytests_id);
 
     return query.merge(doc => {return {
-                total: doc('tests').count().default(null)
+                total: doc('tests').default({}).count().default(null)
               , '#fonts': doc('iterargs')('font').count().default(null)
             };
-        })
-        // more?
-        .pluck('id', 'results', 'finished', 'created', 'started'
-             , 'exception', 'total' , '#fonts')
-        .merge({type: 'familytest'})
-        ;
+        });
 };
 
-_p._updateFamilytestDoc = function(isPriming, data) {
-    var familyDoc = this._familyDocs.get(data.new_val.id);
+// https://github.com/sindresorhus/escape-string-regexp/blob/master/index.js
+const _matchOperatorsRe = /[|\\{}()[\]^$+*?.]/g;
+function _escapeStringRegexp (str) {
+    return str.replace(_matchOperatorsRe, '\\$&');
+}
+
+const _matchDoubleQuotes = /"/g;
+function _escapeDoubleQuotes(str) {
+    return str.replace(_matchDoubleQuotes, '\\$&');
+}
+_p._getDashboardFamilytestQueryFilterChecks = function(familytests_id, searchedChecks) {
+    var query = this._io.query('family')
+     , search = searchedChecks.split(',')
+                    .map(_escapeStringRegexp)
+                    .map(_escapeDoubleQuotes)
+                    // we'll be searching in the key of the checks
+                    // make sure to select just the matching "check"
+                    .map(str=> '"check":' + '"' + str + '"')
+                    .join('|') // RegeExp "or" operator
+      ;
+
+    // this way we can create a changefeed for the whole table
+    // and have a single point of truth for the query
+    if(familytests_id)
+        query = query.get(familytests_id);
+
+    return query
+        .without('results')
+        .merge(doc=>{
+            var results = doc('tests').default({}).keys()
+                     // this is a list of all keys we are interested in.
+                    .filter(key=>key.match(search)
+                        // If the check did not run yet (either brand new
+                        // or an exception in the worker) it has no
+                        // result.
+                       .and(doc('tests').default({})(key).hasFields('result')))
+                    .map(key=>doc('tests').default({})(key)('result'))
+              ;
+            return {
+                results: results.fold({},
+                           (acc, key)=>acc.merge(this._io.r.object(key, acc(key).default(0).add(1))))
+              , total: results.count()
+              , '#fonts': doc('iterargs')('font').count().default(null)
+            };
+        });
+};
+
+_p._getDashboardFamilytestQuery = function(queryFilter, familytests_id) {
+    var query = queryFilter
+        ? this._getDashboardFamilytestQueryFilterChecks(familytests_id, queryFilter)
+        : this._getDashboardFamilytestQueryUnfiltered(familytests_id)
+        ;
+          // more?
+    return query.pluck('id', 'results', 'finished', 'created', 'started'
+             , 'exception', 'total' , '#fonts')
+        .merge({type: 'familytest'});
+};
+
+_p._updateFamilytestDoc = function(queryFilter, isPriming, data) {
+    var familyDocs = this._familyDocs[queryFilter]
+      , familyDoc = familyDocs && familyDocs.get(data.new_val.id);
 
     if(!familyDoc)
         // we are not listening to this doc
@@ -637,47 +700,49 @@ _p._updateFamilytestDoc = function(isPriming, data) {
     });
 };
 
-_p._subscribeToFamilyDocChanges = function() {
-    return this._getDashboardFamilytestQuery()
+_p._subscribeToFamilyDocChanges = function(queryFilter) {
+    return this._getDashboardFamilytestQuery(queryFilter)
         .changes({includeInitial: false, squash: 1})
         .run((err, cursor) => {
             if(err)
                 this._raiseUnhandledError('Can\'t acquire change feed.', err);
 
-            if(!this._familyDocs.size)
+            if(!this._familyDocs[queryFilter] || !this._familyDocs[queryFilter].size) {
                 // everybody has left! Close the change feed there are no more subscribers
                 this._closeCursor(cursor);
-
-            this._familyDocsSubscriptionCursor = cursor;
+                return;
+            }
+            this._familyDocsSubscriptionCursor[queryFilter] = cursor;
             cursor.each((err, data) => {
                 if(err)
                     this._raiseUnhandledError('Change feed cursor error:', err);
 
                 if(data.new_val)
-                    this._updateFamilytestDoc(false, data);
+                    this._updateFamilytestDoc(queryFilter, false, data);
                 // else: it is a delete, not yet supported
             });
 
         }, {cursor: true});
 };
 
-_p._subscribeToFamilyDoc = function(familytests_id, callback/*, args ... */) {
-    var familyDoc = this._familyDocs.get(familytests_id)
+_p._subscribeToFamilyDoc = function(familytests_id, queryFilter, callback, ...args) {
+    var familyDocs = this._familyDocs[queryFilter]
+      , familyDoc = familyDocs && familyDocs.get(familytests_id)
       , subscription = {
             familytests_id: familytests_id
           , callback: callback
-          , args: []
+          , args: args
         }
-        , subscriptions
-        , args = subscription.args, i, l
-        ;
-    for(i=2,l=arguments.length;i<l;i++)
-        args.push(arguments[i]);
+      , subscriptions
+      ;
 
-    if(this._familyDocsSubscriptionCursor === null) {
-        this._familyDocsSubscriptionCursor = 'pending';
-        this._subscribeToFamilyDocChanges();
+    if(!this._familyDocsSubscriptionCursor[queryFilter]) {
+        this._familyDocsSubscriptionCursor[queryFilter] = 'pending';
+        this._subscribeToFamilyDocChanges(queryFilter);
     }
+
+    if(!familyDocs)
+        this._familyDocs[queryFilter] = familyDocs = new Map();
 
     if(!familyDoc) {
         familyDoc = {
@@ -685,20 +750,20 @@ _p._subscribeToFamilyDoc = function(familytests_id, callback/*, args ... */) {
           , data: null
         };
         // at this point we start to record changes for this familytests_id
-        this._familyDocs.set(familytests_id, familyDoc);
+        familyDocs.set(familytests_id, familyDoc);
 
         // This may need priming, but also maybe the change feed is faster.
         // if there's data when this request returns then the changefeed
         // has won.
-        this._getDashboardFamilytestQuery(familytests_id)
+        this._getDashboardFamilytestQuery(queryFilter, familytests_id)
             .run()
-            .then(data => this._updateFamilytestDoc(true, {new_val: data}));
+            .then(data => this._updateFamilytestDoc(queryFilter, true, {new_val: data}));
     }
 
     familyDoc.subscriptions.add(subscription);
     if(familyDoc.data)
         _callbackFamilyDocSubscubscriber(subscription, familyDoc.data);
-    return this._unsubscribeFromFamilyDoc.bind(this, subscription);
+    return this._unsubscribeFromFamilyDoc.bind(this, queryFilter, subscription);
 };
 
 // This triggers no change notifications itself, but it implies that
@@ -844,12 +909,13 @@ _p._initCollectionSubscriptions = function(collectionId) {
     // C) start monitoring for changes for collectionId, but only upate
     //    the collection state when necessary
 
-_p._makeCollectionConsumer = function(socket) {
+_p._makeCollectionConsumer = function(socket, queryFilter) {
     var consumer = this._collectionConsumers.get(socket.id);
     if(!consumer) {
         consumer = {
             socket: socket
           , subscriptions: new Set()
+          , queryFilter: queryFilter
         };
         this._collectionConsumers.set(socket.id, consumer);
     }
@@ -870,13 +936,14 @@ _p._disconectFromCollections = function(socket) {
     var socketId = socket.id
       , consumer = this._collectionConsumers.get(socketId)
       ;
-    for(let collectionId of consumer.subscriptions)
-        this._unsubscribeFromCollection(socketId, collectionId);
+    if(consumer)
+        for(let collectionId of consumer.subscriptions)
+            this._unsubscribeFromCollection(socketId, collectionId);
 };
 
 _p._clearCollectionConsumers = function(collectionId) {
     // assert !this._collectionSubscriptions.has(collectionId);
-    for(let [socketId, consumer] in this._collectionConsumers)
+    for(let [socketId, consumer] of this._collectionConsumers)
         if(consumer.subscriptions.has(collectionId))
             this._unsubscribeFromCollection(socketId, collectionId);
 };
@@ -892,7 +959,7 @@ _p._unsubscribeFromCollection = function(socketId, collectionId) {
         // if no consumers are left, close the change feeds
         this._closeCursor(collectionSubscription.collectionCursor);
         this._collectionSubscriptions.delete(collectionId);
-        for(let [family_name, doc] in collectionSubscription.documents)
+        for(let [family_name, doc] of collectionSubscription.documents)
             this._unsubscribeFromCollectionFamilyDoc(doc.new_val.familytests_id
                                             , collectionId, family_name);
         // NOTE: this is important, otherwise the recursive call never ends:
@@ -944,11 +1011,12 @@ _p._subscribeToCollectionReport = function(socket, data) {
     //    a collection when time-traveling and revisit this later.
     var collectionId = data.id
       , consumer, collectionSubscription
+      , normalizedFilter = _normalizeCheckFilter(data.filter)
       ;
 
     // Can be subscribed to other collections as well
     // and most probably will be in the future, for the full dashboard!
-    consumer = this._makeCollectionConsumer(socket);
+    consumer = this._makeCollectionConsumer(socket, normalizedFilter);
     if(consumer.subscriptions.has(collectionId))
         // just a small sanity test, we may eventually just return here.
         // Could be a client bug/feature thing but right now it seems
@@ -988,17 +1056,25 @@ _p._updateDashboardCollectionDoc = function(isPriming, doc) {
     var collectionDocs = this._dashboardSubscription.collectionDocs
       , consumers = this._dashboardSubscription.consumers
       , key = [doc.collection_id, doc.family_name].join('...')
-      , current = collectionDocs.get(key)
+      , lastDoc = collectionDocs.get(key)
       ;
     // Do this check, because of us not using includeInitial
     // and the "priming" request
-    if(isPriming && current)
+    if(isPriming && lastDoc)
         // the change feed was faster
         return;
 
     collectionDocs.set(key, doc);
     // send updates to each consumers;
     consumers.forEach((consumer) => {
+        if(lastDoc && lastDoc.familytests_id !== doc.familytests_id) {
+            // familytests_id has changed for collection/family_name
+            let familytests_id = lastDoc.familytests_id
+              , unsubscribe = consumer.unsubscribe_callbacks.get(familytests_id)
+              ;
+            unsubscribe();
+            consumer.unsubscribe_callbacks.delete(familytests_id);
+        }
         this._sendToDashboardConsumer(consumer, doc);
     });
 };
@@ -1019,15 +1095,30 @@ _p._sendToDashboardConsumer = function(consumer, collectiontest_data) {
                 consumer.socket.emit(channel, data.new_val);
             }
             // will send cached docs immediately
-          , unsubscribe = this._subscribeToFamilyDoc(familytests_id, callback)
+          , unsubscribe = this._subscribeToFamilyDoc(familytests_id
+                                        , consumer.queryFilter, callback)
           ;
         consumer.unsubscribe_callbacks.set(familytests_id, unsubscribe);
     }
 };
 
+function _normalizeCheckFilter(userInputfilter) {
+    return userInputfilter
+                ? userInputfilter.split(',')
+                      .map(s=>s.trim())
+                      .filter(s=>!!s)
+                      .sort()
+                      .join(',')
+                : ''
+                ;
+}
+
 _p._subscribeToDashboard = function(socket, data) {
     //jshint unused:vars
-    var consumer;
+    var consumer
+      , normalizedFilter = _normalizeCheckFilter(data.filter)
+      ;
+
     if(!this._dashboardSubscription) {
         this._dashboardSubscription = {
             cursor: null
@@ -1071,11 +1162,13 @@ _p._subscribeToDashboard = function(socket, data) {
         // also this is what we to do on a hang up, see _disconnectFromDashboard
         consumer.unsubscribe_callbacks.forEach(unsubscribe => unsubscribe());
         consumer.unsubscribe_callbacks = new Map();
+        consumer.queryFilter = normalizedFilter;
     }
     else {
         consumer = {
             socket: socket
           , unsubscribe_callbacks: new Map()
+          , queryFilter: normalizedFilter
         };
         this._dashboardSubscription.consumers.set(socket.id, consumer);
     }

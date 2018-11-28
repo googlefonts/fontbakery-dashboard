@@ -180,7 +180,6 @@ if (typeof require != 'undefined' && require.main==module) {
        , familyWhitelist = setup.develFamilyWhitelist
        , apiDataBaseUrl = 'https://www.googleapis.com/webfonts/v1/webfonts?key='
        , apiDataUrl = apiDataBaseUrl + process.env.GOOGLE_API_KEY
-       , familyWhitelist = null
        , grpcPort=50051
        ;
 

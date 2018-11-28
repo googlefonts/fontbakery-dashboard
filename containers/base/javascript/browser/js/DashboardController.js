@@ -1017,6 +1017,7 @@ define([
     function DashboardController(container, templatesContainer, data) {
         // jshint unused:vars
         this.container = container;
+        this._templatesContainer = templatesContainer;
         this._slotKey = 'family_name';
         // we never delete this during runtime, even though it
         // some familytests might outdate during runtime and may never
@@ -1064,6 +1065,10 @@ define([
         dom.insertAtMarkerComment(this.container, 'insert: dashboard'
                                                             , this._table);
         this._collectionOrder.forEach(this._initCollection.bind(this));
+
+        var filterQueryUI = this._initFilterQueryUI();
+        dom.insertAtMarkerComment(this.container, 'insert: filter-query'
+                                                , filterQueryUI);
 
         this._showPercentages = true;
         var showPercentagesButton = this._initTogglePercentages();
@@ -1128,6 +1133,40 @@ define([
         }.bind(this));
         this._global.setCell(repr);
         return button;
+    };
+
+    _p._getElementFromTemplate = function (klass, deep, container) {
+        var container_ = container || this._templatesContainer
+          , template = dom.getChildElementForSelector(container_
+                                                    , '.' + klass, deep)
+          ;
+        return template ? template.cloneNode(true) : null;
+    };
+
+    _p._initFilterQueryUI = function() {
+        var form = this._getElementFromTemplate('filter-query-ui', true)
+          , input =  dom.getChildElementForSelector(form, '.filter-query', true)
+          , window = this.container.ownerDocument.defaultView
+          , marker = '#filter:'
+          ;
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            window.location.hash = marker.slice(1) + input.value;
+        }, false);
+
+        function setInputValue() {
+            var hash = decodeURIComponent(window.location.hash);
+            if(hash.indexOf(marker) === 0);
+                input.value = hash.slice(marker.length);
+        }
+        setInputValue();
+        window.addEventListener('hashchange', setInputValue, false);
+        this.container.addEventListener('destroy', function() {
+            window.removeEventListener('hashchange', setInputValue, false);
+        }, false);
+
+        return form;
     };
 
     _p._updateSortIndicators = function() {

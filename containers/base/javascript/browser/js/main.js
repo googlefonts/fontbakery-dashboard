@@ -19,6 +19,7 @@ define([
 ) {
     "use strict";
     /*global document, window, FileReader*/
+    // jshint browser:true
 
     function makeFileInput(fileOnLoad, element) {
         var hiddenFileInput = dom.createChildElement(element, 'input'
@@ -138,15 +139,67 @@ define([
         socket.emit('subscribe-collection', { id: data.id });
     }
 
+
+    // also used on the server, but useful in the client as well
+    function _dashboarNormalizeFilter(userInputfilter) {
+        return userInputfilter
+            ? userInputfilter.split(',')
+                  .map(function(s){return s.trim();})
+                  .filter(function(s){return !!s;})
+                  .sort()
+                  .join(',')
+            : ''
+            ;
+    }
+
     function initDashboard(data) {
-        var container = activateTemplate('dashboard-interface')
-         , templatesContainer = getTemplatesContainer('dashboard-templates')
-         , socket = socketio('/')
-         , dashboard = new DashboardController(container, templatesContainer, data)
+        var socket = socketio('/')
+         , lastQuery = null
+         , socketChangeHandler = null
          ;
-        socket.on('changes-dashboard', dashboard.onChange.bind(dashboard));
-        console.log('subscribe-dashboard');
-        socket.emit('subscribe-dashboard', {});
+        function onQueryFilterChange() {
+            ignoreNextPopState = true;
+            var hash = decodeURIComponent(window.location.hash) // it's a firefox bug apparently
+              , marker = '#filter:'
+              , userInputFilter = ''
+              , queryFilter
+              ;
+            if(hash.indexOf( marker) === 0)
+                userInputFilter = hash.slice(marker.length);
+
+
+            queryFilter = _dashboarNormalizeFilter(userInputFilter);
+            // set the normalized value
+            window.location.hash = queryFilter ? marker.slice(1) + queryFilter : '';
+
+            // did it really change?
+            if(lastQuery === queryFilter)
+                return;
+            lastQuery = queryFilter;
+
+            if(socketChangeHandler) {
+                socket.off('changes-dashboard', socketChangeHandler);
+                socketChangeHandler = null;
+            }
+            // replace the whole thing!
+            var container = activateTemplate('dashboard-interface')
+              , templatesContainer = getTemplatesContainer('dashboard-templates')
+              , dashboard = new DashboardController(container, templatesContainer, data)
+              ;
+
+            window.addEventListener('hashchange', onQueryFilterChange, false);
+            container.addEventListener('destroy', function(){
+                window.removeEventListener('hashchange', onQueryFilterChange, false);
+            }, false);
+
+            console.log('subscribe-dashboard, filter:' + queryFilter);
+            socketChangeHandler = dashboard.onChange.bind(dashboard);
+            socket.on('changes-dashboard', socketChangeHandler);
+            socket.emit('subscribe-dashboard', {filter: queryFilter});
+        }
+
+        // init
+        onQueryFilterChange();
     }
 
     function getInterfaceMode() {
@@ -201,6 +254,7 @@ define([
         return [data, init];
     }
 
+    var ignoreNextPopState = false;// bad hack;
     return function main() {
         // here's a early difference:
         // either we want to bootstrap the sending interface OR the
@@ -214,8 +268,13 @@ define([
         init(data);
         // Using pushstate changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushstate was not used.
-        window.onpopstate = function(e) {
+        window.onpopstate = function(event) {
             // jshint unused:vars
+            if(ignoreNextPopState) {
+                ignoreNextPopState = false;
+                event.preventDefault();
+                return;
+            }
             window.location.reload();
         };
     };

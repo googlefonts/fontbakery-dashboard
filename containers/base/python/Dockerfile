@@ -73,10 +73,6 @@ RUN touch /tmp/cache_spoof_18
 
 RUN pip install fontbakery;
 
-RUN echo "#! /bin/bash"  > /bin/ftxvalidator; \
-    echo ">&2 echo 'ftxvalidator is not available!'; exit 1" >> /bin/ftxvalidator; \
-    chmod +x /bin/ftxvalidator;
-
 RUN touch /tmp/cache_spoof_2
 
 # in update_protobufs.sh the command `python -m grpc_tools.protoc`
