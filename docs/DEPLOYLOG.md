@@ -391,9 +391,9 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
-docker build -t fontbakery/base-javascript:43 containers/base/javascript;
-docker tag fontbakery/base-javascript:43 gcr.io/fontbakery-168509/base-javascript:43
-gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:43
+docker build -t fontbakery/base-javascript:44 containers/base/javascript;
+docker tag fontbakery/base-javascript:44 gcr.io/fontbakery-168509/base-javascript:44
+gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:44
 
 docker build -t fontbakery/base-python:32 containers/base/python;
 docker tag fontbakery/base-python:32 gcr.io/fontbakery-168509/base-python:32
