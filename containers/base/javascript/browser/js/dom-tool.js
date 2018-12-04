@@ -140,10 +140,10 @@ define([
         }
     }
 
-    function getChildElementForSelector(element, klass, deep) {
+    function getChildElementForSelector(element, selector, deep) {
 
         var elements = Array.prototype.slice
-                            .call(element.querySelectorAll(klass));
+                            .call(element.querySelectorAll(selector));
         if(!deep)
             // I don't know an easier way to only allow
             // direct children.
