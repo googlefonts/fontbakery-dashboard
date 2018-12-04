@@ -381,3 +381,102 @@ def add_DispatcherProcessManagerServicer_to_server(servicer, server):
   generic_handler = grpc.method_handlers_generic_handler(
       'fontbakery.dashboard.DispatcherProcessManager', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
+
+
+class AuthServiceStub(object):
+  """/////
+  Authorization/GitHub OAuth stuff
+  /////
+
+  """
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.InitSession = channel.unary_unary(
+        '/fontbakery.dashboard.AuthService/InitSession',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=messages__pb2.AuthStatus.FromString,
+        )
+    self.Logout = channel.unary_unary(
+        '/fontbakery.dashboard.AuthService/Logout',
+        request_serializer=messages__pb2.SessionId.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
+    self.Authorize = channel.unary_unary(
+        '/fontbakery.dashboard.AuthService/Authorize',
+        request_serializer=messages__pb2.AuthorizeRequest.SerializeToString,
+        response_deserializer=messages__pb2.AuthStatus.FromString,
+        )
+    self.CheckSession = channel.unary_unary(
+        '/fontbakery.dashboard.AuthService/CheckSession',
+        request_serializer=messages__pb2.SessionId.SerializeToString,
+        response_deserializer=messages__pb2.AuthStatus.FromString,
+        )
+
+
+class AuthServiceServicer(object):
+  """/////
+  Authorization/GitHub OAuth stuff
+  /////
+
+  """
+
+  def InitSession(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def Logout(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def Authorize(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def CheckSession(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_AuthServiceServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'InitSession': grpc.unary_unary_rpc_method_handler(
+          servicer.InitSession,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=messages__pb2.AuthStatus.SerializeToString,
+      ),
+      'Logout': grpc.unary_unary_rpc_method_handler(
+          servicer.Logout,
+          request_deserializer=messages__pb2.SessionId.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'Authorize': grpc.unary_unary_rpc_method_handler(
+          servicer.Authorize,
+          request_deserializer=messages__pb2.AuthorizeRequest.FromString,
+          response_serializer=messages__pb2.AuthStatus.SerializeToString,
+      ),
+      'CheckSession': grpc.unary_unary_rpc_method_handler(
+          servicer.CheckSession,
+          request_deserializer=messages__pb2.SessionId.FromString,
+          response_serializer=messages__pb2.AuthStatus.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'fontbakery.dashboard.AuthService', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))

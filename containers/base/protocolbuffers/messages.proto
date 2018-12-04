@@ -274,10 +274,10 @@ message ProcessCommand {
 ///////
 
 service AuthService {
-  rpc init_session (google.protobuf.Empty) returns (AuthStatus) {};
-  rpc logout (SessionId) returns (google.protobuf.Empty) {};
-  rpc authorize (AuthorzizeRequest) returns (AuthStatus) {};
-  rpc check_session (SessionId) returns (AuthStatus) {};
+  rpc InitSession (google.protobuf.Empty) returns (AuthStatus) {};
+  rpc Logout (SessionId) returns (google.protobuf.Empty) {};
+  rpc Authorize (AuthorizeRequest) returns (AuthStatus) {};
+  rpc CheckSession (SessionId) returns (AuthStatus) {};
 }
 
 message AuthStatus {

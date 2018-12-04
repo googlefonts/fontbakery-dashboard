@@ -8,6 +8,28 @@ var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/time
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
 var shared_pb = require('./shared_pb.js');
 
+function serialize_fontbakery_dashboard_AuthStatus(arg) {
+  if (!(arg instanceof messages_pb.AuthStatus)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.AuthStatus');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_AuthStatus(buffer_arg) {
+  return messages_pb.AuthStatus.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_AuthorizeRequest(arg) {
+  if (!(arg instanceof messages_pb.AuthorizeRequest)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.AuthorizeRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_AuthorizeRequest(buffer_arg) {
+  return messages_pb.AuthorizeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_CacheItem(arg) {
   if (!(arg instanceof messages_pb.CacheItem)) {
     throw new Error('Expected argument of type fontbakery.dashboard.CacheItem');
@@ -171,6 +193,17 @@ function serialize_fontbakery_dashboard_ReportsQuery(arg) {
 
 function deserialize_fontbakery_dashboard_ReportsQuery(buffer_arg) {
   return messages_pb.ReportsQuery.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_SessionId(arg) {
+  if (!(arg instanceof messages_pb.SessionId)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.SessionId');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_SessionId(buffer_arg) {
+  return messages_pb.SessionId.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_google_protobuf_Any(arg) {
@@ -400,3 +433,55 @@ var DispatcherProcessManagerService = exports.DispatcherProcessManagerService = 
 };
 
 exports.DispatcherProcessManagerClient = grpc.makeGenericClientConstructor(DispatcherProcessManagerService);
+// /////
+// Authorization/GitHub OAuth stuff
+// /////
+//
+var AuthServiceService = exports.AuthServiceService = {
+  initSession: {
+    path: '/fontbakery.dashboard.AuthService/InitSession',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: messages_pb.AuthStatus,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_fontbakery_dashboard_AuthStatus,
+    responseDeserialize: deserialize_fontbakery_dashboard_AuthStatus,
+  },
+  logout: {
+    path: '/fontbakery.dashboard.AuthService/Logout',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.SessionId,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_fontbakery_dashboard_SessionId,
+    requestDeserialize: deserialize_fontbakery_dashboard_SessionId,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  authorize: {
+    path: '/fontbakery.dashboard.AuthService/Authorize',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.AuthorizeRequest,
+    responseType: messages_pb.AuthStatus,
+    requestSerialize: serialize_fontbakery_dashboard_AuthorizeRequest,
+    requestDeserialize: deserialize_fontbakery_dashboard_AuthorizeRequest,
+    responseSerialize: serialize_fontbakery_dashboard_AuthStatus,
+    responseDeserialize: deserialize_fontbakery_dashboard_AuthStatus,
+  },
+  checkSession: {
+    path: '/fontbakery.dashboard.AuthService/CheckSession',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.SessionId,
+    responseType: messages_pb.AuthStatus,
+    requestSerialize: serialize_fontbakery_dashboard_SessionId,
+    requestDeserialize: deserialize_fontbakery_dashboard_SessionId,
+    responseSerialize: serialize_fontbakery_dashboard_AuthStatus,
+    responseDeserialize: deserialize_fontbakery_dashboard_AuthStatus,
+  },
+};
+
+exports.AuthServiceClient = grpc.makeGenericClientConstructor(AuthServiceService);
