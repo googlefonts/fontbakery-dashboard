@@ -20,7 +20,7 @@ define([
   , DispatcherController
 ) {
     "use strict";
-    /*global document, window, FileReader*/
+    /*global document, window, FileReader, Set*/
     // jshint browser:true
 
     function makeFileInput(fileOnLoad, element) {
@@ -79,9 +79,7 @@ define([
 
     function activateTemplate(klass) {
         var templatesContainer = getTemplatesContainer('templates')
-          , template = templatesContainer.getElementsByClassName(klass)[0]
           , target = document.getElementsByClassName('active-interface')[0]
-          , activatedElement
           ;
 
         for(var i=0,l=target.children.length;i<l;i++)
@@ -89,8 +87,18 @@ define([
             // activatedElement.addEventListener('destroy', function (e) { //... }, false);
             target.children[i].dispatchEvent(new Event('destroy'));
         dom.clear(target);
-        activatedElement = template.cloneNode(true);
-        target.appendChild(activatedElement);
+        return activateElement(templatesContainer, klass, target, null);
+    }
+
+    function activateElement(templatesContainer, klass, targetContainer, markerComment) {
+        console.log('activateElement', templatesContainer, klass, targetContainer, markerComment);
+        var template = templatesContainer.getElementsByClassName(klass)[0]
+          , activatedElement = template.cloneNode(true)
+          ;
+        if(!markerComment)
+            targetContainer.appendChild(activatedElement);
+        else
+            dom.insertAtMarkerComment(targetContainer, markerComment, activatedElement, false);
         return activatedElement;
     }
 
@@ -212,6 +220,248 @@ define([
          ;
     }
 
+    var AuthenticationController = (function(){
+    function AuthenticationController(element) {
+        this._loginURL = '/github-oauth/login';
+        this._element = element;
+        this._button = this._element.querySelector('button.action');
+        this._user = this._element.querySelector('.user');
+        this._lastLoginWindow = null;
+
+        this._button.addEventListener('click', this._actionHandler.bind(this),false);
+        this.window.addEventListener('message', this._onMessage.bind(this), false);
+
+        this._sessionChangeHandlers = new Set();
+
+        // needs checkSession for init
+        // just to have the name officially defined for now
+        this._session = null;
+        // run the setter
+        this._setSession(null);
+    }
+    var _p = AuthenticationController.prototype;
+
+    _p.onSessionChange = function(callback, initial) {
+        this._sessionChangeHandlers.add(callback);
+        if(initial)
+            callback(this.session);
+        return function (){
+            this._sessionChangeHandlers.delete(callback);
+        }.bind(this);
+    };
+
+    function _sendXHR (verb/*GET|POST*/,url, responseType, body, contenType) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(verb, url);
+        if(contenType)
+            xhr.setRequestHeader('Content-Type', contenType);
+        xhr.send(body || null);
+        xhr.responseType = responseType;
+
+        return new Promise(function(resolve, reject) {
+            xhr.onreadystatechange = function () {
+                if(xhr.readyState !== XMLHttpRequest.DONE)
+                    return;
+                if(xhr.status !== 200) {
+                    // We could handle other status codes reasonably here
+                    // especially if they are still structured as expected.
+                    // Though, the we may find well structured and not well
+                    // structured responses.
+                    // We could create a well structured response here and
+                    // then: `resolve(errorResponse);`
+                    reject(new Error(xhr.status + ': ' + xhr.statusText));
+                }
+                else
+                    resolve(xhr.response);
+            };
+        });
+    }
+
+    _p._expectStatus = function(initiator, promise) {
+        return promise.then(
+            function(result) {
+                this._setSession(result);
+                return this.loggedIn;
+            }.bind(this)
+          , function(error) {
+                console.error(initiator + ':', error);
+                // can't change status, because we don't know what it is
+            });
+    };
+
+    _p.checkSession = function() {
+        return this._expectStatus(
+                'sendXHRCheckSession'
+              , _sendXHR('GET', '/github-oauth/check-session', 'json')
+        );
+    };
+
+    function _toFeatureString(obj) {
+        var key, val, parts = [];
+        for (key in obj) {
+            val = obj[key];
+            if(typeof val === "boolean")
+                val = obj[key] && 'yes' || 'no';
+            parts.push(key + '=' + val);
+        }
+        return parts.join(',');
+    }
+
+    _p._openLoginWindow = function() {
+        var window = this.window
+          , url = window.location.protocol + '//' + location.host + this._loginURL
+          , width = Math.max(Math.min(750, window.screen.availWidth), 100)
+          , height = Math.max(Math.min(950, window.screen.availHeight), 100)
+          , options = {
+                 width: width
+               , height: height
+                 // trying to do some half-way reasonable positioning
+               , left: window.screenX + ((window.outerWidth - width) / 2)
+               , top: window.screenY + ((window.outerHeight - height) / 2.5)
+               , toolbar: false
+               , menubar: false
+               , location: true
+               , resizable: true
+               , scrollbars: true
+               , status: true
+            }
+          , strWindowFeatures = _toFeatureString(options)
+          ;
+        this._lastLoginWindow = this.window.open(url, 'login', strWindowFeatures);
+    };
+
+    /**
+     * event.data
+     *     The object passed from the other window.
+     *
+     * event.origin
+     *     The origin of the window that sent the message at the time
+     *     ostMessage was called. This string is the concatenation of
+     *     the protocol and "://", the host name if one exists, and ":"
+     *     followed by a port number if a port is present and differs
+     *     from the default port for the given protocol. Examples of
+     *     typical origins are https://example.org (implying port 443),
+     *     http://example.net (implying port 80), and http://example.com:8080.
+     *     Note that this origin is not guaranteed to be the current or
+     *     future origin of that window, which might have been navigated
+     *     to a different location since postMessage was called.
+     *
+     * event.source
+     *     A reference to the window object that sent the message; you
+     *     can use this to establish two-way communication between
+     *     two windows with different origins.
+     */
+    _p._onMessage = function(event) {
+        // window.opener.postMessage({type: 'authentication', session: session}, window.origin);
+        var data = event.data;
+        if(event.source !== this._lastLoginWindow)
+            // wrong source;
+            return;
+
+        if(event.origin !== this.window.origin)
+            // wrong origin
+            return;
+
+        if(!('type' in data) || data.type !== 'authentication')
+            // not our business
+            return;
+
+        // accepted
+        this._setSession(data.session);
+        this._lastLoginWindow.close();
+        this._lastLoginWindow = null;
+    };
+
+    _p._login = function() {
+        // login flow is:
+        //
+        // GET: checkSession
+        //     if we have don't have a login
+        // window open login page
+        // listen for window.message
+        this.checkSession().then(function(loggedIn){
+            if(loggedIn) return;
+            this._openLoginWindow();
+        }.bind(this));
+    };
+
+    _p.logout = function() {
+        return this._expectStatus(
+                'logout'
+              , _sendXHR('POST', '/github-oauth/logout', 'json')
+        );
+    };
+
+    // when the login/logout button is used
+    _p._actionHandler = function(event) {
+        // jshint unused:vars
+        if(!this.loggedIn)
+            this._login();
+        else
+            this.logout();
+    };
+
+    _p._setSession = function(session) {
+        this._session = session || null;
+        this._setLoginInterface();
+        this._sessionChangeHandlers.forEach(function(callback){
+             callback(this.session);
+        }.bind(this));
+
+    };
+
+    Object.defineProperties(_p, {
+        session: {
+            get: function(){
+                return this._session || {
+                    state: 'NEEDS_INIT'
+                  , message: 'Authentication is not initialized yet.'
+                };
+            }
+        }
+      , loggedIn: {
+            get: function(){
+                return this.session.status === 'OK';
+            }
+        }
+      , window: {
+            get: function(){
+                return this._element.ownerDocument.defaultView;
+            }
+        }
+    });
+
+    _p._setLoginInterface = function() {
+        var userChildren;
+        if(this.loggedIn) {
+            var session = this.session;
+            this._button.textContent = 'logout';
+            userChildren = [
+                dom.createElement('img', {src: session.avatarUrl})
+              , ' '
+              , dom.createElement('strong', null, session.userName)
+            ];
+        }
+        else {
+            this._button.textContent = 'login with GitHub';
+            userChildren = [dom.createElement('strong', null, '(not signed in)')];
+        }
+        dom.clear(this._user);
+        dom.appendChildren(this._user, userChildren);
+    };
+
+    return AuthenticationController;
+    })();
+
+    function initAutentication() {
+        var templatesContainer = getTemplatesContainer('templates')
+          , header = document.querySelector('body header')
+          , authenticationElement = activateElement(templatesContainer, 'authentication'
+                                              , header, 'insert: authentication-ui')
+          ;
+          return new AuthenticationController(authenticationElement);
+    }
+
     function getInterfaceMode() {
         var data = null
           , defaultMode = 'drag-and-drop'
@@ -267,7 +517,11 @@ define([
 
     var ignoreNextPopState = false;// bad hack;
     return function main() {
-        // here's a early difference:
+        var authController = initAutentication();
+        // returns a promise: true === logged in; false === logged out
+        authController.checkSession();
+
+        // here's an early difference:
         // either we want to bootstrap the sending interface OR the
         // reporting interface.
         // The sending interface will also transform into the reporting interface.
@@ -276,7 +530,7 @@ define([
           , data = interfaceMode[0]
           , init = interfaceMode[1]
           ;
-        init(data);
+        init(data, authController);
         // Using pushstate changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushstate was not used.
         window.onpopstate = function(event) {

@@ -421,6 +421,20 @@
             /* Needs some space, these queries are a bit long. */
             width: 70%;
         }
+
+        .authentication {
+            line-height: 26px;
+        }
+        .authentication * {
+            vertical-align: middle;
+        }
+
+        .authentication .user img {
+            display: inline-block;
+            border-radius: 13px;
+            width: 26px;
+            height: 26px;
+        }
     </style>
     <script>
     require(['/browser/js/bootstrap.js'], function(require) {
@@ -481,6 +495,11 @@
             <h2>Status Reports</h2>
             <ol><!-- insert: status-report-link --></ol>
         </div>
+    </div>
+
+    <div class="authentication">
+        <span class="user">(not set)</span>
+        <button class="action">login</button>
     </div>
 </div>
 
@@ -595,6 +614,7 @@
     </button>
 </div>
 <header>
+    <!-- insert: authentication-ui -->
     <img alt="Font Bakery" src="/browser/img/logo_200px.png"/>
 </header>
 <article class="active-interface"><!-- server side include marker --></article>
