@@ -6,7 +6,7 @@ const grpc = require('grpc')
   , https = require('https')
   , { URL } = require('url')
   , querystring = require('querystring')
-  , { AuthService } = require('protocolbuffers/messages_grpc_pb')
+  , { AuthServiceService: AuthService } = require('protocolbuffers/messages_grpc_pb')
   , { AuthStatus } = require('protocolbuffers/messages_pb')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , uid = require('uid-safe')
@@ -28,14 +28,13 @@ const PENDING = Symbol('pending session');
  *      - Session management
  *      - access control/authorization services
  *
- *
  * OAuth2: https://tools.ietf.org/html/rfc6749
  *
  * https://developer.github.com/v3/guides/basics-of-authentication/
  * Flask example: https://gist.github.com/ib-lundgren/6507798
  */
 function GitHubAuthServer(logging, port) {
-    this._logging = logging;
+    this._log = logging;
 
     // TODO: inject
     this._ghOAuth = {
@@ -118,86 +117,12 @@ _p._sendRequest = function(url, options, bodyData) {
 
     return new Promise((resolve, reject) => {
         var req = https.request(options_, result=>onResult.call(this, resolve, reject, result));
-
-        this._log.debug('sending headers:', req,JSON.stringify(req.headers, null, 2), '\n+++++++++++++');
-
-
         req.on('error', reject);
         if (body)
             req.write(body);
         req.end();
     });
 };
-
-
-/*
-sooo -- we have an access_token! how to put this into
-the socket.io sessions? We can definitely put it into
-the session here!
-the access_token + another request to gitHub will give
-us the user name.
-we can probably cache the access token, as a key to the
-user-name! so for our auth
-if there is an access-token
-        if it's cached:
-            use that user name
-                    -> could be invalid though, we'd have
-                       to handle this as if there was no
-                       access-token to begin with.
-                    -> I hope and believe that GitHub
-                       takes care that access-tokens don't
-                       collide (ever) everything else would
-                       be very scary.
-        else
-            make the request
-            cache that user name
-            use that user name
-https://medium.freecodecamp.org/session-hijacking-and-how-to-stop-it-711e3683d1ac
-So, we don't need session-ids, because the access-token
-will suffice. But only if the access tokens are really
-well stored:
-We'll have to use the session cookie flags:
-HttpOnly: so javascript (Cross-site scripting/XSS etc.)
-        can't see and steal the session.
-Secure: once we have HTTPS in place, so the cookie is only
-        transmitted via a secure connection and a man
-        in the middle (or listening on the WIFI etc.)
-        can't steal the session
-
-Session Id's could make the usefulness of an attack, that
-still somehow steals the session, less effective though.
-If an attacker can steal the access-token, he's able
-to do much more on github with the users account, than,
-if the access token is never on the client. In that case
-an attacker would be restricted to font-bakery APIs
-(which in the first case is possible as well), less damage
-for the user, same for Font Bakery Dashboard. And damage
-for users who trust us is also our damage!
-The acces-token requests don't seem to need the
-client-id/client-secret information. Thus, in case someone
-rolls this out without HTTPS, the access token should
-never be sent to the client.
-----
-Generally, before I do an action, be it here or be it on GitHub, I wan't
-to know who the user (authenticated) is and if the user is authorized.
-for actions in here, we'll use our own authorization. (ghUserName->roles)
-
-For GitHub, additionally, GitHub will do authorization with the access-token
-but before that, we'll check on our side if an action is authorized.
-
-So, i.e. ProcessManager will get a request with a `requester` field.
-Probably the web server authenticated the user, ProcessManager will not
-have the means of authenticating the (web)-user.
-The requester could be the user-name (which is unique), or just a session
-id. Anyways, ProcessManager takes that information and asks our
-AuthorizationService for roles (or maybe just gives allowed roles and
-the identity and receives an boolean "authorized", so the logic is central
-in one place).
-AuthorizationService will ideally also keep the access-token and from time
-to time re-validate it against github. It's good to have this centralized,
-so we can have many web-servers talking to a central place.
-
-*/
 
 _p._hasUser = function(id) {
     return this._users.has(id);
@@ -221,7 +146,7 @@ _p._createUser = function(id) {
 
     if(this._users.has(id))
         throw new Error('User with id "'+id+'" already exists.');
-    this._user.set(id, user);
+    this._users.set(id, user);
     return user;
 };
 
@@ -303,7 +228,7 @@ _p._deleteSession = function(sessionId) {
         return false;
     this._sessions.delete(sessionId);
     if(session.user)
-        session.user.delete(session);
+        session.user.sessions.delete(session);
     return true;
 };
 
@@ -392,7 +317,7 @@ _p._sessionIsTimedOut = function(session) {
 };
 
 _p._sessionGarbageCollector = function() {
-    for(let [sessionId, session] of this._sessions.entres()) {
+    for(let [sessionId, session] of this._sessions.entries()) {
         if(this._sessionIsTimedOut(session))
             this._deleteSession(sessionId);
     }
@@ -464,7 +389,6 @@ _p._authorize = function(authorizeRequest, sessionId, session
 // get:
 // client_id = find at: https://github.com/settings/applications/933523
 // see: https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#1-request-a-users-github-identity
-// TODO: use the state parameter!
 // <a href="https://github.com/login/oauth/authorize?scope=user:email&client_id=<%= client_id %>">Click here</a> to begin!</a>
 // will be sent back to Authorization callback URL:
 // https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#2-users-are-redirected-back-to-your-site-by-github
@@ -497,19 +421,6 @@ _p.authorize = function(call, callback) {
     session[PENDING].then(authStatus=>callback(null, authStatus));
 };
 
-
-// so, if the user has an authenticated session we can A) make it time out
-// on the server and on the client. So, the server needs some kind of
-// garbage collection when the session wasn't read/written to (touched) in
-// a certain amount of time.
-// The client session is just lost when logging out.
-// If we are more confident, we can make it live forever and make
-// the server session time out after a week or two. Maybe, we should check
-// the access_token regularly then.
-// we need garbage collection also, because the user may delete his session
-// so why should we keep it around for ever. But maybe, also 2 weeks of
-// timing out could be good enough.
-
 _p.checkSession = function(call, callback) {
     var sessionId = call.request.getSessionId()
       , authStatus = new AuthStatus()
@@ -541,7 +452,6 @@ _p.checkSession = function(call, callback) {
         // return user/session information
         _setAuthStatusOK(authStatus, sessionId, session);
     }
-
     callback(null, authStatus);
 };
 
@@ -685,11 +595,19 @@ _p._checkAccessToken = function({access_token: accessToken}) {
     });
 };
 
+_p.serve = function() {
+    // Start serving when the database is ready
+    // No db yet!
+    return Promise.resolve(this._server.start());
+    // return this._io.init()
+    //     .then(()=>this._server.start());
+};
+
 module.exports.GitHubAuthServer = GitHubAuthServer;
 
 if (typeof require != 'undefined' && require.main==module) {
-    var { getSetup } = require('../util/getSetup')
-      , setup = getSetup(), processManager, port=50051;
+    var { getSetup } = require('./util/getSetup')
+      , setup = getSetup(), gitHubAuthServer, port=50051;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
         if(process.argv[i] === '-p' && i+1<l) {
@@ -701,6 +619,6 @@ if (typeof require != 'undefined' && require.main==module) {
     }
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    processManager = new GitHubAuthServer(setup.logging, port);
-    processManager.serve();
+    gitHubAuthServer = new GitHubAuthServer(setup.logging, port);
+    gitHubAuthServer.serve();
 }

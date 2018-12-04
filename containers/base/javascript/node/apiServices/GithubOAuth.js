@@ -15,11 +15,12 @@ const SESSION_COOKIE_NAME = 'session.github.oauth';
  * https://developer.github.com/v3/guides/basics-of-authentication/
  * Flask example: https://gist.github.com/ib-lundgren/6507798
  */
-function GithubOAuthService(server, app, logging) {
+function GithubOAuthService(server, app, logging, ghAuthClient) {
     this._server = server;
     this._app = app;// === express()
     this._log = logging;
 
+    this._ghAuthClient = ghAuthClient;
 
     // Parse cookies. But I believe this is only for the sub-app ;-)
     // Let's see what happens!
@@ -36,41 +37,75 @@ function GithubOAuthService(server, app, logging) {
 
     this._app.get('/login', this._loginEntryPage.bind(this));
 
+    this._app.post('/logout', this._logout.bind(this));
+
+    this._app.get('/check-session', this._checkLogin.bind(this));
+
     //this._app.use('/', bodyParser.raw(
     //              {type: 'application/json'}));
 }
 
 var _p = GithubOAuthService.prototype;
 
-_p._sendClientAuthentientication = function(req, resp, next, authStatus) {
-    TODO;
-    // jshint unused: vars
-    // load some sort of client
-    // -> the client will:
-    // window.opener.postMessage({sessionId, userName, avatarUrl}, window.origin);
-    // and the  authentication requesting window will listen to the message event!
-    // Then, the client window will then close itself.
+_p._authAnswerFromAuthStatus = function(authStatus) {
+    var answer
+      , status = authStatusCodeToKey(authStatus.getStatus())
+      ;
 
-    //So, either: "Login failed with message ..."
-    //or sessionId, userName, avatarUrl
-
-    // this is possible as well!
-    // then there will be a `authStatus.getMessage()` with some information.
-    if(authStatus.getStatus() !== AuthStatus.StatusCode.OK){
-        {
-
-        }
+    if(status !== 'OK') {
+        answer = {
+            status: status
+          , message: authStatus.getMessage()
+        };
     }
     else {
         // client gets authentication token (session id).
-        {
-            sessionId: authStatus.getSessionId()
+        answer = {
+            status: 'OK'
+          , message: null
+          , sessionId: authStatus.getSessionId()
+          // also send some user data: gh-handle, profile image url
           , userName: authStatus.getUserName()
           , avatarUrl: authStatus.getAvatarUrl()
-
-        }
+        };
     }
-    // maybe also send some user data: gh-handle, profile image url
+    return answer;
+};
+
+_p._sendClientAuthentienticationJson = function(req, res, next, authStatus) {
+    // jshint unused: vars
+    var answer = this._authAnswerFromAuthStatus(authStatus);
+    // should we send structured data with Internal Server Error Codes?
+    // the client doesn't expect that as of now.
+    //if(status === 'ERROR')
+    //    res.status(500);
+    res.type('json').send(answer);
+};
+
+_p._sendClientAuthentienticationWindow = function(req, res, next, authStatus) {
+    function escape(str) {
+                // single quotes: ' => \'
+                // and backslases \"word\" => \\"word\\"
+        return str.replace(/['\\]/g, '\\$&')
+                // ending tags: </script> => <\/script>
+                // it's unlikely, that we send something like this
+                // but still good to have some precaution
+                  .replace(/<\//g, '<\\/');
+    }
+
+    var answer = this._authAnswerFromAuthStatus(authStatus)
+      , sessionJSON = escape(JSON.stringify(answer))
+      , client = `<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <script type="text/javascript">
+    var session = JSON.parse('${sessionJSON}');
+    window.opener.postMessage({type: 'authentication', session: session}, window.origin);
+    </script>
+</head><body></body></html>
+`;
+    res.type('html').send(client);
 };
 
 /**
@@ -80,25 +115,50 @@ _p._sendClientAuthentientication = function(req, resp, next, authStatus) {
  * and maxAge.
  *
  * That's why we keep these options centrally.
+ *
+ * Client: set sessionId
+ * OPTIONS (https://expressjs.com/en/api.html#res.cookie):
+ *     domain   String; Domain name for the cookie.
+ *              Defaults to the domain name of the app.
+ *     encode   Function; A synchronous function used for
+ *              cookie value encoding. Defaults to
+ *              encodeURIComponent.
+ *     expires  Date; Expiry date of the cookie in GMT.
+ *              If not specified or set to 0, creates
+ *              a session cookie.
+ *     httpOnly Boolean; Flags the cookie to be accessible
+ *              only by the web server.
+ *     maxAge   Number; Convenient option for setting the
+ *              expiry time relative to the current time
+ *              in milliseconds.
+ *     path     String; Path for the cookie. Defaults to “/”.
+ *     secure   Boolean; Marks the cookie to be used with
+ *              HTTPS only.
+ *     signed   Boolean; Indicates if the cookie should
+ *              be signed.
+ *     sameSite Boolean or String; Value of the “SameSite”
+ *              Set-Cookie attribute. More information at
+ *              https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00#section-4.1.1.
  */
 Object.defineProperty(_p, '_cookieOptions', {
     value: {
           httpOnly: true // not readable by client js
         , signed: true // use cookieSecret
         // , secure: true //FIXME when we use HTTPs
-       // , maxAge: null // null === default
-       // , path: '/' // '/' === default
+        // , maxAge: null // null === default
+        // , path: '/' // '/' === default
     }
 });
 // Not trusting the express js cookie
-// functions keeping our options as it here, ;-)
+// functions keeping our options as it here ;-)
 Object.freeze(_p._cookieOptions);
 
 /**
- * POST
+ * POST, because we shouldn't use GET to change server state, ever.
  */
-_p._logout = function(req, resp, next) {
+_p._logout = function(req, res, next) {
     // jshint unused: vars
+    var promise;
     if(SESSION_COOKIE_NAME in req.signedCookies) {
         // delete the cookie
         res.clearCookie(SESSION_COOKIE_NAME, this._cookieOptions);
@@ -107,14 +167,26 @@ _p._logout = function(req, resp, next) {
          ;
         sessionIdMessage.setSessionId(sessionId);
         // delete the session
-        this._ghAuthClient.logout(sessionIdMessage);
+        promise = this._ghAuthClient.logout(sessionIdMessage);
     }
-    // no answer message required
-    res.status(200);
+    else
+        promise = Promise.resolve(true);
+
+    return promise.then(()=>{
+            var authStatus = new AuthStatus();
+            authStatus.setStatus(AuthStatus.StatusCode.NO_SESSION);
+            authStatus.setMessage('Logged out.');
+            return this._sendClientAuthentienticationJson(req, res, next, authStatus);
+    });
 };
+
+const _authStatusCodeToKeyMap = new Map(Object.entries(AuthStatus.StatusCode).map(([k,v])=>[v,k]))
+  , authStatusCodeToKey = (statusCode)=>_authStatusCodeToKeyMap.get(statusCode)
+  ;
 
 /**
  * GET
+ * responds with application/json
  *
  * do we even need a plain `check_session` interface?
  * or will we just always go via loginEntryPage?
@@ -122,32 +194,35 @@ _p._logout = function(req, resp, next) {
  * though, maybe we can spare the client from opening the pop-up!
  * so going via loginEntryPage would happen even less often
  */
-_p._checkLogin = function(req, resp, next) {
-    if(SESSION_COOKIE_NAME in req.signedCookies) {
-        var sessionId = req.signedCookies[SESSION_COOKIE_NAME];
-        sessionIdMessage = new SessionId();
-        sessionIdMessage.setSessionId(sessionId);
-        this._ghAuthClient.checkSession(sessionIdMessage)
-            .then(authStatus=>{
-
-            });
+_p._checkLogin = function(req, res, next) {
+    // jshint unused: vars
+    var promise;
+    if(!(SESSION_COOKIE_NAME in req.signedCookies)) {
+        // This check makes sense, though, the auth server would
+        // answer with NO_SESSION anyways
+        var authStatus = new AuthStatus();
+        authStatus.setStatus(AuthStatus.StatusCode.NO_SESSION);
+        authStatus.setMessage('No session cookie found.');
+        promise = Promise.resolve(authStatus);
     }
-    else
-        Answer: NO_SESSION
+    else {
+        var sessionId = req.signedCookies[SESSION_COOKIE_NAME]
+          , sessionIdMessage = new SessionId()
+          ;
+        sessionIdMessage.setSessionId(sessionId);
+        promise = this._ghAuthClient.checkSession(sessionIdMessage);
+    }
+    promise.then(null, error=>{
+            this._log.error('_checkLogin', error);
+            var authStatus = new AuthStatus();
+            authStatus.setStatus(AuthStatus.StatusCode.ERROR);
+            authStatus.setMessage('Internal Server Error. Check logs'
+                                + ' roughly at ' + new Date());
+            return authStatus;
+        })
+        .then(authStatus=>this._sendClientAuthentienticationJson(
+                                            req, res, next, authStatus));
 };
-
-
-
-login flow is:
-
-GET: checkLogin
-    if we have don't have a login
-window open login page
-listen for window.message
-
-
-
-
 
 /**
  * GET
@@ -191,7 +266,7 @@ _p._loginEntryPage = function(req, res, next) {
         if(authStatus) {
             // status is AuthStatus.StatusCode.OK
             // do the same as after a full successful login.
-            return this._sendClientAuthentientication(req, res, next, authStatus);
+            return this._sendClientAuthentienticationWindow(req, res, next, authStatus);
         }
         return this._ghAuthClient.initSession(new Empty())
         // probably same message type as a not initial session message,
@@ -201,36 +276,7 @@ _p._loginEntryPage = function(req, res, next) {
             var sessionId = authStatus.getSessionId()
               , authorizeUrl = authStatus.getAuthorizeUrl()
               ;
-            // Client: set sessionId
-            // OPTIONS (https://expressjs.com/en/api.html#res.cookie):
-            //     domain   String; Domain name for the cookie.
-            //              Defaults to the domain name of the app.
-            //     encode   Function; A synchronous function used for
-            //              cookie value encoding. Defaults to
-            //              encodeURIComponent.
-            //     expires  Date; Expiry date of the cookie in GMT.
-            //              If not specified or set to 0, creates
-            //              a session cookie.
-            //     httpOnly Boolean; Flags the cookie to be accessible
-            //              only by the web server.
-            //     maxAge   Number; Convenient option for setting the
-            //              expiry time relative to the current time
-            //              in milliseconds.
-            //     path     String; Path for the cookie. Defaults to “/”.
-            //     secure   Boolean; Marks the cookie to be used with
-            //              HTTPS only.
-            //     signed   Boolean; Indicates if the cookie should
-            //              be signed.
-            //     sameSite Boolean or String; Value of the “SameSite”
-            //              Set-Cookie attribute. More information at
-            //              https://tools.ietf.org/html/draft-ietf-httpbis-cookie-same-site-00#section-4.1.1.
-            res.cookie(SESSION_COOKIE_NAME, sessionId, {
-                    httpOnly: true // not readable by client js
-                  , signed: true // use cookieSecret
-                  // , secure: true //FIXME when we use HTTPs
-                  // , maxAge: null // null === default
-                  // , path: '/' // '/' === default
-            });
+            res.cookie(SESSION_COOKIE_NAME, sessionId, this._cookieOptions);
             // and redirect user to authorizeUrl
             res.redirect(302, authorizeUrl);
         });
@@ -245,6 +291,9 @@ _p._loginEntryPage = function(req, res, next) {
 
 /**
  * GET
+ *
+ * This answers with html.
+ *
  * A client using authorizeUrl will be sent back to Authorization callback URL:
  * https://developer.github.com/apps/building-oauth-apps/authorizing-oauth-apps/#2-users-are-redirected-back-to-your-site-by-github
  */
@@ -284,7 +333,7 @@ _p._authorizationCallback = function(req, res, next) {
 
     return this._ghAuthClient.authorize(authorizeRequest)
     .then(authStatus=>{
-        this._sendClientAuthentientication(req, res, next, authStatus);
+        this._sendClientAuthentienticationWindow(req, res, next, authStatus);
     }, error=> {
         this._log.error('_authorizationCallback:', error);
         res.status(500);

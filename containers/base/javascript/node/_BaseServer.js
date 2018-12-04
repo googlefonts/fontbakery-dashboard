@@ -11,6 +11,7 @@ const express = require('express')
   , { CacheClient }  = require('./util/CacheClient')
   , { ReportsClient } = require('./util/ReportsClient')
   , { DispatcherProcessManagerClient } = require('./util/DispatcherProcessManagerClient')
+  , { GitHubAuthClient } = require('./util/GitHubAuthClient')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   ;
 
@@ -70,6 +71,14 @@ function _BaseServer(logging, portNum, setup) {
               , 'waitForReady'
             ]
         ]
+      , ['ghauth', [
+                ()=>new GitHubAuthClient(
+                                this._log
+                              , setup.gitHubAuth.host
+                              , setup.gitHubAuth.port)
+              , 'waitForReady'
+            ]
+        ]
     ]);
     this._resources = new Map();
     this._resources.set('*app:/', this._app); // root express app
@@ -109,7 +118,7 @@ _p._getServiceDependency = function(appLocation, name) {
             let [builder, initFunc] = this._DIResourceBuilders.get(key)
               , resource = builder.call(this)
               ;
-            // initFinc is e.g. 'waitForReady' for gRPC clients
+            // initFunc is e.g. 'waitForReady' for gRPC clients
             if(initFunc)
                 promise = resource[initFunc]();
             this._resources.set(key, resource);
