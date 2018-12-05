@@ -212,12 +212,15 @@ define([
         onQueryFilterChange();
     }
 
-    function initDispatcher(data) {
+    function initDispatcher(data, authController) {
         var container = activateTemplate('dispatcher-interface')
          , templatesContainer = getTemplatesContainer('dispatcher-templates')
          , socket = socketio('/')
          , dispatcher = new DispatcherController(container, templatesContainer, socket, data)
+         , sessionChangeHandler = dispatcher.sessionChangeHandler.bind(dispatcher)
+         , unsubscribeSessionChange = authController.onSessionChange(sessionChangeHandler, true)
          ;
+        container.addEventListener('destroy', unsubscribeSessionChange, false);
     }
 
     var AuthenticationController = (function(){

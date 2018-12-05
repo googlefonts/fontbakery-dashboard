@@ -5,8 +5,10 @@ define([
 ) {
     /* jshint browser:true, esnext:true, devel: true*/ //  esnext:true TEMPORAY ???
     "use strict";
-        function DispatcherController(container, templatesContainer, socket, data) {
+    function DispatcherController(container, templatesContainer, socket, data) {
         //jshint unused:vars
+
+        this._session = null;
 
         var l = dom.createElement('div')
           , p = dom.createElement('p')
@@ -14,7 +16,17 @@ define([
 
         dom.appendChildren(container, [l, p]);
 
+        // we should also run this when the login status changes, so that
+        // forms can be enabled/disabled if the user is authorized to
+        // send them. But, the server should probably decide what the
+        // user is authorized to do, not the client.
+        // It will eventually be a list of roles for each UI and a list
+        // of roles for the user (maybe that list is different on a per
+        // process base, i.e. a meta-role like: project-owner is only
+        // attached to a user, if he is project owner...
+        this._lastProcessData = null;
         this.onChangeProcess = function(...data) {
+            this._lastProcessData = data;
             console.log('onChangeProcess', ...data);
             var [stupidMsg, processId, processState, uiDescriptions] = data
               , ol
@@ -89,9 +101,16 @@ define([
     }
     var _p = DispatcherController.prototype;
 
-    _p._createUserInteraction = function(processId, description) {
+    _p.sessionChangeHandler = function(session) {
+        this._session = session;
+        if(this._lastProcessData)
+            this.onChangeProcess(...this._lastProcessData);
+    };
 
-        var form = dom.createElement('form')
+    _p._createUserInteraction = function(processId, description) {
+        // use if client is not authorized to send the form
+        var disabled = !this._session || this._session.status !== 'OK'// FIXME: currently only checking if there's a session at all
+          , form = dom.createElement('form')
           , uiElements = [], inputs = []
           , label, input, label_input
           , hasSend = false
@@ -101,17 +120,17 @@ define([
             uiField = description.ui[i];
             switch(uiField.type){
                 case('choice'):
-                    label_input = this._uiMakeChoice(uiField);
+                    label_input = this._uiMakeChoice(uiField, disabled);
                     break;
                 case('line'):
-                    label_input = this._uiMakeLine(uiField);
+                    label_input = this._uiMakeLine(uiField, disabled);
                     break;
                 case('binary'):
-                    label_input = this._uiMakeBinary(uiField);
+                    label_input = this._uiMakeBinary(uiField, disabled);
                     break;
                 case('send'):
                     hasSend = true;
-                    label_input = this._uiMakeSend(uiField);
+                    label_input = this._uiMakeSend(uiField, disabled);
                     break;
                 default:
                     throw new Error('Not implemnted: this._uiMake{"'+uiField.type+'"}');
@@ -149,12 +168,13 @@ define([
         return [label, element];
     };
 
-    _p._uiMakeSend = function(description) {
+    _p._uiMakeSend = function(description, disabled) {
         var button = dom.createElement('button', {}, description.text || 'Send!');
+        if(disabled) button.disabled = true;
         return this._uiLabel(description, button);
     };
 
-    _p._uiMakeChoice = function(description) {
+    _p._uiMakeChoice = function(description, disabled) {
         var defaultVal = 0
           , options = []
           , i, l, label, value, select
@@ -170,6 +190,7 @@ define([
         }
         select = dom.createElement('select', {}, options);
         select.selectedIndex = defaultVal;
+        if(disabled) select.disabled = true;
         return this._uiLabel(description, select);
     };
 
@@ -179,11 +200,12 @@ define([
         return description.options[input.selectedIndex][1];
     };
 
-    _p._uiMakeLine = function(description) {
+    _p._uiMakeLine = function(description, disabled) {
         var input = dom.createElement('input', {
                 type: 'text'
               , value: (description.default||'')
             });
+        if(disabled) input.disabled = true;
         return this._uiLabel(description, input);
     };
 
@@ -191,11 +213,12 @@ define([
         return input.value;
     };
 
-    _p._uiMakeBinary = function(description) {
+    _p._uiMakeBinary = function(description, disabled) {
         // jshint: unused:vars
         var input = dom.createElement('input', {type: 'checkbox'});
         if(description.default)
             input.checked = true;
+        if(disabled) input.disabled = true;
         return this._uiLabel(description, input);
     };
 
@@ -246,6 +269,7 @@ define([
 
         this._socket.emit(
             'execute-dispatcher-process'
+          , this._session.sessionId || null
           , commandData
           , function(result, error) {
                 if(error)
