@@ -110,8 +110,8 @@ const Server = (function() {
 function Server(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
-      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher']]
-      , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log']]
+      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth']]
+      , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log', 'ghauth']]
     ];
     _BaseServer.call(this, ...args);
 }
@@ -123,11 +123,12 @@ return Server;
 })();
 
 
-function ProcessUIService(server, app, logging, processManager) {
+function ProcessUIService(server, app, logging, processManager, ghAuthClient) {
     this._server = server;
     this._app = app;// === express()
     this._log = logging;
     this._processManager = processManager;
+    this._ghAuthClient = ghAuthClient;
 
     this._app.get('/', this._server.serveStandardClient);
 
@@ -359,7 +360,7 @@ _p._initRoom = function(generator, cancel, emit, process/*optional*/) {
     return room;
 };
 
-_p._getListRoomId = function(listId){
+_p._getListRoomId = function(listId) {
     return ['list', listId].join(':');
 };
 
@@ -769,6 +770,7 @@ if (typeof require != 'undefined' && require.main==module) {
     // storing in global scope, to make it available for inspection
     // in the debugger.
     setup = Object.create(setup);
-    setup.dispatcher ={host: '127.0.0.1', port: '1234'};
+    setup.dispatcher = {host: '127.0.0.1', port: '1234'};
+    setup.gitHubAuth={host: '127.0.0.1', port: '5678'};
     global.server = new Server(setup.logging, 3000, setup);
 }
