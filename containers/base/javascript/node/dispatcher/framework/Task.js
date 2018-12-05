@@ -297,7 +297,7 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
     .then(null, error=> {
             this.log.error('State change failed:',error);
             this._setFAILED(renderErrorAsMarkdown(
-                            'Method: ' + methodName + ' failed:', error))
+                            'Method: ' + methodName + ' failed:', error));
         }
     )
     .then(()=>{
@@ -308,15 +308,17 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
 };
 
 _p.uiRetry = function (){
-    return [
-        {
-            type: 'send' // a button (does't have to be a <button>) that sends the form.
-          , label: 'Restart Task:'
-          , text: 'Try again!'
-          //, value: null // null is the default
-        }
-
-    ];
+    return {
+        roles: ['input-provider', 'engineer']
+      , ui: [
+            {
+                type: 'send' // a button (does't have to be a <button>) that sends the form.
+              , label: 'Restart Task:'
+              , text: 'Try again!'
+              //, value: null // null is the default
+            }
+        ]
+    };
 };
 
 _p._failedAction = function() {

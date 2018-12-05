@@ -203,17 +203,20 @@ _p.uiFinalize = function() {
     // in this case, show
     //      * a select field with the choices [FAIL, OK]
     //      * a text field with the label "Reasoning" (that can't be empty!?)
-    return [
-        {
-            type: 'choice'
-          , label: 'Set a final status.'
-          , options: [[FAIL.toString(), FAIL.toString()], [OK.toString(), OK.toString()]]
-        }
-      , {
-            type: 'line'
-          , label: 'Describe your reasoning for the chosen status.'
-        }
-    ];
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'choice'
+              , label: 'Set a final status.'
+              , options: [[FAIL.toString(), FAIL.toString()], [OK.toString(), OK.toString()]]
+            }
+          , {
+                type: 'line'
+              , label: 'Describe your reasoning for the chosen status.'
+            }
+        ]
+    };
 };
 
 _p._activate = function() {
@@ -327,22 +330,25 @@ _p._activate = function() {
 };
 
 _p.uiDummyUI = function() {
-    return [
-        {   type:'choice' // => could be a select or a radio
-          , label: 'Pick one:'
-          , options: [['I\'m a teapot.', 'teapot'], ['I like Unicorns.', 'unicorn']]
-          , default: 'unicorn' // 0 => the first item is the default
-        }
-      , {
-            type: 'line' // input type:text
-          , label: 'What is your name?'
-        }
-      , {
-            type: 'binary' // input type checkbox
-          , label: 'Let this task fail?'
-          , default: false // false is the default
-        }
-    ];
+    return {
+        roles: ['input-provider', 'engineer']
+      , ui: [
+            {   type:'choice' // => could be a select or a radio
+              , label: 'Pick one:'
+              , options: [['I\'m a teapot.', 'teapot'], ['I like Unicorns.', 'unicorn']]
+              , default: 'unicorn' // 0 => the first item is the default
+            }
+          , {
+                type: 'line' // input type:text
+              , label: 'What is your name?'
+            }
+          , {
+                type: 'binary' // input type checkbox
+              , label: 'Let this task fail?'
+              , default: false // false is the default
+            }
+        ]
+    };
 };
 
 _p.callbackDummyUI = function(args) {

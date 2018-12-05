@@ -180,16 +180,19 @@ const stateDefinition = {
 stateManagerMixin(_p, stateDefinition);
 
 _p.uiHandleFailedStep = function(){
-    return [
-        {
-            type: 'line' // input type:text
-          , label: 'What is your reasoning?'
-        }
-      , {
-            type: 'send' // input type checkbox
-          , text: 'Let this step fail.'
-        }
-    ];
+    return {
+        roles: ['input-provider', 'engineer']
+      , ui: [
+            {
+                type: 'line' // input type:text
+              , label: 'What is your reasoning?'
+            }
+          , {
+                type: 'send' // input type checkbox
+              , text: 'Let this step fail.'
+            }
+        ]
+    };
 };
 
 _p.callbackHandleFailedStep = function(args) {

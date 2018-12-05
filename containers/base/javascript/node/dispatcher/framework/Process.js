@@ -366,11 +366,17 @@ _p.getRequestedUserInteractions = function() {
                 requestedUserInteractionName
               , [callbackName, ticket]
             ] = item.requestedUserInteraction
-          , ui = item[requestedUserInteractionName]()// => definition
+          , def = item[requestedUserInteractionName]()// => definition
           ;
-        if(!ui)
+        if(!def)
             throw new Error(requestedUserInteractionName + ' did not return anything.');
-        result.push({targetPath: item.path.toString(), callbackName, ticket, ui: ui});
+        result.push({
+                targetPath: item.path.toString()
+              , callbackName
+              , ticket
+              , roles: def.roles
+              , ui: def.ui
+        });
     }
 
     return result.length ? result : null;
