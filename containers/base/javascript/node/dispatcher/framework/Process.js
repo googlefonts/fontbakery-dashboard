@@ -128,6 +128,18 @@ const stateDefinition = {
       , serialize: status=>status === null ? null : status.serialize()
       , load: data=>data === null ? null : Status.load(data)
     }
+  , execLog: {
+        // list of log entries:
+        // logentry: [date, {
+        //      string requester
+        //    , string/undefined step
+        //    , string/undefined: task
+        //    , string callback}
+        // ]
+        init: ()=>[]
+      , serialize: logs=>logs.slice()
+      , load: logStates=>logStates.slice()
+    }
   , steps: { // array, steps statuses, must be compatible with this.constructor.steps
         init: _p._initSteps
       , serialize: steps=>steps.map(serializeStep)
@@ -519,9 +531,25 @@ _p.execute = function(targetPath, commandMessage) {
     if(!this._isActiveStep(step))
         throw new Error('Can\'t execute path "'+targetPath+'" because step '
                 + '"'+targetPath.step+'" is not the active step.');
+
+    this._logExecute(
+        commandMessage.getRequester()
+      , targetPath
+      , commandMessage.getCallbackName()
+    );
+
     return step.execute(targetPath, commandMessage)
         .then(()=>this._transition())
         ;
+};
+
+_p._logExecute = function(requester, targetPath, callbackName) {
+    this._state.execLog.push([new Date(), {
+        requester:requester
+      , step: targetPath.step
+      , task: targetPath.task
+      , callback: callbackName
+    }]);
 };
 
 /**
