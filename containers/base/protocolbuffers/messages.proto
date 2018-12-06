@@ -274,10 +274,15 @@ message ProcessCommand {
 ///////
 
 service AuthService {
+  // **authentication**
   rpc InitSession (google.protobuf.Empty) returns (AuthStatus) {};
   rpc Logout (SessionId) returns (google.protobuf.Empty) {};
+  // named like this due to the OAuth workflow
   rpc Authorize (AuthorizeRequest) returns (AuthStatus) {};
   rpc CheckSession (SessionId) returns (AuthStatus) {};
+  //
+  // **authorization** (could be another service)
+  rpc GetRoles (AuthorizedRolesRequest) returns (AuthorizedRoles) {};
 }
 
 message AuthStatus {
@@ -317,3 +322,12 @@ message SessionId {
     string session_id = 1;
 }
 
+message AuthorizedRolesRequest {
+    string session_id = 1;
+    string repo_name_with_owner = 2;
+}
+
+message AuthorizedRoles {
+    repeated string roles = 1;
+    string user_name = 2;
+};

@@ -80,6 +80,12 @@ _p.checkSession = function(sessionId) {
     .then(null, error=>this._raiseUnhandledError(error));
 };
 
+_p.getRoles = function(authorizedRolesRequest){
+    return nodeCallback2Promise((callback)=>
+        this._client.getRoles(authorizedRolesRequest, {deadline: this.deadline}, callback))
+    .then(null, error=>this._raiseUnhandledError(error));
+};
+
 _p.waitForReady = function() {
     return nodeCallback2Promise((callback)=>
                     this._client.waitForReady(this.deadline, callback))

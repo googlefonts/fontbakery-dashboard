@@ -30,6 +30,28 @@ function deserialize_fontbakery_dashboard_AuthorizeRequest(buffer_arg) {
   return messages_pb.AuthorizeRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_AuthorizedRoles(arg) {
+  if (!(arg instanceof messages_pb.AuthorizedRoles)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.AuthorizedRoles');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_AuthorizedRoles(buffer_arg) {
+  return messages_pb.AuthorizedRoles.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_AuthorizedRolesRequest(arg) {
+  if (!(arg instanceof messages_pb.AuthorizedRolesRequest)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.AuthorizedRolesRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_AuthorizedRolesRequest(buffer_arg) {
+  return messages_pb.AuthorizedRolesRequest.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_CacheItem(arg) {
   if (!(arg instanceof messages_pb.CacheItem)) {
     throw new Error('Expected argument of type fontbakery.dashboard.CacheItem');
@@ -438,6 +460,7 @@ exports.DispatcherProcessManagerClient = grpc.makeGenericClientConstructor(Dispa
 // /////
 //
 var AuthServiceService = exports.AuthServiceService = {
+  // **authentication**
   initSession: {
     path: '/fontbakery.dashboard.AuthService/InitSession',
     requestStream: false,
@@ -460,6 +483,7 @@ var AuthServiceService = exports.AuthServiceService = {
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
+  // named like this due to the OAuth workflow
   authorize: {
     path: '/fontbakery.dashboard.AuthService/Authorize',
     requestStream: false,
@@ -481,6 +505,19 @@ var AuthServiceService = exports.AuthServiceService = {
     requestDeserialize: deserialize_fontbakery_dashboard_SessionId,
     responseSerialize: serialize_fontbakery_dashboard_AuthStatus,
     responseDeserialize: deserialize_fontbakery_dashboard_AuthStatus,
+  },
+  //
+  // **authorization** (could be another service)
+  getRoles: {
+    path: '/fontbakery.dashboard.AuthService/GetRoles',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.AuthorizedRolesRequest,
+    responseType: messages_pb.AuthorizedRoles,
+    requestSerialize: serialize_fontbakery_dashboard_AuthorizedRolesRequest,
+    requestDeserialize: deserialize_fontbakery_dashboard_AuthorizedRolesRequest,
+    responseSerialize: serialize_fontbakery_dashboard_AuthorizedRoles,
+    responseDeserialize: deserialize_fontbakery_dashboard_AuthorizedRoles,
   },
 };
 

@@ -416,6 +416,11 @@ class AuthServiceStub(object):
         request_serializer=messages__pb2.SessionId.SerializeToString,
         response_deserializer=messages__pb2.AuthStatus.FromString,
         )
+    self.GetRoles = channel.unary_unary(
+        '/fontbakery.dashboard.AuthService/GetRoles',
+        request_serializer=messages__pb2.AuthorizedRolesRequest.SerializeToString,
+        response_deserializer=messages__pb2.AuthorizedRoles.FromString,
+        )
 
 
 class AuthServiceServicer(object):
@@ -426,8 +431,8 @@ class AuthServiceServicer(object):
   """
 
   def InitSession(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
+    """**authentication**
+    """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
@@ -440,8 +445,8 @@ class AuthServiceServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def Authorize(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
+    """named like this due to the OAuth workflow
+    """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
@@ -449,6 +454,14 @@ class AuthServiceServicer(object):
   def CheckSession(self, request, context):
     # missing associated documentation comment in .proto file
     pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def GetRoles(self, request, context):
+    """
+    **authorization** (could be another service)
+    """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
@@ -475,6 +488,11 @@ def add_AuthServiceServicer_to_server(servicer, server):
           servicer.CheckSession,
           request_deserializer=messages__pb2.SessionId.FromString,
           response_serializer=messages__pb2.AuthStatus.SerializeToString,
+      ),
+      'GetRoles': grpc.unary_unary_rpc_method_handler(
+          servicer.GetRoles,
+          request_deserializer=messages__pb2.AuthorizedRolesRequest.FromString,
+          response_serializer=messages__pb2.AuthorizedRoles.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
