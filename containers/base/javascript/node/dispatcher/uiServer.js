@@ -10,7 +10,9 @@ const { _BaseServer, RootService } = require('../_BaseServer')
       , ProcessCommand
       , ProcessCommandResult
       , DispatcherInitProcess
+      , AuthorizedRolesRequest
     } = require('protocolbuffers/messages_pb')
+  , { Path } = require('./framework/Path')
   ;
 
 /**
@@ -415,6 +417,95 @@ _p._initProcess = function(socket, data, answerCallback) {
         });
 };
 
+
+const TODO = (...args)=>console.warn('TODO:', ...args);
+_p._authorizeExecute = function(socket, sessionId, commandData) {
+    var targetPath = Path.fromString(commandData.targetPath)
+      , processId = targetPath.processId
+      , roomId = this._getProcessRoomId(processId)
+      , room
+      , processState, uiDescriptions
+      , repoNameWithOwner
+      , uiRoles = null
+      , authorizedRolesRequest
+      ;
+    // There's an assumption that the socket is alreay subscribed to
+    // the process and that the process has already produced data, that
+    // is now cached in the subscription room. This is how the client is
+    // expected to behave.
+    // related: kubernetes loadBalancer: sessionAffinity: ClientIP
+    // This assumption ensures we don't have to create the room on the
+    // fly. If this assumption proofs to be unpractical, we could fall
+    // back to query the process directly in here.
+    if(!this._socketIsInRoom(socket, roomId))
+        return Promise.reject('Socket must be subscribed to process.');
+
+    // socketIsInRoom hence there *MUST* be a room, right?!
+    room = this._rooms.get(roomId);
+    if(!room || !room.lastMessage)
+        // Fair enough? How else would client know about that UI?
+        // Maybe a server that got shutdown. Then, though, we must teach
+        // the client to properly reconnect to all its subscriptions etc.
+        return Promise.reject('Process data not available yet.');
+
+    // that's the process data
+    [/*processId*/, processState, uiDescriptions] = room.lastMessage;
+
+    // we have to get this from the process ... is it cached in here?
+    TODO('repoNameWithOwner = processState.repoNameWithOwner');
+    repoNameWithOwner = 'google/mundane';
+
+    for(let uiDescription of uiDescriptions) {
+        // {
+        //      targetPath: item.path.toString()
+        //    , callbackName
+        //    , ticket
+        //    , roles: def.roles
+        //    , ui: def.ui
+        // }
+        if(uiDescription.targetPath === commandData.targetPath
+                        && uiDescription.ticket === commandData.ticket)
+                // hmm !uiDescription.roles would be an error in the
+                // definition I guess.
+                uiRoles = uiDescription.roles
+                            ? new Set(uiDescription.roles)
+                            : null
+                            ;
+                break;
+    }
+    if(!uiRoles )
+        // this probably means the ui is not in uiDescriptions
+        return Promise.reject('No roles that apply for the request were found.');
+
+    authorizedRolesRequest = new AuthorizedRolesRequest();
+    authorizedRolesRequest.setSessionId(sessionId);
+    authorizedRolesRequest.setRepoNameWithOwner(repoNameWithOwner);
+    // This will also check if sessionId is valid!
+    return this._ghAuthClient.getRoles(authorizedRolesRequest)
+    .then(authorizedRoles=>{
+        var roles = new Set(authorizedRoles.getRolesList())
+        , userName = authorizedRoles.getUserName()
+        , matches = new Set()
+        ;
+        for(let role of roles) {
+            if(uiRoles.has(role))
+                matches.add(role);
+        }
+
+        this._log.debug('Requester roles:', userName
+                      , 'authorizedRoles:', roles, 'uiRoles:', uiRoles
+                      , authorizedRoles.toObject()
+                      );
+
+        if(matches.size) // => hooray!
+            return [matches, userName];
+        else {
+            throw 'Requester has no matching roles.';
+        }
+    });
+};
+
+
 /**
  * Send a command to execute in process manager.
  *
@@ -431,31 +522,38 @@ _p._initProcess = function(socket, data, answerCallback) {
  *     }
  * }
  */
-_p._execute = function(socket, commandData, answerCallback) {
-    var processCommand = new ProcessCommand();
-    processCommand.setTicket(commandData.ticket);
-    processCommand.setTargetPath(commandData.targetPath);
-    processCommand.setCallbackName(commandData.callbackName);
-    processCommand.setRequester('(there are no authenticated requesters yet)');
-    //processCommand.setPbPayload(anyPayload) // new Any
-    processCommand.setJsonPayload(JSON.stringify(commandData.payload));
-    return this._processManager.execute(processCommand)
-        .then(processCommandResult=>{
-            this._log.debug('processCommandResult', processCommandResult);
-            var result = processCommandResult.getResult(), message, error;
-
-            if(result === ProcessCommandResult.Result.OK) {
-                message = processCommandResult.getMessage();
-                answerCallback(message, null);
-                return true;
-            }
-            else {
-                error = processCommandResult.getMessage();
-                this._log.error('processCommandResult', error);
-                answerCallback(null, error);
-                return false;
-            }
-        });
+_p._execute = function(socket, sessionId, commandData, answerCallback) {
+    this._authorizeExecute(socket, sessionId, commandData)
+    .then(([authorizedRoles, userName])=>{
+        var processCommand = new ProcessCommand();
+        processCommand.setTicket(commandData.ticket);
+        processCommand.setTargetPath(commandData.targetPath);
+        processCommand.setCallbackName(commandData.callbackName);
+        processCommand.setRequester(userName);
+        //processCommand.setPbPayload(anyPayload) // new Any
+        processCommand.setJsonPayload(JSON.stringify(commandData.payload));
+        return processCommand;
+    })
+    .then(processCommand=>this._processManager.execute(processCommand))
+    .then(processCommandResult=>{
+        this._log.debug('processCommandResult', processCommandResult);
+        var result = processCommandResult.getResult()
+          , message, error
+          ;
+        if(result === ProcessCommandResult.Result.OK) {
+            message = processCommandResult.getMessage();
+            answerCallback(message, null);
+        }
+        else {
+            error = processCommandResult.getMessage();
+            this._log.error('processCommandResult', error);
+            answerCallback(null, error);
+        }
+    })
+    .then(null, rejectionReason=>{
+        this._log.info('processCommandResult rejection', rejectionReason);
+        answerCallback(null, rejectionReason);
+    });
 };
 
 _p._getProcessRoom = function(processId) {
@@ -494,13 +592,20 @@ _p._registerSocketInRoom = function(socket, roomId) {
     }
 
     socketData.rooms.add(roomId);
-    if(!room.sockets.has(socket.id)){
+    if(!room.sockets.has(socket.id)) {
         room.sockets.add(socket.id);
-        if(room.lastMessage !== null){
+        if(room.lastMessage !== null) {
             // if available send an initial change state
             room.emit(socket, room.lastMessage);
         }
     }
+};
+
+_p._socketIsInRoom = function (socket, roomId) {
+    var socketData = this._sockets.get(socket.id);
+    if(!socketData)
+        return false;
+    return socketData.rooms.has(roomId);
 };
 
 /**
