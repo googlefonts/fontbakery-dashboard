@@ -517,20 +517,34 @@ stateManagerMixin(_p, {
       , load: val=>val
       , serialize: val=>val
     }
+    /**
+     * We need this to determine the roles of a authenticated (GitHub)
+     * user. Users having WRITE or ADMIN permissions for the repo have
+     * the role "input-provider".
+     */
+  , repoNameWithOwner: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+    }
 });
 
 Object.defineProperties(_p, {
-    familyName:{
+    familyName: {
         get: function() {
             return this._state.familyName;
         }
     }
-   , requester:{
+   , requester: {
         get: function() {
             return this._state.requester;
         }
     }
-
+  , repoNameWithOwner: {
+       get: function() {
+            return this._state.repoNameWithOwner;
+        }
+    }
 });
 
 exports.FamilyPRDispatcherProcess = FamilyPRDispatcherProcess;
