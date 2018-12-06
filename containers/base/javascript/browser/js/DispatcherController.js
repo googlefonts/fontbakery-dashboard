@@ -253,7 +253,10 @@ define([
         }
 
         commandData = {
-            // eg:
+            // The result of `path.toString();` e.g.:
+            //      "db205789-73e9-41a3-9d2d-45facd2290c5/0/DummyFeedback"
+            //
+            // Where the path data is:
             //  {
             //    processId: "db205789-73e9-41a3-9d2d-45facd2290c5",
             //    step: "0",
