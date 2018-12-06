@@ -7,7 +7,7 @@ const grpc = require('grpc')
   , { URL } = require('url')
   , querystring = require('querystring')
   , { AuthServiceService: AuthService } = require('protocolbuffers/messages_grpc_pb')
-  , { AuthStatus } = require('protocolbuffers/messages_pb')
+  , { AuthStatus, SessionId, AuthorizedRoles } = require('protocolbuffers/messages_pb')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , uid = require('uid-safe')
   ;
@@ -15,6 +15,10 @@ const grpc = require('grpc')
 //TODO: proper via setup/injection
 const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID
     , GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET
+    ;
+
+const GITHUB_API_HOST = 'api.github.com'
+    , GITHUB_API_GRAPHQL_PATH = '/graphql'
     ;
 
 const PENDING = Symbol('pending session');
@@ -78,12 +82,13 @@ _p._sendRequest = function(url, options, bodyData) {
           , headers: {
                 'Accept': 'application/json'
               , 'User-Agent': 'Font Bakery: GitHub OAuth Client'
+              // For graphQL, do stuff like this:
               // , 'Content-Type': 'application/json'
               // , 'Content-Length': body.length
               // , 'Authorization': 'bearer ' + this._gitHubAPIToken
             }
         }
-      , body = bodyData ? querystring.stringify(bodyData) : null
+      , body = null
       ;
 
     if(options) {
@@ -91,6 +96,16 @@ _p._sendRequest = function(url, options, bodyData) {
         if('headers' in options)
             _copyKeys(options_.headers, options.headers);
     }
+
+    if(bodyData) {
+        if(options_.headers['Content-Type'] === 'application/json')
+            body = JSON.stringify(bodyData);
+        else // I guess 'text/plain' is the default
+            body = querystring.stringify(bodyData);
+
+        options_.headers['Content-Length'] = body.length;
+    }
+
 
     function onResult(resolve, reject, res) {
         //jshint validthis:true
@@ -122,6 +137,20 @@ _p._sendRequest = function(url, options, bodyData) {
             req.write(body);
         req.end();
     });
+};
+
+_p._sendGitHubGraphQLRequest = function(accessToken, query) {
+    var url = [
+            'https://'
+          , GITHUB_API_HOST
+          , GITHUB_API_GRAPHQL_PATH
+        ].join('');
+    return this._sendRequest(url, {
+        headers:{
+            'Content-Type': 'application/json'
+          , 'Authorization': 'bearer ' + accessToken
+        }
+    }, query);
 };
 
 _p._hasUser = function(id) {
@@ -421,6 +450,22 @@ _p.authorize = function(call, callback) {
     session[PENDING].then(authStatus=>callback(null, authStatus));
 };
 
+/**
+ * Inernal access to the gRPC checkSession interface
+ */
+_p._checkSession = function(sessionId) {
+    var call = {
+            request: new SessionId()
+        }
+      , resolve, reject
+      , promise = new Promise((...args)=>{[resolve, reject] = args;})
+      , callback = (error, result) => error ? reject(error) : resolve(result)
+      ;
+    call.request.setSessionId(sessionId);
+    this.checkSession(call, callback);
+    return promise;
+};
+
 _p.checkSession = function(call, callback) {
     var sessionId = call.request.getSessionId()
       , authStatus = new AuthStatus()
@@ -574,7 +619,7 @@ _p._checkAccessToken = function({access_token: accessToken}) {
     // jshint unused:vars
     var url = [
                 'https://'
-              , 'api.github.com'
+              , GITHUB_API_HOST
               , '/applications/'
               , this._ghOAuth.clientId
               , '/tokens/'
@@ -593,6 +638,163 @@ _p._checkAccessToken = function({access_token: accessToken}) {
         }
         throw error;
     });
+};
+
+
+/**
+ * We need a way to figure if a user is allowed to
+ * write to/push to/collaborate on a repository on GitHub.
+ *
+ * context:
+ * ProcessManager doesn't know its relationship to GitHub and
+ * repositories etc. (DispatcherProcessManager does!) but it defines some
+ * standard UIs (via Step and Task) to handle generic usage cases.
+ * We assign roles there:
+ *      input-provider: responsible for the input
+ *      engineer: responsible for the result
+ *
+ * The role "input-provider" is supposed to map to has ADMIN or WRITE
+ * permissions on the repository. Meaning that someone with those repo
+ * permissions is able to "provide input" i.e. change/update the repo.
+ *
+ * https://developer.github.com/v4/explorer/
+ *
+ * The graphQL api allows this query:
+ *
+ *      query ($repoOwner: String!, $repoName: String!) {
+ *        repository(owner: $repoOwner, name: $repoName) {
+ *          nameWithOwner
+ *          url
+ *          viewerPermission
+ *        }
+ *        viewer {
+ *          id
+ *          login
+ *        }
+ *      }
+ *
+ * with Query-Variables:
+ *
+ *      {
+ *        "repoOwner": "googlefonts", "repoName": "fontbakery-dashboard"
+ *      }
+ *
+ * results in:
+ *
+ *      {
+ *        "data": {
+ *          "repository": {
+ *            "nameWithOwner": "googlefonts/fontbakery-dashboard",
+ *            "url": "https://github.com/googlefonts/fontbakery-dashboard",
+ *            "viewerPermission": "ADMIN"
+ *          },
+ *          "viewer": {
+ *            "id": "MDQ6VXNlcjM5MzEzMg==",
+ *            "login": "graphicore"
+ *          }
+ *        }
+ *      }
+ *
+ *  Where notably `viewerPermission` is a `RepositoryPermission`:
+ *
+ *     The access level to a repository
+ *         ADMIN: Can read, clone, push, and add collaborators
+ *         WRITE: Can read, clone and push
+ *         READ:  Can read and clone
+ *
+ * ADMIN and WRITE are the permissions we're looking for.
+ */
+const REPOSITORY_PERMISSION_QUERY = `
+query ($repoOwner: String!, $repoName: String!) {
+    repository(owner: $repoOwner, name: $repoName) {
+      nameWithOwner
+      url
+      viewerPermission
+    }
+    viewer {
+      id
+      login
+    }
+}
+`;
+_p._getRepositoryPermission = function (session, repoNameWithOwner) {
+    var [repoOwner, repoName] = repoNameWithOwner.split('/')
+      , query = {
+            query: REPOSITORY_PERMISSION_QUERY
+          , variables: {
+                  repoOwner: repoOwner
+                , repoName: repoName
+            }
+        }
+      , accessToken = session.accessToken.access_token
+      ;
+    return this._sendGitHubGraphQLRequest(accessToken, query)
+        .then(result=>result.data.repository.viewerPermission)
+        // TODO: log the error 2 errors possible:
+        //    * request failed
+        //    * result (may be an error response):
+        //              undefined has no data|repository|viewerPermission
+        .then(null, error=>null) // jshint ignore: line
+        ;
+};
+
+
+// getRoles :: AuthorizedRolesRequest -> AuthorizedRoles
+_p.getRoles = function(call, callback) {
+        // call.request is an AuthorizedRolesRequest
+    var sessionId = call.request.getSessionId()
+      , repoNameWithOwner = call.request.getRepoNameWithOwner()
+      , promise
+      ;
+
+    this._checkSession(sessionId)
+    .then(authStatus=>{
+        // session could be reset even if AuthStatus.StatusCode.OK
+        // this is a small race condition, hence we check here both
+        // AuthStatus.StatusCode.OK and if there's *still* a session
+        var session = this._sessions.get(sessionId)
+          , hasAuth = session && authStatus.getStatus() === AuthStatus.StatusCode.OK
+        ;
+        if(!hasAuth) {
+            // => empty Roles message
+            callback(null,  new AuthorizedRoles());
+            return;
+        }
+
+        // hasAuth
+
+        if(repoNameWithOwner) {
+            // figure RepositoryPermission for user
+            promise = this._getRepositoryPermission(session, repoNameWithOwner)
+                .then(repositoryPermission=>{
+                    return (repositoryPermission === 'ADMIN'
+                                    || repositoryPermission === 'WRITE')
+                        ? new Set(['input-provider'])
+                        : new Set()
+                        ;
+                });
+        }
+        else
+            // empty
+            promise = Promise.resolve(new Set());
+
+        promise.then(roles=>{
+            // TODO;
+            // add the roles that we associate
+            // by configuration with the user
+            roles.add('engineer');
+            return roles;
+        })
+        .then(roles=>{
+            var rolesMessage = new AuthorizedRoles();
+            for(let role of roles)
+                rolesMessage.addRoles(role);
+            rolesMessage.setUserName(authStatus.getUserName());
+            callback(null, rolesMessage);
+        });
+
+    })
+    .then(null, error=>callback(error));
 };
 
 _p.serve = function() {
