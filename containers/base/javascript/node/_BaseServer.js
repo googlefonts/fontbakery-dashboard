@@ -205,10 +205,13 @@ _p._socketOnSubscribe = function(socket, eventName, handler, ...data_callback) {
     var [data, ...moredata_callback] = data_callback;
     this._log.info('_onSocketConnect: socket', socket.id ,'subscription '
                                         + 'requested for', eventName, data, ...moredata_callback);
-    if(typeof data.id !== 'string')
+    if(typeof data === 'object' && typeof data.id !== 'string')
         // this is actually required (historically)
         // ??? why can't we fix this with an error?
         // and at the position where data.id is actually needed/evaluated?
+        // FIXME: this should be fixed where it is expected.
+        // execute-dispatcher-process already uses a string for sessionId
+        // in the prosition of the data argument ...
         data.id = '';
     handler.call(this, socket, data, ...moredata_callback);
 };
