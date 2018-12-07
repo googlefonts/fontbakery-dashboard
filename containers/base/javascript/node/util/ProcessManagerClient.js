@@ -8,6 +8,7 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , grpc = require('grpc')
   , { ProcessManagerClient: GrpcProcessManagerClient } = require('protocolbuffers/messages_grpc_pb')
   , { ProtobufAnyHandler } = require('./ProtobufAnyHandler')
+  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   ;
 
 /**
@@ -203,8 +204,15 @@ _p.subscribeProcess = function(processQuery) {
 _p.initProcess = function(initMessage) {
     // InitProcess (google.protobuf.Any) returns (ProcessCommandResult)
     var anyInitMessage = this._any.pack(initMessage);
-     return nodeCallback2Promise((callback)=>
+    return nodeCallback2Promise((callback)=>
             this._client.initProcess(anyInitMessage
+                                    , {deadline: this.deadline}, callback))
+            .then(null, error=>this._raiseUnhandledError(error));
+};
+
+_p.getInitProcessUi = function(){
+    return nodeCallback2Promise((callback)=>
+            this._client.getInitProcessUi(new Empty()
                                     , {deadline: this.deadline}, callback))
             .then(null, error=>this._raiseUnhandledError(error));
 };
