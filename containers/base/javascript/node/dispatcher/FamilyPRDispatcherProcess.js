@@ -74,7 +74,6 @@ _p._activate = function() {
 return GetFamilyDataTask;
 })();
 
-
 const InitProcessStep = (function() {
 const Parent = Step;
 function InitProcessStep(process, state) {
@@ -333,17 +332,18 @@ _p.uiDummyUI = function() {
     return {
         roles: ['input-provider', 'engineer']
       , ui: [
-            {   type:'choice' // => could be a select or a radio
+            {   name: 'choice'
+              , type:'choice' // => could be a select or a radio
               , label: 'Pick one:'
               , options: [['I\'m a teapot.', 'teapot'], ['I like Unicorns.', 'unicorn']]
               , default: 'unicorn' // 0 => the first item is the default
             }
-          , {
-                type: 'line' // input type:text
+          , {   name: 'name'
+              , type: 'line' // input type:text
               , label: 'What is your name?'
             }
-          , {
-                type: 'binary' // input type checkbox
+          , {   name: 'fail'
+              , type: 'binary' // input type checkbox
               , label: 'Let this task fail?'
               , default: false // false is the default
             }
@@ -351,9 +351,9 @@ _p.uiDummyUI = function() {
     };
 };
 
-_p.callbackDummyUI = function(args) {
-    this.log.debug('callbackDummyUI:', ...args);
-    var [choice, name, fail] = args
+_p.callbackDummyUI = function(values) {
+    this.log.debug('callbackDummyUI:', values);
+    var {choice, name, fail} = values
       , choices = {
           teapot: 'are a teapot'
         , unicorn: 'like unicorns'

@@ -183,20 +183,20 @@ _p.uiHandleFailedStep = function(){
     return {
         roles: ['input-provider', 'engineer']
       , ui: [
-            {
-                type: 'line' // input type:text
+            {   name: 'reason'
+              , type: 'line' // input type:text
               , label: 'What is your reasoning?'
             }
           , {
-                type: 'send' // input type checkbox
+                type: 'send'
               , text: 'Let this step fail.'
             }
         ]
     };
 };
 
-_p.callbackHandleFailedStep = function(args) {
-    var [reason] = args;
+_p.callbackHandleFailedStep = function(values) {
+    var { reason } = values;
     this._finishedFAILED('Failing with reason: ' + reason);
 };
 
