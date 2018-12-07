@@ -31,21 +31,19 @@ _p._examineProcessInitMessage = function(initMessage) {
     if(!(initMessage instanceof DispatcherInitProcess))
         throw new Error('Expected initMessage to be an instance of '
                         + 'DispatcherInitProcess, which it isn\'t.');
-    var familyName = initMessage.getFamilyName()
+    var payload = JSON.parse(initMessage.getJsonPayload())
       , requester = initMessage.getRequester()
-      // ... tbc. ?
-      , initArgs = { familyName, requester /*more ... ?*/ }
+        // initArgs = {familyName, requester, repoNameWithOwner /*, ... ? */}
+      , [errorMessage, initArgs] = this.ProcessConstructor.callbackPreInit(requester, payload)
       ;
 
     // TODO;
     // Does the familyName exist?
     // Is the requester authorized to do this?
     // Is it OK to init the process now or are there any rules why not?
-    return [true, null, initArgs];
+    // => [ errorMessage, initArgs]
+    return [errorMessage || null, errorMessage ? null : initArgs];
 };
-// The superclass will check this :-)
-_p._examineProcessInitMessage.expectedArgumentType = DispatcherInitProcess;
-
 
 /**
  * What are the basics that we want to query:
@@ -131,7 +129,6 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.log('Loglevel', setup.logging.loglevel);
     if(!secret.length || secret.indexOf('TODO:') !== -1)
         setup.logging.warning('You really should define a proper secret');
-    // Combine ProcessManager and the process definition:FamilyPRDispatcherProcess.
 
 
     // FIXME: temprorary local setup overrides.

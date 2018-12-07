@@ -272,6 +272,25 @@ _p.serve = function() {
         .then(()=>this._server.start());
 };
 
+
+/**
+ * rpc GetInitProcessUi (google.protobuf.Empty) returns (ProcessState) {};
+ */
+
+
+_p.getInitProcessUi = function(call, callback) {
+    //jshint unused: vars
+    // call.request is an Empty
+
+    // FIXME: uiPreInit should be optional and when it's missing we should
+    // fail gracefully. Not all conceivable processes need this!
+    var ui = this.ProcessConstructor.uiPreInit()
+      , processState = new ProcessState()
+      ;
+    processState.setUserInterface(JSON.stringify(ui));
+    callback(null, processState);
+};
+
 /**
  * see also _p.execute for back-channel considerations
  *
@@ -294,18 +313,18 @@ _p.initProcess = function(call, callback) {
         //, Type = this._getTypeForTypeName(typeName)
         //, initArgsMessage = any.unpack(Type.deserializeBinary, typeName)
       , initMessage = this._any.unpack(anyProcessInitMessage)
-      , [result, message, initArgs] = this._examineProcessInitMessage(initMessage)
+      , [errorMessage, initArgs] = this._examineProcessInitMessage(initMessage)
       , promise
       ;
-    if(!result)
+    if(errorMessage)
         // Do this?? Or send another answer?
-        throw new Error(message);
+        throw new Error(errorMessage);
     // this is the back channel.
     // and still a stub
     try {
         promise = this._initProcess(initArgs);
     }
-    catch(error){
+    catch(error) {
         promise = Promise.reject(error);
     }
 

@@ -466,14 +466,207 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
         return;
     // else if(initArgs) … !
     this.log.debug('new FamilyPRDispatcherProcess initArgs:', initArgs, 'state:', state);
-    var { familyName, requester } = initArgs;
+    var { familyName, requester, repoNameWithOwner } = initArgs;
     this._state.familyName = familyName;
     this._state.requester = requester;
+    this._state.repoNameWithOwner = repoNameWithOwner;
 
 }
 
 const _p = FamilyPRDispatcherProcess.prototype = Object.create(Parent.prototype);
 _p.constructor = FamilyPRDispatcherProcess;
+
+
+
+
+/*
+So.
+
+I'm kind of afraid of everyone being able to init processes which immediately
+get persisted to database (and take up space etc.).
+
+Instead it would be nice to have a initialization phase which is only ephemeral.
+It's also an option to just erase processes if they don't reach a
+certain age/maturity! Maybe at some point an engineer must accept the request
+or dismiss it? (dismiss-delete and dismiss-persist are options...).
+The `dismiss-delete` case is for vandalism, wrong understanding of how it
+works and jsut mistakes. ???
+
+At the moment, I'm not thinking that vandalism will be a problem, the other
+two cases are likely though.
+
+delete could be an option for engineers always. or maybe for a new `maintenance`
+role.
+
+-> how could we stop someone from filling up the database with trash?
+-> we have a github handle
+-> the user must have write/admin privileges on the repo he's suggesting for updating
+-> the font family must not have an open process already
+
+the github repo is a strech, but i believe, it's not that easy to have
+"unlimited" or at least many thousands of github repos.
+
+
+-> a not-"engineer" user may have a quota of how many non-approved/non-accepted
+  processes he can initiate (=requester), especially if they are NEW families.
+  for existing families, if we don't accept multiple open processes for a family
+  at a time, there's not so much trash when a user requests updates to all families
+  he's access to, that are also in our system. Plus, we probably know the person
+  or have some kind of relationship, so there's some trust involved.
+-> so we need to set a state.accepted flag...only an engineer can do so...
+   in order to lower the number of *NEW and UNACCEPTED* families one user can
+   submit.
+
+initial data:
+
+existing (regstered) family: family name
+    -> the rest comes from the CSV
+    -> this does *not* mean the font is already on googlefonts, but it means
+       the family name is basically enough to start a dispatcher process.
+new family:
+    -> family name
+    -> repo
+    -> all the data that needs to go to the CSV basically!!!!
+
+...?
+It would be so good to have an initial blocker-validation, that even
+prevents processes from being created in the first place!
+What can be done???
+
+OK, but right now, we rather need just something to *show* the concept,
+fake some stuff etc.
+
+
+
+
+
+
+init:
+    (new)
+    User clicks “add new family radio button””
+        - User submits family info via expanded form or still via email (github auth + repo write required)
+        [BEFORE WE REALLY INITIALIZE THIS PROCESS --and persisit-- WE CHECK
+                - the user quota for new and unaccepted processes!
+                - this can eventually be done even before the user is presented
+                  with a form, but must be repeated before dispatching the
+                  init...
+                - the init UI *must* be accessible BEFORE process initialization
+                - the init callback SHOULD also be availabke BEFORE! then we can
+                  actually make it evaluate and validate the initial data and
+                  decide upon it's result whether to start the process!
+        ]
+            - Must be github repo
+            - Sources must exist
+            - License is OFL
+            - basically, we want all the info required for the spreadsheet.
+    (upgrade)
+    User clicks on “update family radio button”
+        -User provides “upstream url” (or just selects family name?)
+         (This should just be the list of all family names available via the spreadsheet)
+            - User adds optional authors
+    Thank user
+
+without the access control etc. from above, that's the init
+
+
+
+
+*/
+
+
+/**
+ * These two functions are special, because they are executed *before*
+ * the process is initialized and persisted (getting a processID and
+ * occupying space in the database. So these are gate keepers.
+ *
+ * I think some gate keeping will be done even outside of here, like the
+ * user quota check for not accepted requests for adding new fonts.
+ * (Which is important to reduce the risk/feasibility of attacks/vandalism
+ * targeted at filling up our database.) What if an internet mob tries to
+ * punish us for not on-boarding a font they want to have online. Think of
+ * a 4chan.or/r kind of attack.
+ */
+function uiPreInit() {
+    // it's probably neeed, that we take a state argument and return
+    // different uis for this, so we can create a kind of a dialogue
+    // with the client...
+    // on the other hand, that's totally possible once we created the
+    // process ... in here we should just collect enough data to
+    // authorize initializing the process.
+    return {
+        // TODO: at this point we want at least 'input-provider' but we
+        // don't have a repoNameWithOwner to check against ;-)
+        roles: null
+      , ui: [
+            {   name: 'formswitch'
+              , type:'choice' // => could be a select or a radio
+              , label: 'What do you want to do?'
+              , options: [['I\'m a teapot.', 'teapot'], ['I like Unicorns.', 'unicorn']]
+              , default: 'unicorn' // 0 => the first item is the default
+            }
+            // condition:teapot is ~ update an existing family, hence just a select input
+          , {   // don't want to create something overly complicated here,
+                // otherwise we'd need a depenency tree i.e. to figure if
+                // a condition element is visible or not. But, what we
+                // can do is always make a condition false when it's dependency
+                // is not available or defined.
+                name: 'tea'
+              , condition: ['formswitch', 'teapot'] // show only when "formswitch" has the value "teapot"
+              , type:'choice' // => could be a select or a radio
+              , label: 'Pick one:'
+              , options: [
+                        'Earl Grey'
+                      , 'English Breakfast'
+                      , 'Prince of Wales'
+                      , 'Russian Caravan'
+                    ]
+              , default: 'English Breakfast' // 0 => the first item is the default
+            }
+            // condition:unicorn is ~ a new suggested family
+          , {   name: 'uniName'
+              , condition: ['formswitch', 'unicorn']
+              , type: 'line' // input type:text
+              , label: 'What is your unicorn name?'
+            }
+          , {   name: 'nameWithOwner'
+              , condition: ['formswitch', 'unicorn']
+              , type: 'line' // input type:text
+              , label: 'Where is your GitHub source code'
+              , placeholder: '{owner}/{repo-name}'
+            }
+        ]
+    };
+}
+
+function callbackPreInit(requester, values) {
+    var initType = values.formswitch // 'unicorn' || 'teapot'
+      , familyName, repoNameWithOwner
+      , message, initArgs
+      ;
+    if(initType === 'unicorn') {
+        familyName = values.uniName.trim() || null;
+        repoNameWithOwner = values.nameWithOwner || null;
+    }
+    else if(initType === 'teapot') {
+        familyName = values.tea || null;
+        repoNameWithOwner = 'east-india-company/tea-blends';
+    }
+
+    message = initArgs = null;
+    if(!familyName)
+        message = 'Got no familyName.';
+    if(!repoNameWithOwner)
+        message = 'Got no repoNameWithOwner.';
+    if(!message)
+        initArgs = {familyName, requester, repoNameWithOwner};
+
+    return [message, initArgs];
+}
+// Doing it this way so we get a jshint warning when
+// using `this` in these functions.
+FamilyPRDispatcherProcess.uiPreInit = uiPreInit;
+FamilyPRDispatcherProcess.callbackPreInit = callbackPreInit;
+
 
 stateManagerMixin(_p, {
     /**

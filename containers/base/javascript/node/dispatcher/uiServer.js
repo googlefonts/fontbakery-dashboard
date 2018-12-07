@@ -11,6 +11,8 @@ const { _BaseServer, RootService } = require('../_BaseServer')
       , ProcessCommandResult
       , DispatcherInitProcess
       , AuthorizedRolesRequest
+      , SessionId
+      , AuthStatus
     } = require('protocolbuffers/messages_pb')
   , { Path } = require('./framework/Path')
   ;
@@ -124,7 +126,17 @@ return Server;
 
 })();
 
-
+/**
+ * TODO: Factor out the specific knowledge about the FontbakeryPRDispatcherProcess
+ * e.g. make a DispatcherProcessUIService with special knowledge about our
+ * workflow: authorization, how process data is structured.i.e.
+ *      * _authorizeExecute looks into process state to fish for
+ *        repoNameWithOwner, but that's a specific thing to our
+ *        workflow, being based on GitHub.
+ *      * _initProcess creates and sends our specific DispatcherInitProcess
+ *       message. It also does authorization.
+ *
+ */
 function ProcessUIService(server, app, logging, processManager, ghAuthClient) {
     this._server = server;
     this._app = app;// === express()
@@ -143,6 +155,11 @@ function ProcessUIService(server, app, logging, processManager, ghAuthClient) {
 
     this._server.registerSocketListener('unsubscribe-dispatcher-list'
             , this._unsubscribeFromList.bind(this)
+            , null);
+
+
+    this._server.registerSocketListener('initializing-ui-dispatcher-process'
+            , this._initializingProcessUi.bind(this)
             , null);
 
     this._server.registerSocketListener('init-dispatcher-process'
@@ -391,30 +408,67 @@ _p._getProcessRoomId = function(processId) {
     return ['process', processId].join(':');
 };
 
-_p._initProcess = function(socket, data, answerCallback) {
-    var initMessage = new DispatcherInitProcess();
-    initMessage.setFamilyName(data.familyName);
-    //*CAUTION* don't ever use data.requster!!!
-    // requester must come from the authentication service
-    initMessage.setRequester('(this is a stub requester)');
+_p._initializingProcessUi = function(socket, data, answerCallback) {
+    //jshint unused:vars
+    this._processManager.getInitProcessUi()
+        .then(processStateMessage=>{
+            var uiDescription = JSON.parse(processStateMessage.getUserInterface());
+            answerCallback(uiDescription, null);
+        })
+        .then(null, error=>answerCallback(null, '' + error))
+        ;
+};
 
-    return this._processManager.initProcess(initMessage)
-        .then(processCommandResult=>{
-            this._log.debug('processCommandResult', processCommandResult);
-            var result = processCommandResult.getResult(), processId, error;
+_p._authorizeInitProcess = function(socket,sessionId, data){
+    //jshint unused:vars
+    this._log.warning('NOT IMPLEMENTED: _authorizeInitProcess');
+    var sessionIdMessage = new SessionId();
+    sessionIdMessage.setSessionId(sessionId);
+    return this._ghAuthClient.checkSession(sessionIdMessage)
+    .then(authStatus=>{
+        var userName;
+        if(authStatus.getStatus() === AuthStatus.StatusCode.OK)
+            userName = authStatus.getUserName();
+        else
+            userName = '(FIXME: not authenticated)';
 
-            if(result === ProcessCommandResult.Result.OK) {
-                processId = processCommandResult.getMessage();
-                answerCallback(processId, null);
-                return true;
-            }
-            else {
-                error = processCommandResult.getMessage();
-                this._log.error('processCommandResult', error);
-                answerCallback(null, error.message);
-                return false;
-            }
-        });
+        return [null, userName];
+    });
+};
+
+_p._initProcess = function(socket, sessionId, data, answerCallback) {
+    this._authorizeInitProcess(socket, sessionId, data)
+    .then(([/*authorizedRoles*/, userName])=>{
+        var initMessage = new DispatcherInitProcess();
+        initMessage.setRequester(userName);
+        initMessage.setJsonPayload(JSON.stringify(data.payload));
+        return initMessage;
+    })
+    .then(initMessage=>this._processManager.initProcess(initMessage))
+    .then(processCommandResult=>{
+        this._log.debug('processCommandResult'
+          , 'result:', processCommandResult.getResult()
+          , 'message:', processCommandResult.getMessage()
+          , ProcessCommandResult.Result.OK, ProcessCommandResult.Result.FAIL
+        );
+        var result = processCommandResult.getResult(), processId, error;
+
+        if(result === ProcessCommandResult.Result.OK) {
+            processId = processCommandResult.getMessage();
+            answerCallback(processId, null);
+            return true;
+        }
+        else {
+            error = processCommandResult.getMessage();
+            this._log.error('processCommandResult', error);
+            answerCallback(null, error);
+            return false;
+        }
+    })
+    .then(null, error=>{
+        this._log.error('InitProcessError', error);
+        answerCallback(null, error.message);
+    });
 };
 
 
@@ -524,7 +578,7 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
  */
 _p._execute = function(socket, sessionId, commandData, answerCallback) {
     this._authorizeExecute(socket, sessionId, commandData)
-    .then(([authorizedRoles, userName])=>{
+    .then(([/*authorizedRoles*/, userName])=>{
         var processCommand = new ProcessCommand();
         processCommand.setTicket(commandData.ticket);
         processCommand.setTargetPath(commandData.targetPath);
@@ -563,15 +617,15 @@ _p._getProcessRoom = function(processId) {
     if(!room) {
         let processQuery = new ProcessQuery();
         processQuery.setProcessId(processId);
-        let process = message=>[
-                message.getProcessId()
-              , JSON.parse(message.getProcessData())
-              , JSON.parse(message.getUserInterface())
+        let process = processStateMessage=>[
+                processStateMessage.getProcessId()
+              , JSON.parse(processStateMessage.getProcessData())
+              , JSON.parse(processStateMessage.getUserInterface())
             ]
           , { generator, cancel } = this._processManager.subscribeProcess(processQuery)
             // TODO: this will need more effort
-          , emit = (socket, message)=>socket.emit('changes-dispatcher-process'
-                                    , 'process !!!! ', ... message)
+          , emit = (socket, data)=>socket.emit('changes-dispatcher-process'
+                                    , 'process !!!! ', ... data)
           ;
         room = this._initRoom(generator, cancel, emit, process);
         this._rooms.set(roomId, room);
@@ -874,6 +928,7 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.log('Loglevel', setup.logging.loglevel);
     // storing in global scope, to make it available for inspection
     // in the debugger.
+    // FIXME: temprorary local setup overrides.
     setup = Object.create(setup);
     setup.dispatcher = {host: '127.0.0.1', port: '1234'};
     setup.gitHubAuth={host: '127.0.0.1', port: '5678'};
