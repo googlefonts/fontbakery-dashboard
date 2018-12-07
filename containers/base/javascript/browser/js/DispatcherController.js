@@ -9,12 +9,9 @@ define([
         //jshint unused:vars
 
         this._session = null;
-
-        var l = dom.createElement('div')
-          , p = dom.createElement('p')
-          ;
-
-        dom.appendChildren(container, [l, p]);
+        this._listElem = dom.createElement('div');
+        this._processElem = dom.createElement('p');
+        dom.appendChildren(container, [this._l, this._processElem]);
 
         // we should also run this when the login status changes, so that
         // forms can be enabled/disabled if the user is authorized to
@@ -25,63 +22,27 @@ define([
         // process base, i.e. a meta-role like: project-owner is only
         // attached to a user, if he is project owner...
         this._lastProcessData = null;
-        this.onChangeProcess = function(...data) {
-            this._lastProcessData = data;
-            console.log('onChangeProcess', ...data);
-            var [stupidMsg, processId, processState, uiDescriptions] = data
-              , ol
-              ;
-
-            ol = dom.createElement('ol', {}, [
-                dom.createElement('li', {}, stupidMsg +' processId: ' +  processId)
-              , dom.createElement('li', {}
-                    , uiDescriptions
-                        ? dom.createFragment(uiDescriptions.map(ui=>this._createUserInteraction(processId, ui)))
-                        : '<- NO USER INTERACTIONS->'
-                        )
-              , dom.createElement('li', {}
-                        , dom.createElement('pre', {}, JSON.stringify(processState, null, 2)))
-            ]);
-            dom.clear(p);
-            dom.appendChildren(p, ol);
-        };
-
-        var countList = 0;
-        this.onChangeList = function(data) {
-            l.innerHTML = data;
-            countList += 1;
-            if(countList === 3)
-                socket.emit('unsubscribe-dispatcher-list', {});
-        };
-
         this._socket = socket;
         this._subscribedProcessIds = new Set();
 
-        socket.on('changes-dispatcher-list', this.onChangeList.bind(this));
         socket.on('changes-dispatcher-process', this.onChangeProcess.bind(this));
-        socket.emit('subscribe-dispatcher-list', {});
 
+        //var countList = 0;
+        //this.onChangeList = function(data) {
+        //    this._listElem.innerHTML = data;
+        //    countList += 1;
+        //    if(countList === 3)
+        //        socket.emit('unsubscribe-dispatcher-list', {});
+        //};
+        // socket.on('changes-dispatcher-list', this.onChangeList.bind(this));
+        // socket.emit('subscribe-dispatcher-list', {});
 
-        var onInitAnswer = (processId, error)=>{
+        socket.emit('initializing-ui-dispatcher-process', null, (uiDescription, error)=>{
             if(error)
-                console.error('error init-dispatcher-process:', error);
-            else {
-                console.log('answer init-dispatcher-process:', processId);
-                // now, listen to it
-                this._subscribedProcessIds.add(processId);
-                socket.emit('subscribe-dispatcher-process', {
-                    processId: processId
-                });
-            }
-        };
-
-        socket.emit('init-dispatcher-process', {
-                familyName: '(unknown family)'
-                // FIXME: figure how the server can do authentication
-                // via socket.io. uiServer will need a authenticated
-                // "requester"
-            }, onInitAnswer
-        );
+                console.error('error initializing-ui-dispatcher-process:', error);
+            else
+                this.onInitializingUI([uiDescription]);
+        });
 
         // To test if it loads (seserializes) well
         //onInitAnswer('b56d226d-8333-41e1-80da-ad973b8ab0c6', null)
@@ -96,10 +57,40 @@ define([
                     processId: processId
                 });
         }, false);
-
-
     }
     var _p = DispatcherController.prototype;
+
+    _p.onChangeProcess = function(...data) {
+        this._lastProcessData = data;
+        console.log('onChangeProcess', ...data);
+        var [message, processId, processState, uiDescriptions, isInit] = data;
+        this._renderProcess(processId, message, processState, uiDescriptions, isInit);
+
+    };
+
+    _p.onInitializingUI = function(...data) {
+        var [uiDescriptions] = data;
+        this.onChangeProcess('…initializing', 'N/A', null, uiDescriptions, true);
+    };
+
+    _p._renderProcess = function(processId, message, processState, uiDescriptions, isInit) {
+        var uis, process, ol;
+        uis = uiDescriptions
+                    ? dom.createFragment(uiDescriptions.map(ui=>this._createUserInteraction(processId, ui, isInit)))
+                    : '<- NO USER INTERACTIONS ->'
+                    ;
+        process = processState
+                    ? dom.createElement('pre', {}, JSON.stringify(processState, null, 2))
+                    : '<- NO PROCESS STATE ->'
+                    ;
+        ol = dom.createElement('ol', {}, [
+            dom.createElement('li', {}, message +' processId: ' +  processId)
+          , dom.createElement('li', {}, uis)
+          , dom.createElement('li', {}, process)
+        ]);
+        dom.clear(this._processElem);
+        dom.appendChildren(this._processElem, ol);
+    };
 
     _p.sessionChangeHandler = function(session) {
         this._session = session;
@@ -107,7 +98,7 @@ define([
             this.onChangeProcess(...this._lastProcessData);
     };
 
-    _p._createUserInteraction = function(processId, description) {
+    _p._createUserInteraction = function(processId, description, isInit) {
         // use if client is not authorized to send the form
         var disabled = !this._session || this._session.status !== 'OK'// FIXME: currently only checking if there's a session at all
           , form = dom.createElement('form')
@@ -115,10 +106,33 @@ define([
           , label, input, label_input
           , hasSend = false
           , i, l, uiField
+          , named = {}, key
           ;
+
+        // If any uiField has a key 'condition'
+        // the value lools like [string name, value]
+        // that means: show/use/submit this field only if
+        // the value of the field named `name` has a value
+        // identical to `value`.
+        // Show: means display: none is removed from element.style
+        // use/submit: means the value will not be in the result values
+        // if the condition is false.
+        // the condition is false either: if the `name` named field is
+        // not shown or if the value doesn't match
+        // I'm trying to shortcut "nested" conditions, to a point where
+        // it is unpractical to use them. could be made more elaborate
+        // in the future, with the added danger of defining circular/recursive
+        // dependencies ...
+        // the easiest right now is:
+        // a field can't dependency on a field that has a condition itself.
+        // thus, there's only one level dependencies possible.
+
+
+
         for (i=0,l=description.ui.length;i<l;i++) {
             uiField = description.ui[i];
-            switch(uiField.type){
+            key = '' + ('name' in uiField ? uiField.name : i);
+            switch(uiField.type) {
                 case('choice'):
                     label_input = this._uiMakeChoice(uiField, disabled);
                     break;
@@ -139,6 +153,57 @@ define([
             input = label_input[1];
             uiElements.push(label);
             inputs.push(input);
+            named[key] = [uiField, label, input];
+        }
+
+        function change(uiField, input, value, target/*, event (not always!)*/) {
+            // jshint validthis:true, unused:vars
+            target.style.display = this._getValue(uiField, input) === value
+                                        // visible
+                                        ? null
+                                        // invisible
+                                        : 'none'
+                                        ;
+        }
+        var conditionName, conditionValue, condition_uiField_Input
+          , conditionUiField, conditionInput;
+        for(key in named) {
+            uiField = named[key][0];
+            label = named[key][1];
+            // input = named[key][2];
+            if(!('condition' in uiField))
+                continue;
+            conditionName = uiField.condition[0];
+            conditionValue = uiField.condition[1];
+            condition_uiField_Input = named[conditionName];
+            if(!condition_uiField_Input)
+                // not found
+                continue;
+            conditionUiField = condition_uiField_Input[0];
+            if('condition' in conditionUiField)
+                // prevents deep and circular dependencies
+                continue;
+
+            conditionInput = condition_uiField_Input[2];
+            // => add event listener
+            // when value changes
+            // show label if value matches
+            // hide input if value mis-matches
+            // also, run this right now as init
+            conditionInput.addEventListener('change'
+                    , change.bind(
+                        this
+                        , conditionUiField
+                        , conditionInput
+                        , conditionValue
+                        , label)
+                    , false);
+            // aaand init
+            change.call(this
+                      , conditionUiField
+                      , conditionInput
+                      , conditionValue
+                      , label);
         }
 
         if(!hasSend) {
@@ -150,7 +215,7 @@ define([
         }
 
         form.addEventListener("submit"
-                , this._sendUI.bind(this, processId, description, inputs)
+                , this._sendUI.bind(this, processId, description, inputs, isInit)
                 , false);
         dom.appendChildren(form, uiElements);
         return form;
@@ -180,8 +245,12 @@ define([
           , i, l, label, value, select
           ;
         for( i=0,l=description.options.length;i<l;i++) {
-            label = description.options[i][0];
-            value = description.options[i][1];
+            if(description.options[i] instanceof Array) {
+                label = description.options[i][0];
+                value = description.options[i][1];
+            }
+            else
+                label = value = description.options[i];
             // we don't roundtrip the value trough dom, it's to easy to
             // manipulate ;-)
             options.push(dom.createElement('option', {}, label));
@@ -195,15 +264,21 @@ define([
     };
 
     _p._uiGetChoice = function(description, input) {
-        if(!description.options[input.selectedIndex])
+        if(input.selectedIndex === -1)
+            // nothing is selected
+            return undefined;
+        if(input.selectedIndex >= description.options.length)
+            // DOM manipulation with the dev-tool?
             throw new Error('Unkown option selected!?');
-        return description.options[input.selectedIndex][1];
+        var option = description.options[input.selectedIndex];
+        return (option instanceof Array) ? option[1] : option;
     };
 
     _p._uiMakeLine = function(description, disabled) {
         var input = dom.createElement('input', {
                 type: 'text'
-              , value: (description.default||'')
+              , value: description.default || ''
+              , placeholder: description.placeholder || ''
             });
         if(disabled) input.disabled = true;
         return this._uiLabel(description, input);
@@ -227,32 +302,78 @@ define([
         return !!input.checked;
     };
 
-    _p._sendUI = function(processId, description, inputs, event) {
-        event.preventDefault();
-
-        var values = [], commandData;
-        for (let i=0,l=description.ui.length;i<l;i++){
-            let uiField = description.ui[i]
-              , input = inputs[i]
-              ;
-            switch(uiField.type) {
+    _p._getValue = function(uiField, input) {
+        var value;
+        switch(uiField.type) {
                 case('choice'):
-                    values.push(this._uiGetChoice(uiField, input));
+                    value = this._uiGetChoice(uiField, input);
                     break;
                 case('line'):
-                    values.push(this._uiGetLine(uiField, input));
+                    value = this._uiGetLine(uiField, input);
                     break;
                 case('binary'):
-                    values.push(this._uiGetBinary(uiField, input));
+                    value = this._uiGetBinary(uiField, input);
                     break;
                 case('send'):
                     // seems like there's no good way to figure if
                     // a send button was used and which.
-                    values.push(null);
+                    value = null;
             }
+        return value;
+    };
+
+    _p._collectUiValues = function(description, inputs) {
+        var values = {}
+          , uiField, input, key
+          ;
+        for (let i=0,l=description.ui.length;i<l;i++) {
+            uiField = description.ui[i];
+            input = inputs[i];
+            if('condition' in uiField)
+                continue;
+            // falling back to index as a key
+            key = '' + ('name' in uiField ? uiField.name : i);
+            values[key] = this._getValue(uiField, input);
         }
 
-        commandData = {
+        var condition_name, condition_value
+            // these don't have themselves conditions
+          , allowedConditions = new Set(Object.keys(values))
+          ;
+        // second pass, not pretty but works, quick and dirty
+        for (let i=0,l=description.ui.length;i<l;i++) {
+            uiField = description.ui[i];
+            input = inputs[i];
+            if(!('condition' in uiField))
+                continue;
+            condition_name = uiField.condition[0];
+            condition_value = uiField.condition[1];
+            // yeah this is a quick an dirty hack
+            // but good enough to just evaluate a single depth of conditions
+            if(!allowedConditions.has(condition_name))
+                // condition can't have a condition itself this way ;-)
+                continue;
+            if(values[condition_name] !== condition_value)
+                continue;
+            // falling back to index as a key
+            key = '' + ('name' in uiField ? uiField.name : i);
+            values[key] = this._getValue(uiField, input);
+        }
+        return values;
+    };
+
+    _p._sendUI = function(processId, description, inputs, isInit, event) {
+        event.preventDefault();
+        var values = this._collectUiValues(description, inputs);
+
+        if(isInit)
+            this._sendInitProcess(description, values);
+        else
+            this._sendExecute(description, values);
+    };
+
+    _p._sendExecute = function(description, values) {
+        var commandData = {
             // The result of `path.toString();` e.g.:
             //      "db205789-73e9-41a3-9d2d-45facd2290c5/0/DummyFeedback"
             //
@@ -268,7 +389,7 @@ define([
           , payload: values
         };
 
-        console.log('_sendUI sending', commandData);
+        console.log('_sendExecute sending', commandData);
 
         this._socket.emit(
             'execute-dispatcher-process'
@@ -282,5 +403,34 @@ define([
             }
         );
     };
+
+    _p._onInitProcessAnswer = function(processId, error) {
+        if(error)
+            console.error('error init-dispatcher-process:', error);
+        else {
+            console.log('answer init-dispatcher-process:', processId);
+            // now, listen to it
+            this._subscribedProcessIds.add(processId);
+            this._socket.emit('subscribe-dispatcher-process', {
+                processId: processId
+            });
+        }
+    };
+
+    _p._sendInitProcess = function(description, values) {
+        var data = {
+            payload: values
+        };
+
+        console.log('_sendInitProcess sending', data);
+
+        this._socket.emit(
+            'init-dispatcher-process'
+          , this._session.sessionId || null
+          , data
+          , this._onInitProcessAnswer.bind(this)
+        );
+    };
+
     return DispatcherController;
 });
