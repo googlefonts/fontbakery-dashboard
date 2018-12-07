@@ -203,9 +203,10 @@ _p.fbIndex = function(req, res, next) {
  */
 _p._socketOnSubscribe = function(socket, eventName, handler, ...data_callback) {
     var [data, ...moredata_callback] = data_callback;
-    this._log.info('_onSocketConnect: socket', socket.id ,'subscription '
-                                        + 'requested for', eventName, data, ...moredata_callback);
-    if(typeof data === 'object' && typeof data.id !== 'string')
+    this._log.info('_onSocketConnect: socket', socket.id
+                            ,'received event:', eventName
+                            , 'with data:',data, ...moredata_callback);
+    if(data !== null && typeof data === 'object' && typeof data.id !== 'string')
         // this is actually required (historically)
         // ??? why can't we fix this with an error?
         // and at the position where data.id is actually needed/evaluated?
