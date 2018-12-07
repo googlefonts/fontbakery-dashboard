@@ -267,6 +267,11 @@ class ProcessManagerStub(object):
         request_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
         response_deserializer=messages__pb2.ProcessCommandResult.FromString,
         )
+    self.GetInitProcessUi = channel.unary_unary(
+        '/fontbakery.dashboard.ProcessManager/GetInitProcessUi',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=messages__pb2.ProcessState.FromString,
+        )
 
 
 class ProcessManagerServicer(object):
@@ -302,6 +307,13 @@ class ProcessManagerServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def GetInitProcessUi(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_ProcessManagerServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -319,6 +331,11 @@ def add_ProcessManagerServicer_to_server(servicer, server):
           servicer.InitProcess,
           request_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
           response_serializer=messages__pb2.ProcessCommandResult.SerializeToString,
+      ),
+      'GetInitProcessUi': grpc.unary_unary_rpc_method_handler(
+          servicer.GetInitProcessUi,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=messages__pb2.ProcessState.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

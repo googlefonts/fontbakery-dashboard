@@ -3209,8 +3209,8 @@ proto.fontbakery.dashboard.DispatcherInitProcess.prototype.toObject = function(o
  */
 proto.fontbakery.dashboard.DispatcherInitProcess.toObject = function(includeInstance, msg) {
   var f, obj = {
-    familyName: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    requester: jspb.Message.getFieldWithDefault(msg, 2, "")
+    requester: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    jsonPayload: jspb.Message.getFieldWithDefault(msg, 2, "")
   };
 
   if (includeInstance) {
@@ -3249,11 +3249,11 @@ proto.fontbakery.dashboard.DispatcherInitProcess.deserializeBinaryFromReader = f
     switch (field) {
     case 1:
       var value = /** @type {string} */ (reader.readString());
-      msg.setFamilyName(value);
+      msg.setRequester(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setRequester(value);
+      msg.setJsonPayload(value);
       break;
     default:
       reader.skipField();
@@ -3284,14 +3284,14 @@ proto.fontbakery.dashboard.DispatcherInitProcess.prototype.serializeBinary = fun
  */
 proto.fontbakery.dashboard.DispatcherInitProcess.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
-  f = message.getFamilyName();
+  f = message.getRequester();
   if (f.length > 0) {
     writer.writeString(
       1,
       f
     );
   }
-  f = message.getRequester();
+  f = message.getJsonPayload();
   if (f.length > 0) {
     writer.writeString(
       2,
@@ -3302,31 +3302,31 @@ proto.fontbakery.dashboard.DispatcherInitProcess.serializeBinaryToWriter = funct
 
 
 /**
- * optional string family_name = 1;
+ * optional string requester = 1;
  * @return {string}
  */
-proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getFamilyName = function() {
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getRequester = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setFamilyName = function(value) {
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setRequester = function(value) {
   jspb.Message.setField(this, 1, value);
 };
 
 
 /**
- * optional string requester = 2;
+ * optional string json_payload = 2;
  * @return {string}
  */
-proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getRequester = function() {
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getJsonPayload = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setRequester = function(value) {
+proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setJsonPayload = function(value) {
   jspb.Message.setField(this, 2, value);
 };
 

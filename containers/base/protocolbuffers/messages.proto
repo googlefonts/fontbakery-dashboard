@@ -194,6 +194,7 @@ service ProcessManager {
   // kinds of processes in the same process manager.
   // but right now we only deal with one process implementation at a time!
   rpc InitProcess (google.protobuf.Any) returns (ProcessCommandResult) {};
+  rpc GetInitProcessUi (google.protobuf.Empty) returns (ProcessState) {};
 }
 
 // This service is added next to the ProcessManager service, it
@@ -224,8 +225,8 @@ message ProcessCommandResult {
 
 // whatever we need to get a dispatcher process rolling!
 message DispatcherInitProcess {
-    string family_name = 1;
-    string requester = 2; // for authorization
+    string requester = 1; // for authorization etc.
+    string json_payload = 2;
 }
 
 message ProcessQuery {
@@ -267,7 +268,6 @@ message ProcessCommand {
       google.protobuf.Any pb_payload = 6;
     }
 }
-
 
 ///////
 // Authorization/GitHub OAuth stuff

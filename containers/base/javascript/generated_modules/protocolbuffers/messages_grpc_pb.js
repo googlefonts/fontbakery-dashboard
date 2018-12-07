@@ -427,6 +427,17 @@ var ProcessManagerService = exports.ProcessManagerService = {
     responseSerialize: serialize_fontbakery_dashboard_ProcessCommandResult,
     responseDeserialize: deserialize_fontbakery_dashboard_ProcessCommandResult,
   },
+  getInitProcessUi: {
+    path: '/fontbakery.dashboard.ProcessManager/GetInitProcessUi',
+    requestStream: false,
+    responseStream: false,
+    requestType: google_protobuf_empty_pb.Empty,
+    responseType: messages_pb.ProcessState,
+    requestSerialize: serialize_google_protobuf_Empty,
+    requestDeserialize: deserialize_google_protobuf_Empty,
+    responseSerialize: serialize_fontbakery_dashboard_ProcessState,
+    responseDeserialize: deserialize_fontbakery_dashboard_ProcessState,
+  },
 };
 
 exports.ProcessManagerClient = grpc.makeGenericClientConstructor(ProcessManagerService);
