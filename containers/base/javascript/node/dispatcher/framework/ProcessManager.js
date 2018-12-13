@@ -501,7 +501,9 @@ _p._getProcessStateForClient = function(process) {
     // are not meant to be in the process data visible by the client.
     // An important exception are the user interface requests, but they
     // are separated from the actual process data.
-    processState.setProcessData(JSON.stringify(process.serialize()));
+    processState.setProcessData(JSON.stringify(
+            process.serialize({filterKeys: new Set(['expectedAnswer'])})
+    ));
     processState.setUserInterface(JSON.stringify(process.getRequestedUserInteractions()));
     return processState;
 };

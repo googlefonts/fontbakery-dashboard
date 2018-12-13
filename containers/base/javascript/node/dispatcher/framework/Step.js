@@ -155,8 +155,8 @@ Object.defineProperties(_p, {
 const stateDefinition = {
     tasks: { // array, task statuses, must be compatible with this._taskCtors
         init: _p._initTasks
-      , serialize: tasks=>
-                    [...tasks].map(([key, task])=>[key, task.serialize()])
+      , serialize: (tasks, options)=>
+                    [...tasks].map(([key, task])=>[key, task.serialize(options)])
       , load: _p._loadTasks
       // always expected
     }

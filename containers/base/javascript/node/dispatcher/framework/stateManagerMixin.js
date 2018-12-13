@@ -61,7 +61,7 @@ function stateManagerMixin(_p, stateDefinition) {
         }
     };
 
-    _p.serialize = function() {
+    _p.serialize = function(options) {
         var state = {};
         for(let [key, definition] of this._stateDefEntries()) {
             if(!this._isExpectedState(key))
@@ -70,11 +70,12 @@ function stateManagerMixin(_p, stateDefinition) {
                 // _initState and _loadState, but this way is working
                 // as well, and maybe more explixit.
                 continue;
-            state[key] = definition.serialize.call(this, this._state[key]);
+            if(options.filterKeys && options.filterKeys.has(key))
+                continue;
+            state[key] = definition.serialize.call(this, this._state[key], options);
         }
         return state;
     };
-
 
     /**
      * Validation on construction is to figure if we received a valid state

@@ -111,7 +111,7 @@ const dateTypeDefinition = {
         }
 };
 
-const serializeStep = step=>step.serialize();
+const serializeStep = (step, options)=>step.serialize(options);
 
 const stateDefinition = {
     /**
@@ -142,7 +142,7 @@ const stateDefinition = {
     }
   , steps: { // array, steps statuses, must be compatible with this.constructor.steps
         init: _p._initSteps
-      , serialize: steps=>steps.map(serializeStep)
+      , serialize: (steps, options)=>steps.map(step=>serializeStep(step, options))
       , load: _p._loadSteps
       , isExpected: function() {
             // only if there are stepCtors
