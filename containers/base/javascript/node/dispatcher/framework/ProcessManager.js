@@ -316,9 +316,11 @@ _p.initProcess = function(call, callback) {
       , [errorMessage, initArgs] = this._examineProcessInitMessage(initMessage)
       , promise
       ;
-    if(errorMessage)
+    if(errorMessage) {
         // Do this?? Or send another answer?
-        throw new Error(errorMessage);
+        callback(new Error(errorMessage), null);
+        return;
+    }
     // this is the back channel.
     // and still a stub
     try {
@@ -523,6 +525,23 @@ _p._removeCallFromProcessSubscriptions = function(processId, call) {
     processSubscriptions.delete(call);
     if(!processSubscriptions.size)
         this._processSubscriptions.delete(processId);
+};
+
+_p.getProcess = function(call, callback) {
+    var processQuery = call.request
+      , processId = processQuery.getProcessId()
+      ;
+    this._getProcess(processId).then(
+        ({process /*, queue*/})=>{
+                this._log.debug('got a',  process.constructor.name ,'by id', process.id);
+                var processState = this._getProcessStateForClient(process);
+                callback(null, processState);
+            }
+          , error=>{
+                this._log.error(error);
+                callback(error, null);
+            }
+        );
 };
 
 _p.subscribeProcess = function(call) {

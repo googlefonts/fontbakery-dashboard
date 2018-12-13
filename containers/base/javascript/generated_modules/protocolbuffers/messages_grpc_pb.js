@@ -397,6 +397,18 @@ var ProcessManagerService = exports.ProcessManagerService = {
     responseSerialize: serialize_fontbakery_dashboard_ProcessState,
     responseDeserialize: deserialize_fontbakery_dashboard_ProcessState,
   },
+  // same as SubscribeProcess but only returns the current state once
+  getProcess: {
+    path: '/fontbakery.dashboard.ProcessManager/GetProcess',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.ProcessQuery,
+    responseType: messages_pb.ProcessState,
+    requestSerialize: serialize_fontbakery_dashboard_ProcessQuery,
+    requestDeserialize: deserialize_fontbakery_dashboard_ProcessQuery,
+    responseSerialize: serialize_fontbakery_dashboard_ProcessState,
+    responseDeserialize: deserialize_fontbakery_dashboard_ProcessState,
+  },
   // issue a state change for a Process. `ticket` will be used to make
   // sure only expected commands are executed.
   execute: {

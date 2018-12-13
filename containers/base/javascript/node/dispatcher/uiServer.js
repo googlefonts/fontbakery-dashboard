@@ -145,6 +145,7 @@ function ProcessUIService(server, app, logging, processManager, ghAuthClient) {
     this._ghAuthClient = ghAuthClient;
 
     this._app.get('/', this._server.serveStandardClient);
+    this._app.get('/process/:id', this._checkProcessExists.bind(this));
 
     this._sockets = new Map();
     this._rooms = new Map();
@@ -184,6 +185,21 @@ function ProcessUIService(server, app, logging, processManager, ghAuthClient) {
 }
 
 var _p = ProcessUIService.prototype;
+
+_p._checkProcessExists = function(req, res, next) {
+    var processId = decodeURIComponent(req.param('id'))
+      , processQuery = new ProcessQuery()
+      ;
+    processQuery.setProcessId(processId);
+    this._processManager.getProcess(processQuery)
+    .then(
+        // This is the same client as the index page,
+        // after the id was returned
+        (/*processState*/)=>this._server.serveStandardClient(req, res, next)
+        // answer 404: NotFound
+      , error=>res.status(404).send('Not found: ' + error))
+    .catch(next);
+};
 
 _p._getProcess = function(processId) {
     //jshint unused: vars

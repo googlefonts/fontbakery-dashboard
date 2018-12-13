@@ -184,6 +184,8 @@ service ProcessManager {
   // returns the current Process state initially and on each change of
   // the Process state a new Process
   rpc SubscribeProcess (ProcessQuery) returns (stream ProcessState) {};
+  // same as SubscribeProcess but only returns the current state once
+  rpc GetProcess (ProcessQuery) returns (ProcessState) {};
   // issue a state change for a Process. `ticket` will be used to make
   // sure only expected commands are executed.
   rpc Execute (ProcessCommand) returns (ProcessCommandResult) {};

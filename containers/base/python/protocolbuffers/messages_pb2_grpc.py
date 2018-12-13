@@ -257,6 +257,11 @@ class ProcessManagerStub(object):
         request_serializer=messages__pb2.ProcessQuery.SerializeToString,
         response_deserializer=messages__pb2.ProcessState.FromString,
         )
+    self.GetProcess = channel.unary_unary(
+        '/fontbakery.dashboard.ProcessManager/GetProcess',
+        request_serializer=messages__pb2.ProcessQuery.SerializeToString,
+        response_deserializer=messages__pb2.ProcessState.FromString,
+        )
     self.Execute = channel.unary_unary(
         '/fontbakery.dashboard.ProcessManager/Execute',
         request_serializer=messages__pb2.ProcessCommand.SerializeToString,
@@ -282,6 +287,13 @@ class ProcessManagerServicer(object):
   def SubscribeProcess(self, request, context):
     """returns the current Process state initially and on each change of
     the Process state a new Process
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def GetProcess(self, request, context):
+    """same as SubscribeProcess but only returns the current state once
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -319,6 +331,11 @@ def add_ProcessManagerServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'SubscribeProcess': grpc.unary_stream_rpc_method_handler(
           servicer.SubscribeProcess,
+          request_deserializer=messages__pb2.ProcessQuery.FromString,
+          response_serializer=messages__pb2.ProcessState.SerializeToString,
+      ),
+      'GetProcess': grpc.unary_unary_rpc_method_handler(
+          servicer.GetProcess,
           request_deserializer=messages__pb2.ProcessQuery.FromString,
           response_serializer=messages__pb2.ProcessState.SerializeToString,
       ),

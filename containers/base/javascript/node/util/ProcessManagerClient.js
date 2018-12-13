@@ -210,6 +210,15 @@ _p.initProcess = function(initMessage) {
             .then(null, error=>this._raiseUnhandledError(error));
 };
 
+
+_p.getProcess = function(processQuery) {
+    // getProcess -> processQuery -> processState
+    return nodeCallback2Promise((callback)=>
+            this._client.getProcess(processQuery
+                                    , {deadline: this.deadline}, callback))
+            .then(null, error=>this._raiseUnhandledError(error));
+};
+
 _p.getInitProcessUi = function(){
     return nodeCallback2Promise((callback)=>
             this._client.getInitProcessUi(new Empty()
