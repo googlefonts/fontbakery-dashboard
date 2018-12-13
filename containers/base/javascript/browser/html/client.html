@@ -437,6 +437,69 @@
             height: 26px;
         }
 
+        .user-log::before{
+            display: block;
+            background: black;
+            color: white;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+            text-align: center;
+            content: "logs:";
+        }
+
+        .user-log {
+            list-style: none;
+            padding: 0;
+            height: 200px;
+            overflow: auto;
+            float: right;
+            width: 600px;
+            border: 1px solid black;
+        }
+
+        .user-log > li > * {
+            vertical-align: top;
+        }
+
+        .user-log > li > .preformated {
+            display: inline-block;
+            font-family: monospace;
+            white-space: pre;
+        }
+
+        .user-log > li > markdown {
+            display: inline-block;
+        }
+
+        .user-log > li.priority-info:nth-child(even) {
+            background: #eee;
+        }
+
+        .user-log > li.priority-error {
+            background: LightPink;
+        }
+        .user-log > li.priority-error:nth-child(even){
+            background: Pink;
+        }
+        .user-log > li.priority-error::before {
+            content: '💥 ERROR > ';
+        }
+
+        .user-log > li.priority-warning{
+            background: PeachPuff;
+        }
+        .user-log > li.priority-warning:nth-child(even){
+            background: Moccasin;
+        }
+        .user-log > li.priority-warning::before {
+            content: '⚠️ WARNING > ';
+        }
+
+        .user-log > li.priority-info::before {
+            content: '> ';
+        }
+
         .dispatcher-interface ol form label{
             display: block;
         }
