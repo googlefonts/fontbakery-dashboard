@@ -81,12 +81,7 @@ define([
         var templatesContainer = getTemplatesContainer('templates')
           , target = document.getElementsByClassName('active-interface')[0]
           ;
-
-        for(var i=0,l=target.children.length;i<l;i++)
-            // children can listen for the event and cleanup if needed
-            // activatedElement.addEventListener('destroy', function (e) { //... }, false);
-            target.children[i].dispatchEvent(new Event('destroy'));
-        dom.clear(target);
+        dom.clear(target, 'destroy');
         return activateElement(templatesContainer, klass, target, null);
     }
 
@@ -497,6 +492,15 @@ define([
         init = modes[mode];
         // extra data for mode?
         switch(mode) {
+            case('dispatcher'):
+                if(pathparts[i+1]==='process')
+                    i+=1; // => dispatcher/process/{id}
+                    // falls through
+                    // now behaves exactly like report, but `id` is for collection_id
+                else {
+                    data = defaultData;
+                    break;
+                }// jshint ignore:line
             case('collection-report'):
             // falls through
             // behaves exactly like report, but `id` is for collection_id

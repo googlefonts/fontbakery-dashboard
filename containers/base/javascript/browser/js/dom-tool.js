@@ -186,9 +186,14 @@ define([
             throw new Error('Marker <!-- '+marker+' --> not found');
     }
 
-    function clear(elem) {
-        while(elem.lastChild)
-            removeNode(elem.lastChild);
+    function clear(target, destroyEventName) {
+        while(target.lastChild) {
+            if(destroyEventName)
+                // children can listen for the event and cleanup if needed
+                // activatedElement.addEventListener('destroy', function (e) { //... }, false);
+                target.lastChild.dispatchEvent(new Event(destroyEventName));
+            removeNode(target.lastChild);
+        }
     }
 
     function validateChildEvent(event, stopElement, searchAttribute) {

@@ -1,17 +1,19 @@
 define([
     'dom-tool'
+  , 'UserLog'
 ], function(
     dom
+  , UserLog
 ) {
     /* jshint browser:true, esnext:true, devel: true*/ //  esnext:true TEMPORAY ???
     "use strict";
     function DispatcherController(container, templatesContainer, socket, data) {
         //jshint unused:vars
+        this._container = container;
+        this._templatesContainer = templatesContainer;
 
         this._session = null;
-        this._listElem = dom.createElement('div');
-        this._processElem = dom.createElement('p');
-        dom.appendChildren(container, [this._l, this._processElem]);
+        this._log = new UserLog(dom.createElement('ol', {class: 'user-log'}));
 
         // we should also run this when the login status changes, so that
         // forms can be enabled/disabled if the user is authorized to
@@ -21,11 +23,10 @@ define([
         // of roles for the user (maybe that list is different on a per
         // process base, i.e. a meta-role like: project-owner is only
         // attached to a user, if he is project owner...
-        this._lastProcessData = null;
-        this._socket = socket;
-        this._subscribedProcessIds = new Set();
+        this._currentProcessListener = null;
+        this._currentProcessLastData = null;
 
-        socket.on('changes-dispatcher-process', this.onChangeProcess.bind(this));
+        this._socket = socket;
 
         //var countList = 0;
         //this.onChangeList = function(data) {
@@ -37,43 +38,111 @@ define([
         // socket.on('changes-dispatcher-list', this.onChangeList.bind(this));
         // socket.emit('subscribe-dispatcher-list', {});
 
-        socket.emit('initializing-ui-dispatcher-process', null, (uiDescription, error)=>{
-            if(error)
-                console.error('error initializing-ui-dispatcher-process:', error);
-            else
-                this.onInitializingUI([uiDescription]);
-        });
+        if(data && data.id)
+            this._showProcess(data.id);
+        else {
+            socket.emit('initializing-ui-dispatcher-process', null, (uiDescription, error)=>{
+                if(error)
+                    this._log.error('error initializing-ui-dispatcher-process:', error);
+                else
+                    this.onInitializingUI([uiDescription]);
+            });
+        }
 
         // To test if it loads (seserializes) well
         //onInitAnswer('b56d226d-8333-41e1-80da-ad973b8ab0c6', null)
         // finished: onInitAnswer('a9963e5b-b3fc-4b2d-9199-1856fa666e6f', null);
 
         container.addEventListener('destroy', (e)=>{
-            console.log('OH, Hey!, the destroy event got received by DispatcherController');
+            this._log.info('OH, Hey!, the destroy event got received by DispatcherController');
             socket.emit('unsubscribe-dispatcher-list');
-
-            for(let processId of this._subscribedProcessIds)
-                socket.emit('unsubscribe-dispatcher-process', {
-                    processId: processId
-                });
         }, false);
     }
     var _p = DispatcherController.prototype;
 
-    _p.onChangeProcess = function(...data) {
-        this._lastProcessData = data;
-        console.log('onChangeProcess', ...data);
-        var [message, processId, processState, uiDescriptions, isInit] = data;
-        this._renderProcess(processId, message, processState, uiDescriptions, isInit);
 
+    _p._getElementFromTemplate = function(className){
+        var template = this._templatesContainer.getElementsByClassName(className)[0];
+        return template.cloneNode(true);
+    };
+
+    _p._clearContainer = function() {
+        dom.clear(this._container, 'destroy');
+    };
+
+    _p._showProcess = function(processId) {
+        var processElem = dom.createElement('div')
+          , listener = this._onChangeProcess.bind(this, processElem)
+          , destructor = (e)=>{
+                //jshint unused:vars
+                this._currentProcessListener = null;
+                this._currentProcessLastData = null;
+
+                this._container.removeEventListener('destroy', destructor, false);
+                this._log.info('OH, Hey!, the destroy event got received');
+
+                this._socket.off('changes-dispatcher-process', listener);
+                if(processId)
+                    this._socket.emit('unsubscribe-dispatcher-process', {
+                        processId: processId
+                    });
+            }
+          ;
+
+        this._clearContainer();
+        this._currentProcessListener = listener;
+        this._currentProcessLastData = null;
+
+        dom.appendChildren(this._container, [this._log.container, processElem]);
+        this._log.reatached();
+
+        this._socket.on('changes-dispatcher-process', listener);
+        this._container.addEventListener('destroy', destructor, false);
+        processElem.addEventListener('destroy', destructor, false);
+        if(processId)
+            this._socket.emit('subscribe-dispatcher-process', {
+                processId: processId
+            });
     };
 
     _p.onInitializingUI = function(...data) {
         var [uiDescriptions] = data;
-        this.onChangeProcess('…initializing', 'N/A', null, uiDescriptions, true);
+        this._showProcess(null);
+        this._currentProcessListener('…initializing', 'N/A', null, uiDescriptions, true);
     };
 
-    _p._renderProcess = function(processId, message, processState, uiDescriptions, isInit) {
+
+    _p._showThankYou = function(processId, processUrl) {
+        var element = this._getElementFromTemplate('thank-you')
+          , linkElement = dom.createElement('input', {
+                'class':'link'
+              , type: 'text'
+              , value: processUrl
+              , readonly: 'readonly'
+            })
+          , closeButton = dom.createElement('button', {}, 'OK')
+          ;
+
+        // select all text on click
+        linkElement.addEventListener('click', linkElement.select);
+        closeButton.addEventListener('click', this._showProcess.bind(this, processId));
+        dom.insertAtMarkerComment(element, 'insert link', linkElement, false);
+        dom.insertAtMarkerComment(element, 'insert close button', closeButton, false);
+
+        this._clearContainer();
+        this._container.appendChild(element);
+    };
+
+    _p._onChangeProcess = function(processElem, ...data) {
+        this._currentProcessLastData = data;
+        this._log.info('onChangeProcess', data[0]);
+        console.log('onChangeProcess', ...data);
+        var [message, processId, processState, uiDescriptions, isInit] = data;
+        this._renderProcess(processElem, processId, message, processState, uiDescriptions, isInit);
+
+    };
+
+    _p._renderProcess = function(processElem, processId, message, processState, uiDescriptions, isInit) {
         var uis, process, ol;
         uis = uiDescriptions
                     ? dom.createFragment(uiDescriptions.map(ui=>this._createUserInteraction(processId, ui, isInit)))
@@ -88,14 +157,14 @@ define([
           , dom.createElement('li', {}, uis)
           , dom.createElement('li', {}, process)
         ]);
-        dom.clear(this._processElem);
-        dom.appendChildren(this._processElem, ol);
+        dom.clear(processElem);
+        dom.appendChildren(processElem, ol);
     };
 
     _p.sessionChangeHandler = function(session) {
         this._session = session;
-        if(this._lastProcessData)
-            this.onChangeProcess(...this._lastProcessData);
+        if(this._currentProcessListener && this._currentProcessLastData)
+            this._currentProcessListener(...this._currentProcessLastData);
     };
 
     _p._createUserInteraction = function(processId, description, isInit) {
@@ -126,9 +195,6 @@ define([
         // the easiest right now is:
         // a field can't dependency on a field that has a condition itself.
         // thus, there's only one level dependencies possible.
-
-
-
         for (i=0,l=description.ui.length;i<l;i++) {
             uiField = description.ui[i];
             key = '' + ('name' in uiField ? uiField.name : i);
@@ -389,6 +455,7 @@ define([
           , payload: values
         };
 
+        this._log.info('_sendExecute');
         console.log('_sendExecute sending', commandData);
 
         this._socket.emit(
@@ -397,23 +464,42 @@ define([
           , commandData
           , function(result, error) {
                 if(error)
-                    console.error('execute back channel error:', error);
+                    this._log.error('execute back channel error:', error);
                 else
-                    console.log('execute back channel answer:', result);
-            }
+                    this._log.info('execute back channel answer:', result);
+            }.bind(this)
         );
     };
 
     _p._onInitProcessAnswer = function(processId, error) {
-        if(error)
-            console.error('error init-dispatcher-process:', error);
+        if(error) {
+            console.error('init-dispatcher-process', error);
+            this._log.error('init-dispatcher-process:', error);
+            // TODO: This must be shown to the user, to help improving
+            // the answers -> same as process back-channel. a simple
+            // logging window should do.
+            // The sent answers should relate to the form the user sees
+            // and be understandable. We may have these attached to input
+            // elements in the future, but for now the logging widget is
+            // OK.
+        }
         else {
-            console.log('answer init-dispatcher-process:', processId);
-            // now, listen to it
-            this._subscribedProcessIds.add(processId);
-            this._socket.emit('subscribe-dispatcher-process', {
-                processId: processId
-            });
+            this._log.info('answer init-dispatcher-process:', processId);
+            var url = location.origin
+                      + '/dispatcher/process/' + encodeURIComponent(processId);
+            // Show a thank you screen.
+            this._showThankYou(processId, url);
+            // and got to the process url (pushState)
+            //          this state, with thank you screen and NO process
+            //          interface is unique for this situation, there's
+            //          no other way (e.g. via the URL) to get here. The
+            //          reason for the url chnge is, that the user can
+            //          share the link immediately.
+
+            window.history.pushState(null, null, url);
+            // From thank you screen, open the process interface and
+            // subscribe to process when user confirms/clicks on
+            // thank you screen.
         }
     };
 
@@ -422,6 +508,7 @@ define([
             payload: values
         };
 
+        this._log.info('_sendInitProcess');
         console.log('_sendInitProcess sending', data);
 
         this._socket.emit(
