@@ -64,6 +64,9 @@ function CSVSpreadsheet(logging, id, reposPath, sheetCSVUrl, familyWhitelist
                                                         , reportsSetup) {
     this._log = logging;
     this._sheetCSVUrl = sheetCSVUrl;
+    this._csvCache = null;// [promise, date, csvData]
+    this._csvCacheMinutes = 5;
+
     // TODO: remove and delete files if a repo is  not in the CSV-sheet
     // anymore after an update?
     this._gitRepos = new Map();
@@ -335,6 +338,10 @@ var CSVData = (function() {
         return this._data.get(familyName);
     };
 
+    _p.list = function() {
+        return Array.from(this._data.keys()).sort();
+    };
+
     return CSVData;
 })();
 
@@ -348,7 +355,7 @@ function downloadCSVData(fileUrl) {
             })
           , result = null
           ;
-        // console.log('result:', res);
+        // res.pipe(process.stdout);// => for debugging
         res.pipe(csvReader) // ->  <stream.Writable>
             .on('data', function (row) {
                 if(!result) {
@@ -382,6 +389,30 @@ function downloadCSVData(fileUrl) {
                 + 'it should start with "http://", "https://" or "file://".');
     });
 }
+
+_p._downloadCSVData = function(force) {
+    var [promise, date, csvData] = this._csvCache || [];
+    if(promise)
+        // a download is happening at the moment
+        return promise;
+    if(!force // we may use the cache
+              && date // we have a cache
+              // the cache is not timed out
+              && date.toTime + (this._csvCacheMinutes * 60 * 1000) < Date.now())
+        return Promise.resolve(csvData);
+
+    promise = downloadCSVData(this._sheetCSVUrl)
+    .then(csvData=>{
+        this._csvCache = [null, new Date(), csvData];
+        return csvData;
+    }, error=>{
+        // can't keep that promise forever
+        this._csvCache = null;
+        throw error;
+    });
+    this._csvCache = [promise, null, null];
+    return promise;
+};
 
 _p._reportFamily = function(familyName, status, message) {
     if(!this._familyReportTable)
@@ -869,7 +900,7 @@ _p.update = function() {
         }
       ;
 
-    promise = downloadCSVData(this._sheetCSVUrl)// -> instance of CSVData
+    promise = this._downloadCSVData(true)// -> instance of CSVData
         .then(csvData=>{
             this._reportAdd('table', {
                 caption: 'CSV Data Import'
@@ -902,6 +933,17 @@ _p.update = function() {
         return promise;
 };
 
+_p.list = function() {
+    // `force` could be an argument of this interface, for the caller
+    // to decide whether to get a brand new list or maybe one that is
+    // maybe a bit outdated. However, the use case here is currently
+    // to show the list in a web facing user interface, where using
+    // the cached version is suitable.
+    var force = false;
+    return this._downloadCSVData(force).then(csvData=>csvData.list());
+};
+
+
 /**
  * Get one family "package" by family name (via ManifestServer as a FamilyData message).
  * The data is the same as the update function dispatches, in this case
@@ -909,7 +951,7 @@ _p.update = function() {
  */
 _p.get = function(familyName) {
     // update the csv
-    return downloadCSVData(this._sheetCSVUrl)// -> instance of CSVData
+    return this._downloadCSVData(true)// -> instance of CSVData
         // get the row of the requested family
         // raises if familyName is not fond
         .then(csvData=>csvData.get(familyName)) // -> instance of CSVFamily; raises if familyName doesn't exist
@@ -949,6 +991,10 @@ if (typeof require != 'undefined' && require.main==module) {
     if(familyWhitelist)
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
     // the prod api
+
+    // FIXME: temporary local setup overrides.
+    reportsSetup = null;
+    setup.cache = null;
 
     sources.push(new CSVSpreadsheet(setup.logging, 'upstream', repoPath
                             , sheetCSVUrl, familyWhitelist, reportsSetup));
