@@ -31,7 +31,7 @@ function getSetup() {
       , amqpSetup = {
             host: process.env.RABBITMQ_SERVICE_SERVICE_HOST
                         || process.env.BROKER
-                        || 'amqp://localhost'
+                        || '127.0.0.1'
         }
       , cacheSetup = {
             // call it: "fontbakery-cache"
