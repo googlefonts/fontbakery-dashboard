@@ -19,9 +19,9 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
  * How are state changes propagated?
  */
 
-function ProcessManager(logging, dbSetup, amqpSetup, port, secret, anySetup, ProcessConstructor) {
-    this._log = logging;
-    this._io = new IOOperations(logging, dbSetup, amqpSetup);
+function ProcessManager(setup, port, secret, anySetup, ProcessConstructor) {
+    this._log = setup.logging;
+    this._io = new IOOperations(setup.logging, setup.db, setup.amqp);
     this._processResources = Object.create(null);
     this._processSubscriptions = new Map();
     this._activeProcesses = new Map();
@@ -41,6 +41,9 @@ function ProcessManager(logging, dbSetup, amqpSetup, port, secret, anySetup, Pro
 
     this._server.addService(ProcessManagerService, this);
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
+
+    this._asyncDependencies = [];
+    this._asyncDependencies.push([this._io, 'init']);
 }
 
 exports.ProcessManager = ProcessManager;
@@ -86,7 +89,7 @@ _p._examineProcessInitMessage = function(initMessage) {
     // Does the familyName exist?
     // Is the requester authorized to do this?
     // Is it OK to init the process now or are there any rules why not?
-    return [true, null, {}]; // [result, message, initArgs]
+    return Promise.resolve([null, {}]); // [errorMessage, initArgs]
 };
 
 /**
@@ -267,28 +270,35 @@ _p._publishUpdates = function(process) {
 // gRPC related:
 
 _p.serve = function() {
-    // Start serving when the database is ready
-    return this._io.init()
-        .then(()=>this._server.start());
+    // Start serving when the database etc. is ready
+    return Promise.all(this._asyncDependencies.map(
+            ([service, method])=>service[method]()))
+    .then(()=>this._server.start());
 };
 
 
 /**
  * rpc GetInitProcessUi (google.protobuf.Empty) returns (ProcessState) {};
  */
-
-
 _p.getInitProcessUi = function(call, callback) {
     //jshint unused: vars
     // call.request is an Empty
 
     // FIXME: uiPreInit should be optional and when it's missing we should
     // fail gracefully. Not all conceivable processes need this!
-    var ui = this.ProcessConstructor.uiPreInit()
-      , processState = new ProcessState()
-      ;
-    processState.setUserInterface(JSON.stringify(ui));
-    callback(null, processState);
+
+    // This way it can return both: a promise or the ui directly
+    return Promise.resolve(this.ProcessConstructor.uiPreInit(this._processResources))
+    .then(ui=>{
+            var processState = new ProcessState();
+            processState.setUserInterface(JSON.stringify(ui));
+            callback(null, processState);
+        }
+      , error=>{
+            this._log.error('getInitProcessUi', error);
+            callback(error, null);
+        }
+    );
 };
 
 /**
@@ -313,24 +323,15 @@ _p.initProcess = function(call, callback) {
         //, Type = this._getTypeForTypeName(typeName)
         //, initArgsMessage = any.unpack(Type.deserializeBinary, typeName)
       , initMessage = this._any.unpack(anyProcessInitMessage)
-      , [errorMessage, initArgs] = this._examineProcessInitMessage(initMessage)
-      , promise
       ;
-    if(errorMessage) {
-        // Do this?? Or send another answer?
-        callback(new Error(errorMessage), null);
-        return;
-    }
-    // this is the back channel.
-    // and still a stub
-    try {
-        promise = this._initProcess(initArgs);
-    }
-    catch(error) {
-        promise = Promise.reject(error);
-    }
 
-    promise.then(process=>[process, null], error=>[null, error])
+    this._examineProcessInitMessage(initMessage)
+    .then(([errorMessage, initArgs])=>{
+        if(errorMessage)
+            throw new Error(errorMessage);
+        return this._initProcess(initArgs);
+    })
+    .then(process=>[process, null], error=>[null, error])
     .then(([process, error])=>{
         var resultMessage = new ProcessCommandResult();
         if(process) {
