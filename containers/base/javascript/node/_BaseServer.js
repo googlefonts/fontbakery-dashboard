@@ -79,6 +79,14 @@ function _BaseServer(logging, portNum, setup) {
               , 'waitForReady'
             ]
         ]
+      , ['manifestSpreadsheet', [
+            ()=>new ManifestClient(
+                                this._log
+                              , setup.manifestSpreadsheet.host
+                              , setup.manifestSpreadsheet.port)
+              , 'waitForReady'
+            ]
+        ]
     ]);
     this._resources = new Map();
     this._resources.set('*app:/', this._app); // root express app
