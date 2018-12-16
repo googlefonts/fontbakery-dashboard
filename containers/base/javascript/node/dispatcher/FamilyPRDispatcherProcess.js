@@ -18,7 +18,7 @@ function renderMD(){
     return '**NOT IMPLEMENTED:** renderMD';
 }
 
-const EmptyTask = (function(){
+const EmptyTask = (function() {
 
 // just a placeholder to get infrastructure running before actually
 // implementing this module.
@@ -57,7 +57,7 @@ _p.constructor = GetFamilyDataTask;
  */
 _p._activate = function() {
     var familyRequest = new FamilyRequest();
-    familyRequest.setSourceid('CSVSpreadsheet');
+    familyRequest.setSourceId('CSVSpreadsheet');
     familyRequest.setFamilyName(this.process.familyName);
     return this.grpcSourceClient.get(familyRequest)
         .then(familyDataMessage => {
@@ -127,7 +127,7 @@ _p._runFamilyJob = function(familyJob) {
     });
 };
 
-_p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
+_p.callbackFontBakeryFinished = function(requester, fontbakeryResultMessage) {
     // hmm, can get the result also from the DB?
     // the reportID must be the same as the one we received in _runFamilyJob
     // otherwise, this task may have been re-activated and we're looking at
@@ -158,10 +158,10 @@ _p.callbackFontBakeryFinished = function(fontbakeryResultMessage) {
            //         specially and also put them into a personal list:
            //               processes awaiting your attention
 
-    return this._setExpectedAnswer('Finalize UI', 'callbackFinalize', 'uiFinalize');
+    this._setExpectedAnswer('Finalize UI', 'callbackFinalize', 'uiFinalize');
 };
 
-_p.callbackFinalize = function(finalizeMessage) {
+_p.callbackFinalize = function(requester, finalizeMessage) {
     if(!this._hasPrivateData('fontbakeryResultMessage')) {
         // The UI should not allow this callback to be made, but in
         // race condition cases like updates or such we may receive it.
@@ -309,104 +309,188 @@ return DispatchStep;
 })();
 
 
-const DummyFeedbackTask = (function(){
-
-// just a placeholder to get infrastructure running before actually
-// implementing this module.
+const ApproveProcessTask = (function(){
 const Parent = Task;
-function DummyFeedbackTask(step, state) {
+function ApproveProcessTask(step, state) {
     Parent.call(this, step, state);
 }
 
-const _p = DummyFeedbackTask.prototype = Object.create(Parent.prototype);
-_p.constructor = DummyFeedbackTask;
+const _p = ApproveProcessTask.prototype = Object.create(Parent.prototype);
+_p.constructor = ApproveProcessTask;
 
 _p._activate = function() {
-    this._setLOG('requesting a user interaction …');
-    return this._setExpectedAnswer('Dummy UI'
-                                      , 'callbackDummyUI'
-                                      , 'uiDummyUI');
+    // could be a different path for new/update processes
+    // after this task, we hopefully can proceed uniformly
+    this._setExpectedAnswer('Approve Process'
+                                      , 'callbackApproveProcess'
+                                      , 'uiApproveProcess');
 };
 
-_p.uiDummyUI = function() {
+_p.uiApproveProcess = function() {
+    var actionOptions = [];
+    actionOptions.push(['Accept and proceed.', 'accept']);
+    this.log.debug("this.initType === 'new'", this.process.initType === 'new', this.process.initType, this.process._state.initType, this.constructor.name);
+    if(this.process.initType === 'new')
+        // currently there's nothing to edit when initType is an update
+        actionOptions.push(['Edit data.', 'edit']);
+    // else assert this.initType === 'update'
+    actionOptions.push(['Dismiss and fail.', 'dismiss']);
+
     return {
-        roles: ['input-provider', 'engineer']
+        roles: ['engineer']
       , ui: [
-            {   name: 'choice'
-              , type:'choice' // => could be a select or a radio
+            {
+                type: 'info'
+              , content: 'Please review that the submitted info is good.'
+            }
+          , {   name: 'action'
+              , type:'choice'
               , label: 'Pick one:'
-              , options: [['I\'m a teapot.', 'teapot'], ['I like Unicorns.', 'unicorn']]
-              , default: 'unicorn' // 0 => the first item is the default
+              , options: actionOptions
+              //, default: 'accepted' // 0 => the first item is the default
             }
-          , {   name: 'name'
+          , {   name: 'reason'
+              , condition: ['action', 'dismiss']
               , type: 'line' // input type:text
-              , label: 'What is your name?'
+              , label: 'Why do you dismiss this process request?'
             }
-          , {   name: 'fail'
-              , type: 'binary' // input type checkbox
-              , label: 'Let this task fail?'
-              , default: false // false is the default
+            /**
+            // depending whether this is new or updated, we may need a different
+            // form here!
+            // could be done with conditions, with different forms in here
+            // or with
+
+          , {   name: 'genre'
+              , condition: ['action', 'new']
+              , type:'choice' // => could be a select or a radio
+              , label: 'Genre:'
+                // TODO: get a list of available families from the CSV Source
+              , options: fontFamilyGenres
+            }
+            */
+        ]
+    };
+};
+
+_p.callbackApproveProcess = function(requester, values) {
+    var {action} = values;
+
+    if(action === 'accept' ) {
+        this._setLOG('**' + requester +'** accepted this process.');
+        this._setExpectedAnswer('Sign-off Spreadsheet-update'
+                                      , 'callbackSignOffSpreadsheet'
+                                      , 'uiSignOffSpreadsheet');
+    }
+    else if(this.process.initType === 'new' && action === 'edit' ) {
+        // could be two different UIs for either "update" or "new" processes.
+        this._setExpectedAnswer('Edit Initial State'
+                                      , 'callbackEditInitialState'
+                                      , 'uiEditInitialState');
+    }
+    else if(action === 'dismiss' )
+        this._setFAILED('**' + requester + '** decided to FAIL this process '
+                     + 'request with reason:\n' + values.reason);
+    else
+        throw new Error('Pick one of the actions from the list.');
+};
+
+_p.uiEditInitialState = function() {
+    // assert this.initType === 'new'
+    if(this.process.initType !== 'new')
+        throw new Error('NOT IMPLEMENTED: initType "'+this.process.initType+'"');
+
+    var result = {
+        roles: ['input-provider', 'engineer']
+      , ui: _getInitNewUI().map(item=>{
+            // show only when "action" has the value "new"
+            if(item.name === 'genre' && this.process._state.genre)
+                item.default = this.process._state.genre;
+            if(item.name === 'fontfilesPrefix')
+                item.default = this.process._state.fontfilesPrefix;
+            if(item.name === 'ghNameWithOwner')
+                item.default = this.process.repoNameWithOwner;
+            if(item.name === 'familyName')
+                item.default = this.process.familyName;
+            return item;
+        })
+    };
+    return result;
+};
+
+_p.callbackEditInitialState = function(requester, values) {
+    values.action = 'new';
+    values.note = this.process._state.note;
+    return callbackPreInit(this._resources, requester, values)
+    .then(([message, initArgs])=>{
+        if(message) {
+            // FIXME: should *just* log to the user
+            // and best don't even change the form status, so that the
+            // user can make changes;
+            // TODO: this is a good case to improve the "back channel".
+            throw new Error(message);
+        }
+        this.process._state.familyName = initArgs.familyName;
+        this.process._state.repoNameWithOwner = initArgs.repoNameWithOwner;
+        this.process._state.genre = initArgs.genre;
+        this.process._state.fontfilesPrefix = initArgs.fontfilesPrefix;
+
+    })
+    // return to the activate form
+    .then(()=>this._activate());
+};
+
+_p.uiSignOffSpreadsheet = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Please update the spreadsheet row entry for this family if necessary.'
+            }
+          , {   name: 'accept'
+              , type:'binary'
+              , label: 'Spreadsheet entry is up to date.'
+            }
+          , {   name: 'reason'
+              , condition: ['accept', false]
+              , type: 'line' // input type:text
+              , label: 'What went wrong?'
             }
         ]
     };
 };
 
-_p.callbackDummyUI = function(values) {
-    this.log.debug('callbackDummyUI:', values);
-    var {choice, name, fail} = values
-      , choices = {
-          teapot: 'are a teapot'
-        , unicorn: 'like unicorns'
-        }
-      , strippedName = name.trim()
-      ;
-
-    if(!strippedName)
-        strippedName = '(anonymus)';
-
-    // Pretend this didn't resolve i.e. a monkey form
-    // HMM, for a monkey form, it would be nice to show the last
-    // made entries by the user again. This is probably possible
-    // with something like the virtual DOM of reactJS, would all happen
-    // in the client though!.
-    // TODO: here -> send a message to the actual client that called
-    // this method. Like: call.write('Hello from the process manager.').
-    // this is a direct anser to the client, either describing problems
-    // or just stating that all was fine-> the client will probably have
-    // a personalized log/messages window/element to render this.
-    this._setLOG('Hello '+ strippedName + ' '
-        + 'you ' + choices[choice] + ' '
-        + 'and you ' + (fail ? 'want to see the world burn' : 'will do it again')
-        + '!');
-    if(!fail)
-        return this._setExpectedAnswer('Dummy UI'
-                                      , 'callbackDummyUI'
-                                      , 'uiDummyUI');
-    else
-        this._setFAILED(strippedName + ' decided to FAIL this task.');
+_p.callbackSignOffSpreadsheet = function(requester, values) {
+    if(values.accept === true)
+        this._setOK('**' + requester + '** confirms spreadsheet entry.');
+    else if (values.accept === false)
+        this._setFAILED('**' + requester + '** can\t confirm the spreadheet '
+                + 'entry is good:\n' + values.reason);
 };
 
-return DummyFeedbackTask;
+
+return ApproveProcessTask;
 })();
 
 
 
-const TempTaskIntit = EmptyTask;
-
-const TempStepIntit = (function(){
+const ApproveProcessStep = (function() {
 const Parent = Step;
 /**
  * Make a the PR or manually fail with a reasoning.
  */
-function TempStepIntit(process, state) {
+function ApproveProcessStep(process, state) {
     Parent.call(this, process, state, {
-        TempIntit: TempTaskIntit
-      , DummyFeedback: DummyFeedbackTask
+        //(engineer): Review form info is good.
+        //        -> should have a way to modify the state from init
+        //(engineer): updates spreadsheet -> just a sign off
+        //        -> may be done by the form eventually
+        ApproveProcess: ApproveProcessTask
     });
 }
-const _p = TempStepIntit.prototype = Object.create(Parent.prototype);
-_p.constructor = TempStepIntit;
-return TempStepIntit;
+const _p = ApproveProcessStep.prototype = Object.create(Parent.prototype);
+_p.constructor = ApproveProcessStep;
+return ApproveProcessStep;
 })();
 
 
@@ -437,19 +521,14 @@ return FailStep;
 
 
 const stepCtors = [
-            InitProcessStep
-          , FontBakeryStep
-          , RegressionsStep
-          , DispatchStep
-    ]
-    // using these to make sure we have a lean development environment
-    // above will have to be implemented when the system actually works
-    // reduces the compexity to deal with at a time.
-  , tmpStepCtors = [
-        TempStepIntit
+              ApproveProcessStep
+          //  InitProcessStep
+          //, FontBakeryStep
+          //, RegressionsStep
+          //, DispatchStep
     ]
   , FailStepCtor = FailStep
-  , FinallyStepCtor = TempStepIntit
+  , FinallyStepCtor = null
   ;
 
 Object.freeze(stepCtors);
@@ -458,7 +537,7 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
     Parent.call(this
               , resources
               , state
-              , tmpStepCtors
+              , stepCtors
               , FailStepCtor
               , FinallyStepCtor
     );
@@ -466,11 +545,18 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
         return;
     // else if(initArgs) … !
     this.log.debug('new FamilyPRDispatcherProcess initArgs:', initArgs, 'state:', state);
-    var { familyName, requester, repoNameWithOwner } = initArgs;
+
+    var {  initType, familyName, requester, repoNameWithOwner, genre
+         , fontfilesPrefix, note
+        } = initArgs;
+
+    this._state.initType = initType;
     this._state.familyName = familyName;
     this._state.requester = requester;
     this._state.repoNameWithOwner = repoNameWithOwner;
-
+    this._state.genre = genre;
+    this._state.fontfilesPrefix = fontfilesPrefix;
+    this._state.note = note;
 }
 
 const _p = FamilyPRDispatcherProcess.prototype = Object.create(Parent.prototype);
@@ -586,81 +672,203 @@ without the access control etc. from above, that's the init
  * punish us for not on-boarding a font they want to have online. Think of
  * a 4chan.or/r kind of attack.
  */
-function uiPreInit() {
+
+const fontFamilyGenres = [
+        'Display'
+      , 'Serif'
+      , 'Sans Serif'
+      , 'Handwriting'
+      , 'Monospace'
+    ];
+
+function _getInitNewUI() {
+    // condition:new is ~ a new suggested family
+            // User submits family info via expanded form
+            //              (github auth + repo write required)
+            // Must be github repo
+            // Sources must exist -> hard to check before trying to read the sources
+            // License is OFL
+            // things that got to the Spreadsheet:
+            //     family: full name with spaces and initial capitals,
+            //             e.g: "Fira Sans Condensed"
+            //     upstream: "https://github.com/googlefonts/FiraGFVersion.git"
+            //             Must be github repo. the repo must be public
+            //             github auth + repo write required
+            //             {owner}/{repo-name} is sufficient: googlefonts/FiraGFVersion
+            //             but for the spreadsheet we *may* put in the
+            //             full url version
+            //     genre:  one of 'Display', 'Handwriting', 'Monospace', 'Sans Serif', 'Serif'
+            //     fontfiles prefix: "fonts/FiraSansCondensed-"
+    return [
+           {    name: 'familyName'
+              , type: 'line' // input type:text
+              , label: 'Family Name:'
+              , placeholder: 'Generic Sans Condensed'
+            }
+          , {   name: 'ghNameWithOwner'
+              , type: 'line' // input type:text
+              , label: 'GitHub Repository'
+              , placeholder: '{owner}/{repo-name}'
+            }
+          , {   name: 'fontfilesPrefix'
+              , type: 'line' // input type:text
+              , label: 'Where are the TTF-files in your repo (folder and file-prefix):'
+              , placeholder: 'fonts/GenericSansCondensed-'
+            }
+          , {   name: 'genre'
+              , type:'choice' // => could be a select or a radio
+              , label: 'Genre:'
+                // TODO: get a list of available families from the CSV Source
+              , options: fontFamilyGenres
+            }
+            // let the user look this up before we accept the form
+            // this should remove some noise.
+          , {   name: 'isOFL'
+              , type: 'binary' // input type checkbox
+              , label: 'Is the font family licensed under the OFL: SIL Open Font License?'
+              , default: false // false is the default
+            }
+    ];
+}
+
+// function _getInitUpdateUI(){}
+
+function uiPreInit(resources) {
+    return resources.getUpstreamFamilyList().then(familyList=>{
+
     // it's probably neeed, that we take a state argument and return
     // different uis for this, so we can create a kind of a dialogue
     // with the client...
     // on the other hand, that's totally possible once we created the
     // process ... in here we should just collect enough data to
     // authorize initializing the process.
-    return {
+    var result = {
         // TODO: at this point we want at least 'input-provider' but we
         // don't have a repoNameWithOwner to check against ;-)
         roles: null
       , ui: [
-            {   name: 'formswitch'
+            {   name: 'action'
               , type:'choice' // => could be a select or a radio
               , label: 'What do you want to do?'
-              , options: [['I\'m a teapot.', 'teapot'], ['I like Unicorns.', 'unicorn']]
-              , default: 'unicorn' // 0 => the first item is the default
+              , options: [
+                    ['Update an existing Google Fonts font family.', 'update']
+                  , ['Add a new family to Google Fonts.', 'new']]
+              , default: 'update' // 0 => the first item is the default
             }
-            // condition:teapot is ~ update an existing family, hence just a select input
+            // condition:update is ~ update an existing family, hence just a select input
           , {   // don't want to create something overly complicated here,
-                // otherwise we'd need a depenency tree i.e. to figure if
+                // otherwise we'd need a dependency tree i.e. to figure if
                 // a condition element is visible or not. But, what we
                 // can do is always make a condition false when it's dependency
                 // is not available or defined.
-                name: 'tea'
-              , condition: ['formswitch', 'teapot'] // show only when "formswitch" has the value "teapot"
+                name: 'family'
+              , condition: ['action', 'update'] // show only when "action" has the value "update"
               , type:'choice' // => could be a select or a radio
               , label: 'Pick one:'
-              , options: [
-                        'Earl Grey'
-                      , 'English Breakfast'
-                      , 'Prince of Wales'
-                      , 'Russian Caravan'
-                    ]
-              , default: 'English Breakfast' // 0 => the first item is the default
+              , options: familyList
+              //, default: 'Family Name' // 0 => the first item is the default
             }
-            // condition:unicorn is ~ a new suggested family
-          , {   name: 'uniName'
-              , condition: ['formswitch', 'unicorn']
-              , type: 'line' // input type:text
-              , label: 'What is your unicorn name?'
-            }
-          , {   name: 'nameWithOwner'
-              , condition: ['formswitch', 'unicorn']
-              , type: 'line' // input type:text
-              , label: 'Where is your GitHub source code'
-              , placeholder: '{owner}/{repo-name}'
-            }
+            // TODO: add multi-field to change Authors info, this is a
+            // common request especially for updates, when new authors are
+            // added, but also for new entries, when initial authors are added.
         ]
     };
+    var newUi = _getInitNewUI().map(item=>{
+        // show only when "action" has the value "new"
+        item.condition = ['action', 'new'];
+        return item;
+    });
+    result.ui.push(...newUi);
+
+    result.ui.push({
+                name: 'notes'
+              , type: 'text' // textarea
+              , label: 'Additional Notes:'
+            });
+    return result;
+    });
 }
 
-function callbackPreInit(requester, values) {
-    var initType = values.formswitch // 'unicorn' || 'teapot'
-      , familyName, repoNameWithOwner
-      , message, initArgs
+function callbackPreInit(resources, requester, values) {
+    var initType, familyName, repoNameWithOwner
+      , genre, fontfilesPrefix, note
+      , message, messages = []
+      , initArgs = null
+      , promise
       ;
-    if(initType === 'unicorn') {
-        familyName = values.uniName.trim() || null;
-        repoNameWithOwner = values.nameWithOwner || null;
+
+    genre = fontfilesPrefix = '';
+    note = values.note || '';
+
+    var checkNew=()=>{
+        // just some sanitation, remove multiple subsequent spaces
+        familyName = values.familyName.trim().split(' ').filter(chunk=>!!chunk).join(' ');
+        var regexFamilyName = /^[a-z0-9 ]+$/i;
+        // this check is also rather weak, but, eventually we'll use font bakery!
+        if(!regexFamilyName.test(familyName))
+            messages.push('The family name must consist only of characters '
+                        + 'from A to Z and a to z, numbers from 0 to 9 and '
+                        + 'spaces between the words. The first character '
+                        + 'of each word should be a capital.');
+        // No further format checks here. GitHub will complain if this is
+        // invalid. Though, if it's an empty string after the trim, I
+        // expect this to be handled before the init.
+        // FIXME: We should check properly if this is a public(!) repo.
+        repoNameWithOwner = values.ghNameWithOwner.trim();
+
+        // values.fontfilesPrefix => just use this, it's impossible to
+        // evaluate without actually trying to get the files
+        fontfilesPrefix = values.fontfilesPrefix;
+
+        if(fontFamilyGenres.indexOf(values.genre) === -1)
+            messages.push('Genre must be one of '
+                                    + fontFamilyGenres.join(', ') + '.');
+        else
+            genre = values.genre;
+        // Make the user think about this.
+        if(!values.isOFL)
+            messages.push('Sorry! We accept only font families licensed '
+                        + 'under the OFL.');
+    };
+
+    var checkUpdate =()=>{
+        return resources.getUpstreamFamilyList().then(familyList=>{
+            if(familyList.indexOf(values.family) === -1)
+                messages.push('You must pick a family from the list to update.');
+            familyName = values.family;
+        });
+    };
+
+    if(values.action === 'new') {
+        initType = 'new';
+        checkNew();
+        promise = Promise.resolve();
     }
-    else if(initType === 'teapot') {
-        familyName = values.tea || null;
-        repoNameWithOwner = 'east-india-company/tea-blends';
+    else if(values.action === 'update') {
+        initType = 'update';
+        promise = checkUpdate();
+    }
+    else {
+        messages.push('"action" value is unexpected: ' + values.action);
+        promise = Promise.resolve();
     }
 
-    message = initArgs = null;
-    if(!familyName)
-        message = 'Got no familyName.';
-    if(!repoNameWithOwner)
-        message = 'Got no repoNameWithOwner.';
-    if(!message)
-        initArgs = {familyName, requester, repoNameWithOwner};
-
-    return [message, initArgs];
+    return promise.then(()=>{
+        if(!repoNameWithOwner)
+            messages.push('Got no repoNameWithOwner.');
+            // FIXME check user roles/authoriztion!
+        if(messages.length)
+            // markdown list ...?
+            message = ' * '+ messages.join('\n * ');
+        else
+            // TODO
+            initArgs = {initType, familyName, requester, repoNameWithOwner
+                      , genre
+                      , fontfilesPrefix
+                      , note
+            };
+        return [message, initArgs];
+    });
 }
 // Doing it this way so we get a jshint warning when
 // using `this` in these functions.
@@ -720,6 +928,26 @@ stateManagerMixin(_p, {
       , load: val=>val
       , serialize: val=>val
     }
+  , initType: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+    }
+  , genre: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+    }
+  , fontfilesPrefix: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+    }
+  , note: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+    }
 });
 
 Object.defineProperties(_p, {
@@ -736,6 +964,11 @@ Object.defineProperties(_p, {
   , repoNameWithOwner: {
        get: function() {
             return this._state.repoNameWithOwner;
+        }
+    }
+  , initType: {
+       get: function() {
+            return this._state.initType;
         }
     }
 });
