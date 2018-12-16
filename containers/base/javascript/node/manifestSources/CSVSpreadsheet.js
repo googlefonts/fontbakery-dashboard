@@ -985,4 +985,13 @@ if (typeof require != 'undefined' && require.main==module) {
           , setup.cache
           , setup.amqp
     );
+    server.serve()
+        .then(()=>setup.logging.warning('activate: `server.updateAll()`'))
+        .then(
+              ()=>setup.logging.info('Server ready!')
+            , error=>{
+                setup.logging.error('Can\'t initialize server.', error);
+                process.exit(1);
+            }
+        );
 }

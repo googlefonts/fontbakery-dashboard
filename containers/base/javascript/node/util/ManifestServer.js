@@ -28,8 +28,15 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._server.addService(ManifestService, this);
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 
-    this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
+    if(cacheSetup)
+        this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
                             , messages_pb, 'fontbakery.dashboard');
+    else
+        // that's a feature used in development sometimes
+        this._log.warning('cacheSetup is not defined!');
+
+    this._sourcesSetup = sources;
+    this._amqpSetup = amqpSetup;
     this._amqp = null;
     this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
     //
@@ -41,31 +48,26 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._sources = Object.create(null);
     this._queues = new Map();
     this.__queue = this._queue.bind(this);
+}
 
+var _p = ManifestServer.prototype;
+
+_p.serve = function() {
     // Start serving when the database and rabbitmq queue is ready
-    Promise.all([
-                 initAmqp(this._log, amqpSetup)
-               , this._cache.waitForReady()
-               , this._addSources(sources)
+    return Promise.all([
+                 initAmqp(this._log, this._amqpSetup)
+               , this._cache && this._cache.waitForReady() || null
+               , this._addSources(this._sourcesSetup)
                ])
     .then(resources => {
         this._amqp = resources[0];
     })
-    // default on startup
     .then(()=>{
         this._ready = true;
-        this._log.info('Ready now!');
         return this._server.start();
     })
-    .catch(function(err) {
-        this._log.error('Can\'t initialize server.', err);
-        process.exit(1);
-    }.bind(this))
-    .then(this.updateAll.bind(this))
    ;
-}
-
-var _p = ManifestServer.prototype;
+};
 
 _p._addSources = function(sources) {
     return Promise.all(sources.map(this._addSource, this)
