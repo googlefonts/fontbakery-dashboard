@@ -782,6 +782,7 @@ _p.getRoles = function(call, callback) {
             // TODO;
             // add the roles that we associate
             // by configuration with the user
+            this._log.warning('FIXME: Everybody is an egineer!');
             roles.add('engineer');
             return roles;
         })
