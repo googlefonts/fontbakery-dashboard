@@ -71,18 +71,24 @@ service Manifest {
   // The Manifest itselt can in the meantime update itself etc.
   // I.e. We create a "Snapshot" of the manifest in the cache, then
   // we can forget about it
-  rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
+  rpc Poke (ManifestSourceId) returns (google.protobuf.Empty) {};
   // This is the same data as the manifestSource would dispatch as
   // CollectionFamilyJob for Font Bakery.
   rpc Get (FamilyRequest) returns (FamilyData){}
+  rpc List (ManifestSourceId) returns (FamilyNamesList){}
 }
 
-message PokeRequest {
-    string sourceid = 1; // '' === default/not set for all
+
+message ManifestSourceId {
+    string source_id = 1;
+}
+
+message FamilyNamesList {
+    repeated string family_names = 1;
 }
 
 message FamilyRequest {
-    string sourceid = 1;
+    string source_id = 1;
     string family_name = 2;
 }
 

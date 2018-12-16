@@ -96,6 +96,17 @@ function deserialize_fontbakery_dashboard_FamilyData(buffer_arg) {
   return messages_pb.FamilyData.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_FamilyNamesList(arg) {
+  if (!(arg instanceof messages_pb.FamilyNamesList)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.FamilyNamesList');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_FamilyNamesList(buffer_arg) {
+  return messages_pb.FamilyNamesList.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_FamilyRequest(arg) {
   if (!(arg instanceof messages_pb.FamilyRequest)) {
     throw new Error('Expected argument of type fontbakery.dashboard.FamilyRequest');
@@ -107,15 +118,15 @@ function deserialize_fontbakery_dashboard_FamilyRequest(buffer_arg) {
   return messages_pb.FamilyRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_fontbakery_dashboard_PokeRequest(arg) {
-  if (!(arg instanceof messages_pb.PokeRequest)) {
-    throw new Error('Expected argument of type fontbakery.dashboard.PokeRequest');
+function serialize_fontbakery_dashboard_ManifestSourceId(arg) {
+  if (!(arg instanceof messages_pb.ManifestSourceId)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.ManifestSourceId');
   }
   return new Buffer(arg.serializeBinary());
 }
 
-function deserialize_fontbakery_dashboard_PokeRequest(buffer_arg) {
-  return messages_pb.PokeRequest.deserializeBinary(new Uint8Array(buffer_arg));
+function deserialize_fontbakery_dashboard_ManifestSourceId(buffer_arg) {
+  return messages_pb.ManifestSourceId.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_fontbakery_dashboard_ProcessCommand(arg) {
@@ -316,10 +327,10 @@ var ManifestService = exports.ManifestService = {
     path: '/fontbakery.dashboard.Manifest/Poke',
     requestStream: false,
     responseStream: false,
-    requestType: messages_pb.PokeRequest,
+    requestType: messages_pb.ManifestSourceId,
     responseType: google_protobuf_empty_pb.Empty,
-    requestSerialize: serialize_fontbakery_dashboard_PokeRequest,
-    requestDeserialize: deserialize_fontbakery_dashboard_PokeRequest,
+    requestSerialize: serialize_fontbakery_dashboard_ManifestSourceId,
+    requestDeserialize: deserialize_fontbakery_dashboard_ManifestSourceId,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
@@ -335,6 +346,17 @@ var ManifestService = exports.ManifestService = {
     requestDeserialize: deserialize_fontbakery_dashboard_FamilyRequest,
     responseSerialize: serialize_fontbakery_dashboard_FamilyData,
     responseDeserialize: deserialize_fontbakery_dashboard_FamilyData,
+  },
+  list: {
+    path: '/fontbakery.dashboard.Manifest/List',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.ManifestSourceId,
+    responseType: messages_pb.FamilyNamesList,
+    requestSerialize: serialize_fontbakery_dashboard_ManifestSourceId,
+    requestDeserialize: deserialize_fontbakery_dashboard_ManifestSourceId,
+    responseSerialize: serialize_fontbakery_dashboard_FamilyNamesList,
+    responseDeserialize: deserialize_fontbakery_dashboard_FamilyNamesList,
   },
 };
 

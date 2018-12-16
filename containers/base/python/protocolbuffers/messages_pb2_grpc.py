@@ -95,13 +95,18 @@ class ManifestStub(object):
     """
     self.Poke = channel.unary_unary(
         '/fontbakery.dashboard.Manifest/Poke',
-        request_serializer=messages__pb2.PokeRequest.SerializeToString,
+        request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
     self.Get = channel.unary_unary(
         '/fontbakery.dashboard.Manifest/Get',
         request_serializer=messages__pb2.FamilyRequest.SerializeToString,
         response_deserializer=messages__pb2.FamilyData.FromString,
+        )
+    self.List = channel.unary_unary(
+        '/fontbakery.dashboard.Manifest/List',
+        request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
+        response_deserializer=messages__pb2.FamilyNamesList.FromString,
         )
 
 
@@ -142,18 +147,30 @@ class ManifestServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def List(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_ManifestServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'Poke': grpc.unary_unary_rpc_method_handler(
           servicer.Poke,
-          request_deserializer=messages__pb2.PokeRequest.FromString,
+          request_deserializer=messages__pb2.ManifestSourceId.FromString,
           response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
       ),
       'Get': grpc.unary_unary_rpc_method_handler(
           servicer.Get,
           request_deserializer=messages__pb2.FamilyRequest.FromString,
           response_serializer=messages__pb2.FamilyData.SerializeToString,
+      ),
+      'List': grpc.unary_unary_rpc_method_handler(
+          servicer.List,
+          request_deserializer=messages__pb2.ManifestSourceId.FromString,
+          response_serializer=messages__pb2.FamilyNamesList.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
