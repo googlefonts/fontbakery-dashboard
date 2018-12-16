@@ -70,7 +70,7 @@ function stateManagerMixin(_p, stateDefinition) {
                 // _initState and _loadState, but this way is working
                 // as well, and maybe more explixit.
                 continue;
-            if(options.filterKeys && options.filterKeys.has(key))
+            if(options && options.filterKeys && options.filterKeys.has(key))
                 continue;
             state[key] = definition.serialize.call(this, this._state[key], options);
         }
