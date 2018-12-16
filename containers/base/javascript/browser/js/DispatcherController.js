@@ -205,6 +205,12 @@ define([
                 case('line'):
                     label_input = this._uiMakeLine(uiField, disabled);
                     break;
+                case('text'):
+                    label_input = this._uiMakeText(uiField, disabled);
+                    break;
+                case('info'):
+                    label_input = this._uiMakeInfo(uiField, disabled);
+                    break;
                 case('binary'):
                     label_input = this._uiMakeBinary(uiField, disabled);
                     break;
@@ -287,15 +293,26 @@ define([
         return form;
     };
 
-    _p._uiLabel = function(description, element) {
-        var label = description.label
-                ? dom.createElement('label', {}, [
-                      dom.createElement('strong', {}, description.label)
-                    , ' '
-                    , element
-                  ])
-                : element
-                ;
+    _p._uiLabel = function(description, element, before) {
+        var label, children;
+        if(description.label) {
+            children = [
+                  dom.createElement('strong', {}, description.label)
+                , ' '
+                , element
+            ];
+            if(before)
+                // e.g. for checkboxes
+                children.reverse();
+            label = dom.createElement('label', {}, children);
+        }
+        else
+            // so we put it actuallly into the dom
+            // this is a bit problematic, since the caller
+            // can't really expect to ge a label element back
+            // maybe it would be better to just put the element
+            // int an otherwise empty label
+            label = element;
         return [label, element];
     };
 
@@ -354,13 +371,35 @@ define([
         return input.value;
     };
 
+    _p._uiMakeText = function(description, disabled) {
+        var input = dom.createElement('textarea', {
+                placeholder: description.placeholder || ''
+            });
+        input.value = description.default || '';
+        if(disabled) input.disabled = true;
+        return this._uiLabel(description, input);
+    };
+
+    _p._uiGetText = function(description, input) {
+        return input.value;
+    };
+
+    _p._uiMakeInfo =function(description, disabled) {
+        // description could add classes like warn/caution info etc...
+        var info = dom.createElementfromMarkdown(
+                        'div', {class: 'info-field'}, description.content);
+        if(disabled)
+            info.classList.add('disabled');
+        return [info, info];
+    };
+
     _p._uiMakeBinary = function(description, disabled) {
         // jshint: unused:vars
         var input = dom.createElement('input', {type: 'checkbox'});
         if(description.default)
             input.checked = true;
         if(disabled) input.disabled = true;
-        return this._uiLabel(description, input);
+        return this._uiLabel(description, input, true);
     };
 
     _p._uiGetBinary = function(description, input) {
@@ -377,6 +416,9 @@ define([
                 case('line'):
                     value = this._uiGetLine(uiField, input);
                     break;
+                case('text'):
+                    value = this._uiGetText(uiField, input);
+                    break;
                 case('binary'):
                     value = this._uiGetBinary(uiField, input);
                     break;
@@ -384,13 +426,16 @@ define([
                     // seems like there's no good way to figure if
                     // a send button was used and which.
                     value = null;
+                    break;
+                default:
+                    value = null;
             }
         return value;
     };
 
     _p._collectUiValues = function(description, inputs) {
         var values = {}
-          , uiField, input, key
+          , uiField, input, key, value
           ;
         for (let i=0,l=description.ui.length;i<l;i++) {
             uiField = description.ui[i];
@@ -399,7 +444,9 @@ define([
                 continue;
             // falling back to index as a key
             key = '' + ('name' in uiField ? uiField.name : i);
-            values[key] = this._getValue(uiField, input);
+            value = this._getValue(uiField, input);
+            if(value !== null)
+                values[key] = value;
         }
 
         var condition_name, condition_value
@@ -423,7 +470,9 @@ define([
                 continue;
             // falling back to index as a key
             key = '' + ('name' in uiField ? uiField.name : i);
-            values[key] = this._getValue(uiField, input);
+            value = this._getValue(uiField, input);
+            if(value !== null)
+                values[key] = value;
         }
         return values;
     };
@@ -474,7 +523,7 @@ define([
     _p._onInitProcessAnswer = function(processId, error) {
         if(error) {
             console.error('init-dispatcher-process', error);
-            this._log.error('init-dispatcher-process:', error);
+            this._log.errorMd('init-dispatcher-process:', error);
             // TODO: This must be shown to the user, to help improving
             // the answers -> same as process back-channel. a simple
             // logging window should do.
