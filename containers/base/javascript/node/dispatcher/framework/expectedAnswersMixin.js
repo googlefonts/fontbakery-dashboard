@@ -254,7 +254,7 @@ function expectedAnswersMixin(_p) {
         // the process. Back channel likely means there's an answer message
         // for the execute function.
         this._unsetExpectedAnswer();
-        return this._runStateChangingMethod(callbackMethod, callbackName, payload);
+        return this._runStateChangingMethod(callbackMethod, callbackName, commandMessage.getRequester(), payload);
     };
 }
 exports.mixin = expectedAnswersMixin;

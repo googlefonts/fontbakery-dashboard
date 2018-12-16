@@ -246,7 +246,7 @@ _p.activate = function() {
     return this._runStateChangingMethod(this._reActivate, 'activate');
 };
 
-_p.callbackReActivate = function(data) {
+_p.callbackReActivate = function(requester, data) {
     //jshint unused:vars
     // This is executed from within _runStateChangingMethod via execute...
     // validate data ??? what data do we expect here, seems to me that
