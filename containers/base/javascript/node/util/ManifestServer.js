@@ -8,12 +8,11 @@ const { initAmqp }= require('./getSetup')
   , { CacheClient } = require('./CacheClient')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , { File, Files, CollectionFamilyJob, FamilyData } = messages_pb
-  , services_pb = require('protocolbuffers/messages_grpc_pb')
-  , ManifestService = services_pb.ManifestService
+  , { File, Files, CollectionFamilyJob, FamilyData, FamilyNamesList } = messages_pb
+  , { ManifestService } = require('protocolbuffers/messages_grpc_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
-  , { AsyncQueue } = require('./util/AsyncQueue')
+  , { AsyncQueue } = require('./AsyncQueue')
   ;
 
 /**
@@ -73,7 +72,6 @@ _p._addSources = function(sources) {
                               .filter(promise=>!!promise));
 };
 
-
 _p._registerSource = function(sourceID) {
     // jshint unused:vars
     // PASS.
@@ -113,7 +111,6 @@ _p.update = function(sourceId) {
                                     , 'CAUTION: Error is suppressed!');
         });
 };
-
 
 /**
  * Manifest source? This is useful for all Manifests.
@@ -225,13 +222,13 @@ _p._queue = function(name, job) {
 };
 
 // ManifestService implementation
-// rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
+// rpc Poke (ManifestSourceId) returns (google.protobuf.Empty) {};
 _p.poke = function(call, callback) {
     if(!this._ready) {
         callback(new Error('Not ready yet'));
         return;
     }
-    var sourceId = call.request.getSource() // call.request is a PokeRequest
+    var sourceId = call.request.getSourceId() // call.request is a ManifestSourceId
       , err = null
       , response
       ;
@@ -249,8 +246,42 @@ _p.poke = function(call, callback) {
     callback(err, response);
 };
 
+// rpc List (ManifestSourceId) returns (FamilyNamesList){}
+_p.list = function(call, callback) {
+    if(!this._ready) {
+        callback(new Error('Not ready yet'));
+        return;
+    }
+    var sourceId = call.request.getSourceId() // call.request is a ManifestSourceId
+      , error = null
+      ;
+
+    if(sourceId === '') {
+        error = new Error('sourceId can\t be empty, must be one of: '
+                                + Object.keys(this._sources).join(', '));
+    }
+    if( !(sourceId in this._sources) ) {
+        error = new Error('Not Found: The source "' + sourceId + '" is unknown.'
+                    + 'Known sources are: '
+                    + Object.keys(this._sources).join(', '));
+    }
+
+    return (error ? Promise.reject(error)
+                  : this._sources[sourceId].list())
+    .then(familyNamesList=>{
+          var response = new FamilyNamesList();
+            response.setFamilyNamesList(familyNamesList);
+            callback(null, response);
+        }
+      , error=>{
+            this._log.error('[LIST:'+sourceId+']', error);
+            callback(error, null);
+        }
+    );
+};
+
 _p.get = function(call, callback) {
-    var sourceId = call.request.getSource() // call.request is a FamilyRequest
+    var sourceId = call.request.getSourceId() // call.request is a FamilyRequest
      , familyName = call.request.getFamilyName() // call.request is a FamilyRequest
      , err = null
      ;
@@ -279,7 +310,7 @@ _p.get = function(call, callback) {
     .then(
           familyData=>callback(null, familyData)
         , err=>{
-            this._logging.error('[GET:'+sourceId+'/'+familyName+']', err);
+            this._log.error('[GET:'+sourceId+'/'+familyName+']', err);
             callback(err, null);
           }
     );

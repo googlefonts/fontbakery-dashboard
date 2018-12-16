@@ -27,11 +27,18 @@ function _Source(logging, id, reportsSetup) {
 
 var _p = _Source.prototype;
 
-Object.defineProperty(_p, 'reports', {
-    get: function(){
-        if(!this._reports)
-            throw new Error('Reports client is not configured');
-        return this._reports;
+Object.defineProperties(_p, {
+    reports: {
+        get: function(){
+            if(!this._reports)
+                throw new Error('Reports client is not configured');
+            return this._reports;
+        }
+    }
+  , hasReports: {
+        get: function(){
+            return !!this._reports;
+        }
     }
 });
 
@@ -93,6 +100,8 @@ _p._reportFlush  = function(method) {
 
     this._reportData = null;
 
+    if(!this.hasReports)
+        return Promise.resolve(false);
     return this.reports.file(report)
         .then(null, err=>{
             this._log.error(err);
