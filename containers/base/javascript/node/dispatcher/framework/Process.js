@@ -29,6 +29,7 @@ function Process(resources
                          */
                       , FinallyStepCtor) {
 
+    this._resources = resources;
     Object.defineProperties(this, {
         secret: {value: resources.secret}
       , log: {value: resources.log}

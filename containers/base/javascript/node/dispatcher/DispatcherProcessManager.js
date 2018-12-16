@@ -5,19 +5,41 @@
 const { ProcessManager:Parent } = require('./framework/ProcessManager')
   , { FamilyPRDispatcherProcess } = require('./FamilyPRDispatcherProcess')
   , { DispatcherProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
-  , { ProcessList, ProcessListItem, DispatcherInitProcess } = require('protocolbuffers/messages_pb')
+  , { ManifestClient } = require('../util/ManifestClient')
+  , {
+        ProcessList
+      , ProcessListItem
+      , DispatcherInitProcess
+      , ManifestSourceId
+    } = require('protocolbuffers/messages_pb')
   ;
 
-function DispatcherProcessManager(...args) {
-
+function DispatcherProcessManager(setup, ...args) {
     var anySetup = {
         knownTypes: { DispatcherInitProcess }
       , typesNamespace: 'fontbakery.dashboard'
     };
-
     args.push(anySetup, FamilyPRDispatcherProcess);
-    Parent.call(this, ...args);
+    Parent.call(this, setup, ...args);
     this._server.addService(DispatcherProcessManagerService, this);
+
+    this._manifestSpreadsheetClient = new ManifestClient(
+                            setup.logging
+                          , setup.manifestSpreadsheet.host
+                          , setup.manifestSpreadsheet.port);
+    this._asyncDependencies.push([this._manifestSpreadsheetClient, 'waitForReady']);
+
+    Object.defineProperties(this._processResources, {
+        getUpstreamFamilyList: {
+            value: ()=>{
+                var sourceIdMessage = new ManifestSourceId();
+                sourceIdMessage.setSourceId('upstream');
+                return this._manifestSpreadsheetClient
+                    .list(sourceIdMessage)
+                    .then(familyNamesList=>familyNamesList.getFamilyNamesList());
+            }
+        }
+    });
 }
 
 const _p = DispatcherProcessManager.prototype = Object.create(Parent.prototype);
@@ -34,15 +56,17 @@ _p._examineProcessInitMessage = function(initMessage) {
     var payload = JSON.parse(initMessage.getJsonPayload())
       , requester = initMessage.getRequester()
         // initArgs = {familyName, requester, repoNameWithOwner /*, ... ? */}
-      , [errorMessage, initArgs] = this.ProcessConstructor.callbackPreInit(requester, payload)
       ;
 
-    // TODO;
-    // Does the familyName exist?
-    // Is the requester authorized to do this?
-    // Is it OK to init the process now or are there any rules why not?
-    // => [ errorMessage, initArgs]
-    return [errorMessage || null, errorMessage ? null : initArgs];
+    return this.ProcessConstructor.callbackPreInit(this._processResources, requester, payload)
+    .then(([errorMessage, initArgs])=>{
+        // TODO;
+        // Does the familyName exist?
+        // Is the requester authorized to do this?
+        // Is it OK to init the process now or are there any rules why not?
+        // => [ errorMessage, initArgs]
+        return [errorMessage || null, errorMessage ? null : initArgs];
+    });
 };
 
 /**
@@ -131,16 +155,14 @@ if (typeof require != 'undefined' && require.main==module) {
         setup.logging.warning('You really should define a proper secret');
 
 
-    // FIXME: temprorary local setup overrides.
+    // FIXME: temporary local setup overrides.
     setup.db.rethink.host = '127.0.0.1';
     setup.db.rethink.port = '32769';
     setup.amqp = null;
-
+    setup.manifestSpreadsheet={host: '127.0.0.1', port: '9012'};
 
     processManager = new DispatcherProcessManager(
-                                        setup.logging
-                                      , setup.db
-                                      , setup.amqp
+                                        setup
                                       , port
                                       , secret);
     processManager.serve()
