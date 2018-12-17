@@ -496,6 +496,7 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
       , room
       , processState, uiDescriptions
       , repoNameWithOwner
+      , foundExpectedUI
       , uiRoles = null
       , authorizedRolesRequest
       ;
@@ -525,6 +526,7 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
     TODO('repoNameWithOwner = processState.repoNameWithOwner');
     repoNameWithOwner = 'google/mundane';
 
+    foundExpectedUI = false;
     for(let uiDescription of uiDescriptions) {
         // {
         //      targetPath: item.path.toString()
@@ -534,16 +536,20 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
         //    , ui: def.ui
         // }
         if(uiDescription.targetPath === commandData.targetPath
-                        && uiDescription.ticket === commandData.ticket)
+                        && uiDescription.ticket === commandData.ticket) {
                 // hmm !uiDescription.roles would be an error in the
                 // definition I guess.
+                foundExpectedUI = true;
                 uiRoles = uiDescription.roles
                             ? new Set(uiDescription.roles)
                             : null
                             ;
                 break;
+        }
     }
-    if(!uiRoles )
+    if(!foundExpectedUI)
+        return Promise.reject('The requested interaction is not expected.');
+    else if(!uiRoles )
         // this probably means the ui is not in uiDescriptions
         return Promise.reject('No roles that apply for the request were found.');
 
