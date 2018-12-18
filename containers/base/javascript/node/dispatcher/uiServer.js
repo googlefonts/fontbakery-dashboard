@@ -495,7 +495,6 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
       , roomId = this._getProcessRoomId(processId)
       , room
       , processState, uiDescriptions
-      , repoNameWithOwner
       , foundExpectedUI
       , uiRoles = null
       , authorizedRolesRequest
@@ -521,10 +520,6 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
 
     // that's the process data
     [/*processId*/, processState, uiDescriptions] = room.lastMessage;
-
-    // we have to get this from the process ... is it cached in here?
-    TODO('repoNameWithOwner = processState.repoNameWithOwner');
-    repoNameWithOwner = 'google/mundane';
 
     foundExpectedUI = false;
     for(let uiDescription of uiDescriptions) {
@@ -555,7 +550,8 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
 
     authorizedRolesRequest = new AuthorizedRolesRequest();
     authorizedRolesRequest.setSessionId(sessionId);
-    authorizedRolesRequest.setRepoNameWithOwner(repoNameWithOwner);
+    authorizedRolesRequest.setRepoNameWithOwner(processState.repoNameWithOwner);
+
     // This will also check if sessionId is valid!
     return this._ghAuthClient.getRoles(authorizedRolesRequest)
     .then(authorizedRoles=>{
