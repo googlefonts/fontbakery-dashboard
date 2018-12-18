@@ -321,9 +321,19 @@ _p.constructor = ApproveProcessTask;
 _p._activate = function() {
     // could be a different path for new/update processes
     // after this task, we hopefully can proceed uniformly
+    this._expectApproveProcess();
+};
+
+_p._expectApproveProcess = function() {
     this._setExpectedAnswer('Approve Process'
                                       , 'callbackApproveProcess'
                                       , 'uiApproveProcess');
+};
+
+_p._expectEditInitialState = function() {
+    this._setExpectedAnswer('Edit Initial State'
+                                      , 'callbackEditInitialState'
+                                      , 'uiEditInitialState');
 };
 
 _p.uiApproveProcess = function() {
@@ -383,9 +393,7 @@ _p.callbackApproveProcess = function(requester, values) {
     }
     else if(this.process.initType === 'new' && action === 'edit' ) {
         // could be two different UIs for either "update" or "new" processes.
-        this._setExpectedAnswer('Edit Initial State'
-                                      , 'callbackEditInitialState'
-                                      , 'uiEditInitialState');
+        this._expectEditInitialState();
     }
     else if(action === 'dismiss' )
         this._setFAILED('**' + requester + '** decided to FAIL this process '
@@ -411,8 +419,16 @@ _p.uiEditInitialState = function() {
                 item.default = this.process.repoNameWithOwner;
             if(item.name === 'familyName')
                 item.default = this.process.familyName;
+            if(item.name === 'familyName')
+                item.default = this.process.familyName;
+            if(item.name === 'isOFL')
+                // always true at this point
+                // and we can't go on otherwise (we don't even store that state).
+                // the task can be dismissed in uiApproveProcess though.
+                //item.default = true;
+                return null;
             return item;
-        })
+        }).filter(item=>!!item)
     };
     return result;
 };
@@ -420,23 +436,26 @@ _p.uiEditInitialState = function() {
 _p.callbackEditInitialState = function(requester, values) {
     values.action = 'new';
     values.note = this.process._state.note;
+    // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
+    values.isOFL = true;
     return callbackPreInit(this._resources, requester, values)
     .then(([message, initArgs])=>{
         if(message) {
-            // FIXME: should *just* log to the user
-            // and best don't even change the form status, so that the
-            // user can make changes;
-            // TODO: this is a good case to improve the "back channel".
-            throw new Error(message);
+            // Should just stay in the editInitialState realm until it's good.
+            this._expectEditInitialState();
+            return {
+                status: 'FAIL'
+              , message: message
+            };
         }
+        //else
         this.process._state.familyName = initArgs.familyName;
         this.process._state.repoNameWithOwner = initArgs.repoNameWithOwner;
         this.process._state.genre = initArgs.genre;
         this.process._state.fontfilesPrefix = initArgs.fontfilesPrefix;
-
-    })
-    // return to the activate form
-    .then(()=>this._activate());
+        // return to the activate form
+        this._expectApproveProcess();
+    });
 };
 
 _p.uiSignOffSpreadsheet = function() {
