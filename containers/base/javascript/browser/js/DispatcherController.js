@@ -513,9 +513,9 @@ define([
           , commandData
           , function(result, error) {
                 if(error)
-                    this._log.error('execute back channel error:', error);
+                    this._log.errorMd('execute back channel error:', error);
                 else
-                    this._log.info('execute back channel answer:', result);
+                    this._log.infoMd('execute back channel answer:', result);
             }.bind(this)
         );
     };

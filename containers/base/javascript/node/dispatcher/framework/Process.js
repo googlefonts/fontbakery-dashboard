@@ -540,7 +540,7 @@ _p.execute = function(targetPath, commandMessage) {
     );
 
     return step.execute(targetPath, commandMessage)
-        .then(()=>this._transition())
+        .then((result)=>{this._transition(); return result;})
         ;
 };
 

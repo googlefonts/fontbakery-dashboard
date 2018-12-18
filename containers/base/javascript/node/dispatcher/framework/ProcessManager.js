@@ -401,7 +401,9 @@ _p.execute = function(call, callback) {
                     // always: the status code
                     // maybe: structured data (JSON) (new, we use message for this right now)
                     // maybe: a human readable message
-                    ()=>process
+                    (result)=>{
+                        return [process, result];
+                    }
                   , error=>{
                         this._log.error(error, 'targetPath: ' + targetPath);
                         throw error;
@@ -410,29 +412,44 @@ _p.execute = function(call, callback) {
                 // persist after each execute, maybe even after each activate,
                 // especially when activate(also error handling in _initProcessWithState)
                 // changed the process state, e.g. set it to a finished state.
-                .then(process=>this._persistProcess(process).then(()=>process))
-                .then(process=>{
+                .then(([process, result])=>this._persistProcess(process)
+                                               .then(()=>[process, result]))
+                .then(([process, result])=>{
                     // don't wait for this to finish
                     // should also not return a promise (otherwise, a fail
                     // would create an unhandled promise, and it's not
                     // interesting here to handle that.
                     this._publishUpdates(process);
-                    return process;
+                    return result;
                 })
                 ;
         })
         // this is *a stub* of the back channel
         .then(
-            ()=>[true, null]
+            result=>[result, null]
             // if this is a serious problem, we should log it
             // ot take care that it has been logged already
-          , error=>[false, error]
+          , error=>[null, error]
         )
         .then(([result, error])=>{
             var message = new ProcessCommandResult();
             if(!error) {
-                message.setResult(ProcessCommandResult.Result.OK);
-                message.setMessage('All good!');
+                let status, messageStr;
+                if(typeof result === 'object' && 'status' in result) {
+                    if(result.status in ProcessCommandResult.Result)
+                        status = ProcessCommandResult.Result[result.status];
+                    else {
+                        this._log.warning('Result object produced unknown status'
+                           , '"'+result.status+'"', 'at targetPath:', targetPath + '.');
+                        status = ProcessCommandResult.Result.OK;
+                    }
+                    messageStr = result.message;
+                }
+                else
+                    status = ProcessCommandResult.Result.OK;
+
+                message.setResult(status);
+                message.setMessage(messageStr || 'Looks good.');
             }
             else {
                 this._log.error('PM.execute', error, error.message);

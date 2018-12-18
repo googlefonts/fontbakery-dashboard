@@ -278,12 +278,12 @@ function renderErrorAsMarkdown(message, error){
 }
 
 _p._handleStateChange = function(methodName, stateChangePromise) {
-    return stateChangePromise.then(()=>{
+    return stateChangePromise.then((result)=>{
         // a self check ...
         var status = this.status;
         if(finishingStatuses.has(status))
             // all good, it's done
-            return;
+            return result;
         // if not in a finished state now, we need to be in PENDING
         if(status !== PENDING)
             throw new Error('Status is not finished, thus, it must be '
@@ -293,6 +293,7 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
         if(!this._hasExpectedAnswer())
             throw new Error('Lost the thread: the task has not defined '
                                             + 'an expected answer.');
+        return result;
     })
     .then(null, error=> {
             this.log.error('State change failed:',error);
@@ -300,10 +301,10 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
                             'Method: ' + methodName + ' failed:', error));
         }
     )
-    .then(()=>{
-        if(!this.isFailed)
-            return;
-        return this._failedAction();
+    .then((result)=>{
+        if(this.isFailed)
+            this._failedAction();
+        return result;
     });
 };
 

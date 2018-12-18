@@ -372,5 +372,5 @@ _p.execute = function(targetPath, commandMessage) {
                 // If this task is present (and the step is active) it can always
                 // be executed.
                 : this._getTask(targetPath.task).execute(targetPath, commandMessage)
-    ).then(()=>this._transition());
+    ).then((result)=>{this._transition(); return result;});
 };
