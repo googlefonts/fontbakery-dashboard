@@ -689,8 +689,8 @@ function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
         };
 }
 
-_p._insertMetadataPB = function (filesData, licenseDir, isUpdate) {
-    return createMetadata(filesData, licenseDir, isUpdate)// -> <Uint8Array>
+_p._insertMetadataPB = function (filesData, licenseDir) {
+    return createMetadata(filesData, licenseDir)// -> <Uint8Array>
     .then(fileData=>{
         var metaDataFile = 'METADATA.pb'
           , resultFilesData = filesData.slice()
@@ -750,7 +750,6 @@ _p._collectDataGit = function(familyData, commit, tree, rootTree
         return this._insertMetadataPB(
                         Array.from(files.entries()) // -> filesData
                      ,  metadata.licenseDir
-                     ,  metadata.isUpdate
                      ) // -> filesData
             .then(filesData=>[metadata, filesData]);
     })

@@ -27,8 +27,10 @@ sys.stdout.write(msg.SerializeToString())
     , tmp = require('tmp')
     , path = require('path')
     , { nodeCallback2Promise } = require('./nodeCallback2Promise')
-    , ADD_FONTS_SCRIPT = '/var/gftools/bin/gftools-add-font.py'
-    , ADD_FONTS_NAM_DIR = '/var/gftools/encodings'
+    // /var/gftools is the default for the fontbakery-dashboard docker image
+    , GFTOOLS_DIR = process.env.FONTBAKERY_GFTOOLS_DIR || '/var/gftools'
+    , ADD_FONTS_SCRIPT = GFTOOLS_DIR + '/bin/gftools-add-font.py'
+    , ADD_FONTS_NAM_DIR = GFTOOLS_DIR + '/encodings'
     ;
 
 /**
@@ -87,7 +89,7 @@ function getTmpDir(options) {
     });
 }
 
-function pythonCreateMetadata(filesPath, update) {
+function pythonCreateMetadata(filesPath) {
     var args = []
        , py
        , stderr = []
@@ -96,8 +98,6 @@ function pythonCreateMetadata(filesPath, update) {
        ;
 
     args.push(ADD_FONTS_SCRIPT);
-    if(update)
-        args.push('--update');
     args.push(filesPath);
 
     // this doesn't work because the ADD_FONTS_SCRIPT complains about
@@ -137,10 +137,11 @@ function pythonCreateMetadata(filesPath, update) {
                     .then(buffer=>resolve(new Uint8Array(buffer)), reject);
             }
         });
+        py.on('error', error=> reject(error));
     });
 }
 
-function createMetadata(filesData, licenseDir, isUpdate) {
+function createMetadata(filesData, licenseDir) {
         // build a tmp directory
     var tmpDir = null
       , resultPromise = getTmpDir({unsafeCleanup:true})
@@ -160,7 +161,7 @@ function createMetadata(filesData, licenseDir, isUpdate) {
         })
         .then(()=>tmp);
     })
-    .then(tmp=>pythonCreateMetadata(tmp.fontsPath, isUpdate));// -> <Uint8Array>:data
+    .then(tmp=>pythonCreateMetadata(tmp.fontsPath));// -> <Uint8Array>:data
 
     // finally delete the tmp directory
     function finallyFunc() {
