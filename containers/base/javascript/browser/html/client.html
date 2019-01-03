@@ -451,11 +451,14 @@
         .user-log {
             list-style: none;
             padding: 0;
+            margin: 0 1.5em;
             height: 200px;
             overflow: auto;
             float: right;
             width: 600px;
             border: 1px solid black;
+            background: white;
+            box-shadow: 5px 5px 15px black;
         }
 
         .user-log > li > * {
@@ -470,10 +473,14 @@
             margin: 0;
         }
 
-        .user-log > li > .preformated {
+        .user-log > li > .preformated,
+        .inline-preformated
+        {
             display: inline-block;
             font-family: monospace;
             white-space: pre;
+
+            vertical-align: top;
         }
 
         .user-log > li > markdown {
@@ -508,8 +515,104 @@
             content: '> ';
         }
 
-        .dispatcher-interface ol form label{
+        .dispatcher-interface form{
+            border: 1px dotted black;
+            padding: 1em;
+            background: LemonChiffon;
+        }
+
+        .dispatcher-interface form label {
             display: block;
+            margin: .5em 0;
+        }
+
+        .dispatcher-interface .status-code > * {
+            display: inline-block;
+            vertical-align: top;
+        }
+
+        .dispatcher-interface .status-code > .markdown p {
+            margin: 0
+        }
+        .dispatcher-interface .dispatcher-process ol.state-values
+        ,.dispatcher-interface .dispatcher-process > ol.steps {
+            list-style: none;
+            padding: 0;
+        }
+
+        .dispatcher-interface .dispatcher-process .step {
+            margin: 1em 0;
+            background: #ededed;
+        }
+
+        .dispatcher-interface .dispatcher-process .step > .header {
+            margin: .5em 1em 0 0;
+            display: block;
+            cursor: pointer;
+        }
+
+        .dispatcher-interface .dispatcher-process .step > .header > * {
+            padding: .5em;
+        }
+
+        .dispatcher-interface .dispatcher-process .step > .header h3{
+            padding: .5em;
+            margin-bottom: 0;
+            background: #888;
+            color: #ddd;
+        }
+
+        .dispatcher-interface .dispatcher-process .step.active > .header h3{
+            background: #333;
+            color: white;
+        }
+
+        .dispatcher-interface .dispatcher-process .step.finished > .header h3{
+            color: white;
+        }
+
+        .dispatcher-interface .dispatcher-process.OK > .header::after,
+        .dispatcher-interface .dispatcher-process .step.finished.OK > .header h3::after {
+            content: ' ✔';
+            color: lightgreen;
+        }
+
+        .dispatcher-interface .dispatcher-process.FAILED > .header::after,
+        .dispatcher-interface .dispatcher-process .step.finished.FAILED > .header h3::after {
+            content: ' ✘';
+            color: red;
+        }
+
+        .dispatcher-interface .status-code.OK::before {
+            content: '✔ ';
+            color: lightgreen;
+        }
+
+        .dispatcher-interface .status-code.FAILED::before {
+            content: '✘ ';
+            color: red;
+        }
+
+        .dispatcher-interface .dispatcher-process .step > .body,
+        /* hmm, bad class name in this case, "opened" */
+        .dispatcher-interface .dispatcher-process .step.active.opened > .body
+         {
+            display: none
+        }
+
+        .dispatcher-interface .dispatcher-process .step.active > .body,
+        .dispatcher-interface .dispatcher-process .step.opened > .body
+        {
+            display: block;
+        }
+
+        .dispatcher-interface .dispatcher-process .step .task{
+            margin: 0 0 .5em 0;
+            padding: .5em 0;
+            background: white;
+        }
+        .dispatcher-interface .dispatcher-process .step .task h4 {
+            margin: .5em 0;
         }
     </style>
     <script>
@@ -600,6 +703,55 @@
         <!-- insert link -->
         </p>
         <!-- insert close button -->
+    </div>
+
+    <div class='dispatcher-process-init'>
+        <!-- insert: message -->
+        <h2>Create a new process.</h2>
+        <!-- insert: user-interfaces -->
+    </div>
+
+    <div class='dispatcher-process'>
+        <!-- insert: process-link -->
+        <h2 class="header"><!-- insert: process-style --> <!-- insert: familyName --></h2>
+        <!-- insert: finishedStatus -->
+        <ol class="state-values">
+            <!-- insert: @default -->
+        </ol>
+        <ol class="steps" start="0">
+            <!-- insert: steps -->
+        </ol>
+
+        <ol class="steps">
+        <!-- insert: failStep -->
+        <!-- insert: finallyStep -->
+        </ol>
+
+    </div>
+
+    <li class='step'>
+        <div class="header">
+            <h3>Step #<!-- insert: step-key --></h3>
+            <!-- insert: finishedStatus -->
+        </div>
+        <div class="body">
+            <ol class="state-values">
+                <!-- insert: @default -->
+            </ol>
+            <!-- insert: user-interfaces -->
+
+            <!-- insert: tasks -->
+        </body>
+    </li>
+
+    <div class='task'>
+        <h4>Task: <!-- insert: task-key --></h4>
+        <ol class="state-values">
+            <!-- insert: @default -->
+        </ol>
+        <!-- insert: user-interfaces -->
+        <h5>History:</h5>
+        <!-- insert: history -->
     </div>
 
 </div>

@@ -61,7 +61,7 @@ define([
     var _p = DispatcherController.prototype;
 
 
-    _p._getElementFromTemplate = function(className){
+    _p._getElementFromTemplate = function(className) {
         var template = this._templatesContainer.getElementsByClassName(className)[0];
         return template.cloneNode(true);
     };
@@ -108,7 +108,7 @@ define([
     _p.onInitializingUI = function(...data) {
         var [uiDescriptions] = data;
         this._showProcess(null);
-        this._currentProcessListener('…initializing', 'N/A', null, uiDescriptions, true);
+        this._currentProcessListener('N/A', null, uiDescriptions, true);
     };
 
 
@@ -137,28 +137,327 @@ define([
         this._currentProcessLastData = data;
         this._log.info('onChangeProcess', data[0]);
         console.log('onChangeProcess', ...data);
-        var [message, processId, processState, uiDescriptions, isInit] = data;
-        this._renderProcess(processElem, processId, message, processState, uiDescriptions, isInit);
+        var [processId, processState, uiDescriptions, isInit] = data;
+        this._renderProcess(processElem, processId, processState, uiDescriptions, isInit);
 
     };
 
-    _p._renderProcess = function(processElem, processId, message, processState, uiDescriptions, isInit) {
-        var uis, process, ol;
-        uis = uiDescriptions
-                    ? dom.createFragment(uiDescriptions.map(ui=>this._createUserInteraction(processId, ui, isInit)))
-                    : '<- NO USER INTERACTIONS ->'
+    _p._createUserInteractions = function(uiDescriptions, isInit, pathParts) {
+        var targetPath = pathParts.join('/')
+          , processId = pathParts[0]
+          , userInterfaces = dom.createFragment()
+          , descriptions = uiDescriptions.get(targetPath) || []
+          ;
+        for(let ui of descriptions)
+            userInterfaces.appendChild(this._createUserInteraction(processId, ui, isInit));
+        return userInterfaces;
+    };
+
+    _p._statusMakeValue = function(value) {
+        return typeof value === 'string'
+                    ? dom.createElement('span', {}, value)
+                    : dom.createElement('span', {class: 'inline-preformated'}, JSON.stringify(value, null, 2))
                     ;
-        process = processState
-                    ? dom.createElement('pre', {}, JSON.stringify(processState, null, 2))
-                    : '<- NO PROCESS STATE ->'
-                    ;
-        ol = dom.createElement('ol', {}, [
-            dom.createElement('li', {}, message +' processId: ' +  processId)
-          , dom.createElement('li', {}, uis)
-          , dom.createElement('li', {}, process)
+    };
+
+    _p._statusMakeKeyValue = function(key, value) {
+        var children = [
+                dom.createElement('strong', {}, key)
+              , ' '
+              , this._statusMakeValue(value)
+        ];
+        return dom.createFragment(children);
+    };
+
+    _p._statusMakeTextNode = function (key, value) {
+        //jshint unused: vars
+        return dom.createTextNode(value);
+    };
+
+    _p._statusMakeStatusEntry = function(tag, key, statusEntry) {
+        //jshint unused:vars
+        var children = [
+            dom.createElement('em', {}, statusEntry.created)
+              , '—'
+        ];
+        if(statusEntry.status !== 'LOG')
+            children.push(dom.createElement('strong', {class: 'status-name'}
+                                                , [statusEntry.status]), ':');
+
+        if(statusEntry.details)
+            children.push(' ', dom.createElementfromMarkdown('div', {class: 'markdown'}, statusEntry.details));
+
+        if(statusEntry.data)
+            children.push('with data:', this._statusMakeValue(statusEntry.data));
+
+        return dom.createElement(tag
+                  , {
+                        class: 'status-code ' + statusEntry.status
+                      , title: statusEntry.status  + ' ' + statusEntry.created
+                    }, children);
+    };
+
+    _p._statusMakeStatusEntries = function(key, statusEntries) {
+        // jshint unused: vars
+        var children = [];
+        for(let statusEntry of statusEntries)
+            children.push(this._statusMakeStatusEntry('li', null, statusEntry));
+        return dom.createElement('ul', {class: 'task-history'}, children);
+    };
+
+    _p._statusMakeTask = function(uiDescriptions, isInit, processId, stepKey, tasKey, task) {
+        var renderers = {
+                'created': this._statusMakeTextNode // "2018-12-20T17:31:08.472Z"
+              , 'history': this._statusMakeStatusEntries // [
+                           //     {
+                           //         "status": "PENDING",
+                           //         "details": "*initial state*",
+                           //         "created": "2018-12-20T17:31:08.474Z",
+                           //         "data": null
+                           //     },
+                           //     ...
+                           // ]
+                           // for debugging `private` could be interesting.
+                           // maybe in an expandable box.
+              , 'private': this._statusMakeKeyValue//  null
+              , '@default': this._statusMakeKeyValue
+            }
+          , order = []
+          , target = this._getElementFromTemplate('task')
+          , userInterfaces = this._createUserInteractions(uiDescriptions, isInit, [processId, stepKey, tasKey])
+          ;
+        dom.insertAtMarkerComment(target, 'insert: task-key'
+                                            , dom.createTextNode(tasKey));
+        dom.insertAtMarkerComment(target, 'insert: user-interfaces', userInterfaces);
+        this._renderDOMToTarget(target, renderers, order, task);
+
+
+        // FIXME
+        // dom.insertAtMarkerComment(target, 'insert: user-interfaces', uis);
+
+        return target;
+    };
+
+    _p._statusMakeTasks = function(uiDescriptions, isInit, processId, stepKey, key, tasks) {
+        var children = [];
+        for(let [taskKey, task] of tasks)
+            children.push(this._statusMakeTask(uiDescriptions, isInit, processId, stepKey, taskKey, task));
+        return dom.createFragment(children);
+    };
+
+    _p._statusMakeStep = function(uiDescriptions, isInit, processId, stepKey, step) {
+        //jshint unused: vars
+        var renderers = {
+                'tasks': this._statusMakeTasks.bind(this, uiDescriptions, isInit, processId, stepKey)
+              , 'isActivated': null// done via css
+              , 'finishedStatus': this._statusMakeStatusEntry.bind(this, 'div')// same as in task.history, but should also be a indicator
+              , '@default': this._statusMakeKeyValue
+            }
+          , order = []
+          , target = this._getElementFromTemplate('step')
+          , userInterfaces = this._createUserInteractions(uiDescriptions, isInit, [processId, stepKey])
+          ;
+        dom.insertAtMarkerComment(target, 'insert: step-key'
+                                            , dom.createTextNode(stepKey));
+        dom.insertAtMarkerComment(target, 'insert: user-interfaces', userInterfaces);
+        this._renderDOMToTarget(target, renderers, order, step);
+
+
+        if(step.isActivated)
+            target.classList.add('activated');
+        if(step.finishedStatus)
+            target.classList.add('finished', step.finishedStatus.status);
+        if(step.isActivated && !step.finishedStatus)
+            // there's always only one active step at a time
+            target.classList.add('active');
+
+        var header = target.getElementsByClassName('header')[0];
+        header.addEventListener('click', function(event) {
+            target.classList.toggle('opened');
+            if(target.classList.contains('opened'))
+                target.scrollIntoView();
+        } ,false);
+
+        return target;
+    };
+
+    _p._statusMakeSteps = function(uiDescriptions, isInit, processId, key, steps) {
+        var children = [];
+        for(let [index, step] of steps.entries())
+            children.push(this._statusMakeStep(uiDescriptions, isInit
+                                        , processId, index + '', step));
+        return dom.createFragment(children);
+    };
+
+    _p._renderDOMToTarget = function(target, renderers, order, processState) {
+        var seen = new Set()
+          , elements = {}
+          ;
+        for(let [key, value] of Object.entries(processState || {})) {
+            if(!value)
+                // Skip empty values for now, it could be annoying.
+                // Always a good idea?
+                continue;
+            let renderer = key in renderers
+                        ? renderers[key]
+                        : renderers['@default'];
+            if(!renderer)
+                // skipped with intend -> the key is defined but the
+                // value is falsy.
+                continue;
+            elements[key] = renderer.call(this, key, value);
+        }
+
+        // don't check if defaultMarker is there, rather fail if it is not.
+        var defaultMarker = dom.getMarkerComment(target, 'insert: @default');
+        for(let key of (order || []).concat(Object.keys(elements))) {
+            if(seen.has(key) || !(key in elements))
+                continue;
+            seen.add(key);
+            let item = elements[key]
+              , marker = dom.getMarkerComment(target, 'insert: ' + key)
+              ;
+            if(marker)
+                // first try to put it into the template at marker
+                dom.insert(marker, 'after', item);
+            else {
+                // Fallback into the special default list "before" to keep
+                // the order in tact, but first wrap...
+                item = dom.createElement('li', {}, item);
+                dom.insert(defaultMarker, 'before', item);
+            }
+        }
+        return target;
+    };
+
+    _p._uiDescriptionsToMap = function(uiDescriptions) {
+        var result = new Map();
+        for(let ui of (uiDescriptions || [])) {
+            let uis = result.get(ui.targetPath);
+            if(!uis){
+                uis = [];
+                result.set(ui.targetPath, uis);
+            }
+            uis.push(ui);
+        }
+        return result;
+    };
+
+    _p._statusMakeExecLog = function(key, logs){
+        /*
+         * logs =  [
+         *    [
+         *      "2018-12-21T07:09:59.084Z",
+         *      {
+         *        "requester": "graphicore",
+         *        "step": "0",
+         *        "task": "ApproveProcess",
+         *        "callback": "callbackApproveProcess"
+         *      }
+         *    ],
+         *    ...
+         * ]
+         */
+        var children = [];
+        for(let [date, log] of logs) {
+            let entry = dom.createElement('li', {}, [
+                dom.createElement('em', {}, date)
+              , '—'
+              , dom.createElement('strong', {}, log.requester)
+              , ' called: '
+              , dom.createElement('span', {},
+                        [ ['.', log.step, log.task].join('/')
+                        , '::'
+                        , log.callback
+                        ])
+            ]);
+            children.push(entry);
+        }
+        return dom.createFragment([
+            dom.createElement('strong', {}, key)
+          , dom.createElement('ul', {}, children)
         ]);
+    };
+
+    _p._statusMakeMarkdown = function(key, note) {
+        return dom.createFragment([
+            dom.createElement('strong', {}, key)
+            , ' '
+          , dom.createFragmentFromMarkdown(note)
+        ]);
+    };
+
+    _p._renderProcess = function(processElem, processId, processState, uiDescriptions, isInit) {
+        // "familyName": "ABeeZee",
+        // "requester": "graphicore",
+        // "initType": "update",
+        // "genre": "",
+        // "fontfilesPrefix": "",
+        // "note": "",
+        // "id": "19f4da1f-53a2-47c5-b9a1-c0056b99d61b",
+        // "created": "2018-12-20T17:31:08.471Z",
+        // "finishedStatus": null,
+        // "execLog": [ ... ]
+        // "steps": [...]
+        // failStep: ...
+        // finallyStep: ...
+        //
+        // these will be rendered differently
+        // they are also more like infrastructure data, while the
+        // other keys are special for our concrete implementation.
+        var _uiDescriptionsMap = !isInit ? this._uiDescriptionsToMap(uiDescriptions) : null
+          , renderers = {
+            // generic/infrastructure elements
+            //   'id':
+            // , 'created':
+               'finishedStatus': this._statusMakeStatusEntry.bind(this, 'div')
+              , 'execLog': this._statusMakeExecLog
+              , 'steps': this._statusMakeSteps.bind(this, _uiDescriptionsMap, isInit, processId)
+              , 'failStep': this._statusMakeStep.bind(this, _uiDescriptionsMap, isInit, processId)
+              , 'finallyStep': this._statusMakeStep.bind(this, _uiDescriptionsMap, isInit, processId)
+                // specific/data elements
+              , 'familyName': this._statusMakeTextNode
+            //, 'requester':
+              , 'note': this._statusMakeMarkdown
+            //, 'initType':
+            //, 'genre':
+            //, 'fontfilesPrefix':
+                // we'll be able to render elements in the future
+                // that we don't know about yet.
+              , '@default': this._statusMakeKeyValue
+            }
+                // only, in order, elements that must be inserted before
+                // everything else.
+          , order = ['id', 'created', 'initType', 'requester', 'genre'
+                        , 'repoNameWithOwner', 'fontfilesPrefix', 'note']
+          , target = this._getElementFromTemplate(isInit
+                                                ? 'dispatcher-process-init'
+                                                : 'dispatcher-process')
+          ;
+
         dom.clear(processElem);
-        dom.appendChildren(processElem, ol);
+
+        if(!isInit) {
+
+            dom.insertAtMarkerComment(target, 'insert: process-style'
+                    , dom.createTextNode(processState.initType === 'update' ? 'Update' : 'Onboard'));
+
+            this._renderDOMToTarget(target, renderers, order, processState);
+            dom.insertAtMarkerComment(target, 'insert: process-link', dom.createElement(
+                               'a'
+                             , {href: '/dispatcher/process/'+ processId}
+                             , ' Process ID: ' +  processId
+                            ));
+            if(processState.finishedStatus)
+                target.classList.add(processState.finishedStatus.status);
+        }
+        else {
+            dom.insertAtMarkerComment(target, 'insert: message'
+                                , dom.createElement('span', {}, 'initializing process …'));
+            dom.insertAtMarkerComment(target, 'insert: user-interfaces',
+                this._createUserInteraction(processId, uiDescriptions[0], isInit));
+        }
+        dom.appendChildren(processElem, [target]);
     };
 
     _p.sessionChangeHandler = function(session) {
@@ -169,7 +468,8 @@ define([
 
     _p._createUserInteraction = function(processId, description, isInit) {
         // use if client is not authorized to send the form
-        var disabled = !this._session || this._session.status !== 'OK'// FIXME: currently only checking if there's a session at all
+        // FIXME: currently only checking if there's a session at all
+        var disabled = !this._session || this._session.status !== 'OK'
           , form = dom.createElement('form')
           , uiElements = [], inputs = []
           , label, input, label_input

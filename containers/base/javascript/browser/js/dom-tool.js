@@ -63,6 +63,10 @@ define([
         return createElementfromHTML(tag, attr, marked(mardownText, {gfd: true}));
     }
 
+    function createFragmentFromMarkdown(mardownText) {
+        return createFragmentFromHTML(marked(mardownText, {gfd: true}));
+    }
+
     function appendHTML(elem, html) {
         var parsed = createElementfromHTML('div', null, html);
         while(parsed.firstChild)
@@ -237,6 +241,7 @@ define([
       , createFragment: createFragment
       , createComment: createComment
       , createFragmentFromHTML: createFragmentFromHTML
+      , createFragmentFromMarkdown: createFragmentFromMarkdown
       , isDOMElement: isDOMElement
       , replaceNode: replaceNode
       , removeNode: removeNode
