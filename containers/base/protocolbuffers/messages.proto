@@ -74,8 +74,8 @@ service Manifest {
   rpc Poke (ManifestSourceId) returns (google.protobuf.Empty) {};
   // This is the same data as the manifestSource would dispatch as
   // CollectionFamilyJob for Font Bakery.
-  rpc Get (FamilyRequest) returns (FamilyData){}
-  rpc List (ManifestSourceId) returns (FamilyNamesList){}
+  rpc Get (FamilyRequest) returns (FamilyData){};
+  rpc List (ManifestSourceId) returns (FamilyNamesList){};
 }
 
 
@@ -110,12 +110,13 @@ message CollectionFamilyJob {
 // TODO: this is very similar to CollectionFamilyJob, but the cache_key/files
 // fields differ. Since they represent the same thing though, maybe it would
 // be nice to merge the two message formats into one?
+// could be a oneof data { cache_key|files }
 message FamilyData {
     string collectionid = 1; // the name that identifies the collection
     string family_name = 2; // the name that identifies the family
     Files files = 3;
     google.protobuf.Timestamp date = 4; // when the data was created
-    string metadata = 5;
+    string metadata = 5;//json?
 }
 
 // The Reports service

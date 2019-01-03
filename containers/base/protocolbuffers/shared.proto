@@ -10,5 +10,3 @@ message File {
 message Files {
   repeated File files = 1;
 };
-
-
