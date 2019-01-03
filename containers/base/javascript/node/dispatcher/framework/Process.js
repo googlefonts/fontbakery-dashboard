@@ -29,9 +29,9 @@ function Process(resources
                          */
                       , FinallyStepCtor) {
 
-    this._resources = resources;
     Object.defineProperties(this, {
-        secret: {value: resources.secret}
+        resources: {value: resources}
+      , secret: {value: resources.secret}
       , log: {value: resources.log}
     });
 
@@ -409,7 +409,7 @@ _p._isActiveStep = function(step) {
 
 _p._activateStep = function(step) {
     if(step.isFinished)
-        throw new Error('Can\t activate closed step.');
+        Promise.reject(Error('Can\t activate closed step.'));
     // we could have a self-check here if step is the valid
     // next step.
     this._activeStep = step;
@@ -417,12 +417,15 @@ _p._activateStep = function(step) {
     // then persisted and reloaded. In that case, we don't want the
     // step to run all it's activate action again, just set this._activeStep;
     return step.isActivated
-                ? Promise.resolve(step)
+                ? Promise.resolve()
                     // (sometimes recursively) call this._transition
                     // it could be that step is already finished
                     // after activation
                  : step.activate()
-                       .then(()=>this._transition());
+                        // in this case, results are the promise for the
+                        // return values of the activated tasks
+                        // wrapped into reflectPromises ...
+                       .then((results)=>Promise.resolve(this._transition()).then(()=>results));
 };
 
 _p._getNextRegularStep = function(step) {
@@ -540,7 +543,7 @@ _p.execute = function(targetPath, commandMessage) {
     );
 
     return step.execute(targetPath, commandMessage)
-        .then((result)=>{this._transition(); return result;})
+        .then((result)=>Promise.resolve(this._transition()).then(()=>result))
         ;
 };
 

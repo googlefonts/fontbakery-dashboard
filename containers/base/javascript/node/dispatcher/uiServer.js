@@ -435,9 +435,14 @@ _p._initializingProcessUi = function(socket, data, answerCallback) {
         ;
 };
 
+const TODO=(...args)=>console.log('TODO:', ...args)
+   , FIXME=(...args)=>console.log('FIXME:', ...args)
+   ;
 _p._authorizeInitProcess = function(socket,sessionId, data){
     //jshint unused:vars
-    this._log.warning('NOT IMPLEMENTED: _authorizeInitProcess');
+
+    this._log.warning('NOT IMPLEMENTED: _authorizeInitProcess, we have no roles check here!!!');
+    TODO('make a quota of new, un-accepted processes for non-engineer users.');
     var sessionIdMessage = new SessionId();
     sessionIdMessage.setSessionId(sessionId);
     return this._ghAuthClient.checkSession(sessionIdMessage)
@@ -445,9 +450,13 @@ _p._authorizeInitProcess = function(socket,sessionId, data){
         var userName;
         if(authStatus.getStatus() === AuthStatus.StatusCode.OK)
             userName = authStatus.getUserName();
-        else
-            userName = '(FIXME: not authenticated)';
-
+        else {
+            // I wonder what I wanted to fix here, seems we just need to
+            // return the message that the user is not authenticated???
+            // well eventually we want authorization, that includes authentication …
+            FIXME('_authorizeInitProcess: not authenticated');
+            throw new Error('Not Authenticated.');
+        }
         return [null, userName];
     });
 };
@@ -487,8 +496,6 @@ _p._initProcess = function(socket, sessionId, data, answerCallback) {
     });
 };
 
-
-const TODO = (...args)=>console.warn('TODO:', ...args);
 _p._authorizeExecute = function(socket, sessionId, commandData) {
     var targetPath = Path.fromString(commandData.targetPath)
       , processId = targetPath.processId
@@ -507,6 +514,11 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
     // This assumption ensures we don't have to create the room on the
     // fly. If this assumption proofs to be unpractical, we could fall
     // back to query the process directly in here.
+    //      * A common case that triggers this error (in development) is
+    //        when the server was restarted, but the client was not reloaded.
+    //        Also, seems like sometimes the clients just disconnect
+    //        (for no apparent reason). Maybe we need some reconnect
+    //        management.
     if(!this._socketIsInRoom(socket, roomId))
         return Promise.reject('Socket must be subscribed to process.');
 
@@ -516,6 +528,7 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
         // Fair enough? How else would client know about that UI?
         // Maybe a server that got shutdown. Then, though, we must teach
         // the client to properly reconnect to all its subscriptions etc.
+        // See above.
         return Promise.reject('Process data not available yet.');
 
     // that's the process data
@@ -532,7 +545,7 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
         // }
         if(uiDescription.targetPath === commandData.targetPath
                         && uiDescription.ticket === commandData.ticket) {
-                // hmm !uiDescription.roles would be an error in the
+                // Hmm, no uiDescription.roles would be an error in the
                 // definition I guess.
                 foundExpectedUI = true;
                 uiRoles = uiDescription.roles
@@ -545,7 +558,6 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
     if(!foundExpectedUI)
         return Promise.reject('The requested interaction is not expected.');
     else if(!uiRoles )
-        // this probably means the ui is not in uiDescriptions
         return Promise.reject('No roles that apply for the request were found.');
 
     authorizedRolesRequest = new AuthorizedRolesRequest();
@@ -643,7 +655,7 @@ _p._getProcessRoom = function(processId) {
           , { generator, cancel } = this._processManager.subscribeProcess(processQuery)
             // TODO: this will need more effort
           , emit = (socket, data)=>socket.emit('changes-dispatcher-process'
-                                    , 'process !!!! ', ... data)
+                                              , ... data)
           ;
         room = this._initRoom(generator, cancel, emit, process);
         this._rooms.set(roomId, room);

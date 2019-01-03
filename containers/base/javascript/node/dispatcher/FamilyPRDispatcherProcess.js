@@ -9,10 +9,76 @@ const { Process:Parent } = require('./framework/Process')
     , {mixin: stateManagerMixin} = require('./framework/stateManagerMixin')
     ;
 
+/**
+ * constructor must do Parent.call(this, arg1, arg2,) itself if applicable.
+ */
+function makeClass(name, parentPrototype, constructor) {
+    // jshint evil: true
+    // this way we return a proper constructor where
+    // CTOR.name === name
+    var CTOR = new Function('ctor', 'return '
+      + 'function ' + name + '(...args) {'
+      +     'ctor.apply(this, args);'
+      + '};'
+    )(constructor);
+    if(parentPrototype)
+        CTOR.prototype = Object.create(parentPrototype);
+    CTOR.prototype.constructor = CTOR;
+    return CTOR;
+}
+
+/**
+ * Helper to remove simple Step boilerplate like this:
+ *     const MyStep = (function() {
+ *     const Parent = Step;
+ *     function MyStep(process, state) {
+ *         Parent.call(this, process, state, {
+ *              JobA: JobATask
+ *            , JobB: JobBTask
+ *            // , JobC: ...
+ *         });
+ *     }
+ *     const _p = MyStep.prototype = Object.create(Parent.prototype);
+ *     _p.constructor = MyStep;
+ *     return MyStep;
+ *     })();
+ *
+ * Instead we can do just:
+ *
+ * const MyStep = stepFactory('MyStep', {
+ *              JobA: JobATask
+ *            , JobB: JobBTask
+ *            // , JobC: ...
+ * });
+ *
+ */
+function stepFactory(name, tasks) {
+    const Parent = Step;
+    // this injects Parent and tasks
+    // also, this is like the actual constructor implementation.
+    function StepConstructor (process, state) {
+        Parent.call(this, process, state, tasks);
+    }
+    return makeClass(name, Parent.prototype, StepConstructor);
+}
+
+function taskFactory(name) {
+    const Parent = Task;
+    // this injects Parent
+    // also, this is like the actual constructor implementation.
+    function TaskConstructor (step, state) {
+        Parent.call(this, step, state);
+    }
+    return makeClass(name, Parent.prototype, TaskConstructor);
+}
+
+
 // This is an empty function to temporarily disable jshint
 // "defined but never used" warnings and to mark unfinished
 // business
-function TODO(){}
+const TODO = (...args)=>console.log('TODO:', ...args)
+   , FIXME = (...args)=>console.log('FIXME:', ...args)
+   ;
 
 function renderMD(){
     return '**NOT IMPLEMENTED:** renderMD';
@@ -56,9 +122,14 @@ _p.constructor = GetFamilyDataTask;
  * external sources this may change the result of the task.
  */
 _p._activate = function() {
+    this._setLOG('Requesting familyData for ', this.process.familyName
+                                                , 'from source upstream.');
     var familyRequest = new FamilyRequest();
     familyRequest.setSourceId('CSVSpreadsheet');
     familyRequest.setFamilyName(this.process.familyName);
+    FIXME('This can timeout if the google/fonts repo is not fetched yet!'
+          ,'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
+          , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
     return this.grpcSourceClient.get(familyRequest)
         .then(familyDataMessage => {
             // this is nice, we'll have all the info of the files
@@ -147,7 +218,7 @@ _p.callbackFontBakeryFinished = function(requester, fontbakeryResultMessage) {
     this._setPrivateData('fontbakeryResultMessage', fontbakeryResultMessage);
     this._logStatus(renderMD(fontbakeryResultMessage));
 
-    TODO();  // The task is now waiting for user interaction
+    TODO('The task is now waiting for user interaction');  // The task is now waiting for user interaction
            // this needs to be communicated to the applicable users
            // as such:
            //       * we MAY send out emails (later)
@@ -186,14 +257,6 @@ _p.callbackFinalize = function(requester, finalizeMessage) {
     this._setStatus(status, reasoning);
 };
 
-TODO(); // user interactions describe how to display and handle
-// required user interactions. These functions are used by the
-// uiServer in contrast to the ProcessManager service.
-// A uiServer will not be allowed to change the Process state directly
-// instead, it can send messages to the ProcessManager.
-
-// Instead of registering these explicitly, we will look for methods
-// starting with "_userInteraction" that don't return false when called.
 _p.uiFinalize = function() {
     // this should be managed differently!
     // if(!this._hasPrivateData('fontbakeryResultMessage'))
@@ -246,7 +309,7 @@ return FontbakeryTask;
 })();
 
 
-const FontBakeryStep = (function(){
+const FontBakeryStep = (function() {
 const Parent = Step;
 /**
  * DiffbrowsersTask could be parallel to FontbakeryTask, it's only serial
@@ -309,15 +372,14 @@ return DispatchStep;
 })();
 
 
-const ApproveProcessTask = (function(){
-const Parent = Task;
-function ApproveProcessTask(step, state) {
-    Parent.call(this, step, state);
-}
+const ApproveProcessTask = (function() {
 
-const _p = ApproveProcessTask.prototype = Object.create(Parent.prototype);
-_p.constructor = ApproveProcessTask;
+const ApproveProcessTask = taskFactory('ApproveProcessTask');
+const _p = ApproveProcessTask.prototype;
 
+/**
+ * Expected by Parent.
+ */
 _p._activate = function() {
     // could be a different path for new/update processes
     // after this task, we hopefully can proceed uniformly
@@ -336,6 +398,10 @@ _p._expectEditInitialState = function() {
                                       , 'uiEditInitialState');
 };
 
+/**
+ * - Review form info is good.
+ * - Form then updates spreadsheet (if necessary).
+ */
 _p.uiApproveProcess = function() {
     var actionOptions = [];
     actionOptions.push(['Accept and proceed.', 'accept']);
@@ -374,7 +440,6 @@ _p.uiApproveProcess = function() {
               , condition: ['action', 'new']
               , type:'choice' // => could be a select or a radio
               , label: 'Genre:'
-                // TODO: get a list of available families from the CSV Source
               , options: fontFamilyGenres
             }
             */
@@ -438,7 +503,7 @@ _p.callbackEditInitialState = function(requester, values) {
     values.note = this.process._state.note;
     // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
     values.isOFL = true;
-    return callbackPreInit(this._resources, requester, values)
+    return callbackPreInit(this.resources, requester, values)
     .then(([message, initArgs])=>{
         if(message) {
             // Should just stay in the editInitialState realm until it's good.
@@ -480,10 +545,13 @@ _p.uiSignOffSpreadsheet = function() {
 };
 
 _p.callbackSignOffSpreadsheet = function(requester, values) {
-    if(values.accept === true)
+    if(values.accept === true) {
         this._setOK('**' + requester + '** confirms spreadsheet entry.');
+        TODO('callbackSignOffSpreadsheet: eventually we want to put this info into a database that we manage ourselves.');
+        // that needs some more CRUD interfaces though.
+    }
     else if (values.accept === false)
-        this._setFAILED('**' + requester + '** can\t confirm the spreadheet '
+        this._setFAILED('**' + requester + '** can\'t confirm the spreadheet '
                 + 'entry is good:\n' + values.reason);
 };
 
@@ -491,27 +559,333 @@ _p.callbackSignOffSpreadsheet = function(requester, values) {
 return ApproveProcessTask;
 })();
 
+const ApproveProcessStep = stepFactory('ApproveProcessStep', {
+    //(engineer): Review form info is good.
+    //        -> should have a way to modify the state from init
+    //(engineer): updates spreadsheet -> just a sign off
+    //        -> may be done by the form eventually
+    ApproveProcess: ApproveProcessTask
+});
 
 
-const ApproveProcessStep = (function() {
-const Parent = Step;
+
+// * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
+const GetFilesPackageTask = (function(){
+const GetFilesPackageTask = taskFactory('GetFilesPackageTask');
+const _p = GetFilesPackageTask.prototype;
+
 /**
- * Make a the PR or manually fail with a reasoning.
+ * Expected by Parent.
  */
-function ApproveProcessStep(process, state) {
-    Parent.call(this, process, state, {
-        //(engineer): Review form info is good.
-        //        -> should have a way to modify the state from init
-        //(engineer): updates spreadsheet -> just a sign off
-        //        -> may be done by the form eventually
-        ApproveProcess: ApproveProcessTask
+_p._activate = function() {
+    return this.resources.getUpstreamFamilyFiles(this.process.familyName)
+    .then(familyDataMessage => {
+        /*
+        message FamilyData {
+            string collectionid = 1; // the name that identifies the collection
+            string family_name = 2; // the name that identifies the family
+            Files files = 3;
+            google.protobuf.Timestamp date = 4; // when the data was created
+            string metadata = 5;//json?
+        }
+        // really depends on the source, but the CSVSpreadsheet produces:
+        metadata = {
+            commit: commit.sha()
+          , commitDate: commit.date()
+          , sourceDetails: familyData.toDictionary()
+          , familyTree: tree.id()
+          , familyPath: tree.path()
+          , repository: familyData.upstream
+          , branch: familyData.referenceName // Error: NotImplemented if not git
+          , googleMasterDir: googleMasterDir
+          , isUpdate: isUpdate
+          , licenseDir: licenseDir
+        };
+        // and ManifestServer:
+        familyData.setMetadata(JSON.stringify(metadata));
+        */
+
+        var filteredMetadataKeys = new Set(['familyTree'])
+          , familyDataSummaryMarkdown = ['## Files Package for *'
+                                      + this.process.familyName+'*'];
+
+        familyDataSummaryMarkdown.push(
+            '### Files'
+          , familyDataMessage.getFiles().getFilesList()
+                .map(file=>' * `' + [file.getName() + '`'
+                                     , '*' + file.getData().byteLength
+                                     , 'Bytes*'
+                                   ].join(' ')
+                    ).join('\n')
+          , '\n'
+          , '[TODO: zip file download](https://example.com)'
+          , '\n'
+          , '### Metadata'
+          , Object.entries(JSON.parse(familyDataMessage.getMetadata()))
+                .filter(([key, ])=>!filteredMetadataKeys.has(key))
+                .map(([key, value])=>{
+                    if(typeof value === 'string')
+                        return '**' + key + '** ' + value;
+                    else if( typeof value !== 'object')
+                        return '**' + key + '** `' + JSON.stringify(value)+ '`';
+                    else
+                        return '**' + key + '** ```'
+                                + JSON.stringify(value, null, 2)
+                                + '```';
+                }).join('  \n')
+        );
+        this._setLOG(familyDataSummaryMarkdown.join('\n'));
+
+        TODO('For debugging: A logged download link for the file data would be awesome!');
+        TODO('Put package into storage: a git based google/fonts branch!');
+        // hmm I **REALLY** need a solid solution of where to put the files!
+        // should be probably/ideally directly in a branch of a fork of the
+        // google/fonts repo (service with a get method again...)
+        // this is nice, we'll have all the info of the files
+        // of the progress available in the document
+        // return this._setSharedData('familyData', familyDataMessage)
+        //    .then(()=>this._setOK('Family data is persisted.'));
+
+        this._setExpectedAnswer('Check Family Files Package'
+                                  , 'callbackCheckFamilyFilesPackage'
+                                  , 'uiCheckFamilyFilesPackage');
     });
-}
-const _p = ApproveProcessStep.prototype = Object.create(Parent.prototype);
-_p.constructor = ApproveProcessStep;
-return ApproveProcessStep;
+};
+
+_p.uiCheckFamilyFilesPackage = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Please check the logged family package.'
+            }
+          , {   name: 'accept'
+              , type:'binary'
+              , label: 'Looks good, go to QA!'
+            }
+          , {   name: 'reason'
+              , condition: ['accept', false]
+              , type: 'line' // input type:text
+              , label: 'What went wrong?'
+            }
+        ]
+    };
+};
+
+_p.callbackCheckFamilyFilesPackage = function(requester, values) {
+    if(values.accept === true) {
+        this._setOK('**' + requester + '** confirms the family package.');
+    }
+    else
+        this._setFAILED('**' + requester + '** can\'t confirm the '
+                + 'family package:\n' + values.reason);
+};
+
+return GetFilesPackageTask;
 })();
 
+const GetFilesPackageStep = stepFactory('GetFilesPackageStep', {
+    GetFilesPackage: GetFilesPackageTask
+});
+
+
+/**
+ *
+ * Run QA tools on package
+MF: Determine if family has passed/inspect visual diffs (depending on whether the family is new or an upgrade, this inspection is a bit different.)
+*/
+
+const FontbakeryTaskDummy = (function(){
+const FontbakeryTask = taskFactory('FontbakeryTask');
+const _p = FontbakeryTask.prototype;
+
+_p._activate = function() {
+    this._setExpectedAnswer('Confirm Fontbakery'
+                                  , 'callbackConfirmFontbakery'
+                                  , 'uiConfirmFontbakery');
+};
+
+_p.uiConfirmFontbakery = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Please run Font Bakery and report the result:'
+            }
+          , {   name: 'accept'
+              , type:'binary'
+              , label: 'Fontbakery looks good!'
+            }
+          , {   name: 'notes'
+              , type: 'text' // input type:text
+              , label: 'Notes'
+            }
+        ]
+    };
+};
+
+_p.callbackConfirmFontbakery = function(requester, values) {
+    if(values.notes)
+        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    if(values.accept === true) {
+        this._setOK('**' + requester + '** Font Bakery looks good.');
+    }
+    else
+        this._setFAILED('**' + requester + '** Font Bakery is failing.');
+};
+
+return FontbakeryTask;
+})();
+
+const DiffenatorTaskDummy = (function(){
+const DiffenatorTask = taskFactory('DiffenatorTask');
+const _p = DiffenatorTask.prototype;
+
+_p._activate = function() {
+    this._setExpectedAnswer('Confirm Diffenator'
+                                  , 'callbackConfirmDiffenator'
+                                  , 'uiConfirmDiffenator');
+};
+
+_p.uiConfirmDiffenator = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Please run Diffenator and report the result:'
+            }
+          , {   name: 'accept'
+              , type:'binary'
+              , label: 'Diffenator looks good!'
+            }
+          , {   name: 'notes'
+              , type: 'text' // input type:text
+              , label: 'Notes'
+            }
+        ]
+    };
+};
+
+_p.callbackConfirmDiffenator = function(requester, values) {
+    if(values.notes)
+        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    if(values.accept === true) {
+        this._setOK('**' + requester + '** Diffenator looks good.');
+    }
+    else
+        this._setFAILED('**' + requester + '** Diffenator is failing.');
+};
+
+return DiffenatorTask;
+})();
+
+const GFregressionsTaskDummy = (function(){
+const GFregressionsTask = taskFactory('GFregressionsTask');
+const _p = GFregressionsTask.prototype;
+
+_p._activate = function() {
+    this._setExpectedAnswer('Confirm GFregressions'
+                                  , 'callbackConfirmGFregressions'
+                                  , 'uiConfirmGFregressions');
+};
+
+_p.uiConfirmGFregressions = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Please run GFregressions and report the result:'
+            }
+          , {   name: 'accept'
+              , type:'binary'
+              , label: 'GFregressions looks good!'
+            }
+          , {   name: 'notes'
+              , type: 'text' // input type:text
+              , label: 'Notes'
+            }
+        ]
+    };
+};
+
+_p.callbackConfirmGFregressions = function(requester, values) {
+    if(values.notes)
+        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    if(values.accept === true) {
+        this._setOK('**' + requester + '** GFregressions looks good.');
+    }
+    else
+        this._setFAILED('**' + requester + '** GFregressions is failing.');
+};
+
+return GFregressionsTask;
+})();
+
+
+
+const QAToolsStep = stepFactory('QAToolsStep', {
+    Fontbakery: FontbakeryTaskDummy
+  , Diffenator:DiffenatorTaskDummy
+  , GFregressions: GFregressionsTaskDummy
+});
+
+
+const SignOffAndDispatchTaskDummy = (function(){
+const SignOffAndDispatchTask = taskFactory('SignOffAndDispatchTask');
+const _p = SignOffAndDispatchTask.prototype;
+
+_p._activate = function() {
+    this._setExpectedAnswer('Confirm Process'
+                                  , 'callbackConfirmGFregressions'
+                                  , 'uiConfirmGFregressions');
+};
+
+_p.uiConfirmGFregressions = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Dispatch Process Now?'
+            }
+          , {   name: 'accept'
+              , type:'binary'
+              , label: 'The Process looks good!'
+            }
+          , {   name: 'notes'
+              , type: 'text' // input type:text
+              , label: 'Notes'
+            }
+        ]
+    };
+};
+
+_p.callbackConfirmGFregressions = function(requester, values) {
+    if(values.notes)
+        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    if(values.accept === true) {
+        this._setLOG('**' + requester + '** Process looks good!');
+        this._setLOG('...making the Pull Request');
+        this._setOK('PR at [google/fonts #123Dummy](https://github.com/google/fonts/pulls)');
+    }
+    else
+        this._setFAILED('**' + requester + '** can\'t confirm Process.');
+};
+
+return SignOffAndDispatchTask;
+})();
+
+
+const SignOffAndDispatchStep = stepFactory('SignOffAndDispatchStep', {
+    SignOffAndDispatch: SignOffAndDispatchTaskDummy
+});
+
+
+//MF: if bad inform author of necessary changes.
 
 /**
  * This is a special step. It runs immediately after the first failed
@@ -520,30 +894,60 @@ return ApproveProcessStep;
  * Create an issue somewhere on GitHub.
  */
 
-const FailTask = EmptyTask;
+const FailTask = (function(){
+const FailTask = taskFactory('FailTask');
+const _p = FailTask.prototype;
 
-const FailStep = (function(){
-const Parent = Step;
-/**
- * Make a the PR or manually fail with a reasoning.
- */
-function FailStep(process, state) {
-    Parent.call(this, process, state, {
-        Fail: FailTask
-    });
-}
-const _p = FailStep.prototype = Object.create(Parent.prototype);
-_p.constructor = FailStep;
-return FailStep;
+_p._activate = function() {
+    this._setExpectedAnswer('Fail Task'
+                                  , 'callbackFailTask'
+                                  , 'uiFailTask');
+};
+
+_p.uiFailTask = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Please explain the issue to the author.'
+            }
+          , {   name: 'notes'
+              , type: 'text' // input type:text
+              , label: 'Notes'
+            }
+        ]
+    };
+};
+
+_p.callbackFailTask = function(requester, values) {
+    if(values.notes)
+        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+
+    this._setLOG('...gathering information');
+    this._setLOG('...making the Issue');
+    this._setOK('issue at [upstream/font-name #123Dummy](https://github.com/google/fonts/issues)');
+
+};
+
+return FailTask;
 })();
+
+
+const FailStep = stepFactory('FailStep', {
+    Fail: FailTask
+});
 
 
 
 const stepCtors = [
+              // * Review form info is good.
+              // * Form then updates spreadsheet (if necessary).
               ApproveProcessStep
-          //  InitProcessStep
-          //, FontBakeryStep
-          //, RegressionsStep
+              // * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
+            , GetFilesPackageStep
+            , QAToolsStep
+            , SignOffAndDispatchStep
           //, DispatchStep
     ]
   , FailStepCtor = FailStep
@@ -611,7 +1015,6 @@ role.
 the github repo is a strech, but i believe, it's not that easy to have
 "unlimited" or at least many thousands of github repos.
 
-
 -> a not-"engineer" user may have a quota of how many non-approved/non-accepted
   processes he can initiate (=requester), especially if they are NEW families.
   for existing families, if we don't accept multiple open processes for a family
@@ -672,10 +1075,6 @@ init:
     Thank user
 
 without the access control etc. from above, that's the init
-
-
-
-
 */
 
 
@@ -787,11 +1186,12 @@ function uiPreInit(resources) {
               , options: familyList
               //, default: 'Family Name' // 0 => the first item is the default
             }
-            // TODO: add multi-field to change Authors info, this is a
-            // common request especially for updates, when new authors are
-            // added, but also for new entries, when initial authors are added.
         ]
     };
+    TODO('add multi-field to change Authors info');// info, this is a
+            // common request especially for updates, when new authors are
+            // added, but also for new entries, when initial authors are added.
+            // This info is not yet in the CSV though!
     var newUi = _getInitNewUI().map(item=>{
         // show only when "action" has the value "new"
         item.condition = ['action', 'new'];
@@ -800,7 +1200,7 @@ function uiPreInit(resources) {
     result.ui.push(...newUi);
 
     result.ui.push({
-                name: 'notes'
+                name: 'note'
               , type: 'text' // textarea
               , label: 'Additional Notes:'
             });
@@ -809,6 +1209,7 @@ function uiPreInit(resources) {
 }
 
 function callbackPreInit(resources, requester, values) {
+
     var initType, familyName, repoNameWithOwner
       , genre, fontfilesPrefix, note
       , message, messages = []
@@ -832,7 +1233,7 @@ function callbackPreInit(resources, requester, values) {
         // No further format checks here. GitHub will complain if this is
         // invalid. Though, if it's an empty string after the trim, I
         // expect this to be handled before the init.
-        // FIXME: We should check properly if this is a public(!) repo.
+        FIXME('We should check properly if this is a existing, public(!) repo.');
         repoNameWithOwner = values.ghNameWithOwner.trim();
 
         // values.fontfilesPrefix => just use this, it's impossible to
@@ -851,10 +1252,20 @@ function callbackPreInit(resources, requester, values) {
     };
 
     var checkUpdate =()=>{
+        TODO('callbackPreInit: checkUpdate seems incomplete');
         return resources.getUpstreamFamilyList().then(familyList=>{
             if(familyList.indexOf(values.family) === -1)
                 messages.push('You must pick a family from the list to update.');
             familyName = values.family;
+
+            // that info is in the CSV already, we need it to put it into
+            // the CSV eventually.
+            // Also, to check roles! but we don't really need it as a
+            // state of the process.
+            // changing it can happen directly in the CSV, as long as we
+            // don't manage that as a database in the dashboard...
+            // so, only to check roles... think about it.
+            FIXME('Need to get repoNameWithOwner');//, but here?
         });
     };
 
@@ -873,14 +1284,15 @@ function callbackPreInit(resources, requester, values) {
     }
 
     return promise.then(()=>{
-        if(!repoNameWithOwner)
-            messages.push('Got no repoNameWithOwner.');
-            // FIXME check user roles/authoriztion!
+        if(!repoNameWithOwner) {
+            FIXME('check user roles/authoriztion Got no repoNameWithOwner');
+        //    messages.push('Got no repoNameWithOwner.');
+        }
         if(messages.length)
             // markdown list ...?
             message = ' * '+ messages.join('\n * ');
         else
-            // TODO
+            //
             initArgs = {initType, familyName, requester, repoNameWithOwner
                       , genre
                       , fontfilesPrefix

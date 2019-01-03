@@ -11,6 +11,7 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
       , ProcessListItem
       , DispatcherInitProcess
       , ManifestSourceId
+      , FamilyRequest
     } = require('protocolbuffers/messages_pb')
   ;
 
@@ -30,6 +31,8 @@ function DispatcherProcessManager(setup, ...args) {
     this._asyncDependencies.push([this._manifestSpreadsheetClient, 'waitForReady']);
 
     Object.defineProperties(this._processResources, {
+        // I prefer not to inject the this._manifestSpreadsheetClient
+        // directly, but instead provide simplified interfaces.
         getUpstreamFamilyList: {
             value: ()=>{
                 var sourceIdMessage = new ManifestSourceId();
@@ -38,6 +41,17 @@ function DispatcherProcessManager(setup, ...args) {
                     .list(sourceIdMessage)
                     .then(familyNamesList=>familyNamesList.getFamilyNamesList());
             }
+        }
+      , getUpstreamFamilyFiles: {
+            value: (familyName)=>{
+                // rpc Get (FamilyRequest) returns (FamilyData){}
+                var familyRequestMessage = new FamilyRequest();
+                familyRequestMessage.setSourceId('upstream');
+                familyRequestMessage.setFamilyName(familyName);
+                // returns a promise for FamilyData
+                return this._manifestSpreadsheetClient.get(familyRequestMessage);
+            }
+
         }
     });
 }

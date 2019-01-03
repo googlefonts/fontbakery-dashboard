@@ -56,6 +56,11 @@ Object.defineProperties(_p, {
             return this.step.process;
         }
     }
+  , resources: {
+        get: function() {
+            return this.process.resources;
+        }
+    }
   , created: {
         get: function() {
             return this._state.created;
