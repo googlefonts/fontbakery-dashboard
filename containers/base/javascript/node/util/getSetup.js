@@ -38,6 +38,11 @@ function getSetup() {
             host: process.env.FONTBAKERY_CACHE_SERVICE_HOST
           , port: process.env.FONTBAKERY_CACHE_SERVICE_PORT
         }
+      , persistenceSetup = {
+            // call it: "fontbakery-persistence"
+            host: process.env.FONTBAKERY_PERSISTENCE_SERVICE_HOST
+          , port: process.env.FONTBAKERY_PERSISTENCE_SERVICE_PORT
+        }
       , reportsSetup = {
             // call it: "fontbakery-reports"
             host: process.env.FONTBAKERY_REPORTS_SERVICE_HOST
@@ -76,6 +81,7 @@ function getSetup() {
         amqp: amqpSetup
       , db: dbSetup
       , cache: cacheSetup
+      , persistence: persistenceSetup
       , reports: reportsSetup
       , dispatcher: dispatcherSetup
       , logging: logging

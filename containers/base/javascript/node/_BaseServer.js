@@ -8,7 +8,7 @@ const express = require('express')
   , path = require('path')
   , messages_pb = require('protocolbuffers/messages_pb')
   , { IOOperations } = require('./util/IOOperations')
-  , { CacheClient }  = require('./util/CacheClient')
+  , { StorageClient }  = require('./util/StorageClient')
   , { ReportsClient } = require('./util/ReportsClient')
   , { DispatcherProcessManagerClient } = require('./util/DispatcherProcessManagerClient')
   , { GitHubAuthClient } = require('./util/GitHubAuthClient')
@@ -50,7 +50,7 @@ function _BaseServer(logging, portNum, setup) {
             ]
         ]
       , ['cache', [
-                ()=>new CacheClient(
+                ()=>new StorageClient(
                                 this._log
                               , setup.cache.host, setup.cache.port
                               , messages_pb, 'fontbakery.dashboard')

@@ -6,8 +6,9 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 import messages_pb2 as messages__pb2
 
 
-class CacheStub(object):
-  """The Cache service
+class StorageStub(object):
+  """The Storage service
+
   """
 
   def __init__(self, channel):
@@ -17,29 +18,30 @@ class CacheStub(object):
       channel: A grpc.Channel.
     """
     self.Put = channel.stream_stream(
-        '/fontbakery.dashboard.Cache/Put',
-        request_serializer=messages__pb2.CacheItem.SerializeToString,
-        response_deserializer=messages__pb2.CacheKey.FromString,
+        '/fontbakery.dashboard.Storage/Put',
+        request_serializer=messages__pb2.StorageItem.SerializeToString,
+        response_deserializer=messages__pb2.StorageKey.FromString,
         )
     self.Get = channel.unary_unary(
-        '/fontbakery.dashboard.Cache/Get',
-        request_serializer=messages__pb2.CacheKey.SerializeToString,
+        '/fontbakery.dashboard.Storage/Get',
+        request_serializer=messages__pb2.StorageKey.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
         )
     self.Purge = channel.unary_unary(
-        '/fontbakery.dashboard.Cache/Purge',
-        request_serializer=messages__pb2.CacheKey.SerializeToString,
-        response_deserializer=messages__pb2.CacheStatus.FromString,
+        '/fontbakery.dashboard.Storage/Purge',
+        request_serializer=messages__pb2.StorageKey.SerializeToString,
+        response_deserializer=messages__pb2.StorageStatus.FromString,
         )
 
 
-class CacheServicer(object):
-  """The Cache service
+class StorageServicer(object):
+  """The Storage service
+
   """
 
   def Put(self, request_iterator, context):
-    """Sends a greeting
-    """
+    # missing associated documentation comment in .proto file
+    pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
@@ -59,26 +61,26 @@ class CacheServicer(object):
     raise NotImplementedError('Method not implemented!')
 
 
-def add_CacheServicer_to_server(servicer, server):
+def add_StorageServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'Put': grpc.stream_stream_rpc_method_handler(
           servicer.Put,
-          request_deserializer=messages__pb2.CacheItem.FromString,
-          response_serializer=messages__pb2.CacheKey.SerializeToString,
+          request_deserializer=messages__pb2.StorageItem.FromString,
+          response_serializer=messages__pb2.StorageKey.SerializeToString,
       ),
       'Get': grpc.unary_unary_rpc_method_handler(
           servicer.Get,
-          request_deserializer=messages__pb2.CacheKey.FromString,
+          request_deserializer=messages__pb2.StorageKey.FromString,
           response_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
       ),
       'Purge': grpc.unary_unary_rpc_method_handler(
           servicer.Purge,
-          request_deserializer=messages__pb2.CacheKey.FromString,
-          response_serializer=messages__pb2.CacheStatus.SerializeToString,
+          request_deserializer=messages__pb2.StorageKey.FromString,
+          response_serializer=messages__pb2.StorageStatus.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.Cache', rpc_method_handlers)
+      'fontbakery.dashboard.Storage', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
 
 

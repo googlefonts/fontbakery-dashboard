@@ -9,7 +9,7 @@ package fontbakery.dashboard;
 
 message FamilyJob {
     string docid = 1;
-    CacheKey cache_key = 2;
+    StorageKey cache_key = 2;
     //
     // START distributed job fields
     //
@@ -23,32 +23,34 @@ message FamilyJob {
     //
 }
 
-// The Cache service
-service Cache {
-  // Sends a greeting
-  rpc Put (stream CacheItem) returns (stream CacheKey) {};
+
+// The Storage service
+
+service Storage {
+  rpc Put (stream StorageItem) returns (stream StorageKey) {};
   // Sends another greeting
-  rpc Get (CacheKey) returns (google.protobuf.Any) {};
-  rpc Purge (CacheKey) returns (CacheStatus) {};
+  rpc Get (StorageKey) returns (google.protobuf.Any) {};
+  rpc Purge (StorageKey) returns (StorageStatus) {};
 }
 
 // The request message containing the user's name.
-message CacheItem {
+message StorageItem {
   google.protobuf.Any payload = 1;
   string clientid = 2;
 }
 
-message CacheKey {
+message StorageKey {
     string key = 1;
     string hash = 2; // hash of the binary payload data
-    string clientid = 3; // optional, set if CacheItem.clientid was set
+    string clientid = 3; // optional, set if StorageItem.clientid was set
     bool force = 4; // used for purge
 }
 
-message CacheStatus {
+message StorageStatus {
     string key = 1;
     int32 instances = 2;
 }
+
 
 // The Manifest service
 
@@ -95,7 +97,7 @@ message FamilyRequest {
 message CollectionFamilyJob {
     string collectionid = 1; // the name that identifies the collection
     string family_name = 2; // the name that identifies the family
-    CacheKey cache_key = 3;
+    StorageKey cache_key = 3;
     google.protobuf.Timestamp date = 4; // when the job was created
     // We'll have more information about the job eventually
     // i.e. a "Upstream" or "PullRequests" source will likely be created

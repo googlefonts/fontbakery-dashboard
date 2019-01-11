@@ -7,7 +7,7 @@
 const { getSetup } = require('./util/getSetup')
   , { IOOperations } = require('./util/IOOperations')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , { CacheClient }  = require('./util/CacheClient')
+  , { StorageClient }  = require('./util/StorageClient')
   ;
 
 /**
@@ -49,7 +49,7 @@ function ManifestMaster(logging, amqpSetup, dbSetup, cacheSetup) {
     this._dbSetup = dbSetup;
     this._io = new IOOperations(logging, dbSetup, amqpSetup);
     this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
-    this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port);
+    this._cache = new StorageClient(logging, cacheSetup.host, cacheSetup.port);
 
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([

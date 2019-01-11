@@ -14,7 +14,7 @@ import pytz
 from datetime import datetime
 from collections import namedtuple
 
-from worker.cacheclient import CacheClient
+from worker.storageclient import StorageClient
 from protocolbuffers.messages_pb2 import Files
 
 class FontbakeryWorkerError(Exception):
@@ -80,7 +80,7 @@ class FontbakeryWorker(object):
 
   def _prepare(self, tmpDirectory):
     """
-      Write files from the grpc.CacheServe to tmpDirectory.
+      Write files from the grpc.StorageServer to tmpDirectory.
 
       Returns a list of log messages for each file in job.files, some may
       be skipped. This is to give the user direct feedback about the request
@@ -372,7 +372,7 @@ def main(queue_in_name, queue_out_name, db_name, db_table, Worker):
 
   dbConnection = r.connect(host=setup.db_host, port=setup.db_port, timeout=120)
   dbTableContext = partial(get_db, dbConnection, db_name, db_table)
-  cache = CacheClient(setup.cache_host, setup.cache_port, Files)
+  cache = StorageClient(setup.cache_host, setup.cache_port, Files)
 
   # http://pika.readthedocs.io/en/latest/examples/heartbeat_and_blocked_timeouts.html
   connection = pika.BlockingConnection(

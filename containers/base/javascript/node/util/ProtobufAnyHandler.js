@@ -1,8 +1,7 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const { Any } = require('google-protobuf/google/protobuf/any_pb.js')
-  ;
+const { Any } = require('google-protobuf/google/protobuf/any_pb.js');
 
 function ProtobufAnyHandler(knownTypes, typesNamespace) {
     this._knownTypes = knownTypes || {};

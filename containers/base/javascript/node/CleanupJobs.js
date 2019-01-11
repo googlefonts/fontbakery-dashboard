@@ -6,7 +6,7 @@
 
 const messages_pb = require('protocolbuffers/messages_pb')
   , { getSetup, initDB, initAmqp } = require('./util/getSetup')
-  , { CacheClient }  = require('./util/CacheClient')
+  , { StorageClient }  = require('./util/StorageClient')
   ;
 
 // listen to queue_out_name='fontbakery-cleanup-distributor'
@@ -15,7 +15,7 @@ const messages_pb = require('protocolbuffers/messages_pb')
 //      if feasible, finish collection job
 function CleanupJobs(logging, amqpSetup, dbSetup, cacheSetup) {
     this._log = logging;
-    this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port);
+    this._cache = new StorageClient(logging, cacheSetup.host, cacheSetup.port);
     this._dbSetup = dbSetup;
     this._collectiontest_key = this._dbSetup.tables.collection + '_id';
     this._cleanupQueueName = 'fontbakery-cleanup-distributor';

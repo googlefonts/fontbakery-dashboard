@@ -52,39 +52,6 @@ function deserialize_fontbakery_dashboard_AuthorizedRolesRequest(buffer_arg) {
   return messages_pb.AuthorizedRolesRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
-function serialize_fontbakery_dashboard_CacheItem(arg) {
-  if (!(arg instanceof messages_pb.CacheItem)) {
-    throw new Error('Expected argument of type fontbakery.dashboard.CacheItem');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_fontbakery_dashboard_CacheItem(buffer_arg) {
-  return messages_pb.CacheItem.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_fontbakery_dashboard_CacheKey(arg) {
-  if (!(arg instanceof messages_pb.CacheKey)) {
-    throw new Error('Expected argument of type fontbakery.dashboard.CacheKey');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_fontbakery_dashboard_CacheKey(buffer_arg) {
-  return messages_pb.CacheKey.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
-function serialize_fontbakery_dashboard_CacheStatus(arg) {
-  if (!(arg instanceof messages_pb.CacheStatus)) {
-    throw new Error('Expected argument of type fontbakery.dashboard.CacheStatus');
-  }
-  return new Buffer(arg.serializeBinary());
-}
-
-function deserialize_fontbakery_dashboard_CacheStatus(buffer_arg) {
-  return messages_pb.CacheStatus.deserializeBinary(new Uint8Array(buffer_arg));
-}
-
 function serialize_fontbakery_dashboard_FamilyData(arg) {
   if (!(arg instanceof messages_pb.FamilyData)) {
     throw new Error('Expected argument of type fontbakery.dashboard.FamilyData');
@@ -239,6 +206,39 @@ function deserialize_fontbakery_dashboard_SessionId(buffer_arg) {
   return messages_pb.SessionId.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_StorageItem(arg) {
+  if (!(arg instanceof messages_pb.StorageItem)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.StorageItem');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_StorageItem(buffer_arg) {
+  return messages_pb.StorageItem.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_StorageKey(arg) {
+  if (!(arg instanceof messages_pb.StorageKey)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.StorageKey');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_StorageKey(buffer_arg) {
+  return messages_pb.StorageKey.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_StorageStatus(arg) {
+  if (!(arg instanceof messages_pb.StorageStatus)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.StorageStatus');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_StorageStatus(buffer_arg) {
+  return messages_pb.StorageStatus.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_google_protobuf_Any(arg) {
   if (!(arg instanceof google_protobuf_any_pb.Any)) {
     throw new Error('Expected argument of type google.protobuf.Any');
@@ -262,46 +262,46 @@ function deserialize_google_protobuf_Empty(buffer_arg) {
 }
 
 
-// The Cache service
-var CacheService = exports.CacheService = {
-  // Sends a greeting
+// The Storage service
+//
+var StorageService = exports.StorageService = {
   put: {
-    path: '/fontbakery.dashboard.Cache/Put',
+    path: '/fontbakery.dashboard.Storage/Put',
     requestStream: true,
     responseStream: true,
-    requestType: messages_pb.CacheItem,
-    responseType: messages_pb.CacheKey,
-    requestSerialize: serialize_fontbakery_dashboard_CacheItem,
-    requestDeserialize: deserialize_fontbakery_dashboard_CacheItem,
-    responseSerialize: serialize_fontbakery_dashboard_CacheKey,
-    responseDeserialize: deserialize_fontbakery_dashboard_CacheKey,
+    requestType: messages_pb.StorageItem,
+    responseType: messages_pb.StorageKey,
+    requestSerialize: serialize_fontbakery_dashboard_StorageItem,
+    requestDeserialize: deserialize_fontbakery_dashboard_StorageItem,
+    responseSerialize: serialize_fontbakery_dashboard_StorageKey,
+    responseDeserialize: deserialize_fontbakery_dashboard_StorageKey,
   },
   // Sends another greeting
   get: {
-    path: '/fontbakery.dashboard.Cache/Get',
+    path: '/fontbakery.dashboard.Storage/Get',
     requestStream: false,
     responseStream: false,
-    requestType: messages_pb.CacheKey,
+    requestType: messages_pb.StorageKey,
     responseType: google_protobuf_any_pb.Any,
-    requestSerialize: serialize_fontbakery_dashboard_CacheKey,
-    requestDeserialize: deserialize_fontbakery_dashboard_CacheKey,
+    requestSerialize: serialize_fontbakery_dashboard_StorageKey,
+    requestDeserialize: deserialize_fontbakery_dashboard_StorageKey,
     responseSerialize: serialize_google_protobuf_Any,
     responseDeserialize: deserialize_google_protobuf_Any,
   },
   purge: {
-    path: '/fontbakery.dashboard.Cache/Purge',
+    path: '/fontbakery.dashboard.Storage/Purge',
     requestStream: false,
     responseStream: false,
-    requestType: messages_pb.CacheKey,
-    responseType: messages_pb.CacheStatus,
-    requestSerialize: serialize_fontbakery_dashboard_CacheKey,
-    requestDeserialize: deserialize_fontbakery_dashboard_CacheKey,
-    responseSerialize: serialize_fontbakery_dashboard_CacheStatus,
-    responseDeserialize: deserialize_fontbakery_dashboard_CacheStatus,
+    requestType: messages_pb.StorageKey,
+    responseType: messages_pb.StorageStatus,
+    requestSerialize: serialize_fontbakery_dashboard_StorageKey,
+    requestDeserialize: deserialize_fontbakery_dashboard_StorageKey,
+    responseSerialize: serialize_fontbakery_dashboard_StorageStatus,
+    responseDeserialize: deserialize_fontbakery_dashboard_StorageStatus,
   },
 };
 
-exports.CacheClient = grpc.makeGenericClientConstructor(CacheService);
+exports.StorageClient = grpc.makeGenericClientConstructor(StorageService);
 // The Manifest service
 //
 var ManifestService = exports.ManifestService = {

@@ -69,17 +69,17 @@ def backoff(f, *args, **kwds):
                       'until retry. Error: {2}'.format(tries, backoff, error))
       time.sleep(backoff)
 
-class CacheClient(object):
+class StorageClient(object):
   """
   usage:
 
-  from worker.cacheclient import CacheClient
-  from protocolbuffers.messages_pb2 import CacheKey, Files
+  from worker.storageclient import StorageClient
+  from protocolbuffers.messages_pb2 import StorageKey, Files
   import sys
-  client = CacheClient('localhost', 50051, Files)
-  cacheKey = CacheKey(key=sys.argv[1])
-  print('[GET] request:', cacheKey)
-  result = client.get(cacheKey)
+  client =StorageClient('localhost', 50051, Files)
+  storageKey = StorageKey(key=sys.argv[1])
+  print('[GET] request:', storageKey)
+  result = client.get(storageKey)
   print('[GET] result:', result)
 
   """
@@ -90,10 +90,10 @@ class CacheClient(object):
             , ('grpc.max_receive_message_length', 80 * 1024 * 1024)
           ]
     )
-    self._client = messages_pb2_grpc.CacheStub(self._channel)
+    self._client = messages_pb2_grpc.StorageStub(self._channel)
     self.ExpectedGetType = ExpectedGetType
 
-  def get(self, cacheKey):
-    any = backoff(self._client.Get, cacheKey);
+  def get(self, storageKey):
+    any = backoff(self._client.Get, storageKey);
     return unpack_any(any, self.ExpectedGetType)
 

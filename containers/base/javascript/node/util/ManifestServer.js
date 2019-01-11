@@ -5,7 +5,7 @@
 /* jshint esnext:true */
 
 const { initAmqp }= require('./getSetup')
-  , { CacheClient } = require('./CacheClient')
+  , { StorageClient } = require('./StorageClient')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
   , { File, Files, CollectionFamilyJob, FamilyData, FamilyNamesList } = messages_pb
@@ -29,7 +29,7 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 
     if(cacheSetup)
-        this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
+        this._cache = new StorageClient(logging, cacheSetup.host, cacheSetup.port
                             , messages_pb, 'fontbakery.dashboard');
     else
         // that's a feature used in development sometimes

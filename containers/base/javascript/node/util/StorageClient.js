@@ -7,8 +7,8 @@
 const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , { CacheItem, Files, File } = messages_pb
-  , { CacheClient: GrpcCacheClient } = require('protocolbuffers/messages_grpc_pb')
+  , { StorageItem, Files, File } = messages_pb
+  , { StorageClient: GrpcStorageClient } = require('protocolbuffers/messages_grpc_pb')
   , { ProtobufAnyHandler } = require('./ProtobufAnyHandler')
   ;
 
@@ -17,11 +17,11 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
  * typesNamespace: i.e. 'fontbakery.dashboard'
  *
  *
- * new CacheClient(logging, 'localhost', 1234, messages_pb, 'fontbakery.dashboard')
+ * new StorageClient(logging, 'localhost', 1234, messages_pb, 'fontbakery.dashboard')
  */
-function CacheClient(logging, host, port, knownTypes, typesNamespace, credentials) {
+function StorageClient(logging, host, port, knownTypes, typesNamespace, credentials) {
     var address = [host, port].join(':');
-    this._logging = logging;
+    this._log = logging;
     // in seconds, we use this to get an error when the channel is broken
     // 30 secconds is a lot time, still, under high load I guess this
     // can take some time. 5 seconds was sometimes not enough on my minikube
@@ -29,8 +29,8 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
     // TODO: maybe we can have multiple retries with increasing deadlines
     //       and still fail eventually.
     this._deadline = 30;
-    this._logging.info('CacheClient at:', address);
-    this._client = new GrpcCacheClient(
+    this._log.info('StorageClient at:', address);
+    this._client = new GrpcStorageClient(
                           address
                         , credentials || grpc.credentials.createInsecure()
                         , {
@@ -42,7 +42,7 @@ function CacheClient(logging, host, port, knownTypes, typesNamespace, credential
     this._any = new ProtobufAnyHandler(knownTypes, typesNamespace);
 }
 
-var _p = CacheClient.prototype;
+var _p = StorageClient.prototype;
 
 _p._raiseUnhandledError = function(err) {
     this._log.error(err);
@@ -53,7 +53,7 @@ _p._getTypeForTypeName = function(typeName) {
     var name = typeName.split('.').pop();
     if(name in this._knownTypes)
         return this._knownTypes[name];
-    this._logging.debug('Unknown type name ', typeName);
+    this._log.debug('Unknown type name ', typeName);
     throw new Error('Can\'t find type for type name,');
 };
 
@@ -68,10 +68,10 @@ Object.defineProperty(_p, 'deadline', {
 });
 
 _p.put = function (payloads) {
-    this._logging.debug('cache [PUT] with', payloads.length, 'payloads');
-    function onData(call, promiseAPI, result, cacheKey) {
+    this._log.debug('[PUT] with', payloads.length, 'payloads');
+    function onData(call, promiseAPI, result, storageKey) {
         /*jshint validthis: true*/
-        result[cacheKey.getClientid()] = cacheKey;
+        result[storageKey.getClientid()] = storageKey;
     }
 
     function onEnd(call, promiseAPI, result) {
@@ -87,30 +87,28 @@ _p.put = function (payloads) {
         // everything else is bad.
         // if onError is triggered, this will not be triggered anymore.
         if (status.code !== grpc.status.OK) {
-            this._logging.warning('cache [PUT] on:status', status);
+            this._log.warning('[PUT] on:status', status);
             promiseAPI.reject(status);
         }
     }
 
     function onError(call, promiseAPI, error) {
         /*jshint validthis: true*/
-        this._logging.error('cache [PUT] on:error', error);
+        this._log.error('[PUT] on:error', error);
         promiseAPI.reject(error);
         call.end();
     }
 
-
-
     function sendMessage(call, result, payload, index) {
         /*jshint validthis: true*/
         var any = this._any.pack(payload)
-          , cacheItem = new CacheItem()
+          , storageItem = new StorageItem()
           , clientid = '' + index // must be a string for message
           ;
-        cacheItem.setPayload(any);
-        cacheItem.setClientid(clientid);
+        storageItem.setPayload(any);
+        storageItem.setClientid(clientid);
         result[clientid] = false;
-        call.write(cacheItem);
+        call.write(storageItem);
     }
 
     return new Promise(function(resolve, reject) {
@@ -132,17 +130,17 @@ _p.put = function (payloads) {
     }.bind(this));
 };
 
-_p.get = function(cacheKey) {
+_p.get = function(storageKey) {
     var func = this._client.get.bind(this._client);
-    return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline})
-           .then(any=>this.any.unpack(any))
+    return nodeCallback2Promise(func, storageKey, {deadline: this.deadline})
+           .then(any=>this._any.unpack(any))
            .then(null, error=>this._raiseUnhandledError(error))
            ;
 };
 
-_p.purge = function(cacheKey) {
+_p.purge = function(storageKey) {
     var func = this._client.purge.bind(this._client);
-    return nodeCallback2Promise(func, cacheKey, {deadline: this.deadline})
+    return nodeCallback2Promise(func, storageKey, {deadline: this.deadline})
                     .then(null, error=>this._raiseUnhandledError(error))
                     ;
 };
@@ -157,7 +155,7 @@ _p.waitForReady = function() {
     }.bind(this));
 };
 
-exports.CacheClient = CacheClient;
+exports.StorageClient = StorageClient;
 
 /*
  * Run in one shell the server:
@@ -168,39 +166,53 @@ exports.CacheClient = CacheClient;
  * and in another shell the client:
  * $ FONTBAKERY_LOG_LEVEL=DEBUG
  * $ export FONTBAKERY_LOG_LEVEL
- * $ node node/utile/CacheClient.js
+ * $ node node/util/StorageClient.js
  *
  * This client command implementation is just to play around/for quick
  * testing.
  */
 if (typeof require != 'undefined' && require.main==module) {
     var { logging } = require('./getSetup').getSetup()
-      , client = new CacheClient(logging, 'localhost', 50051
+      , client = new StorageClient(logging, 'localhost', 50051
                             , messages_pb, 'fontbakery.dashboard')
       , messages = []
       ;
      for(let i=0;i<10;i++) {
-       let file = new File()
-         , files = new Files()
-         ;
-       file.setName('Hello_' + i +'.ttf');
-       file.setData(new Uint8Array(Buffer.from('My Data ' + i + ' äöÄ€»«', 'utf8')));
-       files.addFiles(file);
-       messages.push(files);
+        let files = new Files();
+        for(let char of ['A', 'B']) {
+            let file = new File();
+            file.setName('Hello_' + i +'_'+ char +'.ttf');
+            file.setData(new Uint8Array(Buffer.from('My Data '+ i +'_'+char+' äöÄ€»«', 'utf8')));
+            files.addFiles(file);
+        }
+        messages.push(files);
      }
 
      client.put(messages)
-         //.then(function(cacheKeys) {
-         //    return Promise.all(cacheKeys.map(client.purge, client));
+         //.then(function(storageKeys) {
+         //    return Promise.all(storageKeys.map(client.purge, client));
          //})
          //.then(function(responses) {
          //    return responses.map(response => response.toObject());
          //})
-         .then(function(cacheKeys) {
-             return Promise.all(cacheKeys.map(client.get, client));
+         .then(function(storageKeys) {
+             return Promise.all([
+                    storageKeys
+                  , Promise.all(storageKeys.map(key=>client.get(key)))
+            ]);
          })
-         .then(function(messages) {
-             return messages.map(message => message.getFilesList().map(file => file.toObject()));
+         .then(function([storageKeys, messages]) {
+            return Promise.all([
+                messages.map(message => message.getFilesList()
+                            .map(filesList => filesList.toObject()))
+                            .reduce((reducer, filesList)=>{
+                                reducer.push(...filesList);
+                                return reducer;
+                            }, [])
+              , Promise.all(storageKeys.map(key=>{
+                    key.setForce(true);
+                    return client.purge(key).then(message=>message.toObject());}))
+            ]);
          })
-         .then(console.log.bind(console, 'Success'), console.error.bind(console, 'Errrrrr'));
+         .then((...args)=>console.log('Success', args[0], args[1]), console.error.bind(console, 'Errrrrr'));
 }
