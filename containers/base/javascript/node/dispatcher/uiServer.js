@@ -4,6 +4,7 @@
 
 const { _BaseServer, RootService } = require('../_BaseServer')
   , { GithubOAuthService } = require('../apiServices/GithubOAuth')
+  , { StorageDownloadService } = require('../apiServices/StorageDownload')
   , {
         ProcessListQuery
       , ProcessQuery
@@ -107,7 +108,7 @@ uiApi.request(
  *
  *
  * This Server is for testing in Development, it's not the production
- * tool!
+ * tool! And it documents the dependencies.
  */
 const Server = (function() {
 
@@ -116,6 +117,8 @@ function Server(...args) {
         ['/', RootService, ['server', '*app', 'log']]
       , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth']]
       , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log', 'ghauth']]
+      , ['/download', StorageDownloadService, ['server', '*app', 'log'
+                            , {/*cache: 'cache',*/ persistence: 'persistence'}]]
     ];
     _BaseServer.call(this, ...args);
 }
@@ -962,5 +965,6 @@ if (typeof require != 'undefined' && require.main==module) {
     setup = Object.create(setup);
     setup.dispatcher = {host: '127.0.0.1', port: '1234'};
     setup.gitHubAuth={host: '127.0.0.1', port: '5678'};
+    setup.persistence={host: '127.0.0.1', port: '3456'};
     global.server = new Server(setup.logging, 3000, setup);
 }
