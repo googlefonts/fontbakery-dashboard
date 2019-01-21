@@ -391,7 +391,8 @@ _p._get = function(key, instanceKey) {
     return this._has(key, instanceKey)
     .then(has=>{
         if(!has) {
-            var err = new Error('Can\'t find key ' + key +  ':' + instanceKey + '.');
+            var err = new Error('Can\'t find key: ' + key
+                            + (instanceKey ? ':'+instanceKey : ''));
             err.name = 'NOT_FOUND';
             throw err;
         }
@@ -516,7 +517,8 @@ _p.has = function(key, instanceKey) {
 // replace the cache service completely.
 _p.get = function(key, instanceKey) {
     if(!this.has(key, instanceKey)){
-        var err = new Error('Can\'t find key ' + key +  ':' + instanceKey + '.');
+        var err = new Error('Can\'t find key: ' + key
+                            + (instanceKey ? ':'+instanceKey : ''));
         err.name = 'NOT_FOUND';
         throw err;
     }
@@ -592,21 +594,24 @@ _p._hash = function(data) {
  * properly formated key!
  */
 _p._checkKey = function(key) {
+    var message = null;
     if(typeof key !== 'string')
-        throw new Error('Key data type string expected but got "'
-            + (typeof key) +'".');
+        message = 'Key data type string expected but got "'
+                                       + (typeof key) +'".';
     // for file system paths we may split this key multiple times,
     // this is to make sure it's the expected length.
     // the min-length must be checked where its expected.
-    if(key.length !== this._keyLength)
+    else if(key.length !== this._keyLength)
         //depends on hashing function and digest type
         // sha265 + hexadecimal === 64 chars (32 bit)
-        throw new Error('Key is expected to have a length of '
-            + this._keyLength + ' but is actually ' + key.length + ' long');
+        message = 'Key is expected to have a length of '
+            + this._keyLength + ' but is actually ' + key.length + ' long';
     // this is important  for e.g. file system path, don't want to have
     // special path chars like '/' injected
-    if(!key.match(/^[a-f0-9]+$/))
-      throw new Error('Key must consist of only a-f and 0-9 hexadecimal chars.');
+    else if(!key.match(/^[a-f0-9]+$/))
+       message = 'Key must consist of only a-f and 0-9 hexadecimal chars.';
+
+    return [!message, message];
 };
 
 _p.put = function(call) {
@@ -681,6 +686,8 @@ _p.get = function(call, callback) {
             // This is either a problem with the client implementation
             // or the cache was down and lost it's internal state.
             // state is not persistent yet
+            if(!('code' in error) && error.name in grpc.status)
+                error.code = grpc.status[error.name];
             this._log.error('[GET]', error);
             callback(error, null);
         }
@@ -696,7 +703,14 @@ _p.get = function(call, callback) {
     //     this._purge(key, null, true);
     //     item = undefined;
     // }
-    this._checkKey(key);
+    let [valid, message] = this._checkKey(key);
+    if(!valid) {
+        console.error('!!!!!message', message);
+        let error = new Error(message);
+        error.name = 'NOT_FOUND';
+        onError(error);
+        return;
+    }
     try {
         // does I/O
         // -> a google.protobuf.Any or a promise
@@ -731,10 +745,17 @@ _p.purge = function(call, callback) {
             // or the cache was down and lost it's internal state.
             // state is not persistent yet
             this._log.error('[Purge]', error);
+            if(!('code' in error) && error.name in grpc.status)
+                error.code = grpc.status[error.name];
             callback(error, null);
         }
       ;
-    this._checkKey(key);
+    let [valid, ] = this._checkKey(key);
+    if(!valid) {
+        // i.e. NOT_FOUND
+        onPurge(0);
+        return;
+    }
     try {
         // -> an interger number of still available instances or a promise
         purgeResult = this._data.delete(key, instanceKey, force);

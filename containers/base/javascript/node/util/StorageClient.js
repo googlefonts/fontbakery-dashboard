@@ -173,7 +173,7 @@ exports.StorageClient = StorageClient;
  */
 if (typeof require != 'undefined' && require.main==module) {
     var { logging } = require('./getSetup').getSetup()
-      , client = new StorageClient(logging, 'localhost', 50051
+      , client = new StorageClient(logging, 'localhost', 3456
                             , messages_pb, 'fontbakery.dashboard')
       , messages = []
       ;
@@ -181,7 +181,7 @@ if (typeof require != 'undefined' && require.main==module) {
         let files = new Files();
         for(let char of ['A', 'B']) {
             let file = new File();
-            file.setName('Hello_' + i +'_'+ char +'.ttf');
+            file.setName('Hello_' + i +'_'+ char +'.txt');
             file.setData(new Uint8Array(Buffer.from('My Data '+ i +'_'+char+' äöÄ€»«', 'utf8')));
             files.addFiles(file);
         }
@@ -201,18 +201,19 @@ if (typeof require != 'undefined' && require.main==module) {
                   , Promise.all(storageKeys.map(key=>client.get(key)))
             ]);
          })
-         .then(function([storageKeys, messages]) {
-            return Promise.all([
-                messages.map(message => message.getFilesList()
-                            .map(filesList => filesList.toObject()))
-                            .reduce((reducer, filesList)=>{
-                                reducer.push(...filesList);
-                                return reducer;
-                            }, [])
-              , Promise.all(storageKeys.map(key=>{
-                    key.setForce(true);
-                    return client.purge(key).then(message=>message.toObject());}))
-            ]);
-         })
-         .then((...args)=>console.log('Success', args[0], args[1]), console.error.bind(console, 'Errrrrr'));
+       .then(function([storageKeys, messages]) {
+          return Promise.all([
+              messages.map(message => message.getFilesList()
+                          .map(filesList => filesList.toObject()))
+                          .reduce((reducer, filesList)=>{
+                              reducer.push(...filesList);
+                              return reducer;
+                          }, [])
+            , Promise.all(storageKeys.map(key=>{
+                   //key.setForce(true);
+                   return client.purge(key).then(message=>message.toObject());
+              }))
+          ]);
+       })
+       .then((...args)=>console.log('Success', args[0], args[1]), console.error.bind(console, 'Errrrrr'));
 }
