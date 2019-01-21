@@ -28,7 +28,8 @@
     "rethinkdbdash": "^2.3.31",
     "socketio": "^1.0.0",
     "tmp": "0.0.33",
-    "uid-safe": "^2.1.5"
+    "uid-safe": "^2.1.5",
+    "yazl": "^2.5.1"
   },
   "devDependencies": {
     "grpc-tools": "^1.6.6"
