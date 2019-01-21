@@ -16,7 +16,7 @@ const _p = AsyncQueue.prototype;
 
 _p._tick = function() {
     if(!this._thread.length || this._current) {
-        if(!this._current)
+        if(!this._current && this._onRunEmpty)
             this._onRunEmpty();
         return;
     }
