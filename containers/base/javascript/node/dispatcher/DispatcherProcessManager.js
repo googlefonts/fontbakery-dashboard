@@ -6,12 +6,15 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
   , { FamilyPRDispatcherProcess } = require('./FamilyPRDispatcherProcess')
   , { DispatcherProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
   , { ManifestClient } = require('../util/ManifestClient')
+  , { StorageClient } = require('../util/StorageClient')
   , {
         ProcessList
       , ProcessListItem
       , DispatcherInitProcess
       , ManifestSourceId
       , FamilyRequest
+      , File
+      , Files
     } = require('protocolbuffers/messages_pb')
   ;
 
@@ -29,6 +32,14 @@ function DispatcherProcessManager(setup, ...args) {
                           , setup.manifestSpreadsheet.host
                           , setup.manifestSpreadsheet.port);
     this._asyncDependencies.push([this._manifestSpreadsheetClient, 'waitForReady']);
+
+    this._persistenceClient = new StorageClient(
+                              setup.logging
+                            , setup.persistence.host
+                            , setup.persistence.port
+                            , {File, Files}
+                            , 'fontbakery.dashboard');
+    this._asyncDependencies.push([this._persistenceClient, 'waitForReady']);
 
     Object.defineProperties(this._processResources, {
         // I prefer not to inject the this._manifestSpreadsheetClient
@@ -51,8 +62,13 @@ function DispatcherProcessManager(setup, ...args) {
                 // returns a promise for FamilyData
                 return this._manifestSpreadsheetClient.get(familyRequestMessage);
             }
+        }
+      , storeMessage: {
+            value: (message)=>this._persistenceClient.put([message])
+                                  .then(storageKeys=>storageKeys[0])
 
         }
+
     });
 }
 
@@ -174,6 +190,7 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.db.rethink.port = '32769';
     setup.amqp = null;
     setup.manifestSpreadsheet={host: '127.0.0.1', port: '9012'};
+    setup.persistence={host: '127.0.0.1', port: '3456'};
 
     processManager = new DispatcherProcessManager(
                                         setup

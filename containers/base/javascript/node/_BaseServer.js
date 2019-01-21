@@ -57,6 +57,14 @@ function _BaseServer(logging, portNum, setup) {
               , 'waitForReady'
             ]
         ]
+        , ['persistence', [
+                ()=>new StorageClient(
+                                this._log
+                              , setup.persistence.host, setup.persistence.port
+                              , messages_pb, 'fontbakery.dashboard')
+              , 'waitForReady'
+            ]
+        ]
       , ['reports', [()=>new ReportsClient(
                                 this._log, setup.reports.host
                               , setup.reports.port)
@@ -137,17 +145,41 @@ _p._getServiceDependency = function(appLocation, name) {
     return [this._resources.get(key), promise];
 };
 
+_p._getServiceDependencyObject = function(appLocation, object) {
+    var result = {}, promises = [];
+    for(let [k, name] of Object.entries(object)) {
+        let [dependency, promise] = this._getServiceDependency(appLocation, name);
+        result[k] = dependency;
+        if(promise)
+            promises.push(promise);
+    }
+    return [result, promises];
+};
+
 _p._initService = function(appLocation, Constructor, dependencies) {
     this._log.info('Initializing service', Constructor.name, 'at', appLocation);
     var service
       , promises = []
       , args = []
       ;
-    for(let name of dependencies) {
-        let [dependency, promise] = this._getServiceDependency(appLocation, name);
+    for(let item of dependencies) {
+        let itemPromises = [], dependency;
+        if(typeof item === 'string') {
+            let name = item, promise;
+            [dependency, promise] = this._getServiceDependency(appLocation, name);
+            if(promise)
+                itemPromises.push(promise);
+        }
+        else if(typeof item === 'object')
+            // This is to enable optional arguments, that are loaded via
+            // an object argument, e.g. item can be:
+            // {cache: 'cache', persistence: 'persistence'}
+            [dependency, itemPromises] = this._getServiceDependencyObject(appLocation, item)
+        else
+            throw new Error('Don\'t know hoe to handle dependency: '
+                                +'('+typeof item+') ' + item.toString());
+        promises.push(...itemPromises);
         args.push(dependency);
-        if(promise)
-            promises.push(promise);
     }
     service = new Constructor(...args);
     return [service, promises];
