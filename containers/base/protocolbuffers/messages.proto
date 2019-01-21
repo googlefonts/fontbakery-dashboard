@@ -36,6 +36,9 @@ service Storage {
 // The request message containing the user's name.
 message StorageItem {
   google.protobuf.Any payload = 1;
+  // this will be set in the response StorageKey of [PUT]
+  // so the client of the streaming interface can  match it's
+  // request to the responses
   string clientid = 2;
 }
 
