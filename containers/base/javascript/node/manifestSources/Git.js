@@ -678,6 +678,10 @@ _p._queryPullRequestsData = function() {
 };
 
 
+/**
+ * usage:
+ * return this._getCommitResources(reference.owner(), reference.target())
+ */
 _p._getCommitResources = function(repo, commitOid) {
     var result = {
         commit: null
