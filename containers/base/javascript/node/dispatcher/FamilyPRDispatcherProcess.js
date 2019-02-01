@@ -198,7 +198,10 @@ _p._runFamilyJob = function(familyJob) {
     });
 };
 
-_p.callbackFontBakeryFinished = function(requester, fontbakeryResultMessage) {
+
+_p.callbackFontBakeryFinished = function([requester, sessionID]
+                        , fontbakeryResultMessage, ...continuationArgs) {
+    // jshint unused:vars
     // hmm, can get the result also from the DB?
     // the reportID must be the same as the one we received in _runFamilyJob
     // otherwise, this task may have been re-activated and we're looking at
@@ -232,7 +235,9 @@ _p.callbackFontBakeryFinished = function(requester, fontbakeryResultMessage) {
     this._setExpectedAnswer('Finalize UI', 'callbackFinalize', 'uiFinalize');
 };
 
-_p.callbackFinalize = function(requester, finalizeMessage) {
+_p.callbackFinalize = function([requester, sessionID]
+                            , finalizeMessage, ...continuationArgs ) {
+    // jshint unused:vars
     if(!this._hasPrivateData('fontbakeryResultMessage')) {
         // The UI should not allow this callback to be made, but in
         // race condition cases like updates or such we may receive it.
@@ -447,7 +452,9 @@ _p.uiApproveProcess = function() {
     };
 };
 
-_p.callbackApproveProcess = function(requester, values) {
+_p.callbackApproveProcess = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     var {action} = values;
 
     if(action === 'accept' ) {
@@ -498,7 +505,9 @@ _p.uiEditInitialState = function() {
     return result;
 };
 
-_p.callbackEditInitialState = function(requester, values) {
+_p.callbackEditInitialState = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     values.action = 'new';
     values.note = this.process._state.note;
     // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
@@ -544,7 +553,9 @@ _p.uiSignOffSpreadsheet = function() {
     };
 };
 
-_p.callbackSignOffSpreadsheet = function(requester, values) {
+_p.callbackSignOffSpreadsheet = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     if(values.accept === true) {
         this._setOK('**' + requester + '** confirms spreadsheet entry.');
         TODO('callbackSignOffSpreadsheet: eventually we want to put this info into a database that we manage ourselves.');
@@ -673,7 +684,9 @@ _p.uiCheckFamilyFilesPackage = function() {
     };
 };
 
-_p.callbackCheckFamilyFilesPackage = function(requester, values) {
+_p.callbackCheckFamilyFilesPackage = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     if(values.accept === true) {
         this._setOK('**' + requester + '** confirms the family package.');
     }
@@ -726,7 +739,9 @@ _p.uiConfirmFontbakery = function() {
     };
 };
 
-_p.callbackConfirmFontbakery = function(requester, values) {
+_p.callbackConfirmFontbakery = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     if(values.notes)
         this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
     if(values.accept === true) {
@@ -769,7 +784,9 @@ _p.uiConfirmDiffenator = function() {
     };
 };
 
-_p.callbackConfirmDiffenator = function(requester, values) {
+_p.callbackConfirmDiffenator = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     if(values.notes)
         this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
     if(values.accept === true) {
@@ -812,7 +829,9 @@ _p.uiConfirmGFregressions = function() {
     };
 };
 
-_p.callbackConfirmGFregressions = function(requester, values) {
+_p.callbackConfirmGFregressions = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     if(values.notes)
         this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
     if(values.accept === true) {
@@ -920,7 +939,9 @@ _p.uiFailTask = function() {
     };
 };
 
-_p.callbackFailTask = function(requester, values) {
+_p.callbackFailTask = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
     if(values.notes)
         this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
 

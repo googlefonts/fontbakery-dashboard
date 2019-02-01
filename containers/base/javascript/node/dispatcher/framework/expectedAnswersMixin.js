@@ -19,7 +19,8 @@ function expectedAnswersMixin(_p) {
     _p._validateExpectedAnswer = function(expectedAnswer) {
         if(expectedAnswer === null)
             return [true, null];
-        var [callbackName, ticket, requestedUserInteractionName] = expectedAnswer;
+        var [callbackName, ticket, requestedUserInteractionName
+                                 /*, continuationArgs */] = expectedAnswer;
 
         if(!this._hasCallbackMethod(callbackName))
             return [false, 'Callback "' + callbackName + '" is not defined.'];
@@ -40,6 +41,7 @@ function expectedAnswersMixin(_p) {
         expectedAnswer: {
             init: ()=>null//empty
           , serialize: state=>state
+            // FIXME: nice: deepFreeze(continuationArgs)
           , load: state=>state
           , validate: _p._validateExpectedAnswer
         }
@@ -138,14 +140,23 @@ function expectedAnswersMixin(_p) {
      * We may change this if there's a good use case.
      *
      * This needs to be put into _state, so we can serialize it!
+     *
+     *  continuationArgs:
+     *     This can store stuff that is only relevant to continue
+     *     the task from where the answer was expected. It can contain
+     *     more sensible information, as the generic process state, as
+     *     it is not send to the user; "expectedAnswer" keys
+     *     are filtered before the user can see them.
      */
     _p.__setExpectedAnswer = function(waitingFor
                                    , callbackName
                                    , requestedUserInteractionName
+                                   , ...continuationArgs
                                    ) {
         var ticket = this._getTicket(callbackName)
           , expectedAnswer = [callbackName, ticket
-                                    , requestedUserInteractionName || null]
+                                    , requestedUserInteractionName || null
+                                    , continuationArgs]
           , [result, message] = this._validateExpectedAnswer(expectedAnswer)
           ;
         if(!result)
@@ -170,6 +181,11 @@ function expectedAnswersMixin(_p) {
                         && this._state.expectedAnswer[0] === callbackName
                         && this._state.expectedAnswer[1] === ticket
                         ;
+    };
+
+    _p._getContinuationArgs = function() {
+            // FIXME: would be nice to have the contents deep frozen
+        return this._state.expectedAnswer[3] || [];
     };
 
     _p._hasRequestedUserInteraction = function() {
@@ -229,6 +245,8 @@ function expectedAnswersMixin(_p) {
           , payload
           , callbackMethod
           , expected = this._isExpectedAnswer(callbackName, ticket)
+          , requester
+          , continuationArgs
           ;
 
         if(!expected)
@@ -247,14 +265,19 @@ function expectedAnswersMixin(_p) {
             throw new Error('No payload in commandMessage');
 
         callbackMethod = this._getCallbackMethod(callbackName);
-
+        continuationArgs = this._getContinuationArgs();
         this.log.debug('TODO we need to establish a back channel here, '
             + 'that goes directly to the user interacting, if present! ...');
         // Everything else will be communicated via the changes-feed of
         // the process. Back channel likely means there's an answer message
         // for the execute function.
         this._unsetExpectedAnswer();
-        return this._runStateChangingMethod(callbackMethod, callbackName, commandMessage.getRequester(), payload);
+        requester = [commandMessage.getRequester()
+                   , commandMessage.getSessionId() || null];
+        return this._runStateChangingMethod(callbackMethod, callbackName
+                                , requester
+                                , payload
+                                , ...continuationArgs);
     };
 }
 exports.mixin = expectedAnswersMixin;

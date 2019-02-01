@@ -195,7 +195,7 @@ _p.uiHandleFailedStep = function(){
     };
 };
 
-_p.callbackHandleFailedStep = function(requester, values) {
+_p.callbackHandleFailedStep = function([requester, sessionID], values, ...continuationArgs) {
     var { reason } = values;
     this._finishedFAILED('Failing with reason: ' + reason);
 };

@@ -617,6 +617,19 @@ _p._execute = function(socket, sessionId, commandData, answerCallback) {
         processCommand.setTargetPath(commandData.targetPath);
         processCommand.setCallbackName(commandData.callbackName);
         processCommand.setRequester(userName);
+        // the user could send the command and immediately log out
+        // ... if we, while processing look up the session id, it may
+        // already be invalid! could be a feature, like an "emergency logout"
+        // move by the user (unlikely) or a bug ...
+        // I prefer it this way, as it's more "realtime", we create less
+        // possible cache-echoing effects  through the system (cached in
+        // message transport in this case). The Process will likely have
+        // to extract the GitHub OAuthToken from the session and keep that
+        // for a bit longer! So, when at that point the sessoion is still
+        // valid, we expect to be granted to use the token for the
+        // upcoming github operation. The sessionId should be expected to
+        // be used ASAP, if it is used at all.
+        processCommand.setSessionId(sessionId);
         //processCommand.setPbPayload(anyPayload) // new Any
         processCommand.setJsonPayload(JSON.stringify(commandData.payload));
         return processCommand;

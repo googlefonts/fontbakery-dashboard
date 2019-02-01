@@ -251,7 +251,8 @@ _p.activate = function() {
     return this._runStateChangingMethod(this._reActivate, 'activate');
 };
 
-_p.callbackReActivate = function(requester, data) {
+_p.callbackReActivate = function([requester, sessionID]
+                                            , data, ...continuationArgs) {
     //jshint unused:vars
     // This is executed from within _runStateChangingMethod via execute...
     // validate data ??? what data do we expect here, seems to me that
@@ -269,13 +270,18 @@ _p.callbackReActivate = function(requester, data) {
 _p._setExpectedAnswer = function(waitingFor
                                , callbackName
                                , requestedUserInteractionName
-                               , setPending /*optional, default: true*/) {
+                               , setPending /*optional, default: true*/
+                               , ...continuationArgs) {
     if(setPending === undefined || setPending)
         // in _failedAction we explicitly don't want to set PENDING
         // and instead keep the FAILED status. reActivate will set PENDING
         // when callbackReActivate is executed via uiRetry
-        this._setPENDING('Waiting for ' + waitingFor);
-    return this.__setExpectedAnswer(waitingFor, callbackName, requestedUserInteractionName);
+        this._setPENDING('Waiting for ' + (requestedUserInteractionName
+                    ? 'user interaction'
+                    : 'external resource'
+                    ) + ' '+ waitingFor);
+    return this.__setExpectedAnswer(waitingFor, callbackName
+                        , requestedUserInteractionName, continuationArgs);
 };
 
 function renderErrorAsMarkdown(message, error){
