@@ -53,6 +53,10 @@ function getSetup() {
             host: process.env.FONTBAKERY_DISPATCHER_HOST
           , port: process.env.FONTBAKERY_DISPATCHER_PORT
         }
+      , gitHubPRSetup = {
+            host: process.env.FONTBAKERY_GITHUBPR_SERVICE_HOST
+          , port: process.env.FONTBAKERY_GITHUBPR_SERVICE_PORT
+        }
       , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
       , develFamilyWhitelist = null
       ;
@@ -84,6 +88,7 @@ function getSetup() {
       , persistence: persistenceSetup
       , reports: reportsSetup
       , dispatcher: dispatcherSetup
+      , gitHubPR: gitHubPRSetup
       , logging: logging
       , develFamilyWhitelist: develFamilyWhitelist
     };
