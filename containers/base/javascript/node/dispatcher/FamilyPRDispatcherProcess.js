@@ -5,7 +5,10 @@ const { Process:Parent } = require('./framework/Process')
     , { Step } = require('./framework/Step')
     , { Task, finishingStatuses } = require('./framework/Task')
     , { string2statusCode, FAIL, OK } = require('./framework/Status')
-    , { FamilyRequest } = require('protocolbuffers/messages_pb')
+    , { FamilyRequest
+      , PullRequest
+      , ProcessCommand
+      , DispatchReport } = require('protocolbuffers/messages_pb')
     , {mixin: stateManagerMixin} = require('./framework/stateManagerMixin')
     ;
 
@@ -62,12 +65,12 @@ function stepFactory(name, tasks) {
     return makeClass(name, Parent.prototype, StepConstructor);
 }
 
-function taskFactory(name) {
+function taskFactory(name, anySetup) {
     const Parent = Task;
     // this injects Parent
     // also, this is like the actual constructor implementation.
     function TaskConstructor (step, state) {
-        Parent.call(this, step, state);
+        Parent.call(this, step, state, anySetup);
     }
     return makeClass(name, Parent.prototype, TaskConstructor);
 }
@@ -581,7 +584,7 @@ const ApproveProcessStep = stepFactory('ApproveProcessStep', {
 
 
 // * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
-const GetFilesPackageTask = (function(){
+const GetFilesPackageTask = (function() {
 const GetFilesPackageTask = taskFactory('GetFilesPackageTask');
 const _p = GetFilesPackageTask.prototype;
 
@@ -589,8 +592,16 @@ const _p = GetFilesPackageTask.prototype;
  * Expected by Parent.
  */
 _p._activate = function() {
+    FIXME('This can timeout if the google/fonts repo is not fetched yet!'
+          ,'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
+          , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
+          // NOW we can respond via amqp execute from getUpstreamFamilyFiles!
     return this.resources.getUpstreamFamilyFiles(this.process.familyName)
-    .then(familyDataMessage => {
+    .then(familyDataMessage=>Promise.all([
+              this.resources.storeMessage(familyDataMessage.getFiles()) // -> storageKey
+            , familyDataMessage
+    ]))
+    .then(([storageKey, familyDataMessage])=> {
         /*
         message FamilyData {
             string collectionid = 1; // the name that identifies the collection
@@ -618,7 +629,21 @@ _p._activate = function() {
 
         var filteredMetadataKeys = new Set(['familyTree'])
           , familyDataSummaryMarkdown = ['## Files Package for *'
-                                      + this.process.familyName+'*'];
+                                      + this.process.familyName+'*']
+          , metadata = JSON.parse(familyDataMessage.getMetadata())
+          , filesStorageKey = storageKey.getKey()
+          , zipDownloadLink = '/download/persistence/'+filesStorageKey+'.zip'
+          , familyDirName = this.process.familyName.toLowerCase().replace(/ /g, '')
+          ;
+
+
+        // this are the most important lines here.
+        this.process._state.filesStorageKey = filesStorageKey;
+        this.process._state.targetDirectory = metadata.isUpdate
+                            ? metadata.googleMasterDir
+                            : metadata.licenseDir + '/' + familyDirName
+                            ;
+        this.process._state.isUpdate = metadata.isUpdate;
 
         familyDataSummaryMarkdown.push(
             '### Files'
@@ -629,10 +654,11 @@ _p._activate = function() {
                                    ].join(' ')
                     ).join('\n')
           , '\n'
-          , '[TODO: zip file download](https://example.com)'
+            // hard coded url :-/
+          , '[zip file download]('+zipDownloadLink+')'
           , '\n'
           , '### Metadata'
-          , Object.entries(JSON.parse(familyDataMessage.getMetadata()))
+          , Object.entries(metadata)
                 .filter(([key, ])=>!filteredMetadataKeys.has(key))
                 .map(([key, value])=>{
                     if(typeof value === 'string')
@@ -647,8 +673,6 @@ _p._activate = function() {
         );
         this._setLOG(familyDataSummaryMarkdown.join('\n'));
 
-        TODO('For debugging: A logged download link for the file data would be awesome!');
-        TODO('Put package into storage: a git based google/fonts branch!');
         // hmm I **REALLY** need a solid solution of where to put the files!
         // should be probably/ideally directly in a branch of a fork of the
         // google/fonts repo (service with a get method again...)
@@ -853,46 +877,134 @@ const QAToolsStep = stepFactory('QAToolsStep', {
 });
 
 
-const SignOffAndDispatchTaskDummy = (function(){
-const SignOffAndDispatchTask = taskFactory('SignOffAndDispatchTask');
+const SignOffAndDispatchTask = (function() {
+
+var anySetup = {
+    knownTypes: { DispatchReport }
+  , typesNamespace: 'fontbakery.dashboard'
+};
+const SignOffAndDispatchTask = taskFactory('SignOffAndDispatchTask', anySetup);
 const _p = SignOffAndDispatchTask.prototype;
 
+
 _p._activate = function() {
-    this._setExpectedAnswer('Confirm Process'
-                                  , 'callbackConfirmGFregressions'
-                                  , 'uiConfirmGFregressions');
+    this._setExpectedAnswer('Confirm Dispatch'
+                                  , 'callbackConfirmDispatch'
+                                  , 'uiConfirmDispatch');
 };
 
-_p.uiConfirmGFregressions = function() {
+_p.uiConfirmDispatch = function() {
     return {
         roles: ['engineer']
       , ui: [
-            {
-                type: 'info'
-              , content: 'Dispatch Process Now?'
+            {   name: 'action'
+              , type:'choice'
+              , label: 'Pick one:'
+              , options: [
+                    ['Create Pull Request now.', 'accept']
+                  , ['Dismiss and fail.', 'dismiss']
+
+              ]
+              //, default: 'accepted' // 0 => the first item is the default
             }
-          , {   name: 'accept'
-              , type:'binary'
-              , label: 'The Process looks good!'
-            }
-          , {   name: 'notes'
-              , type: 'text' // input type:text
-              , label: 'Notes'
+          , {   name: 'reason'
+              , condition: ['action', 'dismiss']
+              , type: 'line' // input type:text
+              , label: 'Why do you dismiss this process request?'
             }
         ]
     };
 };
 
-_p.callbackConfirmGFregressions = function(requester, values) {
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
-    if(values.accept === true) {
-        this._setLOG('**' + requester + '** Process looks good!');
-        this._setLOG('...making the Pull Request');
-        this._setOK('PR at [google/fonts #123Dummy](https://github.com/google/fonts/pulls)');
+// make the PR:
+//   * fetch current upstream master
+//   * checkout --branch {branchName}
+//   * get {package} for {cacheKey}
+//   * replace {gfontsDirectory} with the contents of {package}
+//   * git commit -m {commitMessage}
+//   * git push {remote ???}
+//   * gitHub PR remote/branchname -> upstream {commitMessage}
+_p.callbackConfirmDispatch = function([requester, sessionID]
+                                        , values , ...continuationArgs) {
+    // jshint unused:vars
+    // This must be a user interaction callback because that
+    // way we get a current sessionID, needed by GitHubPRServer
+    // to get the GitHub-oAuthToken of the user.
+    var {action} = values
+      , pullRequest, processCommand
+      , callbackName, ticket
+      ;
+    if(action === 'dismiss' ) {
+        this._setFAILED('**' + requester + '** decided to FAIL this process '
+                     + 'request with reason:\n' + values.reason);
+        return;
+    }
+    else if(action !== 'accept' )
+        throw new Error('Pick one of the actions from the list.');
+
+    this._setLOG('**' + requester +'** dispatches this process.');
+
+    pullRequest = new PullRequest();
+    pullRequest.setSessionId(sessionID);
+    pullRequest.setStorageKey(this.process._state.filesStorageKey);
+    pullRequest.setTargetDirectory(this.process._state.targetDirectory);
+
+    // something standard
+    pullRequest.setPRMessageTitle('[Font Bakery Dashboard] '
+                        + (this.process._state.isUpdate ? 'update' : 'create')
+                        + ' family: ' + this.process.familyName);
+    // full of information stored in state!
+    // must contain the link to the process page!
+    // some QA details, as much as possible probably, but the full
+    // reports will be at the process page as well.
+    var prMessageBody = 'TODO! *PR message body*';
+    pullRequest.setPRMessageBody(prMessageBody);
+
+    pullRequest.setCommitMessage('[Font Bakery Dashboard] '
+                        + (this.process._state.isUpdate ? 'update' : 'create')
+                        + ': ' + this.process._state.targetDirectory);
+    pullRequest.setResponseQueueName(this.resources.executeQueueName);
+
+    [callbackName, ticket] = this._setExpectedAnswer(
+                                    'Pull Request Result'
+                                  , 'callbackDispatched'
+                                  , null);
+    processCommand = new ProcessCommand();
+    processCommand.setTargetPath(this.path.toString());
+    processCommand.setTicket(ticket);
+    processCommand.setCallbackName(callbackName);
+    pullRequest.setProcessCommand(processCommand);
+
+    this.resources.dispatchPR(pullRequest)// -> Promise.resolve(new Empty())
+        .then(null, error=>{
+            this.log.error('Can\'t dispatch Pull Request', error);
+            // There's no return from this, maybe the user can retry the task.
+            this._setFAILED('Can\'t dispatch Pull Request: ' + error);
+        });
+};
+
+_p.callbackDispatched = function([requester, sessionID]
+                                , dispatchReport /* a DispatchReport */
+                                , ...continuationArgs) {
+    // jshint unused:vars
+    var status = dispatchReport.getStatus()
+      , statusOK = status === DispatchReport.Result.OK
+      , branchUrl = dispatchReport.getBranchUrl()
+      , prUrl = statusOK  ? dispatchReport.getPRUrl() : null
+      , error = !statusOK ? dispatchReport.getError() : null
+      ;
+
+    if(statusOK) {
+        this._setOK(' * [GitHub PR](' + prUrl + ')\n'
+                  + ' * [GitHub branch page](' + branchUrl + ')');
+
     }
     else
-        this._setFAILED('**' + requester + '** can\'t confirm Process.');
+        // assert dispatchReport.getStatus() === DispatchReport.Result.FAIL
+        this._setFAILED('**' + requester + '** can\'t dispatch Pull Request.'
+                    + '\n\n **ERROR** ' + error
+                    + '\n\n[designated GitHub branch page]('+branchUrl+')'
+                    );
 };
 
 return SignOffAndDispatchTask;
@@ -900,7 +1012,7 @@ return SignOffAndDispatchTask;
 
 
 const SignOffAndDispatchStep = stepFactory('SignOffAndDispatchStep', {
-    SignOffAndDispatch: SignOffAndDispatchTaskDummy
+    SignOffAndDispatch: SignOffAndDispatchTask
 });
 
 
@@ -913,7 +1025,7 @@ const SignOffAndDispatchStep = stepFactory('SignOffAndDispatchStep', {
  * Create an issue somewhere on GitHub.
  */
 
-const FailTask = (function(){
+const FailTask = (function() {
 const FailTask = taskFactory('FailTask');
 const _p = FailTask.prototype;
 
@@ -997,7 +1109,7 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
     this._state.initType = initType;
     this._state.familyName = familyName;
     this._state.requester = requester;
-    this._state.repoNameWithOwner = repoNameWithOwner;
+    this._state.repoNameWithOwner = repoNameWithOwner || null;
     this._state.genre = genre;
     this._state.fontfilesPrefix = fontfilesPrefix;
     this._state.note = note;
@@ -1327,6 +1439,12 @@ function callbackPreInit(resources, requester, values) {
 FamilyPRDispatcherProcess.uiPreInit = uiPreInit;
 FamilyPRDispatcherProcess.callbackPreInit = callbackPreInit;
 
+const _genericStateItem = {
+    init: ()=>null
+  , load: val=>val
+  , serialize: val=>val
+};
+Object.freeze(_genericStateItem);
 
 stateManagerMixin(_p, {
     /**
@@ -1355,51 +1473,27 @@ stateManagerMixin(_p, {
      * Could implement a specific ProcessManager, it's probably the most
      * straight forward.
      */
-    familyName: {
-        init: ()=>null
-      , load: val=>val
-      , serialize: val=>val
-    }
+    familyName: _genericStateItem
     /**
      * For authorization purposes, maybe just the requester ID/handle,
      * (a string) so that we can get the roles of the requester
      * from the DB.
      */
-  , requester: {
-        init: ()=>null
-      , load: val=>val
-      , serialize: val=>val
-    }
+  , requester: _genericStateItem
     /**
      * We need this to determine the roles of a authenticated (GitHub)
      * user. Users having WRITE or ADMIN permissions for the repo have
      * the role "input-provider".
      */
-  , repoNameWithOwner: {
-        init: ()=>null
-      , load: val=>val
-      , serialize: val=>val
-    }
-  , initType: {
-        init: ()=>null
-      , load: val=>val
-      , serialize: val=>val
-    }
-  , genre: {
-        init: ()=>null
-      , load: val=>val
-      , serialize: val=>val
-    }
-  , fontfilesPrefix: {
-        init: ()=>null
-      , load: val=>val
-      , serialize: val=>val
-    }
-  , note: {
-        init: ()=>null
-      , load: val=>val
-      , serialize: val=>val
-    }
+  , repoNameWithOwner: _genericStateItem
+  , initType: _genericStateItem
+  , genre: _genericStateItem
+  , fontfilesPrefix: _genericStateItem
+  , note: _genericStateItem
+  , filesStorageKey: _genericStateItem
+  , targetDirectory: _genericStateItem
+  // if the familydir (targetDirectory) was found in google/fonts:master
+  , isUpdate: _genericStateItem
 });
 
 Object.defineProperties(_p, {
