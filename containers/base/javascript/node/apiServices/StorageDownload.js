@@ -4,7 +4,7 @@
 
 const yazl = require('yazl')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , {StorageKey, File, Files} = messages_pb
+  , {StorageKey, File, Files, FamilyData} = messages_pb
   , { status: grpcStatus } = require('grpc')
   ;
 
@@ -37,7 +37,7 @@ function _parseKeyExt(keyExt){
 
 
 function getZipableTypeName(message) {
-    var zippableTypes = { file: File, files: Files };
+    var zippableTypes = { file: File, files: Files , familyData: FamilyData};
     return getTypeName(zippableTypes, message);
 }
 function getTypeName(knownTypes, message) {
@@ -58,7 +58,9 @@ function _zipAndSendMessage(res, message, filename) {
       , files
       ;
 
-    if(message instanceof Files)
+    if(message instanceof FamilyData)
+        files = message.getFiles().getFilesList();
+    else if(message instanceof Files)
         files = message.getFilesList();
     else
         // getName and getData_asU8 are expected
