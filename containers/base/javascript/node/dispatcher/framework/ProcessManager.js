@@ -6,7 +6,7 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
   , grpc = require('grpc')
   , { ProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
 //  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
-  , { ProcessState, ProcessCommandResult } = require('protocolbuffers/messages_pb')
+  , { ProcessState, ProcessCommandResult, ProcessCommand } = require('protocolbuffers/messages_pb')
   , { GenericProcess } = require('./GenericProcess')
   , { IOOperations } = require('../../util/IOOperations')
   , { ProtobufAnyHandler } = require('../../util/ProtobufAnyHandler')
@@ -22,6 +22,7 @@ const { AsyncQueue } = require('../../util/AsyncQueue')
 function ProcessManager(setup, port, secret, anySetup, ProcessConstructor) {
     this._log = setup.logging;
     this._io = new IOOperations(setup.logging, setup.db, setup.amqp);
+    this._executeQueueName = null;
     this._processResources = Object.create(null);
     this._processSubscriptions = new Map();
     this._activeProcesses = new Map();
@@ -273,6 +274,14 @@ _p.serve = function() {
     // Start serving when the database etc. is ready
     return Promise.all(this._asyncDependencies.map(
             ([service, method])=>service[method]()))
+    .then(()=>{
+        if(this._io.hasAmqp && this._executeQueueName) {
+            // amqp is configured and this._executeQueueName is set up
+            this._log.info('Listening to the execute queue: ', this._executeQueueName);
+            return this._listenExecuteQueue(this._executeQueueName);
+        }
+        this._log.info('Not Listening to the execute queue.');
+    })
     .then(()=>this._server.start());
 };
 
@@ -373,15 +382,39 @@ _p.initProcess = function(call, callback) {
  *          // the message is just something like: "resource ready now".
  *          throw new Error('No Payload');
  */
+
 _p.execute = function(call, callback) {
     var commandMessage = call.request;
+    return this._execute(commandMessage, 'grpc')
+    .then(result=>{
+        var message = new ProcessCommandResult();
+        message.setResult(result.status);
+        message.setMessage(result.message);
+        callback(null, message);
+    });
+};
+
+_p._consumeExecuteQueue = function(amqpMessage) {
+    var arr = new Uint8Array(Buffer.from(amqpMessage.content))
+     , commandMessage = ProcessCommand.deserializeBinary(arr)
+     ;
+    this._io.ackQueueMessage(amqpMessage);
+    return this._execute(commandMessage, 'amqp');
+};
+
+_p._listenExecuteQueue = function(executeQueueName) {
+    return this._io.queueListen(executeQueueName
+                                    , this._consumeExecuteQueue.bind(this));
+};
+
+_p._execute = function(commandMessage, _via) {
     // aside from the managennet,, queueing etc.
     // it's probably the task of each element in the process hierarchy
     // to check whether the command is applicable or not.
     // so this command trickles down and is checked by each item on it's
     // way …
     var targetPath = Path.fromString(commandMessage.getTargetPath());
-    this._log.debug('PM.execute at targetPath:', targetPath);
+    this._log.debug('PM._execute at targetPath:', targetPath, 'via', _via);
     return this._getProcess(targetPath.processId)// => {process, queue}
         .then(({process, queue})=>{
             // Do we need a gate keeper? Are we allowed to perform an action on target?
@@ -424,39 +457,43 @@ _p.execute = function(call, callback) {
                 })
                 ;
         })
-        // this is *a stub* of the back channel
+        // normalizing the return value
         .then(
             result=>[result, null]
             // if this is a serious problem, we should log it
-            // ot take care that it has been logged already
+            // or take care that it has been logged already
           , error=>[null, error]
         )
         .then(([result, error])=>{
-            var message = new ProcessCommandResult();
-            if(!error) {
-                let status, messageStr;
-                if(typeof result === 'object' && 'status' in result) {
-                    if(result.status in ProcessCommandResult.Result)
-                        status = ProcessCommandResult.Result[result.status];
-                    else {
-                        this._log.warning('Result object produced unknown status'
-                           , '"'+result.status+'"', 'at targetPath:', targetPath + '.');
-                        status = ProcessCommandResult.Result.OK;
-                    }
-                    messageStr = result.message;
-                }
-                else
-                    status = ProcessCommandResult.Result.OK;
-
-                message.setResult(status);
-                message.setMessage(messageStr || 'Looks good.');
-            }
-            else {
+            var status, messageStr;
+            if(error) {
                 this._log.error('PM.execute', error, error.message);
-                message.setResult(ProcessCommandResult.Result.FAIL);
-                message.setMessage(error.message);
+                return {
+                    status: ProcessCommandResult.Result.FAIL
+                  , message: error.message
+                  // original item, only for debugging
+                  , _error: error
+                };
             }
-            callback(null, message);
+            if(typeof result === 'object' && 'status' in result) {
+                if(result.status in ProcessCommandResult.Result)
+                    status = ProcessCommandResult.Result[result.status];
+                else {
+                    this._log.warning('Result object produced unknown status'
+                       , '"'+result.status+'"', 'at targetPath:', targetPath + '.');
+                    status = ProcessCommandResult.Result.OK;
+                }
+                messageStr = result.message;
+            }
+            else
+                status = ProcessCommandResult.Result.OK;
+
+            return {
+                status: status
+              , message: messageStr || 'Looks good.'
+              // original item, only for debugging
+              , _result: result
+            };
         });
 };
 

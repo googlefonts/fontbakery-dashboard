@@ -25,6 +25,7 @@ function DispatcherProcessManager(setup, ...args) {
     };
     args.push(anySetup, FamilyPRDispatcherProcess);
     Parent.call(this, setup, ...args);
+    this._executeQueueName = 'fontbakery-dispatcher-process-manager-execute';
     this._server.addService(DispatcherProcessManagerService, this);
 
     this._manifestSpreadsheetClient = new ManifestClient(
@@ -68,7 +69,9 @@ function DispatcherProcessManager(setup, ...args) {
                                   .then(storageKeys=>storageKeys[0])
 
         }
-
+      , executeQueueName: {
+            value: this._executeQueueName
+        }
     });
 }
 
