@@ -74,6 +74,11 @@ Object.defineProperties(_p, {
             return this._amqp;
         }
     }
+  , hasAmqp: {
+        get: function() {
+            return !!this._amqp;
+        }
+    }
 
 });
 
@@ -180,7 +185,7 @@ _p.sendQueueMessage = function (queueName, message) {
         ;
     function sendMessage() {
         // jshint validthis:true
-        this._log.info('sendToQueue: ', queueName);
+        // this._log.info('sendToQueue: ', queueName);
         return this.amqp.channel.sendToQueue(queueName, message, options);
     }
     return this.amqp.channel.assertQueue(queueName, {durable: true})
