@@ -86,6 +86,13 @@ _p.getRoles = function(authorizedRolesRequest){
     .then(null, error=>this._raiseUnhandledError(error));
 };
 
+_p.getOAuthToken = function(sessionId){
+    return nodeCallback2Promise((callback)=>
+        this._client.getOAuthToken(sessionId, {deadline: this.deadline}, callback))
+    .then(null, error=>this._raiseUnhandledError(error));
+};
+
+
 _p.waitForReady = function() {
     return nodeCallback2Promise((callback)=>
                     this._client.waitForReady(this.deadline, callback))

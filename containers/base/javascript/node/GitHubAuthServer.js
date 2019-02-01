@@ -7,15 +7,10 @@ const grpc = require('grpc')
   , { URL } = require('url')
   , querystring = require('querystring')
   , { AuthServiceService: AuthService } = require('protocolbuffers/messages_grpc_pb')
-  , { AuthStatus, SessionId, AuthorizedRoles } = require('protocolbuffers/messages_pb')
+  , { AuthStatus, SessionId, AuthorizedRoles, OAuthToken} = require('protocolbuffers/messages_pb')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , uid = require('uid-safe')
   ;
-
-//TODO: proper via setup/injection
-const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID
-    , GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET
-    ;
 
 const GITHUB_API_HOST = 'api.github.com'
     , GITHUB_API_GRAPHQL_PATH = '/graphql'
@@ -37,14 +32,10 @@ const PENDING = Symbol('pending session');
  * https://developer.github.com/v3/guides/basics-of-authentication/
  * Flask example: https://gist.github.com/ib-lundgren/6507798
  */
-function GitHubAuthServer(logging, port) {
+function GitHubAuthServer(logging, port, ghOAuth) {
     this._log = logging;
 
-    // TODO: inject
-    this._ghOAuth = {
-        clientId: GITHUB_OAUTH_CLIENT_ID
-      , clientSecret: GITHUB_OAUTH_CLIENT_SECRET
-    };
+    this._ghOAuth = ghOAuth;
 
     this._sessions = new Map();
     this._users = new Map();
@@ -238,7 +229,6 @@ _p._newSession = function() {
         // used for timeouts/garbage collection
         , accessed: new Date()
     };
-
     session[PENDING] = null; // set in authorize
 
     // create sessionId and authorizeState, one that are hard to guess
@@ -281,8 +271,8 @@ _p.initSession = function(call, callback) {
         url = new URL('https://github.com/login/oauth/authorize');
         url.searchParams.set('client_id', this._ghOAuth.clientId);
         url.searchParams.set('state', session.authorizeState);
-        // no scopes needed yet...
-        //.searchParams.set('scope', ...);
+
+        url.searchParams.set('scope', 'user:email public_repo');
         // this parameter might become interesting at some point
         // the caller (rpc caller) would in this case have to
         // .searchParams.set('redirect_uri', ...);
@@ -498,6 +488,25 @@ _p.checkSession = function(call, callback) {
         _setAuthStatusOK(authStatus, sessionId, session);
     }
     callback(null, authStatus);
+};
+
+
+_p.getOAuthToken = function(call, callback) {
+    var sessionId = call.request.getSessionId();
+    this._getSessionData(sessionId)
+    .then(([session, authStatus])=>{
+        if(!session) {
+            // => empty Roles message
+            callback(new Error('No Session for ID: '+ authStatus.getMessage()));
+            return;
+        }
+        var oAuthToken = new OAuthToken();
+        oAuthToken.setUserName(session.user.login);
+        oAuthToken.setAccessToken(session.accessToken.access_token);
+        oAuthToken.setType(session.accessToken.token_type); // 'bearer'
+        oAuthToken.setScope(session.accessToken.scope); // 'user:email'
+        callback(null, oAuthToken);
+    });
 };
 
 /**
@@ -738,6 +747,34 @@ _p._getRepositoryPermission = function (session, repoNameWithOwner) {
         ;
 };
 
+/**
+ * returns [null, authStatus] or [session, null]
+ * Returns session only if it is fully ready to use and has a user
+ * and authToken. Otherwise returns authstatus with a message.
+ */
+_p._getSessionData = function(sessionId) {
+    return this._checkSession(sessionId)
+    .then(authStatus=>{
+        // session could be reset even if AuthStatus.StatusCode.OK
+        // this is a small race condition, hence we check here both
+        // AuthStatus.StatusCode.OK and if there's *still* a session
+        var [ session
+            , sessionStatus
+            , sessionMessage] = this._getSession(sessionId)
+        ;
+        if(!session && authStatus.getStatus() === AuthStatus.StatusCode.OK) {
+            // this is the race condition
+            authStatus = new AuthStatus();
+            authStatus.setStatus(sessionStatus);
+            authStatus.setMessage(sessionMessage);
+            return [null, authStatus];
+        }
+        if(!session || authStatus.getStatus() !== AuthStatus.StatusCode.OK)
+            return [null, authStatus];
+        else
+            return [session, null];
+    });
+};
 
 // getRoles :: AuthorizedRolesRequest -> AuthorizedRoles
 _p.getRoles = function(call, callback) {
@@ -747,15 +784,9 @@ _p.getRoles = function(call, callback) {
       , promise
       ;
 
-    this._checkSession(sessionId)
-    .then(authStatus=>{
-        // session could be reset even if AuthStatus.StatusCode.OK
-        // this is a small race condition, hence we check here both
-        // AuthStatus.StatusCode.OK and if there's *still* a session
-        var session = this._sessions.get(sessionId)
-          , hasAuth = session && authStatus.getStatus() === AuthStatus.StatusCode.OK
-        ;
-        if(!hasAuth) {
+    this._getSessionData(sessionId)
+    .then(([session, ])=>{
+        if(!session){
             // => empty Roles message
             callback(null,  new AuthorizedRoles());
             return;
@@ -790,10 +821,9 @@ _p.getRoles = function(call, callback) {
             var rolesMessage = new AuthorizedRoles();
             for(let role of roles)
                 rolesMessage.addRoles(role);
-            rolesMessage.setUserName(authStatus.getUserName());
+            rolesMessage.setUserName(session.user.login);
             callback(null, rolesMessage);
         });
-
     })
     .then(null, error=>callback(error));
 };
@@ -809,8 +839,19 @@ _p.serve = function() {
 module.exports.GitHubAuthServer = GitHubAuthServer;
 
 if (typeof require != 'undefined' && require.main==module) {
+
+    //TODO: proper via setup/injection
+    const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID
+        , GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET
+        ;
+
     var { getSetup } = require('./util/getSetup')
-      , setup = getSetup(), gitHubAuthServer, port=50051;
+      , setup = getSetup(), gitHubAuthServer, port=50051
+      , ghOAuth = {
+            clientId: GITHUB_OAUTH_CLIENT_ID
+          , clientSecret: GITHUB_OAUTH_CLIENT_SECRET
+        }
+    ;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
         if(process.argv[i] === '-p' && i+1<l) {
@@ -822,6 +863,6 @@ if (typeof require != 'undefined' && require.main==module) {
     }
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    gitHubAuthServer = new GitHubAuthServer(setup.logging, port);
+    gitHubAuthServer = new GitHubAuthServer(setup.logging, port, ghOAuth);
     gitHubAuthServer.serve();
 }
