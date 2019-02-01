@@ -7,6 +7,7 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
   , { DispatcherProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
   , { ManifestClient } = require('../util/ManifestClient')
   , { StorageClient } = require('../util/StorageClient')
+  , { PullRequestDispatcherClient } = require('../util/PullRequestDispatcherClient')
   , {
         ProcessList
       , ProcessListItem
@@ -42,6 +43,13 @@ function DispatcherProcessManager(setup, ...args) {
                             , 'fontbakery.dashboard');
     this._asyncDependencies.push([this._persistenceClient, 'waitForReady']);
 
+    this._gitHubPRClient = new PullRequestDispatcherClient(
+                              setup.logging
+                            , setup.gitHubPR.host
+                            , setup.gitHubPR.port
+                            );
+    this._asyncDependencies.push([this._gitHubPRClient, 'waitForReady']);
+
     Object.defineProperties(this._processResources, {
         // I prefer not to inject the this._manifestSpreadsheetClient
         // directly, but instead provide simplified interfaces.
@@ -55,7 +63,7 @@ function DispatcherProcessManager(setup, ...args) {
             }
         }
       , getUpstreamFamilyFiles: {
-            value: (familyName)=>{
+            value: familyName=>{
                 // rpc Get (FamilyRequest) returns (FamilyData){}
                 var familyRequestMessage = new FamilyRequest();
                 familyRequestMessage.setSourceId('upstream');
@@ -65,12 +73,15 @@ function DispatcherProcessManager(setup, ...args) {
             }
         }
       , storeMessage: {
-            value: (message)=>this._persistenceClient.put([message])
+            value: message=>this._persistenceClient.put([message])
                                   .then(storageKeys=>storageKeys[0])
-
         }
       , executeQueueName: {
             value: this._executeQueueName
+        }
+      , dispatchPR: {
+                   // -> Promise.resolve(new Empty())
+            value: pullRequestMessage=>this._gitHubPRClient.dispatch(pullRequestMessage)
         }
     });
 }
@@ -191,9 +202,11 @@ if (typeof require != 'undefined' && require.main==module) {
     // FIXME: temporary local setup overrides.
     setup.db.rethink.host = '127.0.0.1';
     setup.db.rethink.port = '32769';
-    setup.amqp = null;
+
+
     setup.manifestSpreadsheet={host: '127.0.0.1', port: '9012'};
     setup.persistence={host: '127.0.0.1', port: '3456'};
+    setup.gitHubPR={host: '127.0.0.1', port: '7890'};
 
     processManager = new DispatcherProcessManager(
                                         setup
