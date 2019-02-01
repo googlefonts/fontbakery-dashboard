@@ -8,36 +8,36 @@ const grpc = require('grpc')
   , querystring = require('querystring')
   , { AsyncQueue } = require('./util/AsyncQueue')
   , NodeGit = require('nodegit')
-    //TODO
-  //, { PullRequestService } = require('protocolbuffers/messages_grpc_pb')
-  //, { AuthStatus, SessionId, AuthorizedRoles } = require('protocolbuffers/messages_pb')
-  //, { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
+  , { PullRequestDispatcherService } = require('protocolbuffers/messages_grpc_pb')
+  , { StorageKey, SessionId, DispatchReport, Files} = require('protocolbuffers/messages_pb')
+  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
+  , { ProtobufAnyHandler } = require('./util/ProtobufAnyHandler')
+  , { StorageClient }  = require('./util/StorageClient')
+  , { GitHubAuthClient } = require('./util/GitHubAuthClient')
+  , { IOOperations } = require('./util/IOOperations')
   ;
-
-//TODO: proper via setup/injection
-const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID
-    , GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET
-    ;
 
 const GITHUB_API_HOST = 'api.github.com'
     , GITHUB_API_GRAPHQL_PATH = '/graphql'
     , GITHUB_HTTPS_GIT_URL = 'https://github.com/{remoteName}.git'
+    , GITHUB_BRANCH_URL = 'https://github.com/{remoteName}/tree/{branchName}'
     ;
-
-
 
 function GitHubRef(repoOwner, repoName, name) {
     this.repoOwner = repoOwner;
     this.repoName = repoName;
-    this.name = name;
+    this.branchName = name;
     // e.g. "google/fonts"
     this.remoteName = [this.repoOwner, this.repoName].join('/');
-    this.remoteUrl = GITHUB_HTTPS_GIT_URL.replace('{remoteName}', this.remoteName);
-
+    this.remoteUrl = GITHUB_HTTPS_GIT_URL
+                            .replace('{remoteName}', this.remoteName);
+    this.branchUrl = GITHUB_BRANCH_URL
+                            .replace('{remoteName}', this.remoteName)
+                            .replace('{branchName}', this.branchName)
+                            ;
+    this.prHead = this.repoOwner + ':' + this.branchName;
     Object.freeze(this);
 }
-
-const upstreamMaster = new GitHubRef('google', 'fonts', 'master');
 
 /**
  * This Server proivdes the grpc AuthService plus some special GitHub
@@ -53,24 +53,42 @@ const upstreamMaster = new GitHubRef('google', 'fonts', 'master');
  * https://developer.github.com/v3/guides/basics-of-authentication/
  * Flask example: https://gist.github.com/ib-lundgren/6507798
  */
-function GitHubPRServer(logging, port, repoPath) {
+function GitHubPRServer(logging, port, setup, repoPath, ghOAuth
+                    , upstreamBranch, ghPushSetup, prTarget) {
     this._log = logging;
     this._repoPath = repoPath;
     this._queue = new AsyncQueue();
+    this._any = new ProtobufAnyHandler(this._log, {DispatchReport:DispatchReport}
+                                     , 'fontbakery.dashboard');
+    this._ghOAuth = ghOAuth;
 
-    // FIXME: inject???
-    // this._ghOAuth = {
-    //     clientId: GITHUB_OAUTH_CLIENT_ID
-    //   , clientSecret: GITHUB_OAUTH_CLIENT_SECRET
-    // };
-    //
-    // this._server = new grpc.Server({
-    //     'grpc.max_send_message_length': 80 * 1024 * 1024
-    //   , 'grpc.max_receive_message_length': 80 * 1024 * 1024
-    // });
-    //
-    // this._server.addService(PullRequestService, this);
-    // this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
+    this._ghPushSetup = ghPushSetup;
+
+    this._upstreamBranch = upstreamBranch;
+    // prTarget is where we want to pull our changes into.
+    // If prTarget is not configured, we use this._upstream
+    // this is a convention over configuration case.
+    this._prTarget = prTarget || this._upstreamBranch;
+
+    this._io = new IOOperations(setup.logging, null /* setup.db */, setup.amqp);
+
+    this._auth = new GitHubAuthClient(
+                                this._log
+                              , setup.gitHubAuth.host
+                              , setup.gitHubAuth.port);
+    this._storage = new StorageClient(
+                                this._log
+                              , setup.persistence.host
+                              , setup.persistence.port
+                              , { Files }, 'fontbakery.dashboard');
+
+    this._server = new grpc.Server({
+        'grpc.max_send_message_length': 80 * 1024 * 1024
+      , 'grpc.max_receive_message_length': 80 * 1024 * 1024
+    });
+
+    this._server.addService(PullRequestDispatcherService, this);
+    this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 }
 
 var _p = GitHubPRServer.prototype;
@@ -92,7 +110,7 @@ _p._sendRequest = function(url, options, bodyData) {
           // , port: 443 // 443 is the default for https
           , headers: {
                 'Accept': 'application/json'
-              , 'User-Agent': 'Font Bakery: GitHub OAuth Client'
+              , 'User-Agent': 'Font Bakery: GitHub Pull Request Client'
               // For graphQL, do stuff like this:
               // , 'Content-Type': 'application/json'
               // , 'Content-Length': body.length
@@ -120,14 +138,52 @@ _p._sendRequest = function(url, options, bodyData) {
 
     function onResult(resolve, reject, res) {
         //jshint validthis:true
-        var data = [ ];
+        var data = [ ]
+          , successfulCodes = new Set([
+                // adding to these as needed
+                200 // OK
+              , 201 // CREATED (creating PRs)
+          ])
+          ;
         res.setEncoding('utf8');
         res.on('data', chunk=>data.push(chunk));
-        res.on('end', function() {
+        res.on('end', ()=>{
             try {
                 let json = JSON.parse(data.join(''));
-                if(res.statusCode !== 200) {
-                    let error = Error('('+res.statusCode+') ' + json.message);
+                if(!successfulCodes.has(res.statusCode)) {
+                    var errorMessages = '';
+                    if(json && json.errors && json.errors.length) {
+                        // This can actually be really helpful information:
+                        // {
+                        //     message: 'Validation Failed',
+                        //     errors:[
+                        //         { resource: 'PullRequest',
+                        //             code: 'custom',
+                        //             message: 'A pull request already exists for graphicore:fontbakery-test_01.'
+                        //         }
+                        //     ],
+                        //     documentation_url: 'https://developer.github.com/v3/pulls/#create-a-pull-request'
+                        // }
+                        errorMessages = ' Errors: \n' + json.errors
+                            .map(err=>' * ['+err.code+'] '
+                                      + err.resource
+                                      +': ' + (err.message || err.field)
+                            ).join('\n');
+                    }
+
+                    let error = new Error('('+res.statusCode+') ' + json.message
+                                    + ' [' + options_.method + ' url: '+ url +']'
+                                    + errorMessages);
+                    this._log.debug(
+                                 'HTTP', options_.method+ ':', res.statusCode
+                                , 'url:', url
+                                  // rate limit response headers may
+                                  // become a thing:
+                                  //   'x-ratelimit-limit': '5000',
+                                  //   'x-ratelimit-remaining': '4997',
+                                  //   'x-ratelimit-reset': '1548269436',
+                                , 'headers:', res.headers
+                                , 'json:', json);
                     error.code = res.statusCode;
                     error.isHTTPError = true;
                     throw error;
@@ -142,7 +198,8 @@ _p._sendRequest = function(url, options, bodyData) {
     }
 
     return new Promise((resolve, reject) => {
-        var req = https.request(options_, result=>onResult.call(this, resolve, reject, result));
+        var req = https.request(options_, result=>onResult.call(this
+                                            , resolve, reject, result));
         req.on('error', reject);
         if (body)
             req.write(body);
@@ -163,8 +220,6 @@ _p._sendGitHubGraphQLRequest = function(accessToken, query) {
         }
     }, query);
 };
-
-
 
 /**
  * $ git init
@@ -192,12 +247,16 @@ _p._initRepository = function() {
  * $ git remote -v
  */
 _p._initUpstream = function() {
-    return gitRemoteGetAdd(this._repo, 'upstream', upstreamMaster.remoteUrl);
+    return gitRemoteGetAdd(this._repo, 'upstream', this._upstreamBranch.remoteUrl);
 };
 
-_p._fetchRef = function(remoteName, remoteUrl, referenceName) {
-    return this._queue.schedule(() => fetchRef(this._log, this._repo
-                                , remoteName, remoteUrl, referenceName));
+_p._fetchRef = function(noQueue, remoteName, remoteUrl, referenceName) {
+    var func = () => fetchRef(this._log, this._repo
+                                , remoteName, remoteUrl, referenceName);
+    if(noQueue)
+        return func();
+    else
+        return this._queue.schedule(func);
 };
 
 
@@ -206,34 +265,85 @@ _p._fetchRef = function(remoteName, remoteUrl, referenceName) {
  *
  * this will run frequently before creating a new branch
  */
-_p._fetchUpstreamMaster = function() {
-    return this._fetchRef('upstream', upstreamMaster.remoteUrl, upstreamMaster.name); // -> ref
+_p._fetchUpstreamMaster = function(noQueue) {
+    return this._fetchRef(noQueue
+                        , 'upstream', this._upstreamBranch.remoteUrl
+                        , this._upstreamBranch.branchName); // -> ref
 };
 
 _p._branch = function(branchName, reference, force) {
     // https://www.nodegit.org/api/branch/#create
-
     // name: (String) Branch name, e.g. “master”
     // commit: (Commit, String, Oid) The commit the branch will point to
     // force: (bool) Overwrite branch if it exists
+    this._log.debug('_branch:', branchName);
     return getCommitFromReference(reference)
         .then(commit=>this._repo.createBranch(branchName, commit, force));
         // -> branch reference!
 };
 
-_p._replaceDirCommit = function(ref, dir, files, commitMessage) {
+/**
+ *
+ */
+_p._replaceDirCommit = function(authorSignature, localBranchName, headCommitReference
+                                    , dir, pbFilesMessage, commitMessage) {
     // jshint unused:vars
     // clear dir
     // put files into dir
     // commit -m commitMessage
     // return commitRef;
+
+    // Some examples of needed APIs
+    // demonstrating how to use "nodegit" to modify and read from a local bare git repo
+    // https://gist.github.com/getify/f5b111381413f9d9f4b2571c7d5822ce
+    //
+    // nodegit/test/tests/treebuilder.js
+    // https://github.com/nodegit/nodegit/blob/8306c939888954cc447adeb3a834952125085c35/test/tests/treebuilder.js
+    //
+    // commit example
+    // https://gist.github.com/yofreke/9379d1156fe6f5f0be73
+    this._log.debug('_replaceDirCommit:', dir);
+    return getCommitResources(headCommitReference)
+    .then(({reference, commit: headCommit, commitTree})=>{
+        var repo = reference.owner();
+
+        // put all files into the git object database
+        return Promise.all(pbFilesMessage.getFilesList().map(pbFile=>{
+            var filename = pbFile.getName()
+              , buffer = Buffer.from(pbFile.getData_asU8())
+              ;
+            return NodeGit.Blob.createFromBuffer(repo, buffer, buffer.length)
+                .then(oid=>[filename, oid, NodeGit.TreeEntry.FILEMODE.BLOB]);
+            }
+        )) // ->files
+        .then(entries=>insertOrReplaceDir(repo, commitTree, dir, entries))// -> oid
+        .then(newTreeOID=>{
+            return commitChanges(repo
+                               , authorSignature
+                               , localBranchName
+                               , newTreeOID
+                               , headCommit// HEAD
+                               , commitMessage);
+        })
+
+    });// -> returns new commit
+    // dumpCommitContents(newCommit);
 };
 
-_p._push = function() {
 
-};
-
-_p.gitHubPR = function() {
+_p._makeRemoteBranchName = function(targetDirectory) {
+    var date = new Date()
+      , zeroPadTwo = number=> ('00' + number).slice(-2)
+      ;
+    // -> Font_Bakery_Dispatcher_2019_01_25_ofl_myfont
+    // we could use the process id to make per process unique branches
+    // let's wait and see if that's needed.
+    return ['Font', 'Bakery', 'Dispatcher'
+            , date.getUTCFullYear()
+            , zeroPadTwo(date.getUTCMonth() + 1) /* month is zero based */
+            , zeroPadTwo(date.getUTCDate())
+            , ...targetDirectory.split('/')
+        ].join('_');
 
 };
 
@@ -249,24 +359,126 @@ _p.gitHubPR = function() {
  */
 _p.dispatch = function(call, callback) {
     // jshint unused:vars
-        // call.request is a DispatchRequest
-    // var dispatchRequest = call.request
-    //   , storageKey = dispatchRequest.getStorageKey()
-    //   , targetDirectory = dispatchRequest.getTargetDirectory()
-    //   // !!! must be unique, maybe create in here using family name and date
-    //   , branchName = dispatchRequest.getBranchName()
-    //   , prMessage =  dispatchRequest.getPRMessage()
-    //   , commitMessage = dispatchRequest.getCommitMessage()
-    //   ;
 
-    return this._fetchUpstreamMaster()// -> ref
-        .then((ref)=>this._branch(ref))
-        .then(()=>this._replaceDirCommit())
-        .then(()=>this._push())
-        .then(()=>this.gitHubPR())
-        .then(()=>{
-            // answer with branch URL and PR URL
+    this._log.debug('[gRPC:dispatch]');
+    callback(null, new Empty());
+    // This branch will be overridden by each call to dispatch
+    // hence, dispatch must not run async in multiple instances
+    // using AsyncQueue. Since writing to git can't happen in parallel
+    // as well, enforcing a concecutive order is necessary anyways.
+    var localBranchName = 'dispatch_branch'
+      // call.request is a protocolBuffer PullRequest
+      , pullRequest = call.request
+        // a protobuf SessionId message to get the github credentials
+        // from grpc GitHubAuthServer
+      , sessionId = pullRequest.getSessionId() // string
+      , storageKey = pullRequest.getStorageKey() // string
+      , targetDirectory = pullRequest.getTargetDirectory()
+      , targetBranchName = this._makeRemoteBranchName(targetDirectory)
+      , prMessageTitle =  pullRequest.getPRMessageTitle()
+      , prMessageBody =  pullRequest.getPRMessageBody()
+      , commitMessage = pullRequest.getCommitMessage()
+      , responseQueue = pullRequest.getResponseQueueName()
+      , processCommand = pullRequest.getProcessCommand()
+        // where the new branch is pushed to, to make the PR from
+        // hmm, we could use the github api to find the clone of
+        // the google/fonts repo of the user, but that way all PR-branches
+        // end up at different repositories, will be confusing...
+        // If we use a single repo, either each user needs write permissions,
+        // which is probably best, or we use a single token for all these
+        // operations, which is easiest and fastest.
+      , remoteRef = new GitHubRef(this._ghPushSetup.repoOwner
+                                , this._ghPushSetup.repoName
+                                , targetBranchName)
+        // must be allowed to push to remoteRef
+      , pushOAuthToken = this._ghPushSetup.accessToken
+      , prHead = remoteRef.prHead
+      , prTarget = this._prTarget
+      , report = new DispatchReport()
+      ;
+    // We know this already, even if we may fail to create it.
+    report.setBranchUrl(remoteRef.branchUrl);
+
+    var sessionIdMessage = new SessionId()
+      , storageKeyMessage = new StorageKey()
+      ;
+    sessionIdMessage.setSessionId(sessionId);
+    storageKeyMessage.setKey(storageKey);
+    Promise.all([
+        // collect more dependencies
+        //  -> a OAuthTokenMessage -> oAuthToken.getAccessToken()
+        this._auth.getOAuthToken(sessionIdMessage)
+      , this._storage.get(storageKeyMessage)
+    ]).then(([oAuthToken, pbFilesMessage])=>{
+        // the user will make the PR
+        var prOAuthToken = oAuthToken.getAccessToken()
+          , userName = oAuthToken.getUserName()
+          ;
+        return this._getAuthorSignature(userName, prOAuthToken)
+        .then(authorSignature=>{
+            // schedule the actual work!
+            this._log.info('this._queue.schedule _dispatch');
+            return this._queue.schedule(
+                this._dispatch.bind(this), authorSignature
+              , localBranchName, targetDirectory, pbFilesMessage, commitMessage
+              , remoteRef, pushOAuthToken, prMessageTitle, prMessageBody
+              , prHead, prTarget, prOAuthToken
+            );
         });
+    })
+    .then(result=>{
+        // PR URL
+        // console.log('PR result:', result) <- has lots! of info
+        report.setStatus(DispatchReport.Result.OK);
+        report.setPRUrl(result.html_url);
+        return report;
+    }, error=>{
+        this._log.error('In dispatch to:', targetDirectory
+                      , 'branch:', targetBranchName
+                      , error);
+        report.setStatus(DispatchReport.Result.FAIL);
+        report.setError('' + error);
+        return report;
+    })
+    .then(report=>this._sendDispatchResult(responseQueue
+                                         , processCommand
+                                         , report));
+};
+
+
+_p._sendDispatchResult = function(responseQueue, preparedProcessCommand
+                                        , report /* a DispatchReport */) {
+    var processCommand = preparedProcessCommand.cloneMessage()
+      , anyPayload = this._any.pack(report)
+      , buffer
+      ;
+    // expecting these to be already set
+    // processCommand.setTicket(ticket);
+    // processCommand.setTargetPath(targetPath);
+    // processCommand.setCallbackName(callbackName);
+    processCommand.setRequester('GitHub PR Server');
+    processCommand.setPbPayload(anyPayload);
+    buffer = new Buffer(processCommand.serializeBinary());
+    return this._io.sendQueueMessage(responseQueue, buffer);
+};
+
+/**
+ * wrap this into a this._queue.schedule!
+ */
+_p._dispatch = function(authorSignature, localBranchName, targetDirectory
+                      , pbFilesMessage, commitMessage, remoteRef
+                      , pushOAuthToken, prMessageTitle, prMessageBody
+                      , prHead, prTarget, prOAuthToken) {
+    this._log.debug('_dispatch:', targetDirectory);
+    return this._fetchUpstreamMaster(true)// -> ref
+    .then(reference=>this._branch(localBranchName, reference, true))
+    .then(headCommitReference=>this._replaceDirCommit(authorSignature
+                            ,localBranchName, headCommitReference
+                            , targetDirectory, pbFilesMessage, commitMessage))
+
+    .then(()=>this._push(localBranchName, remoteRef, pushOAuthToken, true))
+    .then(()=>this._gitHubPR(prMessageTitle, prMessageBody, prHead
+                                            , prTarget, prOAuthToken));
 };
 
 _p.serve = function() {
@@ -275,25 +487,66 @@ _p.serve = function() {
     return this._initRepository()
         .then(()=>this._initUpstream())
         .then(()=>this._fetchUpstreamMaster())
-        //.then(()=>this._server.start())
+        .then(()=>Promise.all([this._auth.waitForReady()
+                             , this._storage.waitForReady()
+                             , this._io.init()
+                             ]))
+        .then(()=>this._server.start())
         ;
 };
 
 
+
+/**
+ * https://developer.github.com/v3/users/emails/
+ * needs the `user:email` scope
+ * GET /user/emails
+ * returns:
+ *     [
+ *     {
+ *         "email": "octocat@github.com",
+ *         "verified": true,
+ *         "primary": true,
+ *         "visibility": "public"
+ *     }
+ *     ]
+ *
+ * pick the primary===true email
+ */
+const USER_EMAIL_QUERY =`
+query($login: String!) {
+  user(login: $login) {
+    email
+  }
+}
+`;
+_p._getAuthorSignature = function(userName, accessToken) {
+    var query = {
+            query: USER_EMAIL_QUERY
+          , variables: {
+                login: userName
+            }
+        };
+    return this._sendGitHubGraphQLRequest(accessToken, query)
+    .then(result=> {
+        var userPrimaryEmail = result.data.user.email;
+        return NodeGit.Signature.now(userName + ' via Font Bakery Dashboard'
+                                     , userPrimaryEmail);
+    });
+};
+
 // from https://gist.github.com/getify/f5b111381413f9d9f4b2571c7d5822ce
-function commitChanges(repo, branchName, treeOID, parentCommit, message) {
-    console.log('commitChanges treeOID:', treeOID);
-    var author = NodeGit.Signature.now("--Me--","--my@email.tld--");
+function commitChanges(repo, authorSignature, branchName, treeOID
+                     , parentCommit, message) {
     return repo.createCommit(
         'refs/heads/' + branchName,
-        author,
-        author,
+        authorSignature,
+        authorSignature,
         message,
         treeOID,
         [parentCommit]
     )
     .then(commit=>{
-        console.log('created Commit', commit);
         return repo.getCommit(commit);
     });
 }
@@ -304,9 +557,6 @@ function deepInsert(repo, tree, path, items/* [[oid, mode], ...] */) {
                         : path.slice() // defensive copy
       , promise
       ;
-
-    console.log('deepInsert has tree', !!tree, '| >>>>', dirName, '<<<< pathparts:', pathparts);
-
     if(dirName) {
         var treeEntry = null;
         try {
@@ -314,9 +564,6 @@ function deepInsert(repo, tree, path, items/* [[oid, mode], ...] */) {
         }
         // tree._entryByName(dirName) should return null if not found but seems broken
         catch(error){/*not found: pass*/}
-
-        console.log('treeEntry for dirName:', dirName, 'is Directory', treeEntry && treeEntry.isDirectory());
-
         promise = Promise.resolve(treeEntry && treeEntry.isDirectory()
                         ? treeEntry.getTree()
                         : null) // if it's a file it will be replaced!
@@ -333,7 +580,7 @@ function deepInsert(repo, tree, path, items/* [[oid, mode], ...] */) {
     ]).then(([treebuilder, items])=>{
         for(let item of items)
             treebuilder.insert(...item);
-        return treebuilder.write();// -> promise new tree oid
+        return treebuilder.write();// -> promise [newTreeOid]
     });
 }
 
@@ -345,6 +592,7 @@ function insertOrReplaceDir(repo, tree, path, items) {
     return NodeGit.Treebuilder.create(repo, null)
     .then(treebuilder=>{
         for(let item of items)
+            // item = [filename, oid, NodeGit.TreeEntry.FILEMODE.{BLOB|TREE}]
             treebuilder.insert(...item);
         return treebuilder.write();
     })
@@ -356,117 +604,153 @@ function insertOrReplaceDir(repo, tree, path, items) {
     );
 }
 
-
-_p.devMain = function(){
-    this._log.info('======> dev main running!');
-
-    var branchName = 'myDevTestingBranch';
-
-    return this._fetchUpstreamMaster()// -> ref
-    .then(reference=>this._branch(branchName, reference, true))
-    .then(reference=>{
-        // demonstrating how to use "nodegit" to modify and read from a local bare git repo
-        // https://gist.github.com/getify/f5b111381413f9d9f4b2571c7d5822ce
-        //
-        // nodegit/test/tests/treebuilder.js
-        // https://github.com/nodegit/nodegit/blob/8306c939888954cc447adeb3a834952125085c35/test/tests/treebuilder.js
-        //
-        // commit example
-        // https://gist.github.com/yofreke/9379d1156fe6f5f0be73
-
-        // _replaceDir
-        //
-        // ok so, for dev I'm going to replace the dir /tools/encodings
-        // with a dir that contains just one or two bullshit files
-        // using that dir, so I'm sure I can also delete sub-dirs ...
-
-        getCommitResources(reference)
-        .then(({reference, commit, commitTree})=>{
-            var repo = reference.owner()
-              , fileData = [
-                    ['greetingsA.txt', Buffer.from('Hello World')]
-                  , ['greetingsB.txt', Buffer.from('Hello Universe')]
-                ]
-              ;
-
-             return Promise.all(fileData.map(([filename, buffer])=>{
-                return NodeGit.Blob.createFromBuffer(repo, buffer, buffer.length)
-                    .then(oid=>[filename, oid, NodeGit.TreeEntry.FILEMODE.BLOB]);
+// push localBranchName -> to graphicore/googleFonts:fontbakery-test_01
+_p._push = function(localBranchName, remoteRef, oAuthToken, force) {
+    this._log.debug('_push:', remoteRef.remoteName, remoteRef.branchName);
+    return gitRemoteGetAdd(this._repo, 'staging', remoteRef.remoteUrl, true)
+    .then(remote => {
+        var fullLocalRef = 'refs/heads/' + localBranchName
+          , fullRemoteRef = 'refs/heads/' + remoteRef.branchName
+          // refspec for force pushing must include a + at the start.
+          , refSpec = (force ? '+' : '') + fullLocalRef + ':' + fullRemoteRef
+          , options = {
+                callbacks: {
+                    // Seems for mac there's is a problem where
+                    // libgit2 is unable to look up GitHub certificates
+                    // correctly, this is a bypass but not needed on Linux.
+                    // certificateCheck: ()=>1,
+                    credentials: ()=>NodeGit.Cred.userpassPlaintextNew(
+                                oAuthToken, "x-oauth-basic")
                 }
-            )) // ->files
-            .then(entries=>insertOrReplaceDir(repo, commitTree, 'tools/encodings', entries))// -> oid
-            .then(newTreeOID=>commitChanges(repo
-                                          , branchName
-                                          , newTreeOID
-                                          , commit// HEAD
-                                          , "Adding/updating files test"))
-            ;
-
-        })
-        .then(commit=>{
-            dumpCommitContents(commit);
-            var stagingRef = new GitHubRef('graphicore', 'googleFonts', 'fontbakery-test_01');
-            gitRemoteGetAdd(this._repo, 'staging', stagingRef.remoteUrl, true)
-            .then(remote => {
-                const GITHUB_API_TOKEN='';
-                var localRef = 'refs/heads/' + branchName
-                  , remoteRef = 'refs/heads/' + stagingRef.name
-                  , refSpec = localRef + ':' + remoteRef
-                  , options = {
-                        callbacks: {
-                            // Seems for mac there's is a problem where
-                            // libgit2 is unable to look up GitHub certificates
-                            // correctly, this is a bypass but not needed on Linux.
-                            // certificateCheck: ()=>1,
-                            credentials: ()=>NodeGit.Cred.userpassPlaintextNew(
-                                        GITHUB_API_TOKEN, "x-oauth-basic")
-                        }
-                    }
-                  ;
-                console.log('remote.push', refSpec);
-                return remote.push([refSpec], options);
-            });
-        })
-        .then(null, err=>console.error(err))
-        ;
-        // commit -> to graphicore/googleFonts:myDevTestingBranch
-    })
-    ;
+            }
+          ;
+        this._log.debug('remote.push', refSpec);
+        return remote.push([refSpec], options)
+        .then(result=>{
+            this._log.debug('_push DONE');
+            return result;// -> undefined
+        });
+    });
 };
 
+/**
+ * The GraphQL API for pull requests is still in preview.
+ * For the mutator see createPullRequest:
+ * https://developer.github.com/v4/mutation/createpullrequest/
+ *
+ * https://developer.github.com/v3/pulls/#create-a-pull-request
+ * POST /repos/:owner/:repo/pulls
+ * title: (string) Required. The title of the pull request.
+ * head: (string) Required. The name of the branch where your changes are
+ *                implemented. For cross-repository pull requests in the
+ *                same network, namespace head with a user like this:
+ *                username:branch.
+ * base: (string) Required. The name of the branch you want the changes
+ *                pulled into. This should be an existing branch on the
+ *                current repository. You cannot submit a pull request to
+ *                one repository that requests a merge to a base of another
+ *                repository.
+ * body: (string) The contents of the pull request.
+ * maintainer_can_modify: (boolean) Indicates whether maintainers can modify
+ *                the pull request.
+ *
+ * You can also create a Pull Request from an existing Issue by passing an
+ *                Issue number instead of title and body.
+ * (Could be a feature?  But seems a bit complicated for now.)
+ *
+ * issue: (integer)Required. The issue number in this repository to
+ *                turn into a Pull Request.
+ *
+ * Response:
+ *
+ * Status: 201 Created
+ * Location: https://api.github.com/repos/octocat/Hello-World/pulls/1347
+ *
+ * {
+ *   "url": "https://api.github.com/repos/octocat/Hello-World/pulls/1347",
+ *   "id": 1,
+ *   "node_id": "MDExOlB1bGxSZXF1ZXN0MQ==",
+ *   ...
+ *
+ * CAUTION: Rate limits could become an issue for PRs:
+ * https://developer.github.com/v3/#abuse-rate-limits
+ *
+ * handle this response:
+ * HTTP/1.1 403 Forbidden
+ * Content-Type: application/json; charset=utf-8
+ * Connection: close
+ * {
+ *   "message": "You have triggered an abuse detection mechanism and have
+ *               been temporarily blocked from content creation. Please
+ *               retry your request again later.",
+ *   "documentation_url": "https://developer.github.com/v3/#abuse-rate-limits"
+ * }
+ *
+ * If you hit a rate limit, it's expected that you back off from making
+ * requests and try again later when you're permitted to do so. Failure
+ * to do so may result in the banning of your app.
+ * You can always check your rate limit status at any time. Checking your
+ * rate limit incurs no cost against your rate limit.
+ *
+ * https://developer.github.com/v3/rate_limit/
+ *
+ * We're getting a HTTP 422 Validation Failed when the PR already
+ * exisits (base <- hewd combination), the JSON response is then:
+ *  {
+ *      message: 'Validation Failed',
+ *      errors:[
+ *          { resource: 'PullRequest',
+ *            code: 'custom',
+ *            message: 'A pull request already exists for graphicore:fontbakery-test_01.'
+ *          }
+ *      ],
+ *      documentation_url: 'https://developer.github.com/v3/pulls/#create-a-pull-request'
+ *  }
+ *
+ * https://developer.github.com/v3/#oauth2-token-sent-in-a-header
+ * curl -H "Authorization: token OAUTH-TOKEN" https://api.github.com
+ *
+ * as @graphicore work with this: GITHUB_API_TOKEN
+ * as the authenticated user:
+ * sessionData.accessToken.access_token === 'ABCDEFGH1234567890'
+ */
+_p._gitHubPR = function(title
+                      , body  /* markdown */
+                      , head  /* i.e. graphicore:fontbakery-test_01 */
+                      , prBase /* new GitHubRef('google', 'fonts', 'master') */
+                      , OAuthAccessToken
+                      ) {
 
-function getContents(entry) {
-    if(new Set(['ofl','apache', 'ufl']).has(entry.name()))
-        return Promise.resolve(['SKIP: ' +  entry.name()]);
-    if (entry.isFile())
-        return Promise.resolve(['FILE: ' +  entry.name()]);
-
-    if (!entry.isDirectory())
-        return Promise.resolve(['WTF: '+  entry.name()]);
-
-    return entry.getTree()
-                 .then(tree=>Promise.all(tree.entries().map(getContents)))
-                 .then(results=>results.reduce((r, lines)=>{r.push(...lines); return r;}, []))
-                 .then(lines=>[
-                    'DIRECTORY: ' +  entry.name()
-                    , ...lines.map(line=>'  ' + line)
-                 ])
-                 .then(null, err=>console.error(err));
-}
-
-function dumpCommitContents(commit) {
-    console.log('dumpCommitContents', commit);
-
-    commit.getTree().then(tree=> {
-        var treeEntries = tree.entries();
-        treeEntries.map(entry=>getContents(entry)
-               .then(lines=>console.log(lines.join('\n'))));
-    });
-}
-
-
-
-
+    this._log.debug('_gitHubPR:', head, '=>', prBase.remoteName, prBase.branchName);
+    var url = [
+                'https://'
+              , GITHUB_API_HOST
+              , '/repos'
+              , '/' + prBase.repoOwner
+              , '/' + prBase.repoName
+              , '/pulls'
+              ].join('')
+      ;
+    return this._sendRequest(
+        url
+      , {
+            method: 'POST' // implied by adding body data ...
+          , headers: {
+                'Content-Type': 'application/json'
+                // wondering when to use "bearer" vs. "token"
+                // but it seems like "bearer" is the standard and
+                // "token" is either github specific or an error in the docs
+                // both "bearer" and "token" seem to work!
+              , Authorization: 'bearer ' + OAuthAccessToken
+            }
+        }
+      , {   title: title
+          , body:  body
+          , head: head
+          , base: prBase.branchName
+        }
+    );
+};
 
 function gitInit(repoPath, isBare) {
     // doesn't fail if the repository exists already
@@ -588,9 +872,39 @@ function getCommitResources(reference) {
 module.exports.GitHubPRServer = GitHubPRServer;
 
 if (typeof require != 'undefined' && require.main==module) {
+
+        //TODO: proper via setup/injection
+    const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID
+        , GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET
+        ;
+
+    if(!process.env.GITHUB_API_TOKEN)
+        // see: Using Secrets as Environment Variables
+        // in:  https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables
+        // and: https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure
+        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=github-api-token=$GITHUB_API_TOKEN
+        throw new Error('MISSING: process.env.GITHUB_API_TOKEN');
+
+
     var { getSetup } = require('./util/getSetup')
       , repoPath = '/tmp/fontsgit'
-      , setup = getSetup(), gitHubPRServer, port=50051;
+      , setup = getSetup(), gitHubPRServer, port=50051
+      , ghOAuth = {
+            clientId: GITHUB_OAUTH_CLIENT_ID
+          , clientSecret: GITHUB_OAUTH_CLIENT_SECRET
+        }
+        // all PRs are based on this branch
+      , upstream = new GitHubRef('google', 'fonts', 'master')
+        // if not defined falls back to upstream
+        // but this is for development, to not disturb
+        // the production people
+      , prTarget = new GitHubRef('graphicore', 'googleFonts', 'master')
+      , ghPushSetup = {
+            repoOwner: 'graphicore',
+            repoName: 'googleFonts',
+            accessToken: process.env.GITHUB_API_TOKEN
+        }
+    ;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
         if(process.argv[i] === '-p' && i+1<l) {
@@ -600,11 +914,20 @@ if (typeof require != 'undefined' && require.main==module) {
             break;
         }
     }
+
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    gitHubPRServer = new GitHubPRServer(setup.logging, port, repoPath);
+
+    // FIXME: temprorary local setup overrides.
+    setup = Object.create(setup);
+    setup.gitHubAuth={host: '127.0.0.1', port: '5678'};
+    setup.persistence={host: '127.0.0.1', port: '3456'};
+
+    gitHubPRServer = new GitHubPRServer(setup.logging, port, setup, repoPath
+                            , ghOAuth, upstream, ghPushSetup, prTarget);
     gitHubPRServer.serve()
-        .then(()=>gitHubPRServer.devMain())
+        // .then(()=>gitHubPRServer.devMain())
+        //.then(()=>gitHubPRServer.devPR())
         .then(
               ()=>setup.logging.info('Server ready!')
             , error=>{
