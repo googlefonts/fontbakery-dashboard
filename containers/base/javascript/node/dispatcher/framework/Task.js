@@ -27,7 +27,7 @@ function Task(step, state, anySetup) {
                 knownTypes: {}
               , typesNamespace: '(no namespace)'
               };
-    this._any = new ProtobufAnyHandler(anySetup_.knownTypes, anySetup_.typesNamespace);
+    this._any = new ProtobufAnyHandler(step.log, anySetup_.knownTypes, anySetup_.typesNamespace);
     Object.defineProperties(this, {
         step: {value: step}
         // needed by expectedAnswersMixin

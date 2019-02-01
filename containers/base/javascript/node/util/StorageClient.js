@@ -39,7 +39,7 @@ function StorageClient(logging, host, port, knownTypes, typesNamespace, credenti
                           }
                         );
 
-    this._any = new ProtobufAnyHandler(knownTypes, typesNamespace);
+    this._any = new ProtobufAnyHandler(this._log, knownTypes, typesNamespace);
 }
 
 var _p = StorageClient.prototype;

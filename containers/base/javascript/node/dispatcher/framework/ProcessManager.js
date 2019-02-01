@@ -25,7 +25,7 @@ function ProcessManager(setup, port, secret, anySetup, ProcessConstructor) {
     this._processResources = Object.create(null);
     this._processSubscriptions = new Map();
     this._activeProcesses = new Map();
-    this._any = new ProtobufAnyHandler(anySetup.knownTypes, anySetup.typesNamespace);
+    this._any = new ProtobufAnyHandler(this._log, anySetup.knownTypes, anySetup.typesNamespace);
     Object.defineProperties(this._processResources, {
         secret: {value: secret}
       , log: {value: this._log}

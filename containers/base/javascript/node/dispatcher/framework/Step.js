@@ -38,7 +38,7 @@ function Step(process, state, taskCtors, anySetup) {
                 knownTypes: {}
               , typesNamespace: '(no namespace)'
               };
-    this._any = new ProtobufAnyHandler(anySetup_.knownTypes, anySetup_.typesNamespace);
+    this._any = new ProtobufAnyHandler(process.log, anySetup_.knownTypes, anySetup_.typesNamespace);
 
     Object.defineProperties(this, {
         process: {value: process}

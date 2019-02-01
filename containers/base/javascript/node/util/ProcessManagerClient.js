@@ -26,7 +26,7 @@ function ProcessManagerClient(logging, host, port, credentials, anySetup) {
     this._deadline = 30;
     this._log.info('ProcessManagerClient at:', address);
 
-    this._any = new ProtobufAnyHandler(anySetup.knownTypes, anySetup.typesNamespace);
+    this._any = new ProtobufAnyHandler(this._log, anySetup.knownTypes, anySetup.typesNamespace);
 
     this._grpcClientArgs = [
         address

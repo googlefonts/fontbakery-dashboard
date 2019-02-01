@@ -3,7 +3,8 @@
 
 const { Any } = require('google-protobuf/google/protobuf/any_pb.js');
 
-function ProtobufAnyHandler(knownTypes, typesNamespace) {
+function ProtobufAnyHandler(logging, knownTypes, typesNamespace) {
+    this._log = logging;
     this._knownTypes = knownTypes || {};
     this._typesNamespace = typesNamespace && typesNamespace.slice(-1) === '.'
                 ? typesNamespace.slice(0, -1)
@@ -18,7 +19,7 @@ _p.getTypeNameForMessage = function(message) {
     for(name in this._knownTypes)
         if(message instanceof this._knownTypes[name])
             return [this._typesNamespace, name].join('.');
-    this._logging.debug('Unknown message type', message);
+    this._log.debug('Unknown message type', message);
     throw new Error('Can\'t find type name for message');
 };
 
@@ -26,7 +27,8 @@ _p.getTypeForTypeName = function(typeName) {
     var name = typeName.split('.').pop();
     if(name in this._knownTypes)
         return this._knownTypes[name];
-    this._logging.debug('Unknown type name ', typeName);
+    this._log.debug('Unknown type name ', typeName, 'known types are:'
+                    , Object.keys(this._knownTypes).join(', '));
     throw new Error('Can\'t find type for type name,');
 };
 
