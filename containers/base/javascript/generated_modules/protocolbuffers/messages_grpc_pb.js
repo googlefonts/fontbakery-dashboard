@@ -96,6 +96,17 @@ function deserialize_fontbakery_dashboard_ManifestSourceId(buffer_arg) {
   return messages_pb.ManifestSourceId.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_OAuthToken(arg) {
+  if (!(arg instanceof messages_pb.OAuthToken)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.OAuthToken');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_OAuthToken(buffer_arg) {
+  return messages_pb.OAuthToken.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_ProcessCommand(arg) {
   if (!(arg instanceof messages_pb.ProcessCommand)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessCommand');
@@ -160,6 +171,17 @@ function serialize_fontbakery_dashboard_ProcessState(arg) {
 
 function deserialize_fontbakery_dashboard_ProcessState(buffer_arg) {
   return messages_pb.ProcessState.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_PullRequest(arg) {
+  if (!(arg instanceof messages_pb.PullRequest)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.PullRequest');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_PullRequest(buffer_arg) {
+  return messages_pb.PullRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
 function serialize_fontbakery_dashboard_Report(arg) {
@@ -564,6 +586,39 @@ var AuthServiceService = exports.AuthServiceService = {
     responseSerialize: serialize_fontbakery_dashboard_AuthorizedRoles,
     responseDeserialize: deserialize_fontbakery_dashboard_AuthorizedRoles,
   },
+  getOAuthToken: {
+    path: '/fontbakery.dashboard.AuthService/GetOAuthToken',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.SessionId,
+    responseType: messages_pb.OAuthToken,
+    requestSerialize: serialize_fontbakery_dashboard_SessionId,
+    requestDeserialize: deserialize_fontbakery_dashboard_SessionId,
+    responseSerialize: serialize_fontbakery_dashboard_OAuthToken,
+    responseDeserialize: deserialize_fontbakery_dashboard_OAuthToken,
+  },
 };
 
 exports.AuthServiceClient = grpc.makeGenericClientConstructor(AuthServiceService);
+// The Pull Request Dispatcher service
+//
+var PullRequestDispatcherService = exports.PullRequestDispatcherService = {
+  // If answering directly THIS COULD TIME OUT!
+  // instead, we answer with Empty and send the
+  // DispatchReport message via another channel,
+  // currently this is implement using an
+  // AMQP queue which feeds into ProcessManager.Execute
+  dispatch: {
+    path: '/fontbakery.dashboard.PullRequestDispatcher/Dispatch',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.PullRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_fontbakery_dashboard_PullRequest,
+    requestDeserialize: deserialize_fontbakery_dashboard_PullRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+};
+
+exports.PullRequestDispatcherClient = grpc.makeGenericClientConstructor(PullRequestDispatcherService);

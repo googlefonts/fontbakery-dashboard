@@ -43,17 +43,22 @@ message StorageItem {
 }
 
 message StorageKey {
+    // always set
     string key = 1;
-    string hash = 2; // hash of the binary payload data
-    string clientid = 3; // optional, set if StorageItem.clientid was set
-    bool force = 4; // used for purge
+    // optional, returned by PUT, not needed for GET or PURGE
+    // hash of the binary payload data
+    string hash = 2;
+    // optional, returned by PUT, not needed for GET or PURGE
+    // set if StorageItem.clientid was set
+    string clientid = 3;
+    // optional, used for PURGE
+    bool force = 4;
 }
 
 message StorageStatus {
     string key = 1;
     int32 instances = 2;
 }
-
 
 // The Manifest service
 
@@ -281,6 +286,7 @@ message ProcessCommand {
       string json_payload = 5;
       google.protobuf.Any pb_payload = 6;
     }
+    string session_id = 7; // e.g. to get the GitHub oAuthToken from AuthService
 }
 
 ///////
@@ -297,6 +303,7 @@ service AuthService {
   //
   // **authorization** (could be another service)
   rpc GetRoles (AuthorizedRolesRequest) returns (AuthorizedRoles) {};
+  rpc GetOAuthToken (SessionId) returns (OAuthToken) {};
 }
 
 message AuthStatus {
@@ -345,3 +352,65 @@ message AuthorizedRoles {
     repeated string roles = 1;
     string user_name = 2;
 };
+
+message OAuthToken {
+    string user_name = 1; // session.user.login
+    string access_token = 2; // session.accessToken.accessToken
+    string type = 3; // session.accessToken.token_type 'bearer'
+    string scope = 4; // session.accessToken.scope 'user:email'
+}
+
+
+// The Pull Request Dispatcher service
+
+service PullRequestDispatcher {
+  // If answering directly THIS COULD TIME OUT!
+  // instead, we answer with Empty and send the
+  // DispatchReport message via another channel,
+  // currently this is implement using an
+  // AMQP queue which feeds into ProcessManager.Execute
+  rpc Dispatch (PullRequest) returns (google.protobuf.Empty) {};
+}
+
+message PullRequest {
+    string session_id = 1;
+    // (file) data location, actually will return a FamilyData message
+    string storage_key = 2;
+    // "ofl/myfont"
+    string target_directory = 3;
+    // simple string as a title
+    string p_r_message_title = 4;
+    // github-markdown string
+    string p_r_message_body = 5;
+    // multi line string, first line and details should be
+    // separated by an empty line
+    string commit_message = 6;
+
+    // to make answering easier in the PR dispatcher, this will have
+    // the essentials already configured
+    string response_queue_name = 7;
+    ProcessCommand process_command = 8;
+
+    // we should not override already existing remote branches...
+    // maybe create in here using family name and date
+    // can we use also target_directory or should we add a
+    // branch_name_keyword>>> best of both worlds?
+    // string targetBranchName = 7;
+}
+
+message DispatchReport {
+    enum Result {
+        FAIL = 0;
+        OK = 1;
+    };
+    Result status = 1;
+    oneof value {
+      // the url of the PR
+      string p_r_url = 2;
+      // an error message if the operation failed
+      string error = 3;
+    }
+    // where is (or should have been if FAILED) the new remote branch?
+    string branch_url = 4; // branch_url
+    // more data?
+}

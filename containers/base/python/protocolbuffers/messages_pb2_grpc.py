@@ -474,6 +474,11 @@ class AuthServiceStub(object):
         request_serializer=messages__pb2.AuthorizedRolesRequest.SerializeToString,
         response_deserializer=messages__pb2.AuthorizedRoles.FromString,
         )
+    self.GetOAuthToken = channel.unary_unary(
+        '/fontbakery.dashboard.AuthService/GetOAuthToken',
+        request_serializer=messages__pb2.SessionId.SerializeToString,
+        response_deserializer=messages__pb2.OAuthToken.FromString,
+        )
 
 
 class AuthServiceServicer(object):
@@ -519,6 +524,13 @@ class AuthServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def GetOAuthToken(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_AuthServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -547,7 +559,60 @@ def add_AuthServiceServicer_to_server(servicer, server):
           request_deserializer=messages__pb2.AuthorizedRolesRequest.FromString,
           response_serializer=messages__pb2.AuthorizedRoles.SerializeToString,
       ),
+      'GetOAuthToken': grpc.unary_unary_rpc_method_handler(
+          servicer.GetOAuthToken,
+          request_deserializer=messages__pb2.SessionId.FromString,
+          response_serializer=messages__pb2.OAuthToken.SerializeToString,
+      ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
       'fontbakery.dashboard.AuthService', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))
+
+
+class PullRequestDispatcherStub(object):
+  """The Pull Request Dispatcher service
+
+  """
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.Dispatch = channel.unary_unary(
+        '/fontbakery.dashboard.PullRequestDispatcher/Dispatch',
+        request_serializer=messages__pb2.PullRequest.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
+
+
+class PullRequestDispatcherServicer(object):
+  """The Pull Request Dispatcher service
+
+  """
+
+  def Dispatch(self, request, context):
+    """If answering directly THIS COULD TIME OUT!
+    instead, we answer with Empty and send the
+    DispatchReport message via another channel,
+    currently this is implement using an
+    AMQP queue which feeds into ProcessManager.Execute
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_PullRequestDispatcherServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'Dispatch': grpc.unary_unary_rpc_method_handler(
+          servicer.Dispatch,
+          request_deserializer=messages__pb2.PullRequest.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'fontbakery.dashboard.PullRequestDispatcher', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
