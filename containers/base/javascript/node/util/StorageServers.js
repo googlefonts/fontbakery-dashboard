@@ -8,7 +8,7 @@ const crypto = require('crypto')
   , { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , { AsyncQueue } = require('./AsyncQueue')
   , { StorageService: GRPCStorageService} = require('protocolbuffers/messages_grpc_pb')
-  , {   StorageStatus, StorageKey } = require('protocolbuffers/messages_pb')
+  , { StorageStatus, StorageKey } = require('protocolbuffers/messages_pb')
   , { Any } = require('google-protobuf/google/protobuf/any_pb.js')
   , grpc = require('grpc')
   ;
