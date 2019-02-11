@@ -9,7 +9,37 @@ const yazl = require('yazl')
   ;
 
 /**
- *
+ *-> chacheKey.zip
+ *            -> only send if it's understood how to
+ *               create a zip from the message! (File, Files)
+ *            -> otherwise 404 Not Found
+ *   // THIS only if it is straight forward
+ *-> cacheKey.{type}.bin-> cacheKey.files.bin
+ *-> cachekey.{type} -> cachekey.files
+ *-> chacheKey.proto.bin
+ *            -> send the binary of the message
+ *            -> probably never needed
+ *            -> but super straight forward to implement
+ *            -> debugging maybe
+ *-> chacheKey.proto
+ *            -> send the text serialziation (I think js can't do it!)
+ *            -> so send 501 Not Implemented
+ * maybe a generic path/to/dispatcher/download/{cache|persistence}/chacheKey.{extenstion}
+ * path/to/fb/download/{cache|persistence}/chacheKey.{extenstion}
+ * is better, it can be used for any download needs ever
+ * -> CAUTION: this will open a gate to download all files
+ *     in cache and persistence! Hence they cannot really
+ *     be considered protected/private *ever*
+ *     -> the Server must state that explicitly!
+ *     -> and if needed do authorization itself!
+ *     -> also a nice tool to get packages for debugging
+ *        if needed!
+ *     -> on the bright side, a download user has to know
+ *        the sha256 of the PBM-Any in the storage, hence
+ *        an attacker would probably have to know the
+ *        exact content he's looking for. Attack would
+ *        only be good to determine if a certain package
+ *        already exists!
  */
 function StorageDownload(server, app, logging, storages /* { e.g.: cache, persistence } */) {
     this._server = server;
@@ -75,7 +105,6 @@ function _zipAndSendMessage(res, message, filename) {
 
 /**
  * GET
- *
  */
 _p._download = function(req, res, next) {
     // jshint unused:vars
