@@ -280,13 +280,14 @@ message ProcessCommand {
     string target_path = 2;
     string callback_name = 3;
     string requester = 4; // for authorization if needed
+    string response_queue_name = 5;
     oneof payload {
       // This way we can do better structured protobuf messages OR
       // faster to initially implemented JSON.
-      string json_payload = 5;
-      google.protobuf.Any pb_payload = 6;
+      string json_payload = 6;
+      google.protobuf.Any pb_payload = 7;
     }
-    string session_id = 7; // e.g. to get the GitHub oAuthToken from AuthService
+    string session_id = 8; // e.g. to get the GitHub oAuthToken from AuthService
 }
 
 ///////
@@ -388,8 +389,7 @@ message PullRequest {
 
     // to make answering easier in the PR dispatcher, this will have
     // the essentials already configured
-    string response_queue_name = 7;
-    ProcessCommand process_command = 8;
+    ProcessCommand process_command = 7;
 
     // we should not override already existing remote branches...
     // maybe create in here using family name and date

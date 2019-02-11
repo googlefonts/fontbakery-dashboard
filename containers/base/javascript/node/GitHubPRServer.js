@@ -378,7 +378,6 @@ _p.dispatch = function(call, callback) {
       , prMessageTitle =  pullRequest.getPRMessageTitle()
       , prMessageBody =  pullRequest.getPRMessageBody()
       , commitMessage = pullRequest.getCommitMessage()
-      , responseQueue = pullRequest.getResponseQueueName()
       , processCommand = pullRequest.getProcessCommand()
         // where the new branch is pushed to, to make the PR from
         // hmm, we could use the github api to find the clone of
@@ -440,17 +439,16 @@ _p.dispatch = function(call, callback) {
         report.setError('' + error);
         return report;
     })
-    .then(report=>this._sendDispatchResult(responseQueue
-                                         , processCommand
-                                         , report));
+    .then(report=>this._sendDispatchResult(processCommand, report));
 };
 
 
-_p._sendDispatchResult = function(responseQueue, preparedProcessCommand
+_p._sendDispatchResult = function(preparedProcessCommand
                                         , report /* a DispatchReport */) {
     var processCommand = preparedProcessCommand.cloneMessage()
       , anyPayload = this._any.pack(report)
       , buffer
+      , responseQueue = preparedProcessCommand.getResponseQueueName()
       ;
     // expecting these to be already set
     // processCommand.setTicket(ticket);

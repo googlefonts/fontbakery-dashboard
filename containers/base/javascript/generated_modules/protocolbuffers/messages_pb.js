@@ -4315,15 +4315,15 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<!Array<number>>}
  * @const
  */
-proto.fontbakery.dashboard.ProcessCommand.oneofGroups_ = [[5,6]];
+proto.fontbakery.dashboard.ProcessCommand.oneofGroups_ = [[6,7]];
 
 /**
  * @enum {number}
  */
 proto.fontbakery.dashboard.ProcessCommand.PayloadCase = {
   PAYLOAD_NOT_SET: 0,
-  JSON_PAYLOAD: 5,
-  PB_PAYLOAD: 6
+  JSON_PAYLOAD: 6,
+  PB_PAYLOAD: 7
 };
 
 /**
@@ -4366,9 +4366,10 @@ proto.fontbakery.dashboard.ProcessCommand.toObject = function(includeInstance, m
     targetPath: jspb.Message.getFieldWithDefault(msg, 2, ""),
     callbackName: jspb.Message.getFieldWithDefault(msg, 3, ""),
     requester: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    jsonPayload: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    responseQueueName: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    jsonPayload: jspb.Message.getFieldWithDefault(msg, 6, ""),
     pbPayload: (f = msg.getPbPayload()) && google_protobuf_any_pb.Any.toObject(includeInstance, f),
-    sessionId: jspb.Message.getFieldWithDefault(msg, 7, "")
+    sessionId: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -4423,14 +4424,18 @@ proto.fontbakery.dashboard.ProcessCommand.deserializeBinaryFromReader = function
       break;
     case 5:
       var value = /** @type {string} */ (reader.readString());
-      msg.setJsonPayload(value);
+      msg.setResponseQueueName(value);
       break;
     case 6:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setJsonPayload(value);
+      break;
+    case 7:
       var value = new google_protobuf_any_pb.Any;
       reader.readMessage(value,google_protobuf_any_pb.Any.deserializeBinaryFromReader);
       msg.setPbPayload(value);
       break;
-    case 7:
+    case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setSessionId(value);
       break;
@@ -4491,17 +4496,24 @@ proto.fontbakery.dashboard.ProcessCommand.serializeBinaryToWriter = function(mes
       f
     );
   }
-  f = /** @type {string} */ (jspb.Message.getField(message, 5));
-  if (f != null) {
+  f = message.getResponseQueueName();
+  if (f.length > 0) {
     writer.writeString(
       5,
+      f
+    );
+  }
+  f = /** @type {string} */ (jspb.Message.getField(message, 6));
+  if (f != null) {
+    writer.writeString(
+      6,
       f
     );
   }
   f = message.getPbPayload();
   if (f != null) {
     writer.writeMessage(
-      6,
+      7,
       f,
       google_protobuf_any_pb.Any.serializeBinaryToWriter
     );
@@ -4509,7 +4521,7 @@ proto.fontbakery.dashboard.ProcessCommand.serializeBinaryToWriter = function(mes
   f = message.getSessionId();
   if (f.length > 0) {
     writer.writeString(
-      7,
+      8,
       f
     );
   }
@@ -4577,22 +4589,37 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.setRequester = function(valu
 
 
 /**
- * optional string json_payload = 5;
+ * optional string response_queue_name = 5;
  * @return {string}
  */
-proto.fontbakery.dashboard.ProcessCommand.prototype.getJsonPayload = function() {
+proto.fontbakery.dashboard.ProcessCommand.prototype.getResponseQueueName = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
 
 /** @param {string} value */
+proto.fontbakery.dashboard.ProcessCommand.prototype.setResponseQueueName = function(value) {
+  jspb.Message.setField(this, 5, value);
+};
+
+
+/**
+ * optional string json_payload = 6;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.ProcessCommand.prototype.getJsonPayload = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
+};
+
+
+/** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setJsonPayload = function(value) {
-  jspb.Message.setOneofField(this, 5, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
+  jspb.Message.setOneofField(this, 6, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
 };
 
 
 proto.fontbakery.dashboard.ProcessCommand.prototype.clearJsonPayload = function() {
-  jspb.Message.setOneofField(this, 5, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], undefined);
+  jspb.Message.setOneofField(this, 6, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], undefined);
 };
 
 
@@ -4601,23 +4628,23 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.clearJsonPayload = function(
  * @return {!boolean}
  */
 proto.fontbakery.dashboard.ProcessCommand.prototype.hasJsonPayload = function() {
-  return jspb.Message.getField(this, 5) != null;
+  return jspb.Message.getField(this, 6) != null;
 };
 
 
 /**
- * optional google.protobuf.Any pb_payload = 6;
+ * optional google.protobuf.Any pb_payload = 7;
  * @return {?proto.google.protobuf.Any}
  */
 proto.fontbakery.dashboard.ProcessCommand.prototype.getPbPayload = function() {
   return /** @type{?proto.google.protobuf.Any} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_any_pb.Any, 6));
+    jspb.Message.getWrapperField(this, google_protobuf_any_pb.Any, 7));
 };
 
 
 /** @param {?proto.google.protobuf.Any|undefined} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setPbPayload = function(value) {
-  jspb.Message.setOneofWrapperField(this, 6, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
+  jspb.Message.setOneofWrapperField(this, 7, proto.fontbakery.dashboard.ProcessCommand.oneofGroups_[0], value);
 };
 
 
@@ -4631,22 +4658,22 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.clearPbPayload = function() 
  * @return {!boolean}
  */
 proto.fontbakery.dashboard.ProcessCommand.prototype.hasPbPayload = function() {
-  return jspb.Message.getField(this, 6) != null;
+  return jspb.Message.getField(this, 7) != null;
 };
 
 
 /**
- * optional string session_id = 7;
+ * optional string session_id = 8;
  * @return {string}
  */
 proto.fontbakery.dashboard.ProcessCommand.prototype.getSessionId = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
 };
 
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setSessionId = function(value) {
-  jspb.Message.setField(this, 7, value);
+  jspb.Message.setField(this, 8, value);
 };
 
 
@@ -5913,7 +5940,6 @@ proto.fontbakery.dashboard.PullRequest.toObject = function(includeInstance, msg)
     pRMessageTitle: jspb.Message.getFieldWithDefault(msg, 4, ""),
     pRMessageBody: jspb.Message.getFieldWithDefault(msg, 5, ""),
     commitMessage: jspb.Message.getFieldWithDefault(msg, 6, ""),
-    responseQueueName: jspb.Message.getFieldWithDefault(msg, 7, ""),
     processCommand: (f = msg.getProcessCommand()) && proto.fontbakery.dashboard.ProcessCommand.toObject(includeInstance, f)
   };
 
@@ -5976,10 +6002,6 @@ proto.fontbakery.dashboard.PullRequest.deserializeBinaryFromReader = function(ms
       msg.setCommitMessage(value);
       break;
     case 7:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setResponseQueueName(value);
-      break;
-    case 8:
       var value = new proto.fontbakery.dashboard.ProcessCommand;
       reader.readMessage(value,proto.fontbakery.dashboard.ProcessCommand.deserializeBinaryFromReader);
       msg.setProcessCommand(value);
@@ -6055,17 +6077,10 @@ proto.fontbakery.dashboard.PullRequest.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getResponseQueueName();
-  if (f.length > 0) {
-    writer.writeString(
-      7,
-      f
-    );
-  }
   f = message.getProcessCommand();
   if (f != null) {
     writer.writeMessage(
-      8,
+      7,
       f,
       proto.fontbakery.dashboard.ProcessCommand.serializeBinaryToWriter
     );
@@ -6164,33 +6179,18 @@ proto.fontbakery.dashboard.PullRequest.prototype.setCommitMessage = function(val
 
 
 /**
- * optional string response_queue_name = 7;
- * @return {string}
- */
-proto.fontbakery.dashboard.PullRequest.prototype.getResponseQueueName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
-};
-
-
-/** @param {string} value */
-proto.fontbakery.dashboard.PullRequest.prototype.setResponseQueueName = function(value) {
-  jspb.Message.setField(this, 7, value);
-};
-
-
-/**
- * optional ProcessCommand process_command = 8;
+ * optional ProcessCommand process_command = 7;
  * @return {?proto.fontbakery.dashboard.ProcessCommand}
  */
 proto.fontbakery.dashboard.PullRequest.prototype.getProcessCommand = function() {
   return /** @type{?proto.fontbakery.dashboard.ProcessCommand} */ (
-    jspb.Message.getWrapperField(this, proto.fontbakery.dashboard.ProcessCommand, 8));
+    jspb.Message.getWrapperField(this, proto.fontbakery.dashboard.ProcessCommand, 7));
 };
 
 
 /** @param {?proto.fontbakery.dashboard.ProcessCommand|undefined} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setProcessCommand = function(value) {
-  jspb.Message.setWrapperField(this, 8, value);
+  jspb.Message.setWrapperField(this, 7, value);
 };
 
 
@@ -6204,7 +6204,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.clearProcessCommand = function(
  * @return {!boolean}
  */
 proto.fontbakery.dashboard.PullRequest.prototype.hasProcessCommand = function() {
-  return jspb.Message.getField(this, 8) != null;
+  return jspb.Message.getField(this, 7) != null;
 };
 
 

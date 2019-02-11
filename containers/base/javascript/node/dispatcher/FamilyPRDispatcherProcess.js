@@ -963,7 +963,6 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
     pullRequest.setCommitMessage('[Font Bakery Dashboard] '
                         + (this.process._state.isUpdate ? 'update' : 'create')
                         + ': ' + this.process._state.targetDirectory);
-    pullRequest.setResponseQueueName(this.resources.executeQueueName);
 
     [callbackName, ticket] = this._setExpectedAnswer(
                                     'Pull Request Result'
@@ -973,6 +972,7 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
     processCommand.setTargetPath(this.path.toString());
     processCommand.setTicket(ticket);
     processCommand.setCallbackName(callbackName);
+    processCommand.setResponseQueueName(this.resources.executeQueueName);
     pullRequest.setProcessCommand(processCommand);
 
     this.resources.dispatchPR(pullRequest)// -> Promise.resolve(new Empty())
