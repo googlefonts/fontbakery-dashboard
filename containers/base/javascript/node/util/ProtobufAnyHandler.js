@@ -1,9 +1,11 @@
 "use strict";
 /* jshint esnext:true, node:true*/
 
-const { Any } = require('google-protobuf/google/protobuf/any_pb.js');
+const { Any } = require('google-protobuf/google/protobuf/any_pb.js')
+    , FONT_BAKERY_TYPES_NAMESPACE = 'fontbakery.dashboard'
+    ;
 
-function ProtobufAnyHandler(logging, knownTypes, typesNamespace) {
+function ProtobufAnyHandler(logging, knownTypes, typesNamespace=FONT_BAKERY_TYPES_NAMESPACE) {
     this._log = logging;
     this._knownTypes = knownTypes || {};
     this._typesNamespace = typesNamespace && typesNamespace.slice(-1) === '.'
@@ -48,5 +50,48 @@ _p.unpack = function(any) {
     return message;
 };
 
+
+///// pack and unpack are just simple wrappers. /////
+
+/**
+ * The main case for pack is to default add FONT_BAKERY_TYPES_NAMESPACE
+ * as the default `typesNamespace` argument.
+ */
+function pack(message, typeName, typesNamespace=FONT_BAKERY_TYPES_NAMESPACE) {
+    var any = new Any()
+      , typesNamespace_ = typesNamespace && typesNamespace.slice(-1) === '.'
+                ? typesNamespace.slice(0, -1)
+                : typesNamespace
+      , fullTypeName = [typesNamespace_, typeName].join('.')
+      ;
+    return any.pack(message.serializeBinary(), fullTypeName);
+}
+
+/**
+ * The main usage of unpack is to be better readable than
+ *      `Type.deserializeBinary(any.getValue_asU8());`
+ * If typeName is set it returns null in case of a missmatch.
+ */
+function unpack(any, Type, typeName /*optional*/) {
+        // In any.unpack: `if (this.getTypeName() == name) {` WHY???
+        // This still is just hope based, that Type.deserializeBinary
+        // can load the value. Without that name detour, this is the
+        // implementation:
+        //      `Type.deserializeBinary(any.getValue_asU8());`
+        // So, if we expect a type, it suggests that we should know
+        // the name of the type, but that's no real validation, since
+        // the name comes along with the data and is thus just user input
+        // as well. We got to trust that the data can be parsed with Type.
+        // In conclusion, if we know what data to expect, we don't have
+        // to use Any, it's just that the added TypeName is a nice
+        // documentation and may be useful for debugging.
+    var typeName_ = typeName || any.getTypeName()
+      , message = any.unpack(Type.deserializeBinary, typeName_)
+      ;
+    return message;
+}
+
+exports.unpack = unpack;
+exports.pack = pack;
 
 exports.ProtobufAnyHandler = ProtobufAnyHandler;

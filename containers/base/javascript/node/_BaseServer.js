@@ -53,7 +53,7 @@ function _BaseServer(logging, portNum, setup) {
                 ()=>new StorageClient(
                                 this._log
                               , setup.cache.host, setup.cache.port
-                              , messages_pb, 'fontbakery.dashboard')
+                              , messages_pb)
               , 'waitForReady'
             ]
         ]
@@ -61,7 +61,7 @@ function _BaseServer(logging, portNum, setup) {
                 ()=>new StorageClient(
                                 this._log
                               , setup.persistence.host, setup.persistence.port
-                              , messages_pb, 'fontbakery.dashboard')
+                              , messages_pb)
               , 'waitForReady'
             ]
         ]
@@ -174,7 +174,7 @@ _p._initService = function(appLocation, Constructor, dependencies) {
             // This is to enable optional arguments, that are loaded via
             // an object argument, e.g. item can be:
             // {cache: 'cache', persistence: 'persistence'}
-            [dependency, itemPromises] = this._getServiceDependencyObject(appLocation, item)
+            [dependency, itemPromises] = this._getServiceDependencyObject(appLocation, item);
         else
             throw new Error('Don\'t know hoe to handle dependency: '
                                 +'('+typeof item+') ' + item.toString());

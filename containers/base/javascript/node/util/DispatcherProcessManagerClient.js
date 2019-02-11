@@ -17,7 +17,6 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
 function DispatcherProcessManagerClient(...args) {
     var anySetup = {
         knownTypes: { DispatcherInitProcess }
-      , typesNamespace: 'fontbakery.dashboard'
     };
     Parent.call(this, ...args, null, anySetup);
     // In a GRPC server I can add many services, but for the client, it

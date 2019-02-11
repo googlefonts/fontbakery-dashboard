@@ -14,10 +14,10 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
 
 /**
  * knownTypes: i.e. require('protocolbuffers/messages_pb')
- * typesNamespace: i.e. 'fontbakery.dashboard'
+ * typesNamespace: i.e. 'fontbakery.dashboard' (the default)
  *
  *
- * new StorageClient(logging, 'localhost', 1234, messages_pb, 'fontbakery.dashboard')
+ * new StorageClient(logging, 'localhost', 1234, messages_pb)
  */
 function StorageClient(logging, host, port, knownTypes, typesNamespace, credentials) {
     var address = [host, port].join(':');
@@ -173,8 +173,7 @@ exports.StorageClient = StorageClient;
  */
 if (typeof require != 'undefined' && require.main==module) {
     var { logging } = require('./getSetup').getSetup()
-      , client = new StorageClient(logging, 'localhost', 3456
-                            , messages_pb, 'fontbakery.dashboard')
+      , client = new StorageClient(logging, 'localhost', 3456, messages_pb)
       , messages = []
       ;
      for(let i=0;i<10;i++) {

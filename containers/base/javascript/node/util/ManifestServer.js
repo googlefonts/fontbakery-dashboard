@@ -30,7 +30,7 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
 
     if(cacheSetup)
         this._cache = new StorageClient(logging, cacheSetup.host, cacheSetup.port
-                            , messages_pb, 'fontbakery.dashboard');
+                            , messages_pb);
     else
         // that's a feature used in development sometimes
         this._log.warning('cacheSetup is not defined!');

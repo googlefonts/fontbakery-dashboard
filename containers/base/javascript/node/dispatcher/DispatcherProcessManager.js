@@ -22,7 +22,6 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
 function DispatcherProcessManager(setup, ...args) {
     var anySetup = {
         knownTypes: { DispatcherInitProcess }
-      , typesNamespace: 'fontbakery.dashboard'
     };
     args.push(anySetup, FamilyPRDispatcherProcess);
     Parent.call(this, setup, ...args);
@@ -39,8 +38,7 @@ function DispatcherProcessManager(setup, ...args) {
                               setup.logging
                             , setup.persistence.host
                             , setup.persistence.port
-                            , {File, Files}
-                            , 'fontbakery.dashboard');
+                            , {File, Files});
     this._asyncDependencies.push([this._persistenceClient, 'waitForReady']);
 
     this._gitHubPRClient = new PullRequestDispatcherClient(

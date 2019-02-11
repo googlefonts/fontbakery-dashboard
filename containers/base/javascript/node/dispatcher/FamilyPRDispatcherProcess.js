@@ -881,7 +881,6 @@ const SignOffAndDispatchTask = (function() {
 
 var anySetup = {
     knownTypes: { DispatchReport }
-  , typesNamespace: 'fontbakery.dashboard'
 };
 const SignOffAndDispatchTask = taskFactory('SignOffAndDispatchTask', anySetup);
 const _p = SignOffAndDispatchTask.prototype;

@@ -58,8 +58,7 @@ function GitHubPRServer(logging, port, setup, repoPath, ghOAuth
     this._log = logging;
     this._repoPath = repoPath;
     this._queue = new AsyncQueue();
-    this._any = new ProtobufAnyHandler(this._log, {DispatchReport:DispatchReport}
-                                     , 'fontbakery.dashboard');
+    this._any = new ProtobufAnyHandler(this._log, {DispatchReport:DispatchReport});
     this._ghOAuth = ghOAuth;
 
     this._ghPushSetup = ghPushSetup;
@@ -80,7 +79,7 @@ function GitHubPRServer(logging, port, setup, repoPath, ghOAuth
                                 this._log
                               , setup.persistence.host
                               , setup.persistence.port
-                              , { Files }, 'fontbakery.dashboard');
+                              , { Files });
 
     this._server = new grpc.Server({
         'grpc.max_send_message_length': 80 * 1024 * 1024
@@ -324,7 +323,7 @@ _p._replaceDirCommit = function(authorSignature, localBranchName, headCommitRefe
                                , newTreeOID
                                , headCommit// HEAD
                                , commitMessage);
-        })
+        });
 
     });// -> returns new commit
     // dumpCommitContents(newCommit);
