@@ -3,7 +3,7 @@ from __future__ import print_function, division, unicode_literals
 
 import pytz
 from datetime import datetime
-from protocolbuffers.messages_pb2 import FamilyJob
+from protocolbuffers.messages_pb2 import FamilyJob, CompletedWorker
 
 from worker.fontbakeryworker import (
                   FontbakeryWorker
@@ -11,6 +11,18 @@ from worker.fontbakeryworker import (
                 , logging
                 , get_fontbakery
                 )
+
+
+def _finalize(self, failed):
+
+    if not failed:
+      return
+    # If this worker fails we MUST send a CompletedWorker message.
+    message = CompletedWorker()
+    message.worker_name = 'fontbakery'
+    message.completed_message.Pack(self._job)
+    self._queue_err(message)
+
 
 class WorkerDistributor(FontbakeryWorker):
   def __init__(self, dbTableContext, queue, cache, setup=None):
@@ -79,6 +91,7 @@ class WorkerDistributor(FontbakeryWorker):
 
 main(queue_in_name='fontbakery-worker-distributor'
    , queue_out_name='fontbakery-worker-checker'
+   , queue_err_name='fontbakery-cleanup-distributor'
    , db_name='fontbakery', db_table='familytests'
    , Worker=WorkerDistributor
    )

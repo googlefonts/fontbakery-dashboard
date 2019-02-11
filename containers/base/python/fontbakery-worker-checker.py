@@ -4,7 +4,7 @@ from __future__ import print_function, division, unicode_literals
 import pytz
 from datetime import datetime
 from copy import deepcopy
-from protocolbuffers.messages_pb2 import FamilyJob
+from protocolbuffers.messages_pb2 import FamilyJob, CompletedWorker
 from worker.fontbakeryworker import (
                   main
                 , get_fontbakery
@@ -114,7 +114,7 @@ class WorkerChecker(FontbakeryWorker):
     reporter.flush()
     self._dbOps.update({'finished': datetime.now(pytz.utc)})
 
-  def _finalize(self):
+  def _finalize(self, failed):
     """
     FIXME: when all jobs are finished, we need a worker that
     is cleaning up ... that could be part of the dispatch-worker/manifest-master
@@ -177,11 +177,15 @@ class WorkerChecker(FontbakeryWorker):
     # For the time being just send a FamilyJob just like the
     # one that is self._job, but leave out the job.order, because that is
     # not interesting anymore.
-    message = deepcopy(self._job)
+    job = deepcopy(self._job)
     # In py 2.7 got an TypeError: field name must be a string
     # if using u'order', which is the default, we import unicode_literals
     # message.ClearField(b'order')
-    message.ClearField('order')
+    job.ClearField('order')
+    message = CompletedWorker()
+    message.worker_name = 'fontbakery'
+    message.completed_message.Pack(job)
+
     #logging.debug('dispatching job %s of docid %s', job.jobid, job.docid)
     self._queue_out(message)
 

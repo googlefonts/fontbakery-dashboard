@@ -139,6 +139,7 @@ class FontbakeryWorker(object):
       # created on the fly. Though, fontbakery would have to clean it up
       # again as well, which is not yet supported!
       logging.info('Tempdir: %s', tmpDirectory)
+    failed = False;
     try:
       fonts = self._prepare(tmpDirectory)
       if tmpDirectory:
@@ -169,16 +170,13 @@ class FontbakeryWorker(object):
       # Not sure if the distributor-worker should write `finished` here
       # It doesn't hurt much though, _finalize will still run.
       self._dbOps.update({'finished': datetime.now(pytz.utc)
-                  , 'exception': exception
-                  })
+                        , 'exception': exception
+                        })
+      failed = True;
       logging.exception('Document closed exceptionally. %s', e)
-    self._finalize()
+    self._finalize(failed)
 
-  def _finalize(self):
-    # FIXME: if the worker-distributor fails in _run (except Exception as e:)
-    # it also MUST finalize like the worker checker, but not necessarily when
-    # _run succeeds. In any way, the CleanupJobs service wouldn't close
-    # a job without good reason.
+  def _finalize(self, failed):
     pass
 
   @contextmanager
@@ -210,7 +208,7 @@ class FontbakeryWorker(object):
     # this will only be acked if self._load_job was succesful
     self._queue.channel.basic_ack(delivery_tag=method.delivery_tag)
     # FIXME: we really shouldn't ack the job if can't even mark it as
-    # failed in the RethinkDB-doc (AND WE DON'T DO SO CURENTLY)
+    # failed in the RethinkDB-doc (AND WE DON'T DO SO CURRENTLY)
     # publishing the job again, with increased retry count would be good
     # though. (Needs a retry count field on the job).
 
@@ -221,7 +219,7 @@ class FontbakeryWorker(object):
     # move it to the dead-end. That way, a temporary db failure or such would
     # not be a "job killer".
 
-  def _queue_out(self, message):
+  def _send_queue(self, message, queue_name):
     options = pika.BasicProperties(
           # TODO: do we need persistent here?
           delivery_mode=2  # pika.spec.PERSISTENT_DELIVERY_MODE
@@ -232,11 +230,18 @@ class FontbakeryWorker(object):
     # your message will be delivered to the queue with a name equal to the routing
     # key of the message. Every queue is automatically bound to the default exchange
     # with a routing key which is the same as the queue name.
-    channel, routing_key = (self._queue.channel, self._queue.out_name)
+    channel, routing_key = (self._queue.channel, queue_name)
     channel.basic_publish(exchange=''
                         , routing_key=routing_key
                         , body=message.SerializeToString()
                         , properties=options)
+
+  def _queue_out(self, message):
+    return self._send_queue(message, self._queue.out_name)
+
+  def _queue_err(self, message):
+    return self._send_queue(message, self._queue.err_name
+                                                or self._queue.out_name)
 
 class DBOperations(object):
   def __init__(self, dbTableContext, job):
@@ -328,7 +333,8 @@ def setLoglevel(loglevel):
     raise ValueError('Invalid log level: %s' % loglevel)
   logging.basicConfig(level=numeric_level)
 
-QueueData = namedtuple('QueueData', ['channel', 'in_name', 'out_name'])
+QueueData = namedtuple('QueueData', ['channel', 'in_name', 'out_name'
+                                              , 'err_name'])
 Setup = namedtuple('Setup', ['log_level', 'db_host', 'db_port'
                            , 'msgqueue_host', 'cache_host', 'cache_port'
                            , 'ticks_to_flush'])
@@ -360,7 +366,7 @@ def getSetup():
   return Setup(log_level, db_host, db_port, msgqueue_host
                               , cache_host, cache_port, ticks_to_flush)
 
-def main(queue_in_name, queue_out_name, db_name, db_table, Worker):
+def main(queue_in_name, queue_out_name, db_name, db_table, Worker, queue_err_name=None):
   """
     We don't handle uncaught exceptions here. If this fails kubernetes
     will restart the pod and take care that the times between restarts
@@ -387,9 +393,12 @@ def main(queue_in_name, queue_out_name, db_name, db_table, Worker):
   queue_channel.queue_declare(queue=queue_in_name, durable=True)
   if queue_out_name is not None:
     queue_channel.queue_declare(queue=queue_out_name, durable=True)
+  if queue_err_name and queue_err_name != queue_out_name:
+    queue_channel.queue_declare(queue=queue_err_name, durable=True)
+
   logging.info('Waiting for messages in %s...', queue_in_name)
   # BlockingChannel has a generator
-  queue = QueueData(queue_channel, queue_in_name, queue_out_name)
+  queue = QueueData(queue_channel, queue_in_name, queue_out_name, queue_err_name)
   # Why `no_ack=True`: A job can run much longer than the broker will
   # wait for an ack and there's no way to give a good estimate of how
   # long a job will take. If the ack times out, the job will be
