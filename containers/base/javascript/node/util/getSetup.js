@@ -154,7 +154,10 @@ function initDB(log, dbSetup) {
                     'env_hash'
                   , [r.row('environment_version'), r.row('test_data_hash')]
                 ];
-            return createTableIndex('family', index);
+            return Promise.all([
+                createTableIndex('family', index)
+              , createTableIndex('family', 'created')
+            ]);
         })
         .then(function() {
             // create indexes for dbSetup.tables.collection
