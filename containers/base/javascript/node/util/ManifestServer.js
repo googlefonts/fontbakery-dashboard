@@ -119,7 +119,7 @@ _p.update = function(sourceId) {
  * filesData is is an array of arrays:
  *          [ [string filename, Uint8Array fileData], ... ]
  */
-_p._wrapFamilyData = function(filesData) {
+_p._wrapFilesData = function(filesData) {
     var filesMessage = new Files();
 
     // sort by file name
@@ -196,7 +196,7 @@ _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
 };
 
 _p._dispatchFamily = function(sourceid, familyName, filesData, metadata) {
-    var filesMessage = this._wrapFamilyData(filesData); // => filesMessage
+    var filesMessage = this._wrapFilesData(filesData); // => filesMessage
     return this._queue('cache', () => this._cacheFamily(filesMessage)) // => cacheKey
         .then(cacheKey => {
             return this._dispatchFamilyJob(sourceid, familyName
@@ -298,7 +298,7 @@ _p.get = function(call, callback) {
     .then(([familyName, filesData, metadata])=>{
         var familyData = new FamilyData()
           , collectionId = [this._id, sourceId].join('/')
-          , filesMessage = this._wrapFamilyData(filesData)
+          , filesMessage = this._wrapFilesData(filesData)
           , timestamp = new Timestamp()
           ;
         timestamp.fromDate(new Date());
