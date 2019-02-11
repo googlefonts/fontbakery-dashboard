@@ -616,3 +616,45 @@ def add_PullRequestDispatcherServicer_to_server(servicer, server):
   generic_handler = grpc.method_handlers_generic_handler(
       'fontbakery.dashboard.PullRequestDispatcher', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
+
+
+class InitWorkersStub(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def __init__(self, channel):
+    """Constructor.
+
+    Args:
+      channel: A grpc.Channel.
+    """
+    self.Init = channel.unary_unary(
+        '/fontbakery.dashboard.InitWorkers/Init',
+        request_serializer=messages__pb2.WorkerDescription.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
+        )
+
+
+class InitWorkersServicer(object):
+  # missing associated documentation comment in .proto file
+  pass
+
+  def Init(self, request, context):
+    """the message type of the answer is worker implementation dependent.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+
+def add_InitWorkersServicer_to_server(servicer, server):
+  rpc_method_handlers = {
+      'Init': grpc.unary_unary_rpc_method_handler(
+          servicer.Init,
+          request_deserializer=messages__pb2.WorkerDescription.FromString,
+          response_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
+      ),
+  }
+  generic_handler = grpc.method_handlers_generic_handler(
+      'fontbakery.dashboard.InitWorkers', rpc_method_handlers)
+  server.add_generic_rpc_handlers((generic_handler,))

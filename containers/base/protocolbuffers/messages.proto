@@ -414,3 +414,34 @@ message DispatchReport {
     string branch_url = 4; // branch_url
     // more data?
 }
+
+service InitWorkers {
+    // the message type of the answer is worker implementation dependent.
+    rpc Init (WorkerDescription) returns (google.protobuf.Any) {};
+}
+
+message WorkerDescription {
+    string worker_name = 1;
+    // the message type of job is worker implementation dependent.
+    google.protobuf.Any job = 2;
+    // the way to answer once the job has finished
+    ProcessCommand process_command = 3;
+}
+
+message CompletedWorker {
+    string worker_name = 1;
+    // the message type of completed_message is worker implementation dependent.
+    google.protobuf.Any completed_message = 2;
+}
+
+message FontBakeryFinished {
+    // probably not needed, but nice to have anyways
+    string docid = 1;
+    // If the report or a sub-job had any exceptions, it means
+    // the job failed to finish orderly, i.e. the result is probably incomplete.
+    bool finished_orderly = 2;
+    string results_json = 3;
+    google.protobuf.Timestamp created = 4;
+    google.protobuf.Timestamp started = 5;
+    google.protobuf.Timestamp finished = 6;
+}

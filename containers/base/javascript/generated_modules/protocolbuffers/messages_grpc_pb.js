@@ -261,6 +261,17 @@ function deserialize_fontbakery_dashboard_StorageStatus(buffer_arg) {
   return messages_pb.StorageStatus.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_WorkerDescription(arg) {
+  if (!(arg instanceof messages_pb.WorkerDescription)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.WorkerDescription');
+  }
+  return new Buffer(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_WorkerDescription(buffer_arg) {
+  return messages_pb.WorkerDescription.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_google_protobuf_Any(arg) {
   if (!(arg instanceof google_protobuf_any_pb.Any)) {
     throw new Error('Expected argument of type google.protobuf.Any');
@@ -622,3 +633,19 @@ var PullRequestDispatcherService = exports.PullRequestDispatcherService = {
 };
 
 exports.PullRequestDispatcherClient = grpc.makeGenericClientConstructor(PullRequestDispatcherService);
+var InitWorkersService = exports.InitWorkersService = {
+  // the message type of the answer is worker implementation dependent.
+  init: {
+    path: '/fontbakery.dashboard.InitWorkers/Init',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.WorkerDescription,
+    responseType: google_protobuf_any_pb.Any,
+    requestSerialize: serialize_fontbakery_dashboard_WorkerDescription,
+    requestDeserialize: deserialize_fontbakery_dashboard_WorkerDescription,
+    responseSerialize: serialize_google_protobuf_Any,
+    responseDeserialize: deserialize_google_protobuf_Any,
+  },
+};
+
+exports.InitWorkersClient = grpc.makeGenericClientConstructor(InitWorkersService);
