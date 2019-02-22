@@ -424,10 +424,11 @@ message WorkerDescription {
     string worker_name = 1;
     // the message type of job is worker implementation dependent.
     google.protobuf.Any job = 2;
-    // the way to answer once the job has finished
+    // (optional) the way to answer once the job has finished
     ProcessCommand process_command = 3;
 }
 
+// the workers dispatch this message to the AMQP queue
 message CompletedWorker {
     string worker_name = 1;
     // the message type of completed_message is worker implementation dependent.
