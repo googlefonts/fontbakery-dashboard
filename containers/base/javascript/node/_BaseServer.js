@@ -12,6 +12,8 @@ const express = require('express')
   , { ReportsClient } = require('./util/ReportsClient')
   , { DispatcherProcessManagerClient } = require('./util/DispatcherProcessManagerClient')
   , { GitHubAuthClient } = require('./util/GitHubAuthClient')
+  , { ManifestClient } = require('./util/ManifestClient')
+  , { InitWorkersClient } = require('./util/InitWorkersClient')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   ;
 
@@ -87,11 +89,19 @@ function _BaseServer(logging, portNum, setup) {
               , 'waitForReady'
             ]
         ]
-      , ['manifestSpreadsheet', [
+      , ['manifestUpstream', [
             ()=>new ManifestClient(
                                 this._log
-                              , setup.manifestSpreadsheet.host
-                              , setup.manifestSpreadsheet.port)
+                              , setup.manifestUpstream.host
+                              , setup.manifestUpstream.port)
+              , 'waitForReady'
+            ]
+        ]
+      , ['initWorkers', [
+            ()=>new InitWorkersClient(
+                                this._log
+                              , setup.initWorkers.host
+                              , setup.initWorkers.port)
               , 'waitForReady'
             ]
         ]

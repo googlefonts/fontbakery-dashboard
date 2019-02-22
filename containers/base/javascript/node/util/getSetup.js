@@ -57,6 +57,16 @@ function getSetup() {
             host: process.env.FONTBAKERY_GITHUBPR_SERVICE_HOST
           , port: process.env.FONTBAKERY_GITHUBPR_SERVICE_PORT
         }
+      , manifestUpstreamSetup = {
+          // call it: "fontbakery-manifest-csvupstream"
+            host: process.env.FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_HOST
+          , port: process.env.FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_PORT
+        }
+      , initWorkersSetup = {
+            // call it: "fontbakery-init-workers"
+            host: process.env.FONTBAKERY_INIT_WORKERS_SERVICE_HOST
+          , port: process.env.FONTBAKERY_INIT_WORKERS_SERVICE_PORT
+        }
       , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
       , develFamilyWhitelist = null
       ;
@@ -89,6 +99,8 @@ function getSetup() {
       , reports: reportsSetup
       , dispatcher: dispatcherSetup
       , gitHubPR: gitHubPRSetup
+      , manifestUpstream: manifestUpstreamSetup
+      , initWorkers: initWorkersSetup
       , logging: logging
       , develFamilyWhitelist: develFamilyWhitelist
     };

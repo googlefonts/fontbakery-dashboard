@@ -8,6 +8,7 @@ const { getSetup } = require('./util/getSetup')
   , { IOOperations } = require('./util/IOOperations')
   , messages_pb = require('protocolbuffers/messages_pb')
   , { StorageClient }  = require('./util/StorageClient')
+  , { InitWorkersClient } = require('./util/InitWorkersClient')
   ;
 
 /**
@@ -50,11 +51,13 @@ function ManifestMaster(logging, amqpSetup, dbSetup, cacheSetup) {
     this._io = new IOOperations(logging, dbSetup, amqpSetup);
     this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
     this._cache = new StorageClient(logging, cacheSetup.host, cacheSetup.port);
+    this._initWorkers = new InitWorkersClient(logging, initWorkers.host, initWorkers.port);
 
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
                  this._io.init()
                , this._cache.waitForReady()
+               , this._initWorkers.waitForReady()
                ])
     //.then(resources => {
     //    amqp = resources[0][1];
@@ -93,31 +96,16 @@ _p._getCollectionFamilyJob = function(messageContent) {
 _p._consumeQueue = function(message) {
     var job = this._getCollectionFamilyJob(message.content)
       , cacheKey = job.getCacheKey()
-      , test_data_hash = cacheKey.getHash()
       ;
-    return this._io.getDocId(test_data_hash) // => [created, docid]
-        .then(created_docid => {
-            var [created, docid, environment_version] = created_docid
-              , promise
-              ;
-            if(!created) {
-                this._log.debug('familytests_id ', docid, 'exists for'
-                    , 'ENVIRONMENT_VERSION:', environment_version
-                    , 'test_data_hash:', test_data_hash
-                );
-                // purge cacheKey!!!
-                promise = this._cache.purge(cacheKey);
-            }
-            else
-                // dispatch to worker-distributor
-                promise = this._io.dispatchFamilyJob(cacheKey, docid);
 
-            return promise.then(()=>this._createCollectionEntry(job, docid));
-
-        })
-        .then(() => this._io.ackQueueMessage(message))
-        .catch(err=>this._log.error(err)) // die now?
-        ;
+    return this._initWorkers.initialize('fontbakery', cacheKey)
+    .then(familyJob=>{
+        var docid = familyJob.getDocId();
+        return this._createCollectionEntry(job, docid);
+    })
+    .then(() => this._io.ackQueueMessage(message))
+    .catch(err=>this._log.error(err)) // die now?
+    ;
 };
 
 

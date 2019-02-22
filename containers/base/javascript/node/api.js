@@ -22,7 +22,7 @@ const FontBakeryServer = (function() {
 function FontBakeryServer(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
-      , ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports']]
+      , ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports', 'initWorkers']]
       , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher']]
     ];
     _BaseServer.call(this, ...args);
@@ -45,13 +45,15 @@ return FontBakeryServer;
  *      - fontbakery drag and drop
  *      - status reports
  */
-function DashboardAPIService(server, app, logging,  io, cache, reports) {
+function DashboardAPIService(server, app, logging,  io, cache, reports
+                          , initWorkers) {
     this._server = server;
     this._app = app;
     this._log = logging;
     this._io = io;
     this._cache = cache;
     this._reports = reports;
+    this._initWorkers = initWorkers;
 
     // familytests_id => data
     this._collectionFamilyDocs = new Map();
@@ -402,16 +404,6 @@ _p._getFilesMessage = function(buffer) {
  *         is not optimal)
  */
 _p.fbDNDReceive = function(req, res, next) {
-
-    function dispatchJob(cacheKey, docid) {
-        //jshint validthis:true
-        return this._io.dispatchFamilyJob(cacheKey, docid)
-            .then(() => {
-                this._log.debug('did dispatchFamilyJob, returning ', docid);
-                return docid;
-            });
-    }
-
     function onSuccess(docid) {
         //jshint validthis:true
         this._log.debug('Sending DND receive response:', docid);
@@ -421,18 +413,11 @@ _p.fbDNDReceive = function(req, res, next) {
 
     function makeDoc(cacheKey) {
         // jshint validthis:true
-        return this._io.getDocId(cacheKey.getHash())// cacheKey => [created, docid]
-            .then(created_docid => { // [created, docid] => docid
-                var [created, docid] = created_docid;
-                if(created)
-                    return dispatchJob.call(this, cacheKey, docid); // cacheKey, docid => docid
-                // no need to dispatch, does already exist!
-                // but cache needs cleaning!
-                return this._cache.purge(cacheKey).then(()=> docid); // => docid
-            })
-            .then(onSuccess.bind(this)) // onSuccess: docid => nothing
-            .error(next)
-            ;
+        return this._initWorkers.initialize('fontbakery', cacheKey)
+        .then(familyJob=>{
+            var docid = familyJob.getDocId();
+            return docid;
+        });
     }
 
     var filesMessage = this._getFilesMessage(req.body.buffer);
@@ -440,8 +425,9 @@ _p.fbDNDReceive = function(req, res, next) {
     return this._cache.put([filesMessage]) // => [cacheKey]
         // only the first item is interesting/present because we only
         // put one message into: `[filesMessage]`
-        .then(cacheKeys=>cacheKeys[0])// [cacheKey] => cacheKey
-        .then(makeDoc.bind(this))
+        .then(cacheKeys=>makeDoc.call(this, cacheKeys[0]))
+        .then(docid=>onSuccess.call(this, docid)) // onSuccess: docid => nothing
+        .error(next)
         ;
 };
 
