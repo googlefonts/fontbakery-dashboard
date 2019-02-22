@@ -6,7 +6,7 @@
 
 const messages_pb = require('protocolbuffers/messages_pb')
   , grpc = require('grpc')
-  , { FamilyJob, CompletedWorker, FontBakeryFinished } = messages_pb
+  , { FamilyJob, CacheKey, CompletedWorker, FontBakeryFinished } = messages_pb
   , { InitWorkersService } = require('protocolbuffers/messages_grpc_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
   , { getSetup } = require('./util/getSetup')
@@ -345,7 +345,7 @@ function FontBakeryWorker(logging, io, cache) {
 var _p = FontBakeryWorker.prototype = Object.create(FontBakeryWorker.prototype);
 
 Object.defineProperties(_p, {
-    InitMessage: { value: FamilyJob }
+    InitMessage: { value: CacheKey }
   , CompletedMessage: { value: FamilyJob }
 });
 
@@ -497,9 +497,8 @@ _p._queueFontBakeryFamilyJob = function(cacheKey, docid) {
     return this._io.sendQueueMessage(distributorQueueName, buffer);
 };
 
-_p.callInit = function(job) {
-    var cacheKey = job.getCacheKey()
-      , test_data_hash = cacheKey.getHash()
+_p.callInit = function(cacheKey) {
+    var test_data_hash = cacheKey.getHash()
       ;
     return this._getOrCreateDoc(test_data_hash)
     .then(([created, docId, doc]) => {
@@ -525,7 +524,6 @@ _p.callInit = function(job) {
         // and the semantics of that field match perfectly...
         answer = new FamilyJob();
         answer.setDocid(docId);
-
 
         if(isFinished)
             //- if there's a process command run it now
