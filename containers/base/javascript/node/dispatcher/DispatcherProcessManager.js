@@ -28,11 +28,11 @@ function DispatcherProcessManager(setup, ...args) {
     this._executeQueueName = 'fontbakery-dispatcher-process-manager-execute';
     this._server.addService(DispatcherProcessManagerService, this);
 
-    this._manifestSpreadsheetClient = new ManifestClient(
+    this._manifestUpstreamClient = new ManifestClient(
                             setup.logging
-                          , setup.manifestSpreadsheet.host
-                          , setup.manifestSpreadsheet.port);
-    this._asyncDependencies.push([this._manifestSpreadsheetClient, 'waitForReady']);
+                          , setup.manifestUpstream.host
+                          , setup.manifestUpstream.port);
+    this._asyncDependencies.push([this._manifestUpstreamClient, 'waitForReady']);
 
     this._persistenceClient = new StorageClient(
                               setup.logging
@@ -49,13 +49,13 @@ function DispatcherProcessManager(setup, ...args) {
     this._asyncDependencies.push([this._gitHubPRClient, 'waitForReady']);
 
     Object.defineProperties(this._processResources, {
-        // I prefer not to inject the this._manifestSpreadsheetClient
+        // I prefer not to inject the this._manifestUpstreamClient
         // directly, but instead provide simplified interfaces.
         getUpstreamFamilyList: {
             value: ()=>{
                 var sourceIdMessage = new ManifestSourceId();
                 sourceIdMessage.setSourceId('upstream');
-                return this._manifestSpreadsheetClient
+                return this._manifestUpstreamClient
                     .list(sourceIdMessage)
                     .then(familyNamesList=>familyNamesList.getFamilyNamesList());
             }
@@ -67,7 +67,7 @@ function DispatcherProcessManager(setup, ...args) {
                 familyRequestMessage.setSourceId('upstream');
                 familyRequestMessage.setFamilyName(familyName);
                 // returns a promise for FamilyData
-                return this._manifestSpreadsheetClient.get(familyRequestMessage);
+                return this._manifestUpstreamClient.get(familyRequestMessage);
             }
         }
       , storeMessage: {
@@ -202,7 +202,7 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.db.rethink.port = '32769';
 
 
-    setup.manifestSpreadsheet={host: '127.0.0.1', port: '9012'};
+    setup.manifestUpstream={host: '127.0.0.1', port: '9012'};
     setup.persistence={host: '127.0.0.1', port: '3456'};
     setup.gitHubPR={host: '127.0.0.1', port: '7890'};
 
