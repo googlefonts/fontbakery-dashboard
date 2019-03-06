@@ -10,7 +10,7 @@ const getSetup = require('./util/getSetup').getSetup
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), persistenceServer, port=50051
-      , dataItemTimeOutMinutes = 60
+      , dataItemTimeOutMinutes = Infinity // never garbage collect
       , dataDirDefault = '/tmp/persistence_server'
       , dataDir = null
       ;

@@ -123,10 +123,22 @@ return DataItem;
 const AbstractStore = (function() {
 function AbstractStore(dataItemTimeOutMinutes) {
     this._dataItems = new Map();
-    this._dataItemTimeOutMinutes = dataItemTimeOutMinutes;
     // every 5 minutes
     this._garbageCollectorInterval = 5 * 60 * 1000;
-    if(dataItemTimeOutMinutes)
+
+    if(typeof dataItemTimeOutMinutes !== 'number')
+        throw new Error('Argument "dataItemTimeOutMinutes" muste be '
+            + 'typeof "number" but is "'+(typeof dataItemTimeOutMinutes)+'"');
+    // Zero, negative numbers and -Infinity mean basically: delete when
+    // the garbage collector comes around, it's not really a practical
+    // thing, but at least it's technically possible, maybe someone can
+    // use it in development or testing.
+    // +Infinity means: never delete my data
+    this._dataItemTimeOutMinutes = dataItemTimeOutMinutes > 0
+                                        ? dataItemTimeOutMinutes
+                                        : 0
+                                        ;
+    if(dataItemTimeOutMinutes !== Infinity)
         this._scheduleGarbageCollector();
 }
 
