@@ -638,9 +638,9 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
     }
 
     report += '\n\n';
-    report += [ `*created* ${created.toDate() || '—'}`
-              , `*started* ${started.toDate() || '—'}`
-              , `*finished* ${finished.toDate() || '—'}`
+    report += [ `*created* ${ (created && created.toDate()) || '—'}`
+              , `*started* ${ (started && started.toDate()) || '—'}`
+              , `*finished* ${ (finished && finished.toDate()) || '—'}`
               ].join('<br />\n');
 
     this._setLOG(report);
