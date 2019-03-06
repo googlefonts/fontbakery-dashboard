@@ -12,18 +12,6 @@ from worker.fontbakeryworker import (
                 , get_fontbakery
                 )
 
-
-def _finalize(self, failed):
-
-    if not failed:
-      return
-    # If this worker fails we MUST send a CompletedWorker message.
-    message = CompletedWorker()
-    message.worker_name = 'fontbakery'
-    message.completed_message.Pack(self._job)
-    self._queue_err(message)
-
-
 class WorkerDistributor(FontbakeryWorker):
   def __init__(self, dbTableContext, queue, cache, setup=None):
       super(WorkerDistributor, self).__init__(dbTableContext, queue, cache, setup)
@@ -88,6 +76,15 @@ class WorkerDistributor(FontbakeryWorker):
     for job in jobs:
       logging.debug('dispatching job %s of docid %s', job.jobid, job.docid)
       self._queue_out(job)
+
+  def _finalize(self, failed):
+    if not failed:
+      return
+    # If this worker fails we MUST send a CompletedWorker message.
+    message = CompletedWorker()
+    message.worker_name = 'fontbakery'
+    message.completed_message.Pack(self._job)
+    self._queue_err(message)
 
 main(queue_in_name='fontbakery-worker-distributor'
    , queue_out_name='fontbakery-worker-checker'

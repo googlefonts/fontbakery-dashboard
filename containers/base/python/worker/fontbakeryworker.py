@@ -163,7 +163,8 @@ class FontbakeryWorker(object):
       #             restart the pod with its back-off delay
       # write to the DB doc
       # Report suppression of the error
-      logging.exception('FAIL docid: %s', self._job.docid)
+      logging.exception('FAIL Document closed exceptionally. docid: '
+                        '%s exception: %s', self._job.docid, e)
       # It will be handy to know this from the client.
       exception = traceback.format_exc()
       # if there is a jobid, this is reported in the job, otherwise it
@@ -175,7 +176,6 @@ class FontbakeryWorker(object):
                         , 'exception': exception
                         })
       failed = True;
-      logging.exception('Document closed exceptionally. %s', e)
     self._finalize(failed)
 
   def _finalize(self, failed):
