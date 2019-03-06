@@ -7,7 +7,7 @@ from functools import partial
 import tempfile
 import shutil
 import pika
-import rethinkdb as r
+from rethinkdb import RethinkDB
 import logging
 import traceback
 import pytz
@@ -16,6 +16,8 @@ from collections import namedtuple
 
 from worker.storageclient import StorageClient
 from protocolbuffers.messages_pb2 import Files
+
+r = RethinkDB()
 
 class FontbakeryWorkerError(Exception):
   pass
