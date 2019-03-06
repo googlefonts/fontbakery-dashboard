@@ -64,7 +64,8 @@ function pack(message, typeName, typesNamespace=FONT_BAKERY_TYPES_NAMESPACE) {
                 : typesNamespace
       , fullTypeName = [typesNamespace_, typeName].join('.')
       ;
-    return any.pack(message.serializeBinary(), fullTypeName);
+    any.pack(message.serializeBinary(), fullTypeName);
+    return any;
 }
 
 /**
