@@ -15,6 +15,8 @@ const path = require('path')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   , { ProcessUIService } = require('./dispatcher/ProcessUIService')
   , { _BaseServer, RootService } = require('./_BaseServer')
+  , { GithubOAuthService } = require('./apiServices/GithubOAuth')
+  , { StorageDownloadService } = require('./apiServices/StorageDownload')
   ;
 
 const FontBakeryServer = (function() {
@@ -23,7 +25,10 @@ function FontBakeryServer(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
       , ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports', 'initWorkers']]
-      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher']]
+      , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log', 'ghauth', 'webServerCookieSecret']]
+      , ['/download', StorageDownloadService, ['server', '*app', 'log'
+                            , {/*cache: 'cache',*/ persistence: 'persistence'}]]
+      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth']]
     ];
     _BaseServer.call(this, ...args);
 }
