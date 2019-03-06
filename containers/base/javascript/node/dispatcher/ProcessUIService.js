@@ -116,7 +116,7 @@ function Server(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
       , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth']]
-      , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log', 'ghauth']]
+      , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log', 'ghauth', 'webServerCookieSecret']]
       , ['/download', StorageDownloadService, ['server', '*app', 'log'
                             , {/*cache: 'cache',*/ persistence: 'persistence'}]]
     ];
@@ -974,10 +974,5 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.log('Loglevel', setup.logging.loglevel);
     // storing in global scope, to make it available for inspection
     // in the debugger.
-    // FIXME: temprorary local setup overrides.
-    setup = Object.create(setup);
-    setup.dispatcher = {host: '127.0.0.1', port: '1234'};
-    setup.gitHubAuth={host: '127.0.0.1', port: '5678'};
-    setup.persistence={host: '127.0.0.1', port: '3456'};
     global.server = new Server(setup.logging, 3000, setup);
 }
