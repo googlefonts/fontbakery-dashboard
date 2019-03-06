@@ -6,7 +6,7 @@
 
 const messages_pb = require('protocolbuffers/messages_pb')
   , grpc = require('grpc')
-  , { FamilyJob, CacheKey, CompletedWorker, FontBakeryFinished } = messages_pb
+  , { FamilyJob, StorageKey, CompletedWorker, FontBakeryFinished } = messages_pb
   , { InitWorkersService } = require('protocolbuffers/messages_grpc_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
   , { getSetup } = require('./util/getSetup')
@@ -66,7 +66,7 @@ return WorkerDefinition;
 /**
  * The job of this service is to init and clean up jobs done by
  * the workers.
- * Initially this was jsut the cleanup service for fontbakery-workers
+ * Initially this was just the cleanup service for fontbakery-workers
  * but we have a lot more tools running in workers now and this is
  * supposed to provide a unified handling for these.
  */
@@ -87,6 +87,8 @@ function InitWorkers(logging, port, io, resources, workerDefinitions) {
 
     this._server.addService(InitWorkersService, this);
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
+
+    this._processCommands = new Map();
 }
 
 var _p = InitWorkers.prototype;
@@ -219,10 +221,10 @@ _p._dispatchProcessCommands = function(workerName, id, finishedMessage) {
         // processCommand.setTargetPath(targetPath);
         // processCommand.setCallbackName(callbackName);
         // processCommand.setResponseQueue(responseQueue);
-        let responseQueue = processCommand.getResponseQueue()
+        let responseQueue = processCommand.getResponseQueueName()
           , buffer = Buffer.from(processCommand.serializeBinary())
           ;
-        return this._io.sendQueueMessage(responseQueue, buffer);
+        this._io.sendQueueMessage(responseQueue, buffer);
     }
     this._processCommands.delete(key);
 };
@@ -342,11 +344,11 @@ function FontBakeryWorker(logging, io, cache) {
     this._cache = cache;
 }
 
-var _p = FontBakeryWorker.prototype = Object.create(FontBakeryWorker.prototype);
+var _p = FontBakeryWorker.prototype = Object.create(WorkerDefinition.prototype);
 
 Object.defineProperties(_p, {
-    InitMessage: { value: CacheKey }
-  , CompletedMessage: { value: FamilyJob }
+    InitMessage: { value: StorageKey, enumerable:true }
+  , CompletedMessage: { value: FamilyJob, enumerable:true }
 });
 
 /**
@@ -392,7 +394,7 @@ function timestampFromDate(date){
 function _finishedMessageFromDoc(doc) {
     var message = new FontBakeryFinished()
       , exceptions = [doc.exception
-                     , ...(doc.jobs || []).map(job=>job.exception)
+                     , ...(Object.entries(doc.jobs || {})).map(job=>job.exception)
                      ].filter(e=>!!e)
        ;
     message.setDocid(doc.id);
@@ -403,7 +405,7 @@ function _finishedMessageFromDoc(doc) {
     for(let key of ['created', 'started', 'finished']) {
         let date = doc[key]
             // setCreated, setStarted, setFinished
-          , setter = 'set' + key[0].keyoUpperCase() + key.slice(1)
+          , setter = 'set' + key[0].toUpperCase() + key.slice(1)
           ;
         if(!date)
             continue;
@@ -411,6 +413,7 @@ function _finishedMessageFromDoc(doc) {
     }
     if(doc.results)
         message.setResultsJson(JSON.stringify(doc.results));
+    return message;
 }
 
 /**
@@ -446,7 +449,7 @@ function _finishedMessageFromDoc(doc) {
 _p._getOrCreateDoc = function(test_data_hash) {
     // FIXME: environment variables are created on process startup, to
     // change the ENVIRONMENT_VERSION the pod has to be restarted.
-    // This service stores processCommands in memory, so these would be
+    // This service stores processCommands in memory, so these will be
     // lost in case of a restart AND ENVIRONMENT_VERSION is more interesting
     // in terms of fontbakery-worker version than in terms of the
     // infrastructure, yet also infrastructure changes can have an impact
