@@ -415,7 +415,7 @@ _p.fbDNDReceive = function(req, res, next) {
         // jshint validthis:true
         return this._initWorkers.initialize('fontbakery', cacheKey)
         .then(familyJob=>{
-            var docid = familyJob.getDocId();
+            var docid = familyJob.getDocid();
             return docid;
         });
     }

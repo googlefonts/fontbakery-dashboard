@@ -101,7 +101,7 @@ _p._consumeQueue = function(message) {
 
     return this._initWorkers.initialize('fontbakery', cacheKey)
     .then(familyJob=>{
-        var docid = familyJob.getDocId();
+        var docid = familyJob.getDocid();
         return this._createCollectionEntry(job, docid);
     })
     .then(() => this._io.ackQueueMessage(message))
