@@ -469,13 +469,18 @@ _p._dispatch = function(authorSignature, localBranchName, targetDirectory
 _p.serve = function() {
     // Start serving when the database is ready
     // No db yet!
+
     return this._initRepository()
         .then(()=>this._initUpstream())
         .then(()=>this._fetchUpstreamMaster())
-        .then(()=>Promise.all([this._auth.waitForReady()
-                             , this._storage.waitForReady()
-                             , this._io.init()
-                             ]))
+        .then(()=>{
+            this._log.info('Conecting external services...');
+            return Promise.all([this._auth.waitForReady().then(()=>this._log.info('auth is ready now'))
+                      , this._storage.waitForReady().then(()=>this._log.info('storage is ready now'))
+                      , this._io.init().then(()=>this._log.info('io(amqp) is ready now'))
+                      ]);
+        })
+        .then(()=>this._log.info('External services ready!'))
         .then(()=>this._server.start())
         ;
 };
