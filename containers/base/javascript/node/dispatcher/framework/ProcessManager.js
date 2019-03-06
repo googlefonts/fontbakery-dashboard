@@ -418,7 +418,7 @@ _p._execute = function(commandMessage, _via) {
     // so this command trickles down and is checked by each item on it's
     // way …
     var targetPath = Path.fromString(commandMessage.getTargetPath());
-    this._log.debug('PM._execute at targetPath:', targetPath, 'via', _via);
+    this._log.debug('PM._execute at targetPath: ' + targetPath, 'via', _via);
     return this._getProcess(targetPath.processId)// => {process, queue}
         .then(({process, queue})=>{
             // Do we need a gate keeper? Are we allowed to perform an action on target?

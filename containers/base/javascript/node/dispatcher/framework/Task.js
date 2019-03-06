@@ -285,7 +285,9 @@ _p._setExpectedAnswer = function(waitingFor
 };
 
 function renderErrorAsMarkdown(message, error){
-    return '**NOT IMPLEMENTED** (renderErrorAsMarkdown) ' + message + ' ```\n' + error + '\n```';
+    return '## *ERROR* ' + error.name + '\n'
+          + message + '\n'
+          + '```\n' + error.stack + '\n```';
 }
 
 _p._handleStateChange = function(methodName, stateChangePromise) {
@@ -309,7 +311,7 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
     .then(null, error=> {
             this.log.error('State change failed:',error);
             this._setFAILED(renderErrorAsMarkdown(
-                            'Method: ' + methodName + ' failed:', error));
+                            'Method: ' + methodName + ' failed', error));
         }
     )
     .then((result)=>{

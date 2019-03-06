@@ -341,9 +341,10 @@ _p.getTaskPath = function(task) {
     throw new Error('Task  "' + task + '" not found.');
 };
 
-
 function renderErrorAsMarkdown(message, error){
-    return '**NOT IMPLEMENTED** (renderErrorAsMarkdown) ' + message + ' ```\n' + error + '\n```';
+    return '## *ERROR* ' + error.name + '\n'
+          + message + '\n'
+          + '```\n' + error.stack + '\n```';
 }
 
 _p._handleStateChange = function(methodName, stateChangePromise) {
@@ -352,7 +353,7 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
     // of doing so.
     return stateChangePromise
         .then(null, error=>this._finishedFAILED(renderErrorAsMarkdown(
-                    'Method: ' + methodName + ' failed:', error)));
+                    'Method: ' + methodName + ' failed', error)));
 };
 
 /**
