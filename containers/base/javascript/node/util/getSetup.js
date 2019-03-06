@@ -9,18 +9,94 @@ const Logging = require('./Logging').Logging
   , amqplib = require('amqplib')
   ;
 
+
+function _getter(target, [source, sourceName], toKey, fromKey, parser, ...defaultVal) {
+    Object.defineProperty(target, toKey, {
+        get: ()=> {
+            var val = source[fromKey];
+            if(!val || !val.length) {
+                if(defaultVal.length)
+                    val = defaultVal;
+                else
+                    throw new Error('SETUP MISSING value for "'+toKey+'" '
+                        + 'at ' + sourceName + '["'+fromKey+'"].');
+            }
+            // e.g.: parser = JSON.parse
+            if(!parser)
+                return val;
+
+            try {
+                return parser(val);
+            }
+            catch(error) {
+                throw new Error('SETUP PARSER value for "'+toKey+'" '
+                        + 'at ' + sourceName + '["'+fromKey+'"]. '
+                        + error);
+            }
+        }
+      , configurable: false // use Inheritance to do this
+      , enumerable: true
+    });
+    return target;
+}
+
+function _envGetter(target, toKey, fromKey, parser, ...defaultVal) {
+    return _getter(target, [process.env, 'process.env'], toKey, fromKey, parser, ...defaultVal);
+}
+
+function _multiEnvGetter(target, toFromParserDefault) {
+    for(let [toKey, fromKey, parser, ...defaultVal] of toFromParserDefault)
+        _envGetter(target, toKey, fromKey, parser, ...defaultVal);
+    return target;
+}
+
+
+function _subSetupGetter(target, toKey, subSetup) {
+    Object.defineProperty(target, toKey, {
+            get: ()=>{
+                var result = {}, errors = [], message;
+                for(let key of Object.keys(subSetup)) {
+                    try {
+                        result[key] = subSetup[key];
+                    }
+                    catch(e){
+                        errors.push([key, e]);
+                    }
+                }
+                if(errors.length) {
+                    message = 'Setup can\'t get "'+toKey+'"; with errors:\n';
+                    message += errors.map((k,e)=>'  '+k+': '+ e.message).join('\n');
+                    throw new Error(message);
+                }
+                return result;
+            }
+          , configurable: false // use Inheritance to do this
+          , enumerable: true
+    });
+    return target;
+}
+
+/**
+ * The resulting setup opject will raise an error if a value that
+ * is expected to be externally defined (e.g. via process.env) is
+ * not available, but *ONLY* at access time, as not all pods/services
+ * will need all setup variables.
+ * This is to have rather failing pods than pods that start with
+ * missing setup.
+ */
 function getSetup() {
-    var rethinkSetup = {
-            host: null
-          , port: null
-          , db: 'fontbakery' // this db will be created
+    var setup = {}
+      , rethinkSetup = {
+          // host: done below
+          // port: done below
+            db: 'fontbakery' // this db will be created
           , buffer: 10 //<number> - Minimum number of connections available in the pool, default 50
           , max: 1000 //<number> - Maximum number of connections available in the pool, default 1000
 
         }
       , dbSetup = {
-            rethink: rethinkSetup
-          , tables: {
+            // rethink: done below rethinkSetup
+            tables: {
                 // these tables will be created
                 family: 'familytests'
               , collection: 'collectiontests'
@@ -28,82 +104,93 @@ function getSetup() {
               , dispatcherprocesses: 'dispatcherprocesses'
             }
         }
-      , amqpSetup = {
-            host: process.env.RABBITMQ_SERVICE_SERVICE_HOST
-                        || process.env.BROKER
-                        || '127.0.0.1'
-        }
-      , cacheSetup = {
-            // call it: "fontbakery-cache"
-            host: process.env.FONTBAKERY_CACHE_SERVICE_HOST
-          , port: process.env.FONTBAKERY_CACHE_SERVICE_PORT
-        }
-      , persistenceSetup = {
-            // call it: "fontbakery-persistence"
-            host: process.env.FONTBAKERY_PERSISTENCE_SERVICE_HOST
-          , port: process.env.FONTBAKERY_PERSISTENCE_SERVICE_PORT
-        }
-      , reportsSetup = {
-            // call it: "fontbakery-reports"
-            host: process.env.FONTBAKERY_REPORTS_SERVICE_HOST
-          , port: process.env.FONTBAKERY_REPORTS_SERVICE_PORT
-        }
-      , dispatcherSetup = {
-            // call it: "fontbakery-dispatcher"
-            host: process.env.FONTBAKERY_DISPATCHER_HOST
-          , port: process.env.FONTBAKERY_DISPATCHER_PORT
-        }
-      , gitHubPRSetup = {
-            host: process.env.FONTBAKERY_GITHUBPR_SERVICE_HOST
-          , port: process.env.FONTBAKERY_GITHUBPR_SERVICE_PORT
-        }
-      , manifestUpstreamSetup = {
-          // call it: "fontbakery-manifest-csvupstream"
-            host: process.env.FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_HOST
-          , port: process.env.FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_PORT
-        }
-      , initWorkersSetup = {
-            // call it: "fontbakery-init-workers"
-            host: process.env.FONTBAKERY_INIT_WORKERS_SERVICE_HOST
-          , port: process.env.FONTBAKERY_INIT_WORKERS_SERVICE_PORT
-        }
-      , logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO')
-      , develFamilyWhitelist = null
+      , rethinkProviderName = process.env.RETHINKDB_PROXY_SERVICE_HOST
+                              // in gcloud, we use a cluster with proxy setup
+                              // the proxy service is called: "rethinkdb-proxy" hence:
+                              ? 'RETHINKDB_PROXY_SERVICE '
+                              // Fall back to "rethinkdb-driver"
+                              : 'RETHINKDB_DRIVER_SERVICE'
       ;
 
-    if(process.env.RETHINKDB_PROXY_SERVICE_HOST) {
-        // in gcloud, we use a cluster with proxy setup
-        // the proxy service is called: "rethinkdb-proxy" hence:
-        rethinkSetup.host = process.env.RETHINKDB_PROXY_SERVICE_HOST;
-        rethinkSetup.port = process.env.RETHINKDB_PROXY_SERVICE_PORT;
-    }
-    else {
-        // Fall back to "rethinkdb-driver"
-        rethinkSetup.host = process.env.RETHINKDB_DRIVER_SERVICE_HOST;
-        rethinkSetup.port = process.env.RETHINKDB_DRIVER_SERVICE_PORT;
+    _subSetupGetter(dbSetup, 'rethink', _multiEnvGetter(rethinkSetup, [
+            ['host', rethinkProviderName + '_HOST']
+          , ['port', rethinkProviderName + '_PORT']
+        ])
+    );
+    setup.db = dbSetup;
+
+    // this kind of sub-setup is so common  we can
+    // define it more compact it in here
+    for(let [key, toFromParserDefault] of Object.entries({
+          amqp: [
+                ['host', 'RABBITMQ_SERVICE_SERVICE_HOST'
+                              , null, process.env.BROKER || '127.0.0.1']
+            ]
+          , cache: [
+                // call it: "fontbakery-storage-cache" in kybernetes
+                ['host', 'FONTBAKERY_STORAGE_CACHE_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_STORAGE_CACHE_SERVICE_PORT']
+            ]
+          , persistence: [
+                // call it: "fontbakery-storage-persistence" in kybernetes
+                ['host', 'FONTBAKERY_STORAGE_PERSISTENCE_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_STORAGE_PERSISTENCE_SERVICE_PORT']
+            ]
+          , reports: [
+                // call it: "fontbakery-reports" in kybernetes
+                ['host', 'FONTBAKERY_REPORTS_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_REPORTS_SERVICE_PORT']
+            ]
+          , dispatcher: [
+                // call it: "fontbakery-dispatcher" in kybernetes
+                ['host', 'FONTBAKERY_DISPATCHER_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_DISPATCHER_SERVICE_PORT']
+            ]
+          , gitHubPR: [
+                // call it: "fontbakery-github-pr" in kybernetes
+                ['host', 'FONTBAKERY_GITHUB_PR_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_GITHUB_PR_SERVICE_PORT']
+            ]
+          , gitHubAuth: [
+                // call it: "fontbakery-github-auth" in kybernetes
+                ['host', 'FONTBAKERY_GITHUB_AUTH_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_GITHUB_AUTH_SERVICE_PORT']
+            ]
+          , manifestUpstream: [
+                // call it: "fontbakery-manifest-csvupstream" in kybernetes
+                ['host', 'FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_PORT']
+            ]
+          , initWorkers: [
+                // call it: "fontbakery-init-workers" in kybernetes
+                ['host', 'FONTBAKERY_INIT_WORKERS_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_INIT_WORKERS_SERVICE_PORT']
+            ]
+           , gitHubOAuthCredentials: [
+                ['clientId', 'GITHUB_OAUTH_CLIENT_ID']
+              , ['clientSecret', 'GITHUB_OAUTH_CLIENT_SECRET']
+            ]
+    })){
+        _subSetupGetter(setup, key, _multiEnvGetter({}, toFromParserDefault));
     }
 
-    // setup.develFamilyWhitelist is used in the manifestSources implementations
-    if(process.env.DEVEL_FAMILY_WHITELIST) {
-        develFamilyWhitelist = new Set(JSON.parse(process.env.DEVEL_FAMILY_WHITELIST));
-        if(!develFamilyWhitelist.size)
-            develFamilyWhitelist = null;
-    }
+    _multiEnvGetter(setup, [
+            ['webServerCookieSecret', 'WEB_SERVER_COOKIE_SECRET']
+          , ['dispatcherManagerSecret', 'DISPATCHER_MANAGER_SECRET']
+            // This is currently an oauth token for a specific user
+            // (i.e. me, @graphicore, can definetly lead to quota trouble.)
+          , ['gitHubAPIToken', 'GITHUB_API_TOKEN']
+          , ['googleAPIKey', 'GOOGLE_API_KEY']
+          , ['gitHubAuthEngineers', 'GITHUB_AUTH_ENGINEERS'
+              , value=>new Set(JSON.parse(value))/*???default: '[]' empty list */
+            ]
+          , ['develFamilyWhitelist', 'DEVEL_FAMILY_WHITELIST'
+              , value=>new Set(JSON.parse(value)), null
+            ]
+    ]);
 
-
-    return {
-        amqp: amqpSetup
-      , db: dbSetup
-      , cache: cacheSetup
-      , persistence: persistenceSetup
-      , reports: reportsSetup
-      , dispatcher: dispatcherSetup
-      , gitHubPR: gitHubPRSetup
-      , manifestUpstream: manifestUpstreamSetup
-      , initWorkers: initWorkersSetup
-      , logging: logging
-      , develFamilyWhitelist: develFamilyWhitelist
-    };
+    setup.logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO');
+    return setup;
 }
 
 exports.getSetup = getSetup;
