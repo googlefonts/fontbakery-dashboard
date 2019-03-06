@@ -357,14 +357,68 @@ I accessed this and deleted the 'draganddrop' database, which is no longer neede
 ## Secrets
 
 ```bash
+# we have some server side secrets for session cookies or similar
+# this is how they can be created:
+
+# using 33 bytes, we could use 32 bytes (which amounts to 256 bits, as much
+# as is used for a sha256 hash, however, with 32 bytes base64 puts out
+# a padding character (=) in the end and with 33 the padding is gone, the
+# encoded result is as long and we have one extra byte of random, and
+# we're using the resulting string probably, and not the bytes directly
+# e.g. in salting|signing
+$ head -c 33  /dev/urandom | base64 --wrap=0 ;echo ''
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+```
+
+### set-gcloud-vars
+
+Script Template:
+
+```bash
+#!/usr/bin/env bash
 GOOGLE_API_KEY=AAAAAAAAABBBBBBXXXXXX{PRIVATE}XXXXAAAABBBB
 GITHUB_API_TOKEN=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+GITHUB_OAUTH_CLIENT_ID=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+GITHUB_OAUTH_CLIENT_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+# whitelist user login names on github to have the role "engineer"
+GITHUB_AUTH_ENGINEERS="[\"userlogina\", \"userloginb\", \"userloginc\"]"
+# generated like so: $ head -c 33  /dev/urandom | base64 --wrap=0 ;echo ''
+WEB_SERVER_COOKIE_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
+DISPATCHER_MANAGER_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 
-kubectl delete secret external-resources
-kubectl create secret generic external-resources \
+# Note: the "-n fontbakery" argument is only needed if kubectl must address
+# a special namespace.
+
+kubectl -n fontbakery delete secret external-resources
+kubectl -n fontbakery create secret generic external-resources \
      --from-literal=google-api-key=$GOOGLE_API_KEY \
-     --from-literal=github-api-token=$GITHUB_API_TOKEN;
+     --from-literal=github-api-token=$GITHUB_API_TOKEN\
+     --from-literal=github-oauth-client-id=$GITHUB_OAUTH_CLIENT_ID\
+     --from-literal=github-oauth-client-secret=$GITHUB_OAUTH_CLIENT_SECRET\
+     --from-literal=github-auth-engineers="$GITHUB_AUTH_ENGINEERS"\
+     --from-literal=web-server-cookie-secret=$WEB_SERVER_COOKIE_SECRET\
+     --from-literal=dispatcher-manager-secret=$DISPATCHER_MANAGER_SECRET\
+      ;
+
+ENVIRONMENT_VERSION="$(date)" # like: Mi 8. Nov 03:57:01 CET 2017
+kubectl -n fontbakery delete configmap env-config
+kubectl -n fontbakery create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
 ```
+
+Insert secrets, then run it:
+
+```
+# This can be done in a not public file
+
+$ set-minikube-vars
+
+# or
+
+$ set-gcloud-vars
+
+```
+
 
 ## ENVIRONMENT_VERSION
 
