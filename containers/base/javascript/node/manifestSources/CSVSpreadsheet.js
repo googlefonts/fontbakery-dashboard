@@ -974,7 +974,6 @@ if (typeof require != 'undefined' && require.main==module) {
       // NOTE: temporary local copy for development can be specified like.
       //, sheetCSVUrl = 'file://upstream-sources.csv'
       , grpcPort=50051
-      , reportsSetup = setup.reports
       ;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
@@ -991,12 +990,12 @@ if (typeof require != 'undefined' && require.main==module) {
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
     // the prod api
 
-    // FIXME: temporary local setup overrides.
-    reportsSetup = null;
-    setup.cache = null;
+    // Could be used in local development to reduce environment complexity
+    // setup.reports = null;
+    // setup.cache = null;
 
     sources.push(new CSVSpreadsheet(setup.logging, 'upstream', repoPath
-                            , sheetCSVUrl, familyWhitelist, reportsSetup));
+                            , sheetCSVUrl, familyWhitelist, setup.reports));
 
     // NOTE: this was used for development.
     // let _queues = new Map()

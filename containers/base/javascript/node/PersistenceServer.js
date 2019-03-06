@@ -30,11 +30,14 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
 
-    if(dataDir === null)
+    if('FONTBAKERY_PERSISTENT_DATA_DIR' in process.env)
+        dataDir = process.env.FONTBAKERY_PERSISTENT_DATA_DIR;
+    else {
         setup.logging.warning('dataDir is not specified. Default:', dataDirDefault);
+        dataDir = dataDirDefault;
+    }
 
     persistenceServer = new PersistenceServer(setup.logging, port
-                            , dataDir || dataDirDefault
-                            , dataItemTimeOutMinutes);
+                            , dataDir, dataItemTimeOutMinutes);
     persistenceServer.serve();
 }

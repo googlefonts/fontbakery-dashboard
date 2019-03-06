@@ -15,7 +15,7 @@ const SESSION_COOKIE_NAME = 'session.github.oauth';
  * https://developer.github.com/v3/guides/basics-of-authentication/
  * Flask example: https://gist.github.com/ib-lundgren/6507798
  */
-function GithubOAuthService(server, app, logging, ghAuthClient) {
+function GithubOAuthService(server, app, logging, ghAuthClient, cookieSecret) {
     this._server = server;
     this._app = app;// === express()
     this._log = logging;
@@ -26,11 +26,11 @@ function GithubOAuthService(server, app, logging, ghAuthClient) {
     // Let's see what happens!
     // With a cookie secret, cookieParser signs the cookie for us,
     // thusly preventing the client from tampering with the cookie value.
-    this._log.warning('FIXME: configure a cookie secret!');
-    var cookieSecret = 'FIXME: configure a cookie secret!';
     // use `res.cookie('cookie-name', 'value', { signed: true });`
     // `res.cookie will` use the cookieSecret passed to cookieParser!
     // use `req.signedCookies[]`
+    if(!cookieSecret || !cookieSecret.length || cookieSecret.indexOf('FIXME:') !== -1)
+        this._log.warning('You really should define a proper cookie secret!');
     this._app.use(cookieParser(cookieSecret));
 
     this._app.get('/', this._authorizationCallback.bind(this));

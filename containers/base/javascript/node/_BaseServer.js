@@ -89,6 +89,11 @@ function _BaseServer(logging, portNum, setup) {
               , 'waitForReady'
             ]
         ]
+      , ['webServerCookieSecret',[
+                ()=>setup.webServerCookieSecret
+            ]
+
+        ]
       , ['manifestUpstream', [
             ()=>new ManifestClient(
                                 this._log

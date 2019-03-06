@@ -353,8 +353,8 @@ def getSetup():
   # FIXME: Where would BROKER be set? RABBITMQ_SERVICE_SERVICE_HOST is
   # set by kubernetes for the service named "rabbitmq-service" AFAIK
   msgqueue_host = os.environ.get("RABBITMQ_SERVICE_SERVICE_HOST", os.environ.get("BROKER"))
-  cache_host = os.environ.get("FONTBAKERY_CACHE_SERVICE_HOST")
-  cache_port = os.environ.get("FONTBAKERY_CACHE_SERVICE_PORT", 50051)
+  cache_host = os.environ.get("FONTBAKERY_STORAGE_CACHE_SERVICE_HOST")
+  cache_port = os.environ.get("FONTBAKERY_STORAGE_CACHE_SERVICE_PORT", 50051)
 
   # 1 reports every test result to the database and creates a good
   # live report granularity, but it also slows the database down.

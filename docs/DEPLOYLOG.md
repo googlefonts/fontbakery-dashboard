@@ -381,7 +381,7 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 
 1. gcloud-rabbitmq.yaml, gcloud-rethinkdb-stage-1.yaml
 2. gcloud-rethinkdb-stage-2.yaml
-3. gcloud-fontbakery-cache.yaml
+3. gcloud-fontbakery-storage-cache.yaml
 4. gcloud-fontbakery-worker-cleanup.yaml, gcloud-fontbakery-worker-checker.yaml,
    gcloud-fontbakery-worker-distributor.yaml, gcloud-fontbakery-manifest-master.yaml
 5. gcloud-fontbakery-api.yaml
@@ -410,7 +410,7 @@ kubectl apply -f kubernetes/gcloud-rethinkdb-stage-1.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-proxy.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
 
-kubectl apply -f kubernetes/gcloud-fontbakery-cache.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-storage-cache.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-worker-cleanup.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-worker-checker.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-worker-distributor.yaml
@@ -426,7 +426,7 @@ kubectl apply -f kubernetes/gcloud-fontbakery-manifest-githubgf.yaml
 ### delete deployments
 
 ```
-kubectl delete deployment fontbakery-cache;
+kubectl delete deployment fontbakery-storage-cache;
 kubectl delete deployment fontbakery-worker-cleanup
 kubectl delete deployment fontbakery-worker-checker
 kubectl delete deployment fontbakery-worker-distributor

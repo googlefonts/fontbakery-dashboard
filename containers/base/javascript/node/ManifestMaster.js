@@ -45,13 +45,12 @@ const { getSetup } = require('./util/getSetup')
  * else
  *      create the full entry
  */
-function ManifestMaster(logging, amqpSetup, dbSetup, cacheSetup) {
+function ManifestMaster(logging, setup) {
     this._log = logging;
-    this._dbSetup = dbSetup;
-    this._io = new IOOperations(logging, dbSetup, amqpSetup);
+    this._io = new IOOperations(logging, setup.db, setup.amqp);
     this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
-    this._cache = new StorageClient(logging, cacheSetup.host, cacheSetup.port);
-    this._initWorkers = new InitWorkersClient(logging, initWorkers.host, initWorkers.port);
+    this._cache = new StorageClient(logging, setup.cache.host, setup.cache.port);
+    this._initWorkers = new InitWorkersClient(logging, setup.initWorkers.host, setup.initWorkers.port);
 
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
@@ -63,9 +62,11 @@ function ManifestMaster(logging, amqpSetup, dbSetup, cacheSetup) {
     //    amqp = resources[0][1];
     //})
     .then(this._listen.bind(this))
-    .catch(err => {
-        this._log.error('Can\'t initialize server.', err);
-        process.exit(1);
+    .then(
+        ()=>this._log.info('Server ready!')
+      , err => {
+            this._log.error('Can\'t initialize server.', err);
+            process.exit(1);
     });
 }
 
@@ -151,5 +152,11 @@ _p._createCollectionEntry = function(job, familytests_id) {
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    new ManifestMaster(setup.logging, setup.amqp, setup.db, setup.cache);
+    new ManifestMaster(setup.logging, {
+        // passing these explicitly to document the dependencies
+        db: setup.db
+      , amqp: setup.amqp
+      , cache: setup.cache
+      , initWorkers: setup.initWorkers
+    });
 }

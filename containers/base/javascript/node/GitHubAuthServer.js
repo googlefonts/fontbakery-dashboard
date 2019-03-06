@@ -32,10 +32,10 @@ const PENDING = Symbol('pending session');
  * https://developer.github.com/v3/guides/basics-of-authentication/
  * Flask example: https://gist.github.com/ib-lundgren/6507798
  */
-function GitHubAuthServer(logging, port, ghOAuth) {
+function GitHubAuthServer(logging, port, ghOAuth, engineers) {
     this._log = logging;
-
     this._ghOAuth = ghOAuth;
+    this._engineers = engineers;
 
     this._sessions = new Map();
     this._users = new Map();
@@ -810,11 +810,8 @@ _p.getRoles = function(call, callback) {
             promise = Promise.resolve(new Set());
 
         promise.then(roles=>{
-            // TODO;
-            // add the roles that we associate
-            // by configuration with the user
-            this._log.warning('FIXME: Everybody is an egineer!');
-            roles.add('engineer');
+            if(this._engineers.has(session.user.login))
+                roles.add('engineer');
             return roles;
         })
         .then(roles=>{
@@ -839,19 +836,9 @@ _p.serve = function() {
 module.exports.GitHubAuthServer = GitHubAuthServer;
 
 if (typeof require != 'undefined' && require.main==module) {
-
-    //TODO: proper via setup/injection
-    const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID
-        , GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET
-        ;
-
     var { getSetup } = require('./util/getSetup')
       , setup = getSetup(), gitHubAuthServer, port=50051
-      , ghOAuth = {
-            clientId: GITHUB_OAUTH_CLIENT_ID
-          , clientSecret: GITHUB_OAUTH_CLIENT_SECRET
-        }
-    ;
+      ;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
         if(process.argv[i] === '-p' && i+1<l) {
@@ -863,6 +850,7 @@ if (typeof require != 'undefined' && require.main==module) {
     }
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    gitHubAuthServer = new GitHubAuthServer(setup.logging, port, ghOAuth);
+    gitHubAuthServer = new GitHubAuthServer(setup.logging, port
+                , setup.gitHubOAuthCredentials, setup.gitHubAuthEngineers);
     gitHubAuthServer.serve();
 }

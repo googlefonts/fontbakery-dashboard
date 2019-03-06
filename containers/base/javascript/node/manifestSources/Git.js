@@ -945,13 +945,6 @@ if (typeof require != 'undefined' && require.main==module) {
         }
     }
 
-    if(!process.env.GITHUB_API_TOKEN)
-        // see: Using Secrets as Environment Variables
-        // in:  https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables
-        // and: https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure
-        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=github-api-token=$GITHUB_API_TOKEN
-        throw new Error('MISSING: process.env.GITHUB_API_TOKEN');
-
     setup.logging.log('Loglevel', setup.logging.loglevel);
     if(familyWhitelist)
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
@@ -967,7 +960,7 @@ if (typeof require != 'undefined' && require.main==module) {
     ));
     sources.push(new GitBranchGithubPRs(
             setup.logging, 'pulls', repoPath, baseReference
-          , process.env.GITHUB_API_TOKEN, familyWhitelist
+          , setup.gitHubAPIToken, familyWhitelist
     ));
 
     setup.logging.info('Starting manifest server');

@@ -40,26 +40,14 @@ function GitHubRef(repoOwner, repoName, name) {
 }
 
 /**
- * This Server proivdes the grpc AuthService plus some special GitHub
- * related endpoints.
  *
- * Objectives are:
- *      - User Authentication via GitHub OAuth tokens.
- *      - Session management
- *      - access control/authorization services
- *
- * OAuth2: https://tools.ietf.org/html/rfc6749
- *
- * https://developer.github.com/v3/guides/basics-of-authentication/
- * Flask example: https://gist.github.com/ib-lundgren/6507798
  */
-function GitHubPRServer(logging, port, setup, repoPath, ghOAuth
+function GitHubPRServer(logging, port, setup, repoPath
                     , upstreamBranch, ghPushSetup, prTarget) {
     this._log = logging;
     this._repoPath = repoPath;
     this._queue = new AsyncQueue();
     this._any = new ProtobufAnyHandler(this._log, {DispatchReport:DispatchReport});
-    this._ghOAuth = ghOAuth;
 
     this._ghPushSetup = ghPushSetup;
 
@@ -869,37 +857,24 @@ function getCommitResources(reference) {
 module.exports.GitHubPRServer = GitHubPRServer;
 
 if (typeof require != 'undefined' && require.main==module) {
-
-        //TODO: proper via setup/injection
-    const GITHUB_OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID
-        , GITHUB_OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET
-        ;
-
-    if(!process.env.GITHUB_API_TOKEN)
-        // see: Using Secrets as Environment Variables
-        // in:  https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables
-        // and: https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure
-        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=github-api-token=$GITHUB_API_TOKEN
-        throw new Error('MISSING: process.env.GITHUB_API_TOKEN');
-
-
     var { getSetup } = require('./util/getSetup')
-      , repoPath = '/tmp/fontsgit'
+      , repoPath = './fontsgit'
       , setup = getSetup(), gitHubPRServer, port=50051
-      , ghOAuth = {
-            clientId: GITHUB_OAUTH_CLIENT_ID
-          , clientSecret: GITHUB_OAUTH_CLIENT_SECRET
-        }
         // all PRs are based on this branch
       , upstream = new GitHubRef('google', 'fonts', 'master')
         // if not defined falls back to upstream
         // but this is for development, to not disturb
         // the production people
       , prTarget = new GitHubRef('graphicore', 'googleFonts', 'master')
+      // FIXME: we could also use the authenticated user to perform the
+      // push and in the spirit of the OAuthAPI, we maybe should …
+      // This here may well be a temporary setup!
+      // Though! this way, we can at least ensure that the access token
+      // is authorized to push to the repo.
       , ghPushSetup = {
             repoOwner: 'graphicore',
             repoName: 'googleFonts',
-            accessToken: process.env.GITHUB_API_TOKEN
+            accessToken: setup.gitHubAPIToken
         }
     ;
 
@@ -915,16 +890,9 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
 
-    // FIXME: temprorary local setup overrides.
-    setup = Object.create(setup);
-    setup.gitHubAuth={host: '127.0.0.1', port: '5678'};
-    setup.persistence={host: '127.0.0.1', port: '3456'};
-
     gitHubPRServer = new GitHubPRServer(setup.logging, port, setup, repoPath
-                            , ghOAuth, upstream, ghPushSetup, prTarget);
+                            , upstream, ghPushSetup, prTarget);
     gitHubPRServer.serve()
-        // .then(()=>gitHubPRServer.devMain())
-        //.then(()=>gitHubPRServer.devPR())
         .then(
               ()=>setup.logging.info('Server ready!')
             , error=>{

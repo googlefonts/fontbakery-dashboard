@@ -180,7 +180,6 @@ _p.subscribeProcessList = function(call) {
 if (typeof require != 'undefined' && require.main==module) {
     var { getSetup } = require('../util/getSetup')
       , setup = getSetup(), processManager, port=50051
-      , secret = "// TODO: define secret!"
       ;
 
     for(let i=0,l=process.argv.length;i<l;i++) {
@@ -193,23 +192,10 @@ if (typeof require != 'undefined' && require.main==module) {
     }
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    if(!secret.length || secret.indexOf('TODO:') !== -1)
-        setup.logging.warning('You really should define a proper secret');
-
-
-    // FIXME: temporary local setup overrides.
-    setup.db.rethink.host = '127.0.0.1';
-    setup.db.rethink.port = '32769';
-
-
-    setup.manifestUpstream={host: '127.0.0.1', port: '9012'};
-    setup.persistence={host: '127.0.0.1', port: '3456'};
-    setup.gitHubPR={host: '127.0.0.1', port: '7890'};
-
     processManager = new DispatcherProcessManager(
                                         setup
                                       , port
-                                      , secret);
+                                      , setup.dispatcherManagerSecret);
     processManager.serve()
         .then(
             ()=>setup.logging.info('Server ready!')

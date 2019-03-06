@@ -179,7 +179,7 @@ if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
        , familyWhitelist = setup.develFamilyWhitelist
        , apiDataBaseUrl = 'https://www.googleapis.com/webfonts/v1/webfonts?key='
-       , apiDataUrl = apiDataBaseUrl + process.env.GOOGLE_API_KEY
+       , apiDataUrl = apiDataBaseUrl + setup.googleAPIKey
        , grpcPort=50051
        ;
 
@@ -191,13 +191,6 @@ if (typeof require != 'undefined' && require.main==module) {
             break;
         }
     }
-
-    if(!process.env.GOOGLE_API_KEY)
-        // see: Using Secrets as Environment Variables
-        // in:  https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables
-        // and: https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure
-        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=google-api-key=$GOOGLE_API_KEY
-        throw new Error('MISSING: process.env.GOOGLE_API_KEY');
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
     if(familyWhitelist)

@@ -27,6 +27,10 @@ function ProcessManager(setup, port, secret, anySetup, ProcessConstructor) {
     this._processSubscriptions = new Map();
     this._activeProcesses = new Map();
     this._any = new ProtobufAnyHandler(this._log, anySetup.knownTypes, anySetup.typesNamespace);
+
+    if(!secret || !secret.length || secret.indexOf('FIXME:') !== -1)
+        this._log.warning('You really should define a proper ProcessManager secret!');
+
     Object.defineProperties(this._processResources, {
         secret: {value: secret}
       , log: {value: this._log}
