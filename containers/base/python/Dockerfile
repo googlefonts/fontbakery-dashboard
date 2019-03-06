@@ -57,10 +57,10 @@ run pip install --upgrade pip
 # by the docker build
 # This is bad: fontbakery requirements.txt needs a version and setup.py doesn't, we
 # install from both ...
-RUN pip install lxml; # ==3.5.0
+RUN pip3 install lxml; # ==3.5.0
 
 ADD requirements.txt /var/python/requirements.txt
-RUN pip install -r /var/python/requirements.txt
+RUN pip3 install -r /var/python/requirements.txt
 
 RUN touch /tmp/cache_spoof_18
 
@@ -71,7 +71,7 @@ RUN touch /tmp/cache_spoof_18
 #RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
 #    pip install /var/fontbakery;
 
-RUN pip install fontbakery;
+RUN pip3 install fontbakery;
 
 RUN touch /tmp/cache_spoof_2
 
