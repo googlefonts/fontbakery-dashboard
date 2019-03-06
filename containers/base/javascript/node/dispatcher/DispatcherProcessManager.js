@@ -8,6 +8,7 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
   , { ManifestClient } = require('../util/ManifestClient')
   , { StorageClient } = require('../util/StorageClient')
   , { PullRequestDispatcherClient } = require('../util/PullRequestDispatcherClient')
+  , { InitWorkersClient } = require('../util/InitWorkersClient')
   , {
         ProcessList
       , ProcessListItem
@@ -41,6 +42,19 @@ function DispatcherProcessManager(setup, ...args) {
                             , {File, Files});
     this._asyncDependencies.push([this._persistenceClient, 'waitForReady']);
 
+    this._cacheClient = new StorageClient(
+                              setup.logging
+                            , setup.cache.host
+                            , setup.cache.port
+                            , {File, Files});
+    this._asyncDependencies.push([this._cacheClient, 'waitForReady']);
+
+    this._initWorkers = new InitWorkersClient(
+                              setup.logging
+                            , setup.initWorkers.host
+                            , setup.initWorkers.port);
+    this._asyncDependencies.push([this._initWorkers, 'waitForReady']);
+
     this._gitHubPRClient = new PullRequestDispatcherClient(
                               setup.logging
                             , setup.gitHubPR.host
@@ -70,9 +84,14 @@ function DispatcherProcessManager(setup, ...args) {
                 return this._manifestUpstreamClient.get(familyRequestMessage);
             }
         }
-      , storeMessage: {
-            value: message=>this._persistenceClient.put([message])
-                                  .then(storageKeys=>storageKeys[0])
+      , persistence: {
+            value: this._persistenceClient
+        }
+      , cache: {
+            value: this._cacheClient
+        }
+      , initWorker: {
+            value: (...args)=>this._initWorkers.initialize(...args)
         }
       , executeQueueName: {
             value: this._executeQueueName

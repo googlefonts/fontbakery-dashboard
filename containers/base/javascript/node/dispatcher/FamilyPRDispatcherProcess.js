@@ -3,12 +3,13 @@
 
 const { Process:Parent } = require('./framework/Process')
     , { Step } = require('./framework/Step')
-    , { Task, finishingStatuses } = require('./framework/Task')
-    , { string2statusCode, FAIL, OK } = require('./framework/Status')
+    , { Task } = require('./framework/Task')
     , { FamilyRequest
       , PullRequest
       , ProcessCommand
-      , DispatchReport } = require('protocolbuffers/messages_pb')
+      , DispatchReport
+      , StorageKey
+      , FontBakeryFinished } = require('protocolbuffers/messages_pb')
     , {mixin: stateManagerMixin} = require('./framework/stateManagerMixin')
     ;
 
@@ -161,184 +162,6 @@ _p.constructor = InitProcessStep;
 return InitProcessStep;
 })();
 
-
-const FontbakeryTask = (function(){
-const Parent = Task;
-function FontbakeryTask(step, state) {
-    Parent.call(this, step, state);
-}
-
-const _p = FontbakeryTask.prototype = Object.create(Parent.prototype);
-_p.constructor = FontbakeryTask;
-
-
-_p._createFamilyJob = function(familyDataMessage) { // -> FamilyJobMessage
-   TODO(familyDataMessage);
-   this.log.error('Not Implemented _createFamilyJob');
-    // include to call "callbackFontBakeryFinished" with a fontbakeryResultMessage
-};
-
-_p._dispatchFamilyJob = function(ticket, familyJob) {
-    TODO(ticket, familyJob);
-
-};
-
-_p._runFamilyJob = function(familyJob) {
-    var callbackTicket = this._setExpectedAnswer('Font Bakery', 'callbackFontBakeryFinished');
-    return this._dispatchFamilyJob(callbackTicket, familyJob)
-    .then(reportId=>{
-        this._setPrivateData('reportId', reportId);
-        // This improves the information of the PENDING status by showing
-        // the Font Bakery report details.
-        // FIXME: This is wrong in many ways (but easy). There must be a
-        // better way to define this link maybe we should set special data
-        // to this log entry, that contains the reportId and the uiServer
-        // or client can properly include the report then.
-        let linkToFontbakeryReport = '/report/' + reportId;
-        this._setPENDING('Waiting for Font Bakery [report '
-                        + reportId + '](' + linkToFontbakeryReport + ')' );
-        return reportId;
-    });
-};
-
-
-_p.callbackFontBakeryFinished = function([requester, sessionID]
-                        , fontbakeryResultMessage, ...continuationArgs) {
-    // jshint unused:vars
-    // hmm, can get the result also from the DB?
-    // the reportID must be the same as the one we received in _runFamilyJob
-    // otherwise, this task may have been re-activated and we're looking at
-    // the wrong report and subsequently are setting the wrong state for
-    // that wrong report.
-    var expectedReportID = this._getPrivateData('reportId', null)
-      , resultReportID = fontbakeryResultMessage.getReportId()
-      ;
-    if(resultReportID !== expectedReportID) {
-        this._logStatus('The callback for a finished Font Bakery report '
-            + 'was called for a wrong report id ("'+resultReportID+'")'
-            + 'the expected reportID is: "'+expectedReportID+'".'
-        );
-        // don't do anything.
-        return;
-    }
-    this._setPrivateData('fontbakeryResultMessage', fontbakeryResultMessage);
-    this._logStatus(renderMD(fontbakeryResultMessage));
-
-    TODO('The task is now waiting for user interaction');  // The task is now waiting for user interaction
-           // this needs to be communicated to the applicable users
-           // as such:
-           //       * we MAY send out emails (later)
-           //       * we SHOULD provide an overview to the users for all
-           //         processes that are awaiting direct human interaction.
-           //         If the current watching user is authorized to perform
-           //         the action, we should also mark these processes
-           //         specially and also put them into a personal list:
-           //               processes awaiting your attention
-
-    this._setExpectedAnswer('Finalize UI', 'callbackFinalize', 'uiFinalize');
-};
-
-_p.callbackFinalize = function([requester, sessionID]
-                            , finalizeMessage, ...continuationArgs ) {
-    // jshint unused:vars
-    if(!this._hasPrivateData('fontbakeryResultMessage')) {
-        // The UI should not allow this callback to be made, but in
-        // race condition cases like updates or such we may receive it.
-        // There' will also be a way to exceptionally close a whole
-        // step, e.g. if Font Bakery is not responding or something
-        // else goes totally wrong.
-        this._logStatus('To finalize the task orderly it is required '
-            + 'that there\'s a finished Font Bakery report with which '
-            + 'an informed assesment can be made by a human.');
-        return;
-    }
-    // we should make an extra userInteraction message type for each of
-    // these. This gives some certainty about the message content
-    var statusName = finalizeMessage.getStatus()
-      , status = string2statusCode(statusName)
-      , reasoning = finalizeMessage.getReasoning(reasoning)
-      ;
-    if(!finishingStatuses.has(status))
-        throw new Error('Status must be one of '
-                + (finishingStatuses.join(', '))
-                + ', but received: "' + statusName+ '" : ' + status);
-    this._setStatus(status, reasoning);
-};
-
-_p.uiFinalize = function() {
-    // this should be managed differently!
-    // if(!this._hasPrivateData('fontbakeryResultMessage'))
-    //    return false;
-
-    // in this case, show
-    //      * a select field with the choices [FAIL, OK]
-    //      * a text field with the label "Reasoning" (that can't be empty!?)
-    return {
-        roles: ['engineer']
-      , ui: [
-            {
-                type: 'choice'
-              , label: 'Set a final status.'
-              , options: [[FAIL.toString(), FAIL.toString()], [OK.toString(), OK.toString()]]
-            }
-          , {
-                type: 'line'
-              , label: 'Describe your reasoning for the chosen status.'
-            }
-        ]
-    };
-};
-
-_p._activate = function() {
-    return this._getSharedData('familyData').then(FamilyDataMessage=>{
-        this._createFamilyJob(FamilyDataMessage)
-        .then(familyJob=>this._runFamilyJob(familyJob));
-    });
-};
-
-/**
-// One question is if we're better of structuring a task explicitly
-// so that we always know what the next step is (after finishing the
-// previous one.
-// That way we remove probably some sources of error, like figuring if
-// a callback/userInteraction is allowed to run.
-//
-//
-_activate // _getSharedData ... _createFamilyJob ... _runFamilyJob ... _dispatchFamilyJob
-// -> waiting for callbackFontBakeryFinished
-callbackFontBakeryFinished // _setPrivateData('fontbakeryResultMessage', fontbakeryResultMessage);
-// -> request (dispatch) user-interaction _userInteractionFinalize
-// -> waiting for callbackFinalize
-callbackFinalize // this._setStatus(finishingStatus, reasoning);
-
-*/
-
-return FontbakeryTask;
-})();
-
-
-const FontBakeryStep = (function() {
-const Parent = Step;
-/**
- * DiffbrowsersTask could be parallel to FontbakeryTask, it's only serial
- * because I want to conserve resources. There's no need to run DiffbrowsersTask
- * when FontbakeryTask failed.
- */
-function FontBakeryStep(process, state) {
-    Parent.call(this, process, state, {
-        // needs font files package
-        Fontbakery: FontbakeryTask // queue fontbakery
-                      //   => wait for the result (CleanupJobs will have to call back)
-                      //   => present the result and a form to make it pass or fail
-                      //   => wait for user interaction to judge result
-    });
-}
-
-const _p = FontBakeryStep.prototype = Object.create(Parent.prototype);
-_p.constructor = FontBakeryStep;
-
-return FontBakeryStep;
-})();
 
 const DiffbrowsersTask = EmptyTask;
 
@@ -598,7 +421,8 @@ _p._activate = function() {
           // NOW we can respond via amqp execute from getUpstreamFamilyFiles!
     return this.resources.getUpstreamFamilyFiles(this.process.familyName)
     .then(familyDataMessage=>Promise.all([
-              this.resources.storeMessage(familyDataMessage.getFiles()) // -> storageKey
+              this.resources.persistence.put([familyDataMessage.getFiles()])
+                                        .then(storageKeys=>storageKeys[0])
             , familyDataMessage
     ]))
     .then(([storageKey, familyDataMessage])=> {
@@ -632,6 +456,16 @@ _p._activate = function() {
                                       + this.process.familyName+'*']
           , metadata = JSON.parse(familyDataMessage.getMetadata())
           , filesStorageKey = storageKey.getKey()
+            // uiServer provides a get endpoint for this
+            // using apiServices/storageDownload
+            // FIXME: a hard coded url is bad :-/
+            // The link *should* be created by uiServer, because it has
+            // to serve it BUT that is impractical
+            //    -> and I don't want to make a uiServer service for this
+            //    -> thus, either complicated configuration or a hardcoded
+            //       link. Since no solution is realy good, hardcoded will
+            //       have to do for now, it's quick and dirty,
+            //       the quickest way in fact ...
           , zipDownloadLink = '/download/persistence/'+filesStorageKey+'.zip'
           , familyDirName = this.process.familyName.toLowerCase().replace(/ /g, '')
           ;
@@ -654,7 +488,6 @@ _p._activate = function() {
                                    ].join(' ')
                     ).join('\n')
           , '\n'
-            // hard coded url :-/
           , '[zip file download]('+zipDownloadLink+')'
           , '\n'
           , '### Metadata'
@@ -672,15 +505,6 @@ _p._activate = function() {
                 }).join('  \n')
         );
         this._setLOG(familyDataSummaryMarkdown.join('\n'));
-
-        // hmm I **REALLY** need a solid solution of where to put the files!
-        // should be probably/ideally directly in a branch of a fork of the
-        // google/fonts repo (service with a get method again...)
-        // this is nice, we'll have all the info of the files
-        // of the progress available in the document
-        // return this._setSharedData('familyData', familyDataMessage)
-        //    .then(()=>this._setOK('Family data is persisted.'));
-
         this._setExpectedAnswer('Check Family Files Package'
                                   , 'callbackCheckFamilyFilesPackage'
                                   , 'uiCheckFamilyFilesPackage');
@@ -730,17 +554,99 @@ const GetFilesPackageStep = stepFactory('GetFilesPackageStep', {
 /**
  *
  * Run QA tools on package
-MF: Determine if family has passed/inspect visual diffs (depending on whether the family is new or an upgrade, this inspection is a bit different.)
-*/
-
-const FontbakeryTaskDummy = (function(){
-const FontbakeryTask = taskFactory('FontbakeryTask');
+ * MF: Determine if family has passed/inspect visual diffs (depending on
+ * whether the family is new or an upgrade, this inspection is a bit different.)
+ */
+const FontbakeryTask = (function() {
+var anySetup = {
+    knownTypes: { FontBakeryFinished }
+};
+const FontbakeryTask = taskFactory('FontbakeryTask', anySetup);
 const _p = FontbakeryTask.prototype;
 
+_p._persistenceKey2cacheKey = function (persistenceKey) {
+    // TODO
+    var storageKey = new StorageKey();
+    storageKey.setKey(persistenceKey);
+    return this.resources.persistence.get(storageKey)
+        .then(filesMessage=>this.resources.cache.put([filesMessage]))
+        .then(cacheKeys=>cacheKeys[0])
+        ;
+};
+
 _p._activate = function() {
+    var persistenceKey = this.process._state.filesStorageKey;
+    return this._persistenceKey2cacheKey(persistenceKey)
+    .then(cacheKey=>{
+        var [callbackName, ticket] = this._setExpectedAnswer(
+                                        'Font Bakery'
+                                      , 'callbackFontBakeryFinished'
+                                      , null)
+          , processCommand = new ProcessCommand()
+          ;
+        processCommand.setTargetPath(this.path.toString());
+        processCommand.setTicket(ticket);
+        processCommand.setCallbackName(callbackName);
+        processCommand.setResponseQueueName(this.resources.executeQueueName);
+        return this.resources.initWorker('fontbakery', cacheKey, processCommand);
+    })
+    .then(familyJob=>{
+        var docid = familyJob.getDocid();
+        this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
+    });
+};
+
+_p.callbackFontBakeryFinished = function([requester, sessionID]
+                                        , fontBakeryFinishedMessage
+                                        , ...continuationArgs) {
+    // jshint unused:vars
+    // print results to users ...
+    var report
+        //, docid = fontBakeryFinishedMessage.getDocid()
+        // If the job has any exception, it means
+        // the job failed to finish orderly
+      , finishedOrderly = fontBakeryFinishedMessage.getFinishedOrderly()
+      , created = fontBakeryFinishedMessage.getCreated()
+      , started = fontBakeryFinishedMessage.getStarted()
+      , finished = fontBakeryFinishedMessage.getFinished()
+      , resultsJson = fontBakeryFinishedMessage.getResultsJson()
+      ;
+    report = '## Font Bakery Result';
+
+    if(!finishedOrderly) {
+        report += [ ''
+                  , '### **CAUTION: Font Bakery failed to complete!**'
+                  , 'See the report for details.'
+                  ].join('\n');
+    }
+
+    if(resultsJson) {
+        let results = JSON.parse(resultsJson)
+         , percent = {}
+         , total = Object.values(results).reduce((r, val)=>r+val, 0)
+         ;
+        Object.entries(results).forEach(([k,v])=>
+                        percent[k] = Math.round(((v/total)*10000))/100);
+
+        report += [
+          ''
+        , '| 💔 ERROR | 🔥 FAIL | ⚠ WARN | 💤 SKIP | 🛈 INFO | 🍞 PASS |'
+        , '|:-----:|:----:|:----:|:----:|:----:|:----:|'
+        , `| ${results.ERROR||0} | ${results.FAIL||0} | ${results.WARN||0} | ${results.SKIP||0} | ${results.INFO||0} | ${results.PASS||0} |`
+        , `| ${percent.ERROR||0} % | ${percent.FAIL||0} % | ${percent.WARN||0} % | ${percent.SKIP||0} % | ${percent.INFO||0} % | ${percent.PASS||0} % |`
+        ].join('\n');
+    }
+
+    report += '\n\n';
+    report += [ `*created* ${created.toDate() || '—'}`
+              , `*started* ${started.toDate() || '—'}`
+              , `*finished* ${finished.toDate() || '—'}`
+              ].join('<br />\n');
+
+    this._setLOG(report);
     this._setExpectedAnswer('Confirm Fontbakery'
-                                  , 'callbackConfirmFontbakery'
-                                  , 'uiConfirmFontbakery');
+                                 , 'callbackConfirmFontbakery'
+                                 , 'uiConfirmFontbakery');
 };
 
 _p.uiConfirmFontbakery = function() {
@@ -871,7 +777,7 @@ return GFregressionsTask;
 
 
 const QAToolsStep = stepFactory('QAToolsStep', {
-    Fontbakery: FontbakeryTaskDummy
+    Fontbakery: FontbakeryTask
   , Diffenator:DiffenatorTaskDummy
   , GFregressions: GFregressionsTaskDummy
 });
