@@ -69,6 +69,8 @@ spec:
             cpu: 100m
             memory: 512Mi
         volumeMounts:
+        # doesn't really use local storage, hence this is rather dummy config
+        # IDK if it is needed.
         - mountPath: /data/rethinkdb_data
           name: storage
       volumes:

@@ -1,17 +1,17 @@
 apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
 kind: Deployment
 metadata:
-  name: fontbakery-reports
+  name: fontbakery-storage-persistence
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        component: fontbakery-reports
-        role: reportsserver
+        component: fontbakery-storage-persistence
+        role: messagecache
     spec:
       containers:
-      - name: fontbakery-reports
+      - name: fontbakery-storage-persistence
         image: fontbakery/base-javascript:1
         env:
           - name: FONTBAKERY_LOG_LEVEL
@@ -19,19 +19,18 @@ spec:
         ports:
         - containerPort: 50051
         workingDir: /var/javascript
-        # command: ["node", "node/ReportsServer.js", "-p", "50051"]
-        command: ["node", "--inspect=0.0.0.0:9229", "node/ReportsServer.js", "-p", "50051"]
+        command: ["node", "node/PersistenceServer.js", "-p", "50051"]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: fontbakery-reports
+  name: fontbakery-storage-persistence
   labels:
-    component: fontbakery-reports
+    component: fontbakery-storage-persistence
 spec:
   ports:
     - port: 50051
       targetPort: 50051
   selector:
-    component: fontbakery-reports
-    role: reportsserver
+    component: fontbakery-storage-persistence
+    role: messagecache

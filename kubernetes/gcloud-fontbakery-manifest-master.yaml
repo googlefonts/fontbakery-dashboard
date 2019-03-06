@@ -18,10 +18,5 @@ spec:
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
-          - name: ENVIRONMENT_VERSION
-            valueFrom:
-              configMapKeyRef:
-                name: env-config
-                key: ENVIRONMENT_VERSION
         workingDir: /var/javascript
         command: ["node", "node/ManifestMaster.js"]

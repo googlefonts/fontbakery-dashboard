@@ -12,14 +12,9 @@ spec:
     spec:
       containers:
       - name: fontbakery-manifest-master
-        image: fontbakery/base-javascript:4
+        image: fontbakery/base-javascript:1
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
-          - name: ENVIRONMENT_VERSION
-            valueFrom:
-              configMapKeyRef:
-                name: env-config
-                key: ENVIRONMENT_VERSION
         workingDir: /var/javascript
         command: ["node", "node/ManifestMaster.js"]
