@@ -247,15 +247,17 @@ define([
 
     _p._statusMakeStep = function(uiDescriptions, isInit, processId, stepKey, step) {
         //jshint unused: vars
-        var renderers = {
-                'tasks': this._statusMakeTasks.bind(this, uiDescriptions, isInit, processId, stepKey)
+        var stepKey2Path = {failStep: 'fail', finallyStep: 'finally'}
+          , stepPathKey = stepKey2Path[stepKey] || stepKey
+          , renderers = {
+                'tasks': this._statusMakeTasks.bind(this, uiDescriptions, isInit, processId, stepPathKey)
               , 'isActivated': null// done via css
               , 'finishedStatus': this._statusMakeStatusEntry.bind(this, 'div')// same as in task.history, but should also be a indicator
               , '@default': this._statusMakeKeyValue
             }
           , order = []
           , target = this._getElementFromTemplate('step')
-          , userInterfaces = this._createUserInteractions(uiDescriptions, isInit, [processId, stepKey])
+          , userInterfaces = this._createUserInteractions(uiDescriptions, isInit, [processId, stepPathKey])
           ;
         dom.insertAtMarkerComment(target, 'insert: step-key'
                                             , dom.createTextNode(stepKey));
