@@ -6,7 +6,8 @@
 
 const messages_pb = require('protocolbuffers/messages_pb')
   , grpc = require('grpc')
-  , { FamilyJob, StorageKey, CompletedWorker, FontBakeryFinished } = messages_pb
+  , { FamilyJob, StorageKey, CompletedWorker, FontBakeryFinished
+      , WorkerJobDescription } = messages_pb
   , { InitWorkersService } = require('protocolbuffers/messages_grpc_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
   , { getSetup } = require('./util/getSetup')
@@ -70,10 +71,10 @@ return WorkerDefinition;
  * but we have a lot more tools running in workers now and this is
  * supposed to provide a unified handling for these.
  */
-// listen to queue_out_name='fontbakery-cleanup-distributor'
+// listen to queue_out_name='fontbakery-worker-cleanup'
 // if feasible, finish the family job
 function InitWorkers(logging, port, io, resources, workerDefinitions) {
-    this._cleanupQueueName = 'fontbakery-cleanup-distributor';
+    this._cleanupQueueName = 'fontbakery-worker-cleanup';
     this._log = logging;
     this._io = io;
     this._workerDefinitions = this._initWorkerDefinitions(workerDefinitions, resources);
@@ -342,6 +343,8 @@ function FontBakeryWorker(logging, io, cache) {
     WorkerDefinition.call(this, logging);
     this._io = io;
     this._cache = cache;
+    // only used for pack, so we can make it know all messages
+    this._any = new ProtobufAnyHandler(this._log, messages_pb);
 }
 
 var _p = FontBakeryWorker.prototype = Object.create(WorkerDefinition.prototype);
@@ -490,13 +493,17 @@ _p._queryFamilyTestDoc = function(docid) {
 
 _p._queueFontBakeryFamilyJob = function(cacheKey, docid) {
     this._log.debug('dispatchFamilyJob:', docid);
-    var distributorQueueName = 'fontbakery-worker-distributor'
+    var distributorQueueName = 'fontbakery-worker'
       , job = new FamilyJob()
-      , buffer
+      , jobDescription = new WorkerJobDescription()
+      , anyJob, buffer
       ;
     job.setDocid(docid);
     job.setCacheKey(cacheKey);
-    buffer = Buffer.from(job.serializeBinary());
+    anyJob = this._any.pack(job);
+    jobDescription.setWorkerName('fontbakery');
+    jobDescription.setJob(anyJob);
+    buffer = Buffer.from(jobDescription.serializeBinary());
     return this._io.sendQueueMessage(distributorQueueName, buffer);
 };
 
