@@ -50,14 +50,14 @@ $ docker build -t fontbakery/base-python:1 containers/base-python/
 In the yaml file, the container is referenced directly by its tag `fontbakery/base-python:1`:
 
 ```yaml
-# minikube-fontbakery-worker-checker.yaml
+# minikube-fontbakery-worker.yaml
 […]
     spec:
       containers:
-      - name: fontbakery-worker-checker
+      - name: fontbakery-worker
         image: fontbakery/base-python:1
         workingDir: /var/python
-        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "worker-launcher.py"]
 […]
 ```
 
@@ -65,7 +65,7 @@ This can be applied directly **without** `$ docker push`:
 
 ```
 # NAMESPACE=fontbakery
-$ kubectl -n $NAMESPACE apply -f minikube-fontbakery-worker-checker.yaml
+$ kubectl -n $NAMESPACE apply -f minikube-fontbakery-worker.yaml
 ```
 
 
@@ -265,9 +265,8 @@ $ kf apply -f kubernetes/minikube-rethinkdb.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-storage-cache.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-storage-persistence.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-init-workers.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-worker-checker.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-worker.yaml
 # SKIP for now (don't want to kick of the checking at the moment!)
-$ kf apply -f kubernetes/minikube-fontbakery-worker-distributor.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-manifest-master.yaml
 # new stuff
 $ kf apply -f kubernetes/minikube-fontbakery-github-auth.yaml
