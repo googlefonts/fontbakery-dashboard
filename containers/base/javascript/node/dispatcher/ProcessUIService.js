@@ -441,7 +441,7 @@ _p._initializingProcessUi = function(socket, data, answerCallback) {
 const TODO=(...args)=>console.log('TODO:', ...args)
    , FIXME=(...args)=>console.log('FIXME:', ...args)
    ;
-_p._authorizeInitProcess = function(socket,sessionId, data){
+_p._authorizeInitProcess = function(socket, sessionId, data) {
     //jshint unused:vars
 
     this._log.warning('NOT IMPLEMENTED: _authorizeInitProcess, we have no roles check here!!!');

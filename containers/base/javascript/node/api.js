@@ -432,7 +432,7 @@ _p.fbDNDReceive = function(req, res, next) {
         // put one message into: `[filesMessage]`
         .then(cacheKeys=>makeDoc.call(this, cacheKeys[0]))
         .then(docid=>onSuccess.call(this, docid)) // onSuccess: docid => nothing
-        .error(next)
+        .then(null, next)
         ;
 };
 

@@ -556,10 +556,12 @@ _p._subscribeCall = function(type, call, unsubscribe) {
 _p._getProcessStateForClient = function(process) {
     var processState = new ProcessState();
     processState.setProcessId(process.id);
-    // TODO: we wan't some filtering here, e.g. expected answers
-    // are not meant to be in the process data visible by the client.
+    // Filtering here, e.g. expected answers are not meant to be in the
+    // process data visible by the client, otherwise the client could
+    // forge fake-answers and send them authorized.
     // An important exception are the user interface requests, but they
-    // are separated from the actual process data.
+    // are sent separated from the actual process data.
+    // TODO: introduce and filter the special key "private"?
     processState.setProcessData(JSON.stringify(
             process.serialize({filterKeys: new Set(['expectedAnswer'])})
     ));

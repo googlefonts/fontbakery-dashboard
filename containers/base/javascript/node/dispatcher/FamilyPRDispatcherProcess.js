@@ -317,8 +317,6 @@ _p.uiEditInitialState = function() {
                 item.default = this.process.repoNameWithOwner;
             if(item.name === 'familyName')
                 item.default = this.process.familyName;
-            if(item.name === 'familyName')
-                item.default = this.process.familyName;
             if(item.name === 'isOFL')
                 // always true at this point
                 // and we can't go on otherwise (we don't even store that state).
