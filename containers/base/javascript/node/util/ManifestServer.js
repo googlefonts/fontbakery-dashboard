@@ -288,6 +288,7 @@ _p.get = function(call, callback) {
      , err = null
      ;
 
+    this._log.info('[GET:'+sourceId+'/'+familyName+'] ...');
     if(!this._ready)
         err = new Error('Not ready yet');
     else if(!(sourceId in this._sources))
