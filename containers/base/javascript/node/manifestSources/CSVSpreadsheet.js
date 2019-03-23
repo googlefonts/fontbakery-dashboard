@@ -1030,6 +1030,7 @@ if (typeof require != 'undefined' && require.main==module) {
           , setup.amqp
     );
     server.serve()
+        //.then(()=>server.updateAll())
         .then(()=>setup.logging.warning('activate: `server.updateAll()`'))
         .then(
               ()=>setup.logging.info('Server ready!')
