@@ -9,6 +9,7 @@ const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , { InitWorkersClient: grpcInitWorkersClient } = require('protocolbuffers/messages_grpc_pb')
   , { pack, unpack } = require('./ProtobufAnyHandler')
   , { WorkerDescription, FamilyJob } = require('protocolbuffers/messages_pb')
+  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   ;
 
 /**
@@ -66,11 +67,14 @@ _p.init = function(workerDescription) {
  * A higher level init with more detailed knowledge.
  */
 _p.initialize = function(workerName, initMessage, processCommand/*optional*/) {
+    // This setup is kind of annoying.
     var initMessageTypes = {
-            'fontbakery': 'CacheKey'
+            'fontbakery': 'StorageKey'
+          , 'diffenator': 'StorageKey'
         }
       , answerMessageTypes = {
             'fontbakery': FamilyJob
+          , 'diffenator': Empty
         }
       , workerDescription = new WorkerDescription()
       , any = pack(initMessage, initMessageTypes[workerName])

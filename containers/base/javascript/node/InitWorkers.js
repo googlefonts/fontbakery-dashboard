@@ -7,7 +7,8 @@
 const messages_pb = require('protocolbuffers/messages_pb')
   , grpc = require('grpc')
   , { FamilyJob, StorageKey, CompletedWorker, FontBakeryFinished
-      , WorkerJobDescription } = messages_pb
+      , WorkerJobDescription, DiffenatorWorkerResult } = messages_pb
+  , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , { InitWorkersService } = require('protocolbuffers/messages_grpc_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
   , { getSetup } = require('./util/getSetup')
@@ -79,7 +80,9 @@ function InitWorkers(logging, port, io, resources, workerDefinitions) {
     this._io = io;
     this._workerDefinitions = this._initWorkerDefinitions(workerDefinitions, resources);
     // only used for pack, so we can make it know all messages
-    this._any = new ProtobufAnyHandler(this._log, messages_pb);
+    // and Empty
+    var knownTypes = Object.assign({Empty: Empty}, messages_pb)
+    this._any = new ProtobufAnyHandler(this._log, knownTypes);
 
     this._server = new grpc.Server({
         'grpc.max_send_message_length': 80 * 1024 * 1024
@@ -618,6 +621,99 @@ _p.registerCompleted = function(job) {
 return FontBakeryWorker;
 })();
 
+
+// DIFFENATOR SPECIFIC //
+/////////////////////////
+
+const DiffenatorWorker = (function() {
+
+function DiffenatorWorker(logging, io/*, cache*/) {
+    WorkerDefinition.call(this, logging);
+    this._io = io;
+    // this._cache = cache;
+    this._runningJobs = new Set();
+    // only used for pack, so we can make it know all messages
+    this._any = new ProtobufAnyHandler(this._log, messages_pb);
+}
+
+var _p = DiffenatorWorker.prototype = Object.create(WorkerDefinition.prototype);
+
+Object.defineProperties(_p, {
+    // Expecting  a specially crafted cacheKey pointing to a files
+    // message, which files are either in `before/` or `after/`
+    InitMessage: { value: StorageKey, enumerable:true }
+    // what the actual diffenator python worker sends when completed
+    // expecting a StorageKey for persistence I guess ???
+    // for cache would be maybe quicker, but we should store it
+    // eventually ...
+  , CompletedMessage: { value: DiffenatorWorkerResult, enumerable:true }
+});
+
+
+_p._queueDiffenatorJob = function(cacheKey, id) {
+    this._log.debug('dispatchDiffenatorJob:', id);
+    var distributorQueueName = 'fontbakery-worker'
+        // FIXME: reusing FamilyJob for it has id and cacheKey...
+        // could be a dedicated message type maybe.
+      , job = new FamilyJob()
+      , jobDescription = new WorkerJobDescription()
+      , anyJob, buffer
+      ;
+    job.setDocid(id);
+    job.setCacheKey(cacheKey);
+    anyJob = this._any.pack(job);
+    jobDescription.setWorkerName('diffenator');
+    jobDescription.setJob(anyJob);
+    buffer = Buffer.from(jobDescription.serializeBinary());
+    return this._io.sendQueueMessage(distributorQueueName, buffer);
+};
+
+
+/**
+ * -> [id, answer, finishedMessage || null]
+ *
+ * If it's not finished, finishedMessage should be null.
+ * If it's finished, but there's not really a finishedMessage use pb Empty
+ */
+_p.callInit = function(cacheKey) {
+    // let's use the cacheKey.getHash as the id, we'll the hash-part of
+    // it at least ... that way, *only* while the job is running we won't
+    // start a duplicate worker. This is quicker than doing data base
+    // supported persistence, which includes setting up a table etc.
+    var id = cacheKey.getHash()
+      , promise = null
+      , answer = new Empty()
+      ;
+
+    if(!this._runningJobs.has(id)) {
+        this._runningJobs.add(id);
+        promise = this._queueDiffenatorJob(cacheKey, id);
+    }
+
+    return Promise.resolve(promise)
+            .then(()=>[id, answer, null]);
+
+};
+
+/**
+ * -> [id, finishedMessage || null]
+ *
+ * If it's not finished, finishedMessage should be null.
+ * If it's finished, but there's not really a finishedMessage use pb Empty
+ */
+_p.registerCompleted = function(completedMessage) {
+    // jshint unused:vars
+    // completedMessage is a DiffenatorWorkerResult and we can
+    // just pass it on.
+    var id = completedMessage.getJobId();
+    this._runningJobs.delete(id);
+    // -> [is, storageKey];
+    return [id, completedMessage];
+};
+
+return DiffenatorWorker;
+})();
+
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup()
       ,  port=50051
@@ -636,6 +732,7 @@ if (typeof require != 'undefined' && require.main==module) {
 
     var workerDefinitions = {
             fontbakery: [FontBakeryWorker, 'logging', 'io', 'cache']
+          , diffenator: [DiffenatorWorker, 'logging', 'io'/*, 'cache'*/]
         }
       , resources = {
             logging: setup.logging
