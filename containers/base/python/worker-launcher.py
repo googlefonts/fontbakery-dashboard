@@ -16,6 +16,8 @@ from worker.fontbakery import (
                       Checker as FontBakeryChecker
                     , Distributor as FontBakeryDistributor
                     )
+from worker.diffenator import Diffenator
+
 logger = logging.getLogger('FB_WORKER')
 
 r = RethinkDB()
@@ -62,6 +64,7 @@ def setLoglevel(logger, loglevel):
 
 Setup = namedtuple('Setup', ['log_level', 'db_host', 'db_port'
                            , 'msgqueue_host', 'cache_host', 'cache_port'
+                           , 'persistence_host', 'persistence_port'
                            , 'ticks_to_flush'])
 
 def getSetup():
@@ -81,6 +84,9 @@ def getSetup():
   cache_host = os.environ.get("FONTBAKERY_STORAGE_CACHE_SERVICE_HOST")
   cache_port = os.environ.get("FONTBAKERY_STORAGE_CACHE_SERVICE_PORT", 50051)
 
+  persistence_host = os.environ.get("FONTBAKERY_STORAGE_PERSISTENCE_SERVICE_HOST")
+  persistence_port = os.environ.get("FONTBAKERY_STORAGE_PERSISTENCE_SERVICE_PORT", 50051)
+
   # 1 reports every test result to the database and creates a good
   # live report granularity, but it also slows the database down.
   # For a massive scale of checkers, this can be a major tool to tune
@@ -89,7 +95,9 @@ def getSetup():
   ticks_to_flush = int(os.environ.get("FONTBAKERY_CHECKER_TICKS_TO_FLUSH", 1))
 
   return Setup(log_level, db_host, db_port, msgqueue_host
-                              , cache_host, cache_port, ticks_to_flush)
+                              , cache_host, cache_port
+                              , persistence_host, persistence_port
+                              , ticks_to_flush)
 
 
 def parse_job(workers, body):
@@ -226,6 +234,7 @@ def main():
     , rethinkdb=(r, rdb_connection, rdb_name)
       # if we want to read more data types this must probably change?
     , cache=StorageClient(setup.cache_host, setup.cache_port, Files)
+    , persistence=StorageClient(setup.persistence_host, setup.persistence_port, Files)
     , ticks_to_flush=setup.ticks_to_flush
   )
 

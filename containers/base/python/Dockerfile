@@ -38,6 +38,10 @@ RUN apt-get update && apt-get upgrade -y \
                           libssl-dev libffi-dev python-dev libxmlsec1-dev \
                           libxml2 libxml2-dev tzdata  python3-minimal;
 
+# diffenator dependencies, to install pycairo
+RUN apt-get install -y python3-dev libcairo2 libcairo2-dev libharfbuzz-bin
+
+
 # RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
 RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python3 /tmp/get-pip.py;
 
@@ -72,6 +76,8 @@ RUN touch /tmp/cache_spoof_18
 #    pip install /var/fontbakery;
 
 RUN pip3 install fontbakery;
+
+RUN pip3 install fontdiffenator;
 
 RUN touch /tmp/cache_spoof_2
 
