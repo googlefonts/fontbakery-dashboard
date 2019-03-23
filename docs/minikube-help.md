@@ -295,9 +295,24 @@ The OAUTH setup is currently pointing at http://localhost:3000 as a
 app adress, hence we need to make sure that exists:
 
 ```
-kf port-forward service/fontbakery-api 3000:80
+$ kf port-forward service/fontbakery-api 3000:80
+```
+## Get a shell in a running pod
+
+```
+$ kf get pods
+NAME                                               READY     STATUS    RESTARTS   AGE
+[...]
+fontbakery-worker-5b5f68fc48-g847t                 1/1       Running   0          1m
+[...]
+$ kf exec -it fontbakery-worker-5b5f68fc48-g847t -- /bin/bash
 ```
 
+## Get the logs of a pod in a tail -f fashion
+
+```
+$ kf logs -f fontbakery-worker-5b5f68fc48-g847t
+```
 
 ## services:
 
