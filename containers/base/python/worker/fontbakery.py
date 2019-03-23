@@ -125,7 +125,6 @@ class DBOperations(object):
 
 
 def validate_filename(logs, seen, filename):
-  maxfiles = 60
   # Basic input validation
   # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
   if filename in {'', '.', '..'} or '/' in filename:
@@ -135,10 +134,6 @@ def validate_filename(logs, seen, filename):
     logs.append('Skipping duplicate file name "{0}".'.format(filename))
     return False
 
-  if len(seen) == maxfiles:
-    logs.append('Skipping file "{0}", max allowed file number {1} reached.'
-                                              .format(filename, maxfiles))
-    return False
   return True
 
 
