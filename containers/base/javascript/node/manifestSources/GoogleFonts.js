@@ -104,6 +104,9 @@ function apiData2Map(data) {
     return result;
 }
 
+
+// FIXME: I think we should cache this, for at least 5 Minutes
+// The API changes seldomly.
 function downloadAPIData(url) {
     return download(url)
             .then(download2JSON)
@@ -168,12 +171,31 @@ _p._update = function(apiData) {
 
         updating.push(
             this._loadFamily(familyData) // -> filesData
-                .then(filesData=>this._dispatchFamily(familyName, filesData)) // jshint ignore:line
+                // Including familyData as metadata, leaves a
+                // trail for documentation.
+                .then(filesData=>this._dispatchFamily(familyName, filesData, familyData)) // jshint ignore:line
         );
     }
     return this._waitForAll(updating);
 };
 
+_p.get = function(familyName) {
+    // familyName from the API is with spaces i.e. "Aguafina Script"
+    // to be fair, the family name in the spreadsheet source is the same
+    return downloadAPIData(this._apiAPIDataUrl)
+    .then(apiData=>{
+        var familyData = apiData.get(familyName);
+        if(!familyData)
+            throw new Error('Not found family by name "'+familyData+'"');
+        return familyData;
+    })
+    .then(familyData=>Promise.all([
+          familyName
+        , this._loadFamily(familyData) // filesData -> [[name, blob], [name, blob], ...]
+        , familyData]))
+    ;
+    // -> [familyName, filesData, metadata]
+};
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server

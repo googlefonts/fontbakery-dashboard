@@ -161,6 +161,11 @@ function getSetup() {
                 ['host', 'FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_HOST']
               , ['port', 'FONTBAKERY_MANIFEST_CSVUPSTREAM_SERVICE_PORT']
             ]
+          , manifestGoogleFontsAPI: [
+                // call it: "fontbakery-manifest-gfapi" in kybernetes
+                ['host', 'FONTBAKERY_MANIFEST_GFAPI_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_MANIFEST_GFAPI_SERVICE_PORT']
+            ]
           , initWorkers: [
                 // call it: "fontbakery-init-workers" in kybernetes
                 ['host', 'FONTBAKERY_INIT_WORKERS_SERVICE_HOST']
