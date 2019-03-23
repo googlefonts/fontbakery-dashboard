@@ -9,7 +9,10 @@ const { Process:Parent } = require('./framework/Process')
       , ProcessCommand
       , DispatchReport
       , StorageKey
-      , FontBakeryFinished } = require('protocolbuffers/messages_pb')
+      , FontBakeryFinished
+      , DiffenatorWorkerResult
+      , File
+      , Files } = require('protocolbuffers/messages_pb')
     , {mixin: stateManagerMixin} = require('./framework/stateManagerMixin')
     ;
 
@@ -548,6 +551,22 @@ const GetFilesPackageStep = stepFactory('GetFilesPackageStep', {
     GetFilesPackage: GetFilesPackageTask
 });
 
+function persistenceKey2cacheKey(resources, persistenceKey) {
+    var storageKey = new StorageKey();
+    storageKey.setKey(persistenceKey);
+    return resources.persistence.get(storageKey)
+        .then(filesMessage=>resources.cache.put([filesMessage]))
+        .then(cacheKeys=>cacheKeys[0])
+        ;
+}
+
+function _mdFormatTimestamp(message, timestampKey, label) {
+    var getter = 'get' + timestampKey.slice(0, 1).toUpperCase() + timestampKey.slice(1)
+      , ts = message[getter]()
+      , label_ = label === undefined ? timestampKey : label
+      ;
+    return `*${label_}* ${ts && ts.toDate() || '—'}`;
+}
 
 /**
  *
@@ -562,19 +581,9 @@ var anySetup = {
 const FontbakeryTask = taskFactory('FontbakeryTask', anySetup);
 const _p = FontbakeryTask.prototype;
 
-_p._persistenceKey2cacheKey = function (persistenceKey) {
-    // TODO
-    var storageKey = new StorageKey();
-    storageKey.setKey(persistenceKey);
-    return this.resources.persistence.get(storageKey)
-        .then(filesMessage=>this.resources.cache.put([filesMessage]))
-        .then(cacheKeys=>cacheKeys[0])
-        ;
-};
-
 _p._activate = function() {
     var persistenceKey = this.process._state.filesStorageKey;
-    return this._persistenceKey2cacheKey(persistenceKey)
+    return persistenceKey2cacheKey(this.resources, persistenceKey)
     .then(cacheKey=>{
         var [callbackName, ticket] = this._setExpectedAnswer(
                                         'Font Bakery'
@@ -604,9 +613,6 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
         // If the job has any exception, it means
         // the job failed to finish orderly
       , finishedOrderly = fontBakeryFinishedMessage.getFinishedOrderly()
-      , created = fontBakeryFinishedMessage.getCreated()
-      , started = fontBakeryFinishedMessage.getStarted()
-      , finished = fontBakeryFinishedMessage.getFinished()
       , resultsJson = fontBakeryFinishedMessage.getResultsJson()
       ;
     report = '## Font Bakery Result';
@@ -636,9 +642,9 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
     }
 
     report += '\n\n';
-    report += [ `*created* ${ (created && created.toDate()) || '—'}`
-              , `*started* ${ (started && started.toDate()) || '—'}`
-              , `*finished* ${ (finished && finished.toDate()) || '—'}`
+    report += [ _mdFormatTimestamp(fontBakeryFinishedMessage, 'created')
+              , _mdFormatTimestamp(fontBakeryFinishedMessage, 'started')
+              , _mdFormatTimestamp(fontBakeryFinishedMessage, 'finished')
               ].join('<br />\n');
 
     this._setLOG(report);
@@ -653,7 +659,7 @@ _p.uiConfirmFontbakery = function() {
       , ui: [
             {
                 type: 'info'
-              , content: 'Please run Font Bakery and report the result:'
+              , content: 'Please review the Font Bakery result:'
             }
           , {   name: 'accept'
               , type:'binary'
@@ -682,14 +688,161 @@ _p.callbackConfirmFontbakery = function([requester, sessionID]
 return FontbakeryTask;
 })();
 
-const DiffenatorTaskDummy = (function(){
-const DiffenatorTask = taskFactory('DiffenatorTask');
+const DiffenatorTask = (function() {
+var anySetup = {
+    knownTypes: { DiffenatorWorkerResult }
+};
+const DiffenatorTask = taskFactory('DiffenatorTask', anySetup);
 const _p = DiffenatorTask.prototype;
 
+function makeFile(filename, arrBuff) {
+    var file = new File();
+    file.setName(filename);
+    file.setData(arrBuff);
+    return file;
+}
+
+function copyFiles(fromFiles, toFiles, prefix) {
+    var files = fromFiles.getFilesList();
+    for(let file of files) {
+
+        let name = (prefix || '') + file.getName()
+          , newFile = makeFile(name, file.getData())
+          ;
+        console.log('COPYING: ', file.getName(), 'to', name);
+        toFiles.addFiles(newFile);
+    }
+}
+
 _p._activate = function() {
+
+    // may fail if not found
+    // in which case we also don't need the new family data in the cache!
+    // so, we do this first!
+    return this.resources.getGoogleFontsAPIFamilyFiles(this.process.familyName)
+    .then(familyDataMessage=>familyDataMessage.getFiles())// => 'filesMessage'
+    // copy to 'before/{filename}'
+    .then(beforeFilesMessage=>{
+        this.log.debug('DiffenatorTask.activate got "before" files.');
+        var filesMessage = new Files();
+        this.log.debug('DiffenatorTask.activate start copy before files ...');
+        copyFiles(beforeFilesMessage, filesMessage, 'before/');
+        this.log.debug('DiffenatorTask.activate DONE! copy before files ...');
+        return filesMessage;
+    })
+    .then(filesMessage=>{
+        var persistenceKey = this.process._state.filesStorageKey
+          , storageKey = new StorageKey()
+          ;
+        storageKey.setKey(persistenceKey);
+        this.log.debug('DiffenatorTask.activate getting "after" files:', persistenceKey);
+        return this.resources.persistence.get(storageKey)// => 'filesMessage'
+            // copy to 'after/{filename}'
+            .then(afterFilesMessage=>{
+                this.log.debug('DiffenatorTask.activate got "after" files.');
+                this.log.debug('DiffenatorTask.activate start copy after files ...');
+                copyFiles(afterFilesMessage, filesMessage, 'after/');
+                this.log.debug('DiffenatorTask.activate DONE! copy after files ...');
+                return filesMessage;
+            });
+    })
+    .then(filesMessage=>this.resources.cache.put([filesMessage])
+                           .then(cacheKeys=>cacheKeys[0]))
+
+     // initWorker('diffenator', 'callbackDiffenatorFinished', cacheKey)
+    .then(cacheKey=>{
+        this.log.debug('DiffenatorTask.activate sending to Diffenator.');
+        var [callbackName, ticket] = this._setExpectedAnswer(
+                                        'Diffenator'
+                                      , 'callbackDiffenatorFinished'
+                                      , null)
+          , processCommand = new ProcessCommand()
+          ;
+        processCommand.setTargetPath(this.path.toString());
+        processCommand.setTicket(ticket);
+        processCommand.setCallbackName(callbackName);
+        processCommand.setResponseQueueName(this.resources.executeQueueName);
+        return this.resources.initWorker('diffenator', cacheKey, processCommand);
+    })
+    //.then(whateverInitMessage=>{
+    //    // var docid = familyJob.getDocid();
+    //    // this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
+    //    this._setLOG('Diffenator worker initialized …');
+    //})
+    ;
+};
+
+
+_p.callbackDiffenatorFinished = function([requester, sessionID]
+                                        , diffenatorWorkerResult
+                                        , ...continuationArgs) {
+    // jshint unused:vars
+
+    // message DiffenatorWorkerResult {
+    //     string job_id = 1;
+    //     // currently unused but generally interesting to track the
+    //     // time from queuing to job start, or overall waiting time
+    //     // finished - start is the time the worker took
+    //     // started - finished is the time the job was in the queue
+    //     google.protobuf.Timestamp created = 2;
+    //     google.protobuf.Timestamp started = 3;
+    //     google.protobuf.Timestamp finished = 4;
+    //     // If set the job failed somehow, print pre-formated
+    //     string exception = 5;
+    //     repeated string preparation_logs = 6;
+    //     repeated DiffenatorResult results = 7;
+    // }
+    var exception = diffenatorWorkerResult.getException()
+     , report = '## Diffenator Result'
+     ;
+
+    if(exception) {
+        report += [
+            '\n'
+            , '### EXCEPTION'
+            , '```'
+            , exception
+            , '```\n'
+        ].join('\n');
+    }
+
+    var preparationLogs = diffenatorWorkerResult.getPreparationLogsList();
+    if(preparationLogs.length) {
+        report += '\n### Preparation Logs\n';
+        for(let preparationLog of preparationLogs)
+            report += ` * \`${preparationLog}\`\n`;
+    }
+
+    // For now, just log the zip download url:
+    // message DiffenatorResult {
+    //     string name = 1;
+    //     StorageKey storage_key = 2;
+    // }
+    var results = diffenatorWorkerResult.getResultsList();
+    if(results.length) {
+        report += '\n### Results\n';
+        for(let result of results) {
+            let name = result.getName()
+              , storageKey = result.getStorageKey()
+              ;
+            // FIXME: a hard coded url is bad :-/
+            report += ` * **${name}** [zip file download]`
+                    + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
+        }
+    }
+    report += '\n';
+    report += [
+             // created is not used currently
+             // _mdFormatTimestamp(diffenatorWorkerResult, 'created')
+                _mdFormatTimestamp(diffenatorWorkerResult, 'started')
+              , _mdFormatTimestamp(diffenatorWorkerResult, 'finished')
+              ].join('<br />\n');
+
+    this._setLOG(report);
+
     this._setExpectedAnswer('Confirm Diffenator'
-                                  , 'callbackConfirmDiffenator'
-                                  , 'uiConfirmDiffenator');
+                                 , 'callbackConfirmDiffenator'
+                                 , 'uiConfirmDiffenator');
 };
 
 _p.uiConfirmDiffenator = function() {
@@ -698,7 +851,7 @@ _p.uiConfirmDiffenator = function() {
       , ui: [
             {
                 type: 'info'
-              , content: 'Please run Diffenator and report the result:'
+              , content: 'Please review the Diffenator result:'
             }
           , {   name: 'accept'
               , type:'binary'
@@ -776,7 +929,7 @@ return GFregressionsTask;
 
 const QAToolsStep = stepFactory('QAToolsStep', {
     Fontbakery: FontbakeryTask
-  , Diffenator:DiffenatorTaskDummy
+  , Diffenator: DiffenatorTask
   , GFregressions: GFregressionsTaskDummy
 });
 

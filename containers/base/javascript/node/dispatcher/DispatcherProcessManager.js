@@ -20,6 +20,13 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
     } = require('protocolbuffers/messages_pb')
   ;
 
+function _makeFamilyRequest(sourceId, familyName) {
+    var familyRequestMessage = new FamilyRequest();
+    familyRequestMessage.setSourceId(sourceId);
+    familyRequestMessage.setFamilyName(familyName);
+    return familyRequestMessage
+}
+
 function DispatcherProcessManager(setup, ...args) {
     var anySetup = {
         knownTypes: { DispatcherInitProcess }
@@ -34,6 +41,12 @@ function DispatcherProcessManager(setup, ...args) {
                           , setup.manifestUpstream.host
                           , setup.manifestUpstream.port);
     this._asyncDependencies.push([this._manifestUpstreamClient, 'waitForReady']);
+
+    this._manifestGoogleFontsAPIClient = new ManifestClient(
+                            setup.logging
+                          , setup.manifestGoogleFontsAPI.host
+                          , setup.manifestGoogleFontsAPI.port);
+    this._asyncDependencies.push([this._manifestGoogleFontsAPIClient, 'waitForReady']);
 
     this._persistenceClient = new StorageClient(
                               setup.logging
@@ -77,11 +90,17 @@ function DispatcherProcessManager(setup, ...args) {
       , getUpstreamFamilyFiles: {
             value: familyName=>{
                 // rpc Get (FamilyRequest) returns (FamilyData){}
-                var familyRequestMessage = new FamilyRequest();
-                familyRequestMessage.setSourceId('upstream');
-                familyRequestMessage.setFamilyName(familyName);
                 // returns a promise for FamilyData
+                var familyRequestMessage = _makeFamilyRequest('upstream', familyName);
                 return this._manifestUpstreamClient.get(familyRequestMessage);
+            }
+        }
+      , getGoogleFontsAPIFamilyFiles: {
+            value: familyName=>{
+                // rpc Get (FamilyRequest) returns (FamilyData){}
+                // returns a promise for FamilyData
+                var familyRequestMessage = _makeFamilyRequest('production', familyName);
+                return this._manifestGoogleFontsAPIClient.get(familyRequestMessage);
             }
         }
       , persistence: {
