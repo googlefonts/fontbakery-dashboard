@@ -16,6 +16,8 @@ from worker.fontbakery import (
                       Checker as FontBakeryChecker
                     , Distributor as FontBakeryDistributor
                     )
+logger = logging.getLogger('FB_WORKER')
+
 r = RethinkDB()
 
 
@@ -49,14 +51,14 @@ class Queue(object):
     return self._queue(message, self._worker_name)
 
 
-def setLoglevel(loglevel):
+def setLoglevel(logger, loglevel):
   '''
   loglevel, use: DEBUG, INFO, WARNING, ERROR, CRITICAL
   '''
   numeric_level = getattr(logging, loglevel.upper(), None)
   if not isinstance(numeric_level, int):
     raise ValueError('Invalid log level: %s' % loglevel)
-  logging.basicConfig(level=numeric_level)
+  logger.setLevel(numeric_level)
 
 Setup = namedtuple('Setup', ['log_level', 'db_host', 'db_port'
                            , 'msgqueue_host', 'cache_host', 'cache_port'
@@ -94,10 +96,10 @@ def parse_job(workers, body):
   try:
     job_description = WorkerJobDescription()
     job_description.ParseFromString(body)
-    logging.debug('Got job description: %s', job_description)
+    logger.debug('Got job description: %s', job_description)
   except Exception as e:
     # Can not report this appropriately
-    logging.exception('Can\'t parse body %s', e)
+    logger.exception('Can\'t parse body %s', e)
     raise
 
   worker_name = job_description.worker_name
@@ -158,7 +160,7 @@ class CTX(object):
 
 def consume(workers, static_resources, resource_managers, method, properties, body):
   Worker, job = parse_job(workers, body)
-  logging.info('consuming a job for: %s with %s %s', Worker, method, properties)
+  logger.info('consuming a job for: %s with %s %s', Worker, method, properties)
 
   with ExitStack() as stack:
     # If __enter__ raises it's NOT handled by __exit__
@@ -195,8 +197,10 @@ def main():
     gets longer.
   """
   setup = getSetup()
-  setLoglevel(setup.log_level)
-  logging.info(' '.join(['RethinkDB', 'HOST', setup.db_host, 'PORT', setup.db_port]))
+  setLoglevel(logger, setup.log_level)
+  logger.info('loglevel: ' + setup.log_level)
+
+  logger.info(' '.join(['RethinkDB', 'HOST', setup.db_host, 'PORT', setup.db_port]))
   rdb_connection = r.connect(host=setup.db_host, port=setup.db_port, timeout=120)
   rdb_name = 'fontbakery'
 
@@ -217,7 +221,7 @@ def main():
   queue_channel.queue_declare(queue=queue_end_name, durable=True)
 
   static_resources = dict(
-      logging=logging
+      logging=logger
     , queue=Queue(queue_channel, queue_worker_name, queue_end_name)
     , rethinkdb=(r, rdb_connection, rdb_name)
       # if we want to read more data types this must probably change?
@@ -232,9 +236,10 @@ def main():
   workers = dict(
       fontbakery=FontBakeryDistributor
     , fontbakery_checker=FontBakeryChecker
+    , diffenator=Diffenator
   )
 
-  logging.info('Waiting for messages in %s...', queue_worker_name)
+  logger.info('Waiting for messages in %s...', queue_worker_name)
   # BlockingChannel has a generator
   # Why `no_ack=True`: A job can run much longer than the broker will
   # wait for an ack and there's no way to give a good estimate of how
@@ -243,14 +248,14 @@ def main():
   # Ack immediately and see how to handle failed jobs at another
   # point of time.
   for method, properties, body in queue_channel.consume(queue_worker_name):
-    logging.info('consuming incoming message ...')
+    logger.info('consuming incoming message ...')
     try:
       consume(workers, static_resources, resource_managers, method, properties, body)
     except Exception as e:
       # exceptions that come here should restart the pod!
       # however that way, we don't see the exception log easily
       # which is bad for debugging
-      logging.exception('consume FAILED: %s', e)
+      logger.exception('consume FAILED: %s', e)
     finally:
       queue_channel.basic_ack(delivery_tag=method.delivery_tag)
       # FIXME: we should not always ack the job if can't even mark it as
