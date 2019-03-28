@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, unicode_literals
 
+
 import os
 import pytz
 from datetime import datetime
-from functools import reduce
+import traceback
 from protocolbuffers.messages_pb2 import (
                                           CompletedWorker
                                         , FamilyJob
@@ -74,7 +75,7 @@ def font_instances(ttfonts):
     return styles
 
 def on_each_matching_font(func):
-    def func_wrapper(fonts_before, fonts_after, out, *args, **kwargs):
+    def func_wrapper(logger, fonts_before, fonts_after, out, *args, **kwargs):
         fonts_before_ttfonts = [TTFont(f) for f in fonts_before]
         fonts_after_ttfonts = [TTFont(f) for f in fonts_after]
         fonts_before_h = font_instances(fonts_before_ttfonts)
@@ -83,17 +84,25 @@ def on_each_matching_font(func):
         if not shared:
             raise DiffenatorPreparationError(("Cannot find matching fonts. "
                              "Are font filenames the same?"))
+        logger.debug('Found %s comparable font instances.',  len(shared))
         for font in shared:
             out_for_font = os.path.join(out, font)
-            func(fonts_before_h[font], fonts_after_h[font], out_for_font,
+            func(logger, fonts_before_h[font], fonts_after_h[font], out_for_font,
                  *args, **kwargs)
     return func_wrapper
 
 @on_each_matching_font
-def run_diffenator(font_before, font_after, out, thresholds):
+def run_diffenator(logger, font_before, font_after, out, thresholds):
+    logger.debug('run_diffenator with fonts before: %s after: %s'
+                                              , font_before, font_after)
+
+    logger.debug('create DFont("%s")', font_before)
     font_before = DFont(font_before)
+    logger.debug('create DFont("%s")', font_after)
     font_after = DFont(font_after)
 
+
+    logger.debug('variable font specifics')
     if font_after.is_variable and not font_before.is_variable:
         font_after.set_variations_from_static(font_before)
 
@@ -106,10 +115,15 @@ def run_diffenator(font_before, font_after, out, thresholds):
         font_after.set_variations(variations)
         font_before.set_variations(variations)
 
+    logger.debug('create DiffFonts')
     diff = DiffFonts(font_before, font_after, settings=thresholds)
+    logger.debug('diff.to_gifs')
     diff.to_gifs(dst=out)
+    logger.debug('diff.to_txt')
     diff.to_txt(20, os.path.join(out, "report.txt"))
+    logger.debug('diff.to_md')
     diff.to_md(20, os.path.join(out, "report.md"))
+    logger.debug('diff.to_html')
     diff.to_html(20, os.path.join(out, "report.html"), image_dir=".")
 #################
 # /END taken from gftools-qa
@@ -227,40 +241,60 @@ class Diffenator(object):
     self._log.debug('Files in Tempdir {}: {}'.format(
                                         self._tmp_directory, all_files))
 
-
+    self._log.info('entering run_diffenator …')
     # FIXME: should we collect stdout/stderr here???
-    run_diffenator(fonts['before'], fonts['after'], self._out_dir, DIFFENATOR_THRESHOLDS['normal'])
+    run_diffenator(self._log, fonts['before'], fonts['after'], self._out_dir, DIFFENATOR_THRESHOLDS['normal'])
     self._log.info('DONE! docid: %s', self._job.docid)
 
-  def finalize(self, traceback, *exc):
-    if traceback is not None:
+  def _make_result(self, result_dir_name):
+    files = []
+    result_path = os.path.join(self._out_dir, result_dir_name)
+    for subdir, _, filenames in os.walk(result_path):
+      for filename in filenames:
+        file_msg = File()
+        abs_path = os.path.join(subdir, filename)
+        # CAUTION subdir shouldn't have a . or / at the beginning!
+        relative_path = os.path.relpath(abs_path, start=result_path)
+        file_msg.name = relative_path
+        with open(abs_path, 'rb') as f:
+          file_msg.data = f.read()
+        files.append(file_msg)
+    files_msg = Files()
+    files_msg.files.extend(files)
+    return files_msg
+
+  def _make_results(self):
+    result_dirs = next(os.walk(self._out_dir))[1]
+    files_msgs = (self._make_result(result_name) for result_name in result_dirs)
+    storage_keys = self._persistence.put(files_msgs)
+    results = []
+    for result_name, storage_key in zip(result_dirs, storage_keys):
+      dr = DiffenatorResult()
+      dr.name = result_name
+      dr.storage_key.CopyFrom(storage_key)
+      results.append(dr)
+    self._answer.results.extend(results)
+
+  def finalize(self, tb_str, *exc):
+    if tb_str is not None:
       self._log.exception('FAIL Document closed exceptionally. docid: '
-                      '%s exception: %s', self._job.docid, traceback)
-      self._answer.exception = traceback
+                      '%s exception: %s', self._job.docid, tb_str)
+      self._answer.exception = tb_str
 
     # always
     self._set_answer_timestamp('finished')
 
     # try collecting the results (even if there was an exception, maybe
     # there's something
-    result_dirs = next(os.walk(self._out_dir))[1]
-    for result_name in result_dirs:
-      files = Files()
-      result_path = os.path.join(self._out_dir, result_name)
-      for subdir, _, files in os.walk(result_path):
-        for filename in files:
-          file_msg = File()
-          abs_path = os.path.join(subdir, filename)
-          # CAUTION subdir shouldn't have a . or / at the beginning!
-          relative_path = os.path.relpath(abs_path, start=result_path)
-          file_msg.name = relative_path
-          with open(abs_path, 'rb') as f:
-            file_msg.data = f.read()
-          files.files.append(file_msg)
-      dr = DiffenatorResult()
-      dr.name = result_name
-      dr.storage_key = self._persistence.put([files])[0]
-      self._answer.results.append(dr)
+
+    try:
+      self._make_results()
+    except Exception as e:
+      msg = 'Can\'t create (all) results:\n{}'.format(traceback.format_exc())
+      if self._answer.exception:
+        self._answer.exception += '\n\n AND ' + msg
+      else:
+        self._answer.exception = msg
 
     # In py 2.7 got an TypeError: field name must be a string
     # if using u'order', which is the default, we import unicode_literals
@@ -270,3 +304,47 @@ class Diffenator(object):
     message.completed_message.Pack(self._answer)
     self._queue.end(message)
     return True # exception (if any) handled
+
+#$ python3 -c "from worker.diffenator import main;main()"
+
+# debugrun.py:
+# #!/usr/bin/env python
+# import logging
+# FORMAT = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
+# logging.basicConfig(format=FORMAT)
+# from worker.diffenator import main
+# main()
+#
+def main():
+  import logging
+  FORMAT = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
+  logging.basicConfig(format=FORMAT)
+  logger = logging.getLogger('DIFFENATOR_WORKER')
+  import importlib
+  wl = importlib.import_module('worker-launcher')
+  setLoglevel = wl.setLoglevel
+  getSetup = wl.getSetup
+
+  setup = getSetup()
+  setLoglevel(logger, setup.log_level)
+  # DEBUG is a lot of output!
+  # setLoglevel(logging.getLogger('fontdiffenator'), 'INFO')
+  setLoglevel(logging.getLogger('fontdiffenator'), setup.log_level)
+  logger.info('loglevel: ' + setup.log_level)
+
+  fonts = {'before': [], 'after': []}
+
+  tmp = '/var/python/debug_vollkorn'
+  out_dir = os.path.join(tmp, 'result')
+  os.mkdir(out_dir)
+  # just collect the fonts
+  for sub in fonts.keys():
+    dirname = os.path.join(tmp, sub)
+    fonts[sub] = [os.path.join(dirname, filename)\
+                              for filename in next(os.walk(dirname))[2]\
+                                  if filename.endswith('.ttf')]
+
+  logger.info('fonts before:\n%s', '\n'.join(fonts['before']))
+  logger.info('fonts after:\n%s', '\n'.join(fonts['after']))
+
+  run_diffenator(logger, fonts['before'], fonts['after'], out_dir, DIFFENATOR_THRESHOLDS['normal'])
