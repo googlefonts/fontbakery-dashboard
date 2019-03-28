@@ -1,9 +1,15 @@
 #!/usr/bin/env python
 from __future__ import print_function, division, unicode_literals, absolute_import
 
+import sys
 import logging
 import time
 from protocolbuffers import messages_pb2_grpc
+from protocolbuffers.messages_pb2 import (
+                                          StorageItem
+                                        )
+from google.protobuf.any_pb2 import Any
+from collections import OrderedDict
 import grpc
 
 # currently unused
@@ -97,3 +103,61 @@ class StorageClient(object):
     any = backoff(self._client.Get, storageKey);
     return unpack_any(any, self.ExpectedGetType)
 
+  def put (self, messages, ensure_answers_in_order=True):
+    """
+      ensure_answers_in_order: bool, default True
+          Using this to make sure we answer in the same order as we PUT.
+          Could be done otherwise more memory efficient in some cases.
+          However, user expectation are probably to get the answers in the
+          same order as the messages and it would lead to subtle bugs
+          otherwise. If ensure_answers_in_order is False the order of
+          answers is not guaranteed to be the same order as messages,
+          depending purely on the server implementation.
+    """
+    if ensure_answers_in_order:
+      result = OrderedDict()
+    def make_storage_item(message, clientid):
+      storage_item = StorageItem()
+      any_message = Any()
+      any_message.Pack(message)
+      storage_item.payload.CopyFrom(any_message)
+      if clientid is not None:
+        storage_item.clientid = clientid
+      if ensure_answers_in_order:
+        result[clientid] = None
+      return storage_item
+
+    storage_items = (make_storage_item(message, str(index))\
+                              for index, message in enumerate(messages))
+
+    for storageKey in self._client.Put(storage_items):
+      if ensure_answers_in_order:
+        result[storageKey.clientid] = storageKey
+      else:
+        yield storageKey
+
+    if ensure_answers_in_order:
+      for storageKey in result.values():
+        yield storageKey
+
+
+# Used for ad-hoc testing only!
+# Due to the mess of py3 imports of the protocolbuffers, called like
+# this:
+# containers/base/python$ python -c 'from worker.storageclient import main;main()'
+def main():
+  c = StorageClient('127.0.0.1', '3456', None)
+  from google.protobuf.timestamp_pb2 import Timestamp
+  from time import sleep
+
+  def getCurrentTs():
+    sleep(.5)
+    ts = Timestamp()
+    ts.GetCurrentTime()
+    print('generated another timestamp:', ts)
+    return ts
+
+  tss = (getCurrentTs() for _ in range(10))
+  for r in c.put(tss):
+    print('result:', r);
+  print('done!')
