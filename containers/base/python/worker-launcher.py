@@ -5,12 +5,18 @@ import os
 from tempfile import TemporaryDirectory
 import pika
 from rethinkdb import RethinkDB
-import logging
+
 import traceback
 from collections import namedtuple
 import inspect
 from contextlib import ExitStack
 from protocolbuffers.messages_pb2 import Files, WorkerJobDescription
+
+import logging
+FORMAT = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
+logging.basicConfig(format=FORMAT)
+
+
 from worker.storageclient import StorageClient
 from worker.fontbakery import (
                       Checker as FontBakeryChecker
@@ -19,9 +25,7 @@ from worker.fontbakery import (
 from worker.diffenator import Diffenator
 
 logger = logging.getLogger('FB_WORKER')
-
 r = RethinkDB()
-
 
 class Queue(object):
   def __init__(self, channel, worker_name, end_name):
@@ -205,7 +209,12 @@ def main():
     gets longer.
   """
   setup = getSetup()
+
   setLoglevel(logger, setup.log_level)
+  # DEBUG is a lot of output!
+  # setLoglevel(logging.getLogger('fontdiffenator'), 'INFO')
+  setLoglevel(logging.getLogger('fontdiffenator'), setup.log_level)
+
   logger.info('loglevel: ' + setup.log_level)
 
   logger.info(' '.join(['RethinkDB', 'HOST', setup.db_host, 'PORT', setup.db_port]))
