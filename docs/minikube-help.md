@@ -326,3 +326,16 @@ $ minikube -n fontbakery service fontbakery-api
 # rabbitmq admin interface; user: "guest" password: "guest"
 $ minikube -n fontbakery service rabbitmq-management
 ```
+
+### heapster resource monitoring
+```
+# activate
+minikube addons enable heapster
+
+# deactivate
+
+# when active
+$ minikube addons open heapster
+
+
+```
