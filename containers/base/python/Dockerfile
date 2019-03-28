@@ -97,4 +97,11 @@ RUN touch /tmp/cache_spoof_2
 # setting PYTHONPATH ths way helps.
 ENV PYTHONPATH="/var/python/protocolbuffers/:${PYTHONPATH}"
 
+# Solves isses raising errors like:
+#     UnicodeEncodeError: 'ascii' codec can't encode characters in position 0-8: ordinal not in range(128)
+# See e.g.: https://github.com/docker-library/python/issues/13
+# also an option: ENV PYTHONIOENCODING=UTF-8
+ENV LANG C.UTF-8
+
+
 ADD . /var/python/
