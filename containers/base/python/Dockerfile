@@ -45,13 +45,13 @@ RUN apt-get install -y python3-dev libcairo2 libcairo2-dev libharfbuzz-bin
 # RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
 RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python3 /tmp/get-pip.py;
 
-run pip install --upgrade pip
+run pip3 install --upgrade pip
 
 # FIXME!
 # Also, fontbakery should come with all requirements in it's setup.py
 # how does fontTools or defcon handle this?
 # ADD requirements.txt /
-# RUN pip install --no-cache-dir -r requirements.txt
+# RUN pip3 install --no-cache-dir -r requirements.txt
 
 # FIXME: need all external dependencies
 # ADD prebuilt/ot-sanitise /usr/local/bin/
@@ -69,15 +69,25 @@ RUN pip3 install -r /var/python/requirements.txt
 RUN touch /tmp/cache_spoof_18
 
 # FIXME: doesn't install all dependencies!
-# RUN pip install git+https://github.com/graphicore/fontbakery@dashboard_related
+# RUN pip3 install git+https://github.com/graphicore/fontbakery@dashboard_related
 
 #RUN git clone --depth 1 -b p3_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
 #RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
-#    pip install /var/fontbakery;
+#    pip3 install /var/fontbakery;
 
+# FIXME: probably all `pip3 install dependencies should be in requirements.txt
 RUN pip3 install fontbakery;
 
-RUN pip3 install fontdiffenator;
+
+
+
+RUN pip3 install memory-profiler
+RUN apt-get install -y vim tmux htop
+RUN touch /tmp/cache_spoof_16
+# RUN pip3 install remote-pdb
+RUN git clone --depth 1 -b fb_dashboard_bughunt_issue100_OOM https://github.com/graphicore/fontdiffenator.git /var/fontdiffenator;\
+    pip3 install -e /var/fontdiffenator;
+# RUN pip3 install fontdiffenator;
 
 RUN touch /tmp/cache_spoof_2
 
