@@ -186,7 +186,7 @@ _p.get = function(familyName) {
     .then(apiData=>{
         var familyData = apiData.get(familyName);
         if(!familyData)
-            throw new Error('Not found family by name "'+familyData+'"');
+            throw new Error('Not found family by name "'+familyName+'"');
         return familyData;
     })
     .then(familyData=>Promise.all([
