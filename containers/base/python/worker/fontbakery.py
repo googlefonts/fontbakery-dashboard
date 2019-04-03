@@ -21,13 +21,13 @@ __private_marker = object()
 def get_fontbakery(fonts):
   from fontbakery.commands.check_googlefonts import runner_factory
   runner = runner_factory(fonts)
-  spec = runner.specification
-  # This changes the specification object, which is not elegant.
+  profile = runner.profile
+  # This changes the profile object, which is not elegant.
   # It's a bug when we do it repeatedly, creating a deep call stack, like
   # a manually build recursion without end after a while.
-  # The __private_marker is a hack to change the specification object
+  # The __private_marker is a hack to change the profile object
   # only once with this function.
-  old_check_skip_filter = spec.check_skip_filter
+  old_check_skip_filter = profile.check_skip_filter
   if not old_check_skip_filter or \
       getattr(old_check_skip_filter,'__mark', None) is not __private_marker:
     def check_skip_filter(checkid, font=None, **iterargs):
@@ -39,8 +39,8 @@ def get_fontbakery(fonts):
         return old_check_skip_filter(checkid, font, **iterargs)
       return True, None
     setattr(check_skip_filter,'__mark', __private_marker)
-    spec.check_skip_filter = check_skip_filter
-  return runner, spec
+    profile.check_skip_filter = check_skip_filter
+  return runner, profile
 
 
 class FontbakeryWorkerError(Exception):
@@ -189,12 +189,12 @@ def _prepare(job, cache, dbOps=None, tmp_directory=None):
 
 
 class DashbordWorkerReporter(FontbakeryReporter):
-  def __init__(self, dbOps, jobid, specification, runner
+  def __init__(self, dbOps, jobid, profile, runner
                                           , ticks_to_flush = None, **kwd):
     super(DashbordWorkerReporter, self).__init__(runner=runner, **kwd)
     self._dbOps = dbOps
     self._jobid = jobid
-    self._spec = specification;
+    self._profile = profile;
     self.ticks_to_flush = ticks_to_flush or 1
     self.doc = []
     self._current = None
@@ -207,7 +207,7 @@ class DashbordWorkerReporter(FontbakeryReporter):
     if not test:
       return
 
-    key = self._spec.serialize_identity(identity)
+    key = self._profile.serialize_identity(identity)
 
     if status == STARTCHECK:
         self._current = {
@@ -281,10 +281,10 @@ class Distributor(object):
   def _run(self, fonts):
     # this is a dry run, but it will fail early if there's a problem with
     # the files in job, also, it lists the fonts.
-    runner, spec = get_fontbakery(fonts)
+    runner, profile = get_fontbakery(fonts)
 
     # this must survive JSON
-    full_order = list(spec.serialize_order(runner.order))
+    full_order = list(profile.serialize_order(runner.order))
     tests = {identity:{'index':index}  for index, identity in enumerate(full_order)}
 
     # FIXME: do something fancy to split this up
@@ -388,10 +388,10 @@ class Checker(object):
 
   def _run(self, fonts):
     self._dbOps.update({'started': datetime.now(pytz.utc)})
-    runner, spec = get_fontbakery(fonts)
-    order = spec.deserialize_order(self._job.order)
+    runner, profile = get_fontbakery(fonts)
+    order = profile.deserialize_order(self._job.order)
     reporter = DashbordWorkerReporter(self._dbOps, self._job.jobid,
-                                        specification=spec
+                                        profile=profile
                                       , runner=runner
                                       , ticks_to_flush=self._ticks_to_flush
                                       , )
