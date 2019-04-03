@@ -826,7 +826,9 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
               , storageKey = result.getStorageKey()
               ;
             // FIXME: a hard coded url is bad :-/
-            report += ` * **${name}** [zip file download]`
+            report += ` * browse report: [**${name}**]`
+                    + `(/browse/persistence/${storageKey.getKey()}/report.html)`
+                    + ` or download: [zip file]`
                     + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
         }
     }
