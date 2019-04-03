@@ -197,6 +197,8 @@ _p._initService = function(appLocation, Constructor, dependencies) {
         args.push(dependency);
     }
     service = new Constructor(...args);
+    if(service.init)
+        promises.push(Promise.all([...promises]).then(()=>service.init()));
     return [service, promises];
 };
 
