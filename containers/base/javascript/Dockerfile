@@ -12,10 +12,10 @@ ADD ./.bowerrc ./bower.json ./package.json /var/javascript/
 RUN touch /tmp/cache_spoof_1
 ADD ./generated_modules /var/javascript/generated_modules
 
-
+RUN touch /tmp/cache_spoof_1
 # will also invoke bower install etc.
 # --production: don't install dev-dependencies
-RUN cd /var/javascript && npm install --unsafe-perm  --production
+RUN cd /var/javascript && npm install --unsafe-perm --production
 
 
 # It seems to be moost roust to read our METADATA.pb files using python
