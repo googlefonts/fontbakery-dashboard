@@ -78,16 +78,14 @@ RUN touch /tmp/cache_spoof_18
 # FIXME: probably all `pip3 install dependencies should be in requirements.txt
 RUN pip3 install fontbakery;
 
-
-
-
-RUN pip3 install memory-profiler
-RUN apt-get install -y vim tmux htop
-RUN touch /tmp/cache_spoof_16
+# tools used for live debugging and profiling
+# RUN pip3 install memory-profiler
+# RUN apt-get install -y vim tmux htop
+# RUN touch /tmp/cache_spoof_16
 # RUN pip3 install remote-pdb
-RUN git clone --depth 1 -b fb_dashboard_bughunt_issue100_OOM https://github.com/graphicore/fontdiffenator.git /var/fontdiffenator;\
-    pip3 install -e /var/fontdiffenator;
-# RUN pip3 install fontdiffenator;
+# RUN git clone --depth 1 -b fb_dashboard_bughunt_issue100_OOM https://github.com/graphicore/fontdiffenator.git /var/fontdiffenator;\
+#     pip3 install -e /var/fontdiffenator;
+RUN pip3 install fontdiffenator;
 
 RUN touch /tmp/cache_spoof_2
 

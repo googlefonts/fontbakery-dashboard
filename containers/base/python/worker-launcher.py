@@ -212,8 +212,8 @@ def main():
 
   setLoglevel(logger, setup.log_level)
   # DEBUG is a lot of output!
-  # setLoglevel(logging.getLogger('fontdiffenator'), 'INFO')
-  setLoglevel(logging.getLogger('fontdiffenator'), setup.log_level)
+  setLoglevel(logging.getLogger('fontdiffenator'), 'INFO')
+  # setLoglevel(logging.getLogger('fontdiffenator'), setup.log_level)
 
   logger.info('loglevel: ' + setup.log_level)
 

@@ -84,7 +84,7 @@ def on_each_matching_font(func):
         if not shared:
             raise DiffenatorPreparationError(("Cannot find matching fonts. "
                              "Are font filenames the same?"))
-        logger.debug('Found %s comparable font instances.',  len(shared))
+        logger.info('Found %s comparable font instances.',  len(shared))
         for font in shared:
             out_for_font = os.path.join(out, font)
             func(logger, fonts_before_h[font], fonts_after_h[font], out_for_font,
@@ -96,13 +96,10 @@ def run_diffenator(logger, font_before, font_after, out, thresholds):
     logger.debug('run_diffenator with fonts before: %s after: %s'
                                               , font_before, font_after)
 
-    logger.debug('create DFont("%s")', font_before)
     font_before = DFont(font_before)
-    logger.debug('create DFont("%s")', font_after)
     font_after = DFont(font_after)
 
 
-    logger.debug('variable font specifics')
     if font_after.is_variable and not font_before.is_variable:
         font_after.set_variations_from_static(font_before)
 
@@ -115,15 +112,10 @@ def run_diffenator(logger, font_before, font_after, out, thresholds):
         font_after.set_variations(variations)
         font_before.set_variations(variations)
 
-    logger.debug('create DiffFonts')
     diff = DiffFonts(font_before, font_after, settings=thresholds)
-    logger.debug('diff.to_gifs')
     diff.to_gifs(dst=out)
-    logger.debug('diff.to_txt')
     diff.to_txt(20, os.path.join(out, "report.txt"))
-    logger.debug('diff.to_md')
     diff.to_md(20, os.path.join(out, "report.md"))
-    logger.debug('diff.to_html')
     diff.to_html(20, os.path.join(out, "report.html"), image_dir=".")
 #################
 # /END taken from gftools-qa
@@ -305,16 +297,21 @@ class Diffenator(object):
     self._queue.end(message)
     return True # exception (if any) handled
 
-#$ python3 -c "from worker.diffenator import main;main()"
-
-# debugrun.py:
-# #!/usr/bin/env python
-# import logging
-# FORMAT = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
-# logging.basicConfig(format=FORMAT)
-# from worker.diffenator import main
-# main()
-#
+# The intention for main was ever only for debugging/profiling.
+# debug_run.py:
+#     #!/usr/bin/env python3
+#     
+#     import logging
+#     FORMAT = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
+#     logging.basicConfig(format=FORMAT)
+#     
+#     import sys
+#     print('python version:', sys.version)
+#     
+#     from worker.diffenator import main
+#     main()
+# with memory profiling:
+# base/python$ mprof run debug_python.py
 def main():
   import logging
   FORMAT = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
