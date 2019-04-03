@@ -275,8 +275,8 @@ $ kf apply -f kubernetes/minikube-fontbakery-github-pr.yaml
 
 $ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
 # SKIP: (do not need right now)
-# $ kf apply -f kubernetes/minikube-fontbakery-manifest-gfapi.yaml
 # $ kf apply -f kubernetes/minikube-fontbakery-manifest-githubgf.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-gfapi.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-manifest-csvupstream.yaml
 
 
