@@ -17,6 +17,7 @@ const path = require('path')
   , { _BaseServer, RootService } = require('./_BaseServer')
   , { GithubOAuthService } = require('./apiServices/GithubOAuth')
   , { StorageDownloadService } = require('./apiServices/StorageDownload')
+  , { StorageBrowseService } = require('./apiServices/StorageBrowse')
   ;
 
 const FontBakeryServer = (function() {
@@ -27,6 +28,8 @@ function FontBakeryServer(...args) {
       , ['/', DashboardAPIService, ['server', '*app', 'log', 'io', 'cache', 'reports', 'initWorkers']]
       , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log', 'ghauth', 'webServerCookieSecret']]
       , ['/download', StorageDownloadService, ['server', '*app', 'log'
+                            , {/*cache: 'cache',*/ persistence: 'persistence'}]]
+      , ['/browse', StorageBrowseService, ['server', '*app', 'log'
                             , {/*cache: 'cache',*/ persistence: 'persistence'}]]
       , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth']]
     ];
