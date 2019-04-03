@@ -24,6 +24,7 @@
     "google-protobuf": "^3.5.0",
     "grpc": "^1.12.3",
     "marked": "^0.4.0",
+    "mime": "^2.4.0",
     "nodegit": "^0.23.0",
     "rethinkdbdash": "^2.3.31",
     "socketio": "^1.0.0",
