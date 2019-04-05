@@ -81,7 +81,7 @@ function InitWorkers(logging, port, io, resources, workerDefinitions) {
     this._workerDefinitions = this._initWorkerDefinitions(workerDefinitions, resources);
     // only used for pack, so we can make it know all messages
     // and Empty
-    var knownTypes = Object.assign({Empty: Empty}, messages_pb)
+    var knownTypes = Object.assign({Empty: Empty}, messages_pb);
     this._any = new ProtobufAnyHandler(this._log, knownTypes);
 
     this._server = new grpc.Server({
@@ -622,13 +622,14 @@ return FontBakeryWorker;
 })();
 
 
-// DIFFENATOR SPECIFIC //
+// DIFFWORKER SPECIFIC //
 /////////////////////////
 
-const DiffenatorWorker = (function() {
+const GenericDiffWorker = (function() {
 
-function DiffenatorWorker(logging, io/*, cache*/) {
+function GenericDiffWorker(workerName, logging, io/*, cache*/) {
     WorkerDefinition.call(this, logging);
+    this._workerName = workerName;
     this._io = io;
     // this._cache = cache;
     this._runningJobs = new Set();
@@ -636,13 +637,13 @@ function DiffenatorWorker(logging, io/*, cache*/) {
     this._any = new ProtobufAnyHandler(this._log, messages_pb);
 }
 
-var _p = DiffenatorWorker.prototype = Object.create(WorkerDefinition.prototype);
+var _p = GenericDiffWorker.prototype = Object.create(WorkerDefinition.prototype);
 
 Object.defineProperties(_p, {
     // Expecting  a specially crafted cacheKey pointing to a files
     // message, which files are either in `before/` or `after/`
     InitMessage: { value: StorageKey, enumerable:true }
-    // what the actual diffenator python worker sends when completed
+    // what the actual {this._workerName} python worker sends when completed
     // expecting a StorageKey for persistence I guess ???
     // for cache would be maybe quicker, but we should store it
     // eventually ...
@@ -650,8 +651,8 @@ Object.defineProperties(_p, {
 });
 
 
-_p._queueDiffenatorJob = function(cacheKey, id) {
-    this._log.debug('dispatchDiffenatorJob:', id);
+_p._queueJob = function(cacheKey, id) {
+    this._log.debug('dispatch worker:', this._workerName, 'job:', id);
     var distributorQueueName = 'fontbakery-worker'
         // FIXME: reusing FamilyJob for it has id and cacheKey...
         // could be a dedicated message type maybe.
@@ -662,7 +663,7 @@ _p._queueDiffenatorJob = function(cacheKey, id) {
     job.setDocid(id);
     job.setCacheKey(cacheKey);
     anyJob = this._any.pack(job);
-    jobDescription.setWorkerName('diffenator');
+    jobDescription.setWorkerName(this._workerName);
     jobDescription.setJob(anyJob);
     buffer = Buffer.from(jobDescription.serializeBinary());
     return this._io.sendQueueMessage(distributorQueueName, buffer);
@@ -687,7 +688,7 @@ _p.callInit = function(cacheKey) {
 
     if(!this._runningJobs.has(id)) {
         this._runningJobs.add(id);
-        promise = this._queueDiffenatorJob(cacheKey, id);
+        promise = this._queueJob(cacheKey, id);
     }
 
     return Promise.resolve(promise)
@@ -711,8 +712,19 @@ _p.registerCompleted = function(completedMessage) {
     return [id, completedMessage];
 };
 
-return DiffenatorWorker;
+return GenericDiffWorker;
 })();
+
+function DiffenatorWorker(...args) {
+    GenericDiffWorker.call(this, 'diffenator', ...args);
+}
+DiffenatorWorker.prototype = Object.create(GenericDiffWorker.prototype);
+
+function DiffbrowsersWorker(...args) {
+    GenericDiffWorker.call(this, 'diffbrowsers', ...args);
+}
+DiffbrowsersWorker.prototype = Object.create(GenericDiffWorker.prototype);
+
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup()
@@ -733,6 +745,7 @@ if (typeof require != 'undefined' && require.main==module) {
     var workerDefinitions = {
             fontbakery: [FontBakeryWorker, 'logging', 'io', 'cache']
           , diffenator: [DiffenatorWorker, 'logging', 'io'/*, 'cache'*/]
+          , diffbrowsers: [DiffbrowsersWorker, 'logging', 'io'/*, 'cache'*/]
         }
       , resources = {
             logging: setup.logging
