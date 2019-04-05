@@ -15,6 +15,15 @@ spec:
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
+          - name: BROWSERSTACK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-username
+          - name: BROWSERSTACK_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-access-key
         workingDir: /var/python
         command: ["python3",  "-u", "worker-launcher.py"]
-

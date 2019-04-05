@@ -87,6 +87,8 @@ RUN pip3 install fontbakery;
 #     pip3 install -e /var/fontdiffenator;
 RUN pip3 install fontdiffenator;
 
+RUN pip3 install gfdiffbrowsers
+
 RUN touch /tmp/cache_spoof_2
 
 # in update_protobufs.sh the command `python -m grpc_tools.protoc`
