@@ -19,10 +19,10 @@ logging.basicConfig(format=FORMAT)
 
 from worker.storageclient import StorageClient
 from worker.fontbakery import (
-                      Checker as FontBakeryChecker
-                    , Distributor as FontBakeryDistributor
+                      Checker as FontBakeryCheckerWorker
+                    , Distributor as FontBakeryDistributorWorker
                     )
-from worker.diffenator import Diffenator
+from worker.diffenator import DiffenatorWorker
 
 logger = logging.getLogger('FB_WORKER')
 r = RethinkDB()
@@ -252,9 +252,9 @@ def main():
   )
 
   workers = dict(
-      fontbakery=FontBakeryDistributor
-    , fontbakery_checker=FontBakeryChecker
-    , diffenator=Diffenator
+      fontbakery=FontBakeryDistributorWorker
+    , fontbakery_checker=FontBakeryCheckerWorker
+    , diffenator=DiffenatorWorker
   )
 
   logger.info('Waiting for messages in %s...', queue_worker_name)

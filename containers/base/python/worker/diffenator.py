@@ -153,7 +153,7 @@ def validate_filename(logs, seen, expected_prefixes, filename):
 
   return True
 
-class Diffenator(object):
+class DiffenatorWorker(object):
   JobType=FamilyJob
   def __init__(self, logging, job, cache, persistence, queue, tmp_directory):
     self._log = logging
