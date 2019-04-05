@@ -12,9 +12,13 @@ var goog = jspb;
 var global = Function('return this')();
 
 var google_protobuf_any_pb = require('google-protobuf/google/protobuf/any_pb.js');
+goog.object.extend(proto, google_protobuf_any_pb);
 var google_protobuf_timestamp_pb = require('google-protobuf/google/protobuf/timestamp_pb.js');
+goog.object.extend(proto, google_protobuf_timestamp_pb);
 var google_protobuf_empty_pb = require('google-protobuf/google/protobuf/empty_pb.js');
+goog.object.extend(proto, google_protobuf_empty_pb);
 var shared_pb = require('./shared_pb.js');
+goog.object.extend(proto, shared_pb);
 goog.exportSymbol('proto.fontbakery.dashboard.AuthStatus', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.AuthStatus.StatusCode', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.AuthorizeRequest', null, global);
@@ -22,8 +26,6 @@ goog.exportSymbol('proto.fontbakery.dashboard.AuthorizedRoles', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.AuthorizedRolesRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CollectionFamilyJob', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CompletedWorker', null, global);
-goog.exportSymbol('proto.fontbakery.dashboard.DiffenatorResult', null, global);
-goog.exportSymbol('proto.fontbakery.dashboard.DiffenatorWorkerResult', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.DispatchReport', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.DispatchReport.Result', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.DispatcherInitProcess', null, global);
@@ -32,6 +34,8 @@ goog.exportSymbol('proto.fontbakery.dashboard.FamilyJob', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyNamesList', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FontBakeryFinished', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.GenericStorageWorkerResult', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.GenericStorageWorkerResult.Result', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ManifestSourceId', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.OAuthToken', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ProcessCommand', null, global);
@@ -238,7 +242,7 @@ proto.fontbakery.dashboard.FamilyJob.prototype.getDocid = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyJob.prototype.setDocid = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -265,7 +269,7 @@ proto.fontbakery.dashboard.FamilyJob.prototype.clearCacheKey = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.FamilyJob.prototype.hasCacheKey = function() {
   return jspb.Message.getField(this, 2) != null;
@@ -283,27 +287,27 @@ proto.fontbakery.dashboard.FamilyJob.prototype.getJobid = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyJob.prototype.setJobid = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
  * repeated string order = 4;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.fontbakery.dashboard.FamilyJob.prototype.getOrderList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 4));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 4));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.fontbakery.dashboard.FamilyJob.prototype.setOrderList = function(value) {
   jspb.Message.setField(this, 4, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
 proto.fontbakery.dashboard.FamilyJob.prototype.addOrder = function(value, opt_index) {
@@ -480,7 +484,7 @@ proto.fontbakery.dashboard.StorageItem.prototype.clearPayload = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.StorageItem.prototype.hasPayload = function() {
   return jspb.Message.getField(this, 1) != null;
@@ -498,7 +502,7 @@ proto.fontbakery.dashboard.StorageItem.prototype.getClientid = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.StorageItem.prototype.setClientid = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -676,7 +680,7 @@ proto.fontbakery.dashboard.StorageKey.prototype.getKey = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.StorageKey.prototype.setKey = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -691,7 +695,7 @@ proto.fontbakery.dashboard.StorageKey.prototype.getHash = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.StorageKey.prototype.setHash = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -706,7 +710,7 @@ proto.fontbakery.dashboard.StorageKey.prototype.getClientid = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.StorageKey.prototype.setClientid = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -723,7 +727,7 @@ proto.fontbakery.dashboard.StorageKey.prototype.getForce = function() {
 
 /** @param {boolean} value */
 proto.fontbakery.dashboard.StorageKey.prototype.setForce = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
@@ -877,7 +881,7 @@ proto.fontbakery.dashboard.StorageStatus.prototype.getKey = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.StorageStatus.prototype.setKey = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -892,7 +896,7 @@ proto.fontbakery.dashboard.StorageStatus.prototype.getInstances = function() {
 
 /** @param {number} value */
 proto.fontbakery.dashboard.StorageStatus.prototype.setInstances = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3IntField(this, 2, value);
 };
 
 
@@ -1034,7 +1038,7 @@ proto.fontbakery.dashboard.ManifestSourceId.prototype.getSourceId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ManifestSourceId.prototype.setSourceId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -1174,21 +1178,21 @@ proto.fontbakery.dashboard.FamilyNamesList.serializeBinaryToWriter = function(me
 
 /**
  * repeated string family_names = 1;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.fontbakery.dashboard.FamilyNamesList.prototype.getFamilyNamesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 1));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.fontbakery.dashboard.FamilyNamesList.prototype.setFamilyNamesList = function(value) {
   jspb.Message.setField(this, 1, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
 proto.fontbakery.dashboard.FamilyNamesList.prototype.addFamilyNames = function(value, opt_index) {
@@ -1351,7 +1355,7 @@ proto.fontbakery.dashboard.FamilyRequest.prototype.getSourceId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyRequest.prototype.setSourceId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -1366,7 +1370,7 @@ proto.fontbakery.dashboard.FamilyRequest.prototype.getFamilyName = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyRequest.prototype.setFamilyName = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -1560,7 +1564,7 @@ proto.fontbakery.dashboard.CollectionFamilyJob.prototype.getCollectionid = funct
 
 /** @param {string} value */
 proto.fontbakery.dashboard.CollectionFamilyJob.prototype.setCollectionid = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -1575,7 +1579,7 @@ proto.fontbakery.dashboard.CollectionFamilyJob.prototype.getFamilyName = functio
 
 /** @param {string} value */
 proto.fontbakery.dashboard.CollectionFamilyJob.prototype.setFamilyName = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -1602,7 +1606,7 @@ proto.fontbakery.dashboard.CollectionFamilyJob.prototype.clearCacheKey = functio
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.CollectionFamilyJob.prototype.hasCacheKey = function() {
   return jspb.Message.getField(this, 3) != null;
@@ -1632,7 +1636,7 @@ proto.fontbakery.dashboard.CollectionFamilyJob.prototype.clearDate = function() 
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.CollectionFamilyJob.prototype.hasDate = function() {
   return jspb.Message.getField(this, 4) != null;
@@ -1650,7 +1654,7 @@ proto.fontbakery.dashboard.CollectionFamilyJob.prototype.getMetadata = function(
 
 /** @param {string} value */
 proto.fontbakery.dashboard.CollectionFamilyJob.prototype.setMetadata = function(value) {
-  jspb.Message.setField(this, 5, value);
+  jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
@@ -1844,7 +1848,7 @@ proto.fontbakery.dashboard.FamilyData.prototype.getCollectionid = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyData.prototype.setCollectionid = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -1859,7 +1863,7 @@ proto.fontbakery.dashboard.FamilyData.prototype.getFamilyName = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyData.prototype.setFamilyName = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -1886,7 +1890,7 @@ proto.fontbakery.dashboard.FamilyData.prototype.clearFiles = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.FamilyData.prototype.hasFiles = function() {
   return jspb.Message.getField(this, 3) != null;
@@ -1916,7 +1920,7 @@ proto.fontbakery.dashboard.FamilyData.prototype.clearDate = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.FamilyData.prototype.hasDate = function() {
   return jspb.Message.getField(this, 4) != null;
@@ -1934,7 +1938,7 @@ proto.fontbakery.dashboard.FamilyData.prototype.getMetadata = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyData.prototype.setMetadata = function(value) {
-  jspb.Message.setField(this, 5, value);
+  jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
@@ -2166,7 +2170,7 @@ proto.fontbakery.dashboard.Report.prototype.getType = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.Report.prototype.setType = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -2181,7 +2185,7 @@ proto.fontbakery.dashboard.Report.prototype.getTypeId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.Report.prototype.setTypeId = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -2196,7 +2200,7 @@ proto.fontbakery.dashboard.Report.prototype.getMethod = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.Report.prototype.setMethod = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -2223,7 +2227,7 @@ proto.fontbakery.dashboard.Report.prototype.clearStarted = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.Report.prototype.hasStarted = function() {
   return jspb.Message.getField(this, 4) != null;
@@ -2253,7 +2257,7 @@ proto.fontbakery.dashboard.Report.prototype.clearFinished = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.Report.prototype.hasFinished = function() {
   return jspb.Message.getField(this, 5) != null;
@@ -2271,7 +2275,7 @@ proto.fontbakery.dashboard.Report.prototype.getData = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.Report.prototype.setData = function(value) {
-  jspb.Message.setField(this, 6, value);
+  jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
@@ -2286,7 +2290,7 @@ proto.fontbakery.dashboard.Report.prototype.getId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.Report.prototype.setId = function(value) {
-  jspb.Message.setField(this, 7, value);
+  jspb.Message.setProto3StringField(this, 7, value);
 };
 
 
@@ -2313,7 +2317,7 @@ proto.fontbakery.dashboard.Report.prototype.clearReported = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.Report.prototype.hasReported = function() {
   return jspb.Message.getField(this, 8) != null;
@@ -2409,7 +2413,7 @@ proto.fontbakery.dashboard.ReportsQuery.deserializeBinaryFromReader = function(m
     case 1:
       var value = msg.getFiltersMap();
       reader.readMessage(value, function(message, reader) {
-        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.fontbakery.dashboard.ReportsQuery.Filter.deserializeBinaryFromReader);
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readMessage, proto.fontbakery.dashboard.ReportsQuery.Filter.deserializeBinaryFromReader, "");
          });
       break;
     case 4:
@@ -2652,27 +2656,27 @@ proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.getType = function() {
 
 /** @param {!proto.fontbakery.dashboard.ReportsQuery.Filter.Type} value */
 proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.setType = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
 /**
  * repeated string values = 2;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.getValuesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 2));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 2));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.setValuesList = function(value) {
   jspb.Message.setField(this, 2, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
 proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.addValues = function(value, opt_index) {
@@ -2687,15 +2691,15 @@ proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.clearValuesList = funct
 
 /**
  * repeated google.protobuf.Timestamp min_max_dates = 3;
- * @return {!Array.<!proto.google.protobuf.Timestamp>}
+ * @return {!Array<!proto.google.protobuf.Timestamp>}
  */
 proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.getMinMaxDatesList = function() {
-  return /** @type{!Array.<!proto.google.protobuf.Timestamp>} */ (
+  return /** @type{!Array<!proto.google.protobuf.Timestamp>} */ (
     jspb.Message.getRepeatedWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 3));
 };
 
 
-/** @param {!Array.<!proto.google.protobuf.Timestamp>} value */
+/** @param {!Array<!proto.google.protobuf.Timestamp>} value */
 proto.fontbakery.dashboard.ReportsQuery.Filter.prototype.setMinMaxDatesList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 3, value);
 };
@@ -2892,7 +2896,7 @@ proto.fontbakery.dashboard.ReportsQuery.Pagination.prototype.clearItemReported =
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.ReportsQuery.Pagination.prototype.hasItemReported = function() {
   return jspb.Message.getField(this, 1) != null;
@@ -2910,7 +2914,7 @@ proto.fontbakery.dashboard.ReportsQuery.Pagination.prototype.getItemId = functio
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ReportsQuery.Pagination.prototype.setItemId = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -2927,7 +2931,7 @@ proto.fontbakery.dashboard.ReportsQuery.Pagination.prototype.getPreviousPage = f
 
 /** @param {boolean} value */
 proto.fontbakery.dashboard.ReportsQuery.Pagination.prototype.setPreviousPage = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3BooleanField(this, 3, value);
 };
 
 
@@ -2972,7 +2976,7 @@ proto.fontbakery.dashboard.ReportsQuery.prototype.clearPagination = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.ReportsQuery.prototype.hasPagination = function() {
   return jspb.Message.getField(this, 4) != null;
@@ -2992,7 +2996,7 @@ proto.fontbakery.dashboard.ReportsQuery.prototype.getIncludeData = function() {
 
 /** @param {boolean} value */
 proto.fontbakery.dashboard.ReportsQuery.prototype.setIncludeData = function(value) {
-  jspb.Message.setField(this, 5, value);
+  jspb.Message.setProto3BooleanField(this, 5, value);
 };
 
 
@@ -3132,21 +3136,21 @@ proto.fontbakery.dashboard.ReportIds.serializeBinaryToWriter = function(message,
 
 /**
  * repeated string ids = 1;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.fontbakery.dashboard.ReportIds.prototype.getIdsList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 1));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.fontbakery.dashboard.ReportIds.prototype.setIdsList = function(value) {
   jspb.Message.setField(this, 1, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
 proto.fontbakery.dashboard.ReportIds.prototype.addIds = function(value, opt_index) {
@@ -3317,7 +3321,7 @@ proto.fontbakery.dashboard.ProcessCommandResult.prototype.getResult = function()
 
 /** @param {!proto.fontbakery.dashboard.ProcessCommandResult.Result} value */
 proto.fontbakery.dashboard.ProcessCommandResult.prototype.setResult = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
@@ -3332,7 +3336,7 @@ proto.fontbakery.dashboard.ProcessCommandResult.prototype.getMessage = function(
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommandResult.prototype.setMessage = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -3486,7 +3490,7 @@ proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getRequester = functi
 
 /** @param {string} value */
 proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setRequester = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -3501,7 +3505,7 @@ proto.fontbakery.dashboard.DispatcherInitProcess.prototype.getJsonPayload = func
 
 /** @param {string} value */
 proto.fontbakery.dashboard.DispatcherInitProcess.prototype.setJsonPayload = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -3643,7 +3647,7 @@ proto.fontbakery.dashboard.ProcessQuery.prototype.getProcessId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessQuery.prototype.setProcessId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -3809,7 +3813,7 @@ proto.fontbakery.dashboard.ProcessState.prototype.getProcessId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessState.prototype.setProcessId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -3824,7 +3828,7 @@ proto.fontbakery.dashboard.ProcessState.prototype.getProcessData = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessState.prototype.setProcessData = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -3839,7 +3843,7 @@ proto.fontbakery.dashboard.ProcessState.prototype.getUserInterface = function() 
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessState.prototype.setUserInterface = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -3981,7 +3985,7 @@ proto.fontbakery.dashboard.ProcessListQuery.prototype.getQuery = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessListQuery.prototype.setQuery = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -4123,7 +4127,7 @@ proto.fontbakery.dashboard.ProcessListItem.prototype.getProcessId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessListItem.prototype.setProcessId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -4266,15 +4270,15 @@ proto.fontbakery.dashboard.ProcessList.serializeBinaryToWriter = function(messag
 
 /**
  * repeated ProcessListItem processes = 6;
- * @return {!Array.<!proto.fontbakery.dashboard.ProcessListItem>}
+ * @return {!Array<!proto.fontbakery.dashboard.ProcessListItem>}
  */
 proto.fontbakery.dashboard.ProcessList.prototype.getProcessesList = function() {
-  return /** @type{!Array.<!proto.fontbakery.dashboard.ProcessListItem>} */ (
+  return /** @type{!Array<!proto.fontbakery.dashboard.ProcessListItem>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.fontbakery.dashboard.ProcessListItem, 6));
 };
 
 
-/** @param {!Array.<!proto.fontbakery.dashboard.ProcessListItem>} value */
+/** @param {!Array<!proto.fontbakery.dashboard.ProcessListItem>} value */
 proto.fontbakery.dashboard.ProcessList.prototype.setProcessesList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 6, value);
 };
@@ -4545,7 +4549,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.getTicket = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setTicket = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -4560,7 +4564,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.getTargetPath = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setTargetPath = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -4575,7 +4579,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.getCallbackName = function()
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setCallbackName = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -4590,7 +4594,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.getRequester = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setRequester = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -4605,7 +4609,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.getResponseQueueName = funct
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setResponseQueueName = function(value) {
-  jspb.Message.setField(this, 5, value);
+  jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
@@ -4631,7 +4635,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.clearJsonPayload = function(
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.ProcessCommand.prototype.hasJsonPayload = function() {
   return jspb.Message.getField(this, 6) != null;
@@ -4661,7 +4665,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.clearPbPayload = function() 
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.ProcessCommand.prototype.hasPbPayload = function() {
   return jspb.Message.getField(this, 7) != null;
@@ -4679,7 +4683,7 @@ proto.fontbakery.dashboard.ProcessCommand.prototype.getSessionId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.ProcessCommand.prototype.setSessionId = function(value) {
-  jspb.Message.setField(this, 8, value);
+  jspb.Message.setProto3StringField(this, 8, value);
 };
 
 
@@ -4894,7 +4898,7 @@ proto.fontbakery.dashboard.AuthStatus.prototype.getStatus = function() {
 
 /** @param {!proto.fontbakery.dashboard.AuthStatus.StatusCode} value */
 proto.fontbakery.dashboard.AuthStatus.prototype.setStatus = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
@@ -4909,7 +4913,7 @@ proto.fontbakery.dashboard.AuthStatus.prototype.getSessionId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthStatus.prototype.setSessionId = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -4924,7 +4928,7 @@ proto.fontbakery.dashboard.AuthStatus.prototype.getAuthorizeUrl = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthStatus.prototype.setAuthorizeUrl = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -4939,7 +4943,7 @@ proto.fontbakery.dashboard.AuthStatus.prototype.getMessage = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthStatus.prototype.setMessage = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -4954,7 +4958,7 @@ proto.fontbakery.dashboard.AuthStatus.prototype.getUserName = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthStatus.prototype.setUserName = function(value) {
-  jspb.Message.setField(this, 5, value);
+  jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
@@ -4969,7 +4973,7 @@ proto.fontbakery.dashboard.AuthStatus.prototype.getAvatarUrl = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthStatus.prototype.setAvatarUrl = function(value) {
-  jspb.Message.setField(this, 6, value);
+  jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
@@ -5135,7 +5139,7 @@ proto.fontbakery.dashboard.AuthorizeRequest.prototype.getOAuthCode = function() 
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthorizeRequest.prototype.setOAuthCode = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -5150,7 +5154,7 @@ proto.fontbakery.dashboard.AuthorizeRequest.prototype.getSessionId = function() 
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthorizeRequest.prototype.setSessionId = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -5165,7 +5169,7 @@ proto.fontbakery.dashboard.AuthorizeRequest.prototype.getAuthorizeState = functi
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthorizeRequest.prototype.setAuthorizeState = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -5307,7 +5311,7 @@ proto.fontbakery.dashboard.SessionId.prototype.getSessionId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.SessionId.prototype.setSessionId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -5461,7 +5465,7 @@ proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.getSessionId = funct
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.setSessionId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -5476,7 +5480,7 @@ proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.getRepoNameWithOwner
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.setRepoNameWithOwner = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -5628,21 +5632,21 @@ proto.fontbakery.dashboard.AuthorizedRoles.serializeBinaryToWriter = function(me
 
 /**
  * repeated string roles = 1;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.fontbakery.dashboard.AuthorizedRoles.prototype.getRolesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 1));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 1));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.fontbakery.dashboard.AuthorizedRoles.prototype.setRolesList = function(value) {
   jspb.Message.setField(this, 1, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
 proto.fontbakery.dashboard.AuthorizedRoles.prototype.addRoles = function(value, opt_index) {
@@ -5666,7 +5670,7 @@ proto.fontbakery.dashboard.AuthorizedRoles.prototype.getUserName = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthorizedRoles.prototype.setUserName = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -5844,7 +5848,7 @@ proto.fontbakery.dashboard.OAuthToken.prototype.getUserName = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.OAuthToken.prototype.setUserName = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -5859,7 +5863,7 @@ proto.fontbakery.dashboard.OAuthToken.prototype.getAccessToken = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.OAuthToken.prototype.setAccessToken = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -5874,7 +5878,7 @@ proto.fontbakery.dashboard.OAuthToken.prototype.getType = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.OAuthToken.prototype.setType = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -5889,7 +5893,7 @@ proto.fontbakery.dashboard.OAuthToken.prototype.getScope = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.OAuthToken.prototype.setScope = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -6105,7 +6109,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.getSessionId = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setSessionId = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -6120,7 +6124,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.getStorageKey = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setStorageKey = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3StringField(this, 2, value);
 };
 
 
@@ -6135,7 +6139,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.getTargetDirectory = function()
 
 /** @param {string} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setTargetDirectory = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -6150,7 +6154,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.getPRMessageTitle = function() 
 
 /** @param {string} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setPRMessageTitle = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -6165,7 +6169,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.getPRMessageBody = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setPRMessageBody = function(value) {
-  jspb.Message.setField(this, 5, value);
+  jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
@@ -6180,7 +6184,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.getCommitMessage = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setCommitMessage = function(value) {
-  jspb.Message.setField(this, 6, value);
+  jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
@@ -6207,7 +6211,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.clearProcessCommand = function(
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.PullRequest.prototype.hasProcessCommand = function() {
   return jspb.Message.getField(this, 7) != null;
@@ -6422,7 +6426,7 @@ proto.fontbakery.dashboard.DispatchReport.prototype.getStatus = function() {
 
 /** @param {!proto.fontbakery.dashboard.DispatchReport.Result} value */
 proto.fontbakery.dashboard.DispatchReport.prototype.setStatus = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
@@ -6448,7 +6452,7 @@ proto.fontbakery.dashboard.DispatchReport.prototype.clearPRUrl = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.DispatchReport.prototype.hasPRUrl = function() {
   return jspb.Message.getField(this, 2) != null;
@@ -6477,7 +6481,7 @@ proto.fontbakery.dashboard.DispatchReport.prototype.clearError = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.DispatchReport.prototype.hasError = function() {
   return jspb.Message.getField(this, 3) != null;
@@ -6495,7 +6499,7 @@ proto.fontbakery.dashboard.DispatchReport.prototype.getBranchUrl = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.DispatchReport.prototype.setBranchUrl = function(value) {
-  jspb.Message.setField(this, 4, value);
+  jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
@@ -6665,7 +6669,7 @@ proto.fontbakery.dashboard.WorkerDescription.prototype.getWorkerName = function(
 
 /** @param {string} value */
 proto.fontbakery.dashboard.WorkerDescription.prototype.setWorkerName = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -6692,7 +6696,7 @@ proto.fontbakery.dashboard.WorkerDescription.prototype.clearJob = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.WorkerDescription.prototype.hasJob = function() {
   return jspb.Message.getField(this, 2) != null;
@@ -6722,7 +6726,7 @@ proto.fontbakery.dashboard.WorkerDescription.prototype.clearProcessCommand = fun
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.WorkerDescription.prototype.hasProcessCommand = function() {
   return jspb.Message.getField(this, 3) != null;
@@ -6881,7 +6885,7 @@ proto.fontbakery.dashboard.WorkerJobDescription.prototype.getWorkerName = functi
 
 /** @param {string} value */
 proto.fontbakery.dashboard.WorkerJobDescription.prototype.setWorkerName = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -6908,7 +6912,7 @@ proto.fontbakery.dashboard.WorkerJobDescription.prototype.clearJob = function() 
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.WorkerJobDescription.prototype.hasJob = function() {
   return jspb.Message.getField(this, 2) != null;
@@ -7067,7 +7071,7 @@ proto.fontbakery.dashboard.CompletedWorker.prototype.getWorkerName = function() 
 
 /** @param {string} value */
 proto.fontbakery.dashboard.CompletedWorker.prototype.setWorkerName = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -7094,7 +7098,7 @@ proto.fontbakery.dashboard.CompletedWorker.prototype.clearCompletedMessage = fun
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.CompletedWorker.prototype.hasCompletedMessage = function() {
   return jspb.Message.getField(this, 2) != null;
@@ -7305,7 +7309,7 @@ proto.fontbakery.dashboard.FontBakeryFinished.prototype.getDocid = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FontBakeryFinished.prototype.setDocid = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -7322,7 +7326,7 @@ proto.fontbakery.dashboard.FontBakeryFinished.prototype.getFinishedOrderly = fun
 
 /** @param {boolean} value */
 proto.fontbakery.dashboard.FontBakeryFinished.prototype.setFinishedOrderly = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3BooleanField(this, 2, value);
 };
 
 
@@ -7337,7 +7341,7 @@ proto.fontbakery.dashboard.FontBakeryFinished.prototype.getResultsJson = functio
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FontBakeryFinished.prototype.setResultsJson = function(value) {
-  jspb.Message.setField(this, 3, value);
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
@@ -7364,7 +7368,7 @@ proto.fontbakery.dashboard.FontBakeryFinished.prototype.clearCreated = function(
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.FontBakeryFinished.prototype.hasCreated = function() {
   return jspb.Message.getField(this, 4) != null;
@@ -7394,7 +7398,7 @@ proto.fontbakery.dashboard.FontBakeryFinished.prototype.clearStarted = function(
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.FontBakeryFinished.prototype.hasStarted = function() {
   return jspb.Message.getField(this, 5) != null;
@@ -7424,7 +7428,7 @@ proto.fontbakery.dashboard.FontBakeryFinished.prototype.clearFinished = function
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.fontbakery.dashboard.FontBakeryFinished.prototype.hasFinished = function() {
   return jspb.Message.getField(this, 6) != null;
@@ -7442,205 +7446,19 @@ proto.fontbakery.dashboard.FontBakeryFinished.prototype.hasFinished = function()
  * @extends {jspb.Message}
  * @constructor
  */
-proto.fontbakery.dashboard.DiffenatorResult = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+proto.fontbakery.dashboard.GenericStorageWorkerResult = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.fontbakery.dashboard.GenericStorageWorkerResult.repeatedFields_, null);
 };
-goog.inherits(proto.fontbakery.dashboard.DiffenatorResult, jspb.Message);
+goog.inherits(proto.fontbakery.dashboard.GenericStorageWorkerResult, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
-  proto.fontbakery.dashboard.DiffenatorResult.displayName = 'proto.fontbakery.dashboard.DiffenatorResult';
-}
-
-
-if (jspb.Message.GENERATE_TO_OBJECT) {
-/**
- * Creates an object representation of this proto suitable for use in Soy templates.
- * Field names that are reserved in JavaScript and will be renamed to pb_name.
- * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
- * For the list of reserved names please see:
- *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
- * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
- *     for transitional soy proto support: http://goto/soy-param-migration
- * @return {!Object}
- */
-proto.fontbakery.dashboard.DiffenatorResult.prototype.toObject = function(opt_includeInstance) {
-  return proto.fontbakery.dashboard.DiffenatorResult.toObject(opt_includeInstance, this);
-};
-
-
-/**
- * Static version of the {@see toObject} method.
- * @param {boolean|undefined} includeInstance Whether to include the JSPB
- *     instance for transitional soy proto support:
- *     http://goto/soy-param-migration
- * @param {!proto.fontbakery.dashboard.DiffenatorResult} msg The msg instance to transform.
- * @return {!Object}
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.fontbakery.dashboard.DiffenatorResult.toObject = function(includeInstance, msg) {
-  var f, obj = {
-    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    storageKey: (f = msg.getStorageKey()) && proto.fontbakery.dashboard.StorageKey.toObject(includeInstance, f)
-  };
-
-  if (includeInstance) {
-    obj.$jspbMessageInstance = msg;
-  }
-  return obj;
-};
-}
-
-
-/**
- * Deserializes binary data (in protobuf wire format).
- * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.fontbakery.dashboard.DiffenatorResult}
- */
-proto.fontbakery.dashboard.DiffenatorResult.deserializeBinary = function(bytes) {
-  var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.fontbakery.dashboard.DiffenatorResult;
-  return proto.fontbakery.dashboard.DiffenatorResult.deserializeBinaryFromReader(msg, reader);
-};
-
-
-/**
- * Deserializes binary data (in protobuf wire format) from the
- * given reader into the given message object.
- * @param {!proto.fontbakery.dashboard.DiffenatorResult} msg The message object to deserialize into.
- * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.fontbakery.dashboard.DiffenatorResult}
- */
-proto.fontbakery.dashboard.DiffenatorResult.deserializeBinaryFromReader = function(msg, reader) {
-  while (reader.nextField()) {
-    if (reader.isEndGroup()) {
-      break;
-    }
-    var field = reader.getFieldNumber();
-    switch (field) {
-    case 1:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setName(value);
-      break;
-    case 2:
-      var value = new proto.fontbakery.dashboard.StorageKey;
-      reader.readMessage(value,proto.fontbakery.dashboard.StorageKey.deserializeBinaryFromReader);
-      msg.setStorageKey(value);
-      break;
-    default:
-      reader.skipField();
-      break;
-    }
-  }
-  return msg;
-};
-
-
-/**
- * Serializes the message to binary data (in protobuf wire format).
- * @return {!Uint8Array}
- */
-proto.fontbakery.dashboard.DiffenatorResult.prototype.serializeBinary = function() {
-  var writer = new jspb.BinaryWriter();
-  proto.fontbakery.dashboard.DiffenatorResult.serializeBinaryToWriter(this, writer);
-  return writer.getResultBuffer();
-};
-
-
-/**
- * Serializes the given message to binary data (in protobuf wire
- * format), writing to the given BinaryWriter.
- * @param {!proto.fontbakery.dashboard.DiffenatorResult} message
- * @param {!jspb.BinaryWriter} writer
- * @suppress {unusedLocalVariables} f is only used for nested messages
- */
-proto.fontbakery.dashboard.DiffenatorResult.serializeBinaryToWriter = function(message, writer) {
-  var f = undefined;
-  f = message.getName();
-  if (f.length > 0) {
-    writer.writeString(
-      1,
-      f
-    );
-  }
-  f = message.getStorageKey();
-  if (f != null) {
-    writer.writeMessage(
-      2,
-      f,
-      proto.fontbakery.dashboard.StorageKey.serializeBinaryToWriter
-    );
-  }
-};
-
-
-/**
- * optional string name = 1;
- * @return {string}
- */
-proto.fontbakery.dashboard.DiffenatorResult.prototype.getName = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
-};
-
-
-/** @param {string} value */
-proto.fontbakery.dashboard.DiffenatorResult.prototype.setName = function(value) {
-  jspb.Message.setField(this, 1, value);
-};
-
-
-/**
- * optional StorageKey storage_key = 2;
- * @return {?proto.fontbakery.dashboard.StorageKey}
- */
-proto.fontbakery.dashboard.DiffenatorResult.prototype.getStorageKey = function() {
-  return /** @type{?proto.fontbakery.dashboard.StorageKey} */ (
-    jspb.Message.getWrapperField(this, proto.fontbakery.dashboard.StorageKey, 2));
-};
-
-
-/** @param {?proto.fontbakery.dashboard.StorageKey|undefined} value */
-proto.fontbakery.dashboard.DiffenatorResult.prototype.setStorageKey = function(value) {
-  jspb.Message.setWrapperField(this, 2, value);
-};
-
-
-proto.fontbakery.dashboard.DiffenatorResult.prototype.clearStorageKey = function() {
-  this.setStorageKey(undefined);
-};
-
-
-/**
- * Returns whether this field is set.
- * @return {!boolean}
- */
-proto.fontbakery.dashboard.DiffenatorResult.prototype.hasStorageKey = function() {
-  return jspb.Message.getField(this, 2) != null;
-};
-
-
-
-/**
- * Generated by JsPbCodeGenerator.
- * @param {Array=} opt_data Optional initial data array, typically from a
- * server response, or constructed directly in Javascript. The array is used
- * in place and becomes part of the constructed object. It is not cloned.
- * If no data is provided, the constructed object will be empty, but still
- * valid.
- * @extends {jspb.Message}
- * @constructor
- */
-proto.fontbakery.dashboard.DiffenatorWorkerResult = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, proto.fontbakery.dashboard.DiffenatorWorkerResult.repeatedFields_, null);
-};
-goog.inherits(proto.fontbakery.dashboard.DiffenatorWorkerResult, jspb.Message);
-if (goog.DEBUG && !COMPILED) {
-  proto.fontbakery.dashboard.DiffenatorWorkerResult.displayName = 'proto.fontbakery.dashboard.DiffenatorWorkerResult';
+  proto.fontbakery.dashboard.GenericStorageWorkerResult.displayName = 'proto.fontbakery.dashboard.GenericStorageWorkerResult';
 }
 /**
  * List of repeated fields within this message type.
  * @private {!Array<number>}
  * @const
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.repeatedFields_ = [6,7];
+proto.fontbakery.dashboard.GenericStorageWorkerResult.repeatedFields_ = [6,7];
 
 
 
@@ -7655,8 +7473,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     for transitional soy proto support: http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.toObject = function(opt_includeInstance) {
-  return proto.fontbakery.dashboard.DiffenatorWorkerResult.toObject(opt_includeInstance, this);
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.GenericStorageWorkerResult.toObject(opt_includeInstance, this);
 };
 
 
@@ -7665,11 +7483,11 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.toObject = function(
  * @param {boolean|undefined} includeInstance Whether to include the JSPB
  *     instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.fontbakery.dashboard.DiffenatorWorkerResult} msg The msg instance to transform.
+ * @param {!proto.fontbakery.dashboard.GenericStorageWorkerResult} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.toObject = function(includeInstance, msg) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.toObject = function(includeInstance, msg) {
   var f, obj = {
     jobId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     created: (f = msg.getCreated()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
@@ -7678,7 +7496,7 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.toObject = function(includeIns
     exception: jspb.Message.getFieldWithDefault(msg, 5, ""),
     preparationLogsList: jspb.Message.getRepeatedField(msg, 6),
     resultsList: jspb.Message.toObjectList(msg.getResultsList(),
-    proto.fontbakery.dashboard.DiffenatorResult.toObject, includeInstance)
+    proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -7692,23 +7510,23 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.toObject = function(includeIns
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.fontbakery.dashboard.DiffenatorWorkerResult}
+ * @return {!proto.fontbakery.dashboard.GenericStorageWorkerResult}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.deserializeBinary = function(bytes) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.fontbakery.dashboard.DiffenatorWorkerResult;
-  return proto.fontbakery.dashboard.DiffenatorWorkerResult.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.fontbakery.dashboard.GenericStorageWorkerResult;
+  return proto.fontbakery.dashboard.GenericStorageWorkerResult.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.fontbakery.dashboard.DiffenatorWorkerResult} msg The message object to deserialize into.
+ * @param {!proto.fontbakery.dashboard.GenericStorageWorkerResult} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.fontbakery.dashboard.DiffenatorWorkerResult}
+ * @return {!proto.fontbakery.dashboard.GenericStorageWorkerResult}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.deserializeBinaryFromReader = function(msg, reader) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -7743,8 +7561,8 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.deserializeBinaryFromReader = 
       msg.addPreparationLogs(value);
       break;
     case 7:
-      var value = new proto.fontbakery.dashboard.DiffenatorResult;
-      reader.readMessage(value,proto.fontbakery.dashboard.DiffenatorResult.deserializeBinaryFromReader);
+      var value = new proto.fontbakery.dashboard.GenericStorageWorkerResult.Result;
+      reader.readMessage(value,proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.deserializeBinaryFromReader);
       msg.addResults(value);
       break;
     default:
@@ -7760,9 +7578,9 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.deserializeBinaryFromReader = 
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.serializeBinary = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.fontbakery.dashboard.DiffenatorWorkerResult.serializeBinaryToWriter(this, writer);
+  proto.fontbakery.dashboard.GenericStorageWorkerResult.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -7770,11 +7588,11 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.serializeBinary = fu
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.fontbakery.dashboard.DiffenatorWorkerResult} message
+ * @param {!proto.fontbakery.dashboard.GenericStorageWorkerResult} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.serializeBinaryToWriter = function(message, writer) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getJobId();
   if (f.length > 0) {
@@ -7826,9 +7644,195 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.serializeBinaryToWriter = func
     writer.writeRepeatedMessage(
       7,
       f,
-      proto.fontbakery.dashboard.DiffenatorResult.serializeBinaryToWriter
+      proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.serializeBinaryToWriter
     );
   }
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.fontbakery.dashboard.GenericStorageWorkerResult.Result, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.displayName = 'proto.fontbakery.dashboard.GenericStorageWorkerResult.Result';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    name: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    storageKey: (f = msg.getStorageKey()) && proto.fontbakery.dashboard.StorageKey.toObject(includeInstance, f)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result}
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.fontbakery.dashboard.GenericStorageWorkerResult.Result;
+  return proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result}
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setName(value);
+      break;
+    case 2:
+      var value = new proto.fontbakery.dashboard.StorageKey;
+      reader.readMessage(value,proto.fontbakery.dashboard.StorageKey.deserializeBinaryFromReader);
+      msg.setStorageKey(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getName();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getStorageKey();
+  if (f != null) {
+    writer.writeMessage(
+      2,
+      f,
+      proto.fontbakery.dashboard.StorageKey.serializeBinaryToWriter
+    );
+  }
+};
+
+
+/**
+ * optional string name = 1;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.getName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.setName = function(value) {
+  jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional StorageKey storage_key = 2;
+ * @return {?proto.fontbakery.dashboard.StorageKey}
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.getStorageKey = function() {
+  return /** @type{?proto.fontbakery.dashboard.StorageKey} */ (
+    jspb.Message.getWrapperField(this, proto.fontbakery.dashboard.StorageKey, 2));
+};
+
+
+/** @param {?proto.fontbakery.dashboard.StorageKey|undefined} value */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.setStorageKey = function(value) {
+  jspb.Message.setWrapperField(this, 2, value);
+};
+
+
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.clearStorageKey = function() {
+  this.setStorageKey(undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.Result.prototype.hasStorageKey = function() {
+  return jspb.Message.getField(this, 2) != null;
 };
 
 
@@ -7836,14 +7840,14 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.serializeBinaryToWriter = func
  * optional string job_id = 1;
  * @return {string}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.getJobId = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.getJobId = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setJobId = function(value) {
-  jspb.Message.setField(this, 1, value);
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.setJobId = function(value) {
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -7851,28 +7855,28 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setJobId = function(
  * optional google.protobuf.Timestamp created = 2;
  * @return {?proto.google.protobuf.Timestamp}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.getCreated = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.getCreated = function() {
   return /** @type{?proto.google.protobuf.Timestamp} */ (
     jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 2));
 };
 
 
 /** @param {?proto.google.protobuf.Timestamp|undefined} value */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setCreated = function(value) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.setCreated = function(value) {
   jspb.Message.setWrapperField(this, 2, value);
 };
 
 
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.clearCreated = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.clearCreated = function() {
   this.setCreated(undefined);
 };
 
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.hasCreated = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.hasCreated = function() {
   return jspb.Message.getField(this, 2) != null;
 };
 
@@ -7881,28 +7885,28 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.hasCreated = functio
  * optional google.protobuf.Timestamp started = 3;
  * @return {?proto.google.protobuf.Timestamp}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.getStarted = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.getStarted = function() {
   return /** @type{?proto.google.protobuf.Timestamp} */ (
     jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 3));
 };
 
 
 /** @param {?proto.google.protobuf.Timestamp|undefined} value */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setStarted = function(value) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.setStarted = function(value) {
   jspb.Message.setWrapperField(this, 3, value);
 };
 
 
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.clearStarted = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.clearStarted = function() {
   this.setStarted(undefined);
 };
 
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.hasStarted = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.hasStarted = function() {
   return jspb.Message.getField(this, 3) != null;
 };
 
@@ -7911,28 +7915,28 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.hasStarted = functio
  * optional google.protobuf.Timestamp finished = 4;
  * @return {?proto.google.protobuf.Timestamp}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.getFinished = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.getFinished = function() {
   return /** @type{?proto.google.protobuf.Timestamp} */ (
     jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 4));
 };
 
 
 /** @param {?proto.google.protobuf.Timestamp|undefined} value */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setFinished = function(value) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.setFinished = function(value) {
   jspb.Message.setWrapperField(this, 4, value);
 };
 
 
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.clearFinished = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.clearFinished = function() {
   this.setFinished(undefined);
 };
 
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.hasFinished = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.hasFinished = function() {
   return jspb.Message.getField(this, 4) != null;
 };
 
@@ -7941,73 +7945,73 @@ proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.hasFinished = functi
  * optional string exception = 5;
  * @return {string}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.getException = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.getException = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setException = function(value) {
-  jspb.Message.setField(this, 5, value);
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.setException = function(value) {
+  jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
 /**
  * repeated string preparation_logs = 6;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.getPreparationLogsList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 6));
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.getPreparationLogsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 6));
 };
 
 
-/** @param {!Array.<string>} value */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setPreparationLogsList = function(value) {
+/** @param {!Array<string>} value */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.setPreparationLogsList = function(value) {
   jspb.Message.setField(this, 6, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.addPreparationLogs = function(value, opt_index) {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.addPreparationLogs = function(value, opt_index) {
   jspb.Message.addToRepeatedField(this, 6, value, opt_index);
 };
 
 
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.clearPreparationLogsList = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.clearPreparationLogsList = function() {
   this.setPreparationLogsList([]);
 };
 
 
 /**
- * repeated DiffenatorResult results = 7;
- * @return {!Array.<!proto.fontbakery.dashboard.DiffenatorResult>}
+ * repeated Result results = 7;
+ * @return {!Array<!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result>}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.getResultsList = function() {
-  return /** @type{!Array.<!proto.fontbakery.dashboard.DiffenatorResult>} */ (
-    jspb.Message.getRepeatedWrapperField(this, proto.fontbakery.dashboard.DiffenatorResult, 7));
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.getResultsList = function() {
+  return /** @type{!Array<!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.fontbakery.dashboard.GenericStorageWorkerResult.Result, 7));
 };
 
 
-/** @param {!Array.<!proto.fontbakery.dashboard.DiffenatorResult>} value */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.setResultsList = function(value) {
+/** @param {!Array<!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result>} value */
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.setResultsList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 7, value);
 };
 
 
 /**
- * @param {!proto.fontbakery.dashboard.DiffenatorResult=} opt_value
+ * @param {!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result=} opt_value
  * @param {number=} opt_index
- * @return {!proto.fontbakery.dashboard.DiffenatorResult}
+ * @return {!proto.fontbakery.dashboard.GenericStorageWorkerResult.Result}
  */
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.addResults = function(opt_value, opt_index) {
-  return jspb.Message.addToRepeatedWrapperField(this, 7, opt_value, proto.fontbakery.dashboard.DiffenatorResult, opt_index);
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.addResults = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 7, opt_value, proto.fontbakery.dashboard.GenericStorageWorkerResult.Result, opt_index);
 };
 
 
-proto.fontbakery.dashboard.DiffenatorWorkerResult.prototype.clearResultsList = function() {
+proto.fontbakery.dashboard.GenericStorageWorkerResult.prototype.clearResultsList = function() {
   this.setResultsList([]);
 };
 

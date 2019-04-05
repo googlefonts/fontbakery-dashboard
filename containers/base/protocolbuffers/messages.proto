@@ -453,12 +453,11 @@ message FontBakeryFinished {
     google.protobuf.Timestamp finished = 6;
 }
 
-message DiffenatorResult {
-    string name = 1;
-    StorageKey storage_key = 2;
-}
-
-message DiffenatorWorkerResult {
+message GenericStorageWorkerResult {
+    message Result {
+        string name = 1;
+        StorageKey storage_key = 2;
+    };
     string job_id = 1;
     // currently unused but generally interesting to track the
     // time from queuing to job start, or overall waiting time
@@ -470,5 +469,5 @@ message DiffenatorWorkerResult {
     // If set the job failed somehow, print pre-formated
     string exception = 5;
     repeated string preparation_logs = 6;
-    repeated DiffenatorResult results = 7;
+    repeated Result results = 7;
 }

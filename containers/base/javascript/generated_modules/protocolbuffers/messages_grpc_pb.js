@@ -12,7 +12,7 @@ function serialize_fontbakery_dashboard_AuthStatus(arg) {
   if (!(arg instanceof messages_pb.AuthStatus)) {
     throw new Error('Expected argument of type fontbakery.dashboard.AuthStatus');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_AuthStatus(buffer_arg) {
@@ -23,7 +23,7 @@ function serialize_fontbakery_dashboard_AuthorizeRequest(arg) {
   if (!(arg instanceof messages_pb.AuthorizeRequest)) {
     throw new Error('Expected argument of type fontbakery.dashboard.AuthorizeRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_AuthorizeRequest(buffer_arg) {
@@ -34,7 +34,7 @@ function serialize_fontbakery_dashboard_AuthorizedRoles(arg) {
   if (!(arg instanceof messages_pb.AuthorizedRoles)) {
     throw new Error('Expected argument of type fontbakery.dashboard.AuthorizedRoles');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_AuthorizedRoles(buffer_arg) {
@@ -45,7 +45,7 @@ function serialize_fontbakery_dashboard_AuthorizedRolesRequest(arg) {
   if (!(arg instanceof messages_pb.AuthorizedRolesRequest)) {
     throw new Error('Expected argument of type fontbakery.dashboard.AuthorizedRolesRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_AuthorizedRolesRequest(buffer_arg) {
@@ -56,7 +56,7 @@ function serialize_fontbakery_dashboard_FamilyData(arg) {
   if (!(arg instanceof messages_pb.FamilyData)) {
     throw new Error('Expected argument of type fontbakery.dashboard.FamilyData');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_FamilyData(buffer_arg) {
@@ -67,7 +67,7 @@ function serialize_fontbakery_dashboard_FamilyNamesList(arg) {
   if (!(arg instanceof messages_pb.FamilyNamesList)) {
     throw new Error('Expected argument of type fontbakery.dashboard.FamilyNamesList');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_FamilyNamesList(buffer_arg) {
@@ -78,7 +78,7 @@ function serialize_fontbakery_dashboard_FamilyRequest(arg) {
   if (!(arg instanceof messages_pb.FamilyRequest)) {
     throw new Error('Expected argument of type fontbakery.dashboard.FamilyRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_FamilyRequest(buffer_arg) {
@@ -89,7 +89,7 @@ function serialize_fontbakery_dashboard_ManifestSourceId(arg) {
   if (!(arg instanceof messages_pb.ManifestSourceId)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ManifestSourceId');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ManifestSourceId(buffer_arg) {
@@ -100,7 +100,7 @@ function serialize_fontbakery_dashboard_OAuthToken(arg) {
   if (!(arg instanceof messages_pb.OAuthToken)) {
     throw new Error('Expected argument of type fontbakery.dashboard.OAuthToken');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_OAuthToken(buffer_arg) {
@@ -111,7 +111,7 @@ function serialize_fontbakery_dashboard_ProcessCommand(arg) {
   if (!(arg instanceof messages_pb.ProcessCommand)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessCommand');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ProcessCommand(buffer_arg) {
@@ -122,7 +122,7 @@ function serialize_fontbakery_dashboard_ProcessCommandResult(arg) {
   if (!(arg instanceof messages_pb.ProcessCommandResult)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessCommandResult');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ProcessCommandResult(buffer_arg) {
@@ -133,7 +133,7 @@ function serialize_fontbakery_dashboard_ProcessList(arg) {
   if (!(arg instanceof messages_pb.ProcessList)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessList');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ProcessList(buffer_arg) {
@@ -144,7 +144,7 @@ function serialize_fontbakery_dashboard_ProcessListQuery(arg) {
   if (!(arg instanceof messages_pb.ProcessListQuery)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessListQuery');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ProcessListQuery(buffer_arg) {
@@ -155,7 +155,7 @@ function serialize_fontbakery_dashboard_ProcessQuery(arg) {
   if (!(arg instanceof messages_pb.ProcessQuery)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessQuery');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ProcessQuery(buffer_arg) {
@@ -166,7 +166,7 @@ function serialize_fontbakery_dashboard_ProcessState(arg) {
   if (!(arg instanceof messages_pb.ProcessState)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ProcessState');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ProcessState(buffer_arg) {
@@ -177,7 +177,7 @@ function serialize_fontbakery_dashboard_PullRequest(arg) {
   if (!(arg instanceof messages_pb.PullRequest)) {
     throw new Error('Expected argument of type fontbakery.dashboard.PullRequest');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_PullRequest(buffer_arg) {
@@ -188,7 +188,7 @@ function serialize_fontbakery_dashboard_Report(arg) {
   if (!(arg instanceof messages_pb.Report)) {
     throw new Error('Expected argument of type fontbakery.dashboard.Report');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_Report(buffer_arg) {
@@ -199,7 +199,7 @@ function serialize_fontbakery_dashboard_ReportIds(arg) {
   if (!(arg instanceof messages_pb.ReportIds)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ReportIds');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ReportIds(buffer_arg) {
@@ -210,7 +210,7 @@ function serialize_fontbakery_dashboard_ReportsQuery(arg) {
   if (!(arg instanceof messages_pb.ReportsQuery)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ReportsQuery');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_ReportsQuery(buffer_arg) {
@@ -221,7 +221,7 @@ function serialize_fontbakery_dashboard_SessionId(arg) {
   if (!(arg instanceof messages_pb.SessionId)) {
     throw new Error('Expected argument of type fontbakery.dashboard.SessionId');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_SessionId(buffer_arg) {
@@ -232,7 +232,7 @@ function serialize_fontbakery_dashboard_StorageItem(arg) {
   if (!(arg instanceof messages_pb.StorageItem)) {
     throw new Error('Expected argument of type fontbakery.dashboard.StorageItem');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_StorageItem(buffer_arg) {
@@ -243,7 +243,7 @@ function serialize_fontbakery_dashboard_StorageKey(arg) {
   if (!(arg instanceof messages_pb.StorageKey)) {
     throw new Error('Expected argument of type fontbakery.dashboard.StorageKey');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_StorageKey(buffer_arg) {
@@ -254,7 +254,7 @@ function serialize_fontbakery_dashboard_StorageStatus(arg) {
   if (!(arg instanceof messages_pb.StorageStatus)) {
     throw new Error('Expected argument of type fontbakery.dashboard.StorageStatus');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_StorageStatus(buffer_arg) {
@@ -265,7 +265,7 @@ function serialize_fontbakery_dashboard_WorkerDescription(arg) {
   if (!(arg instanceof messages_pb.WorkerDescription)) {
     throw new Error('Expected argument of type fontbakery.dashboard.WorkerDescription');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_fontbakery_dashboard_WorkerDescription(buffer_arg) {
@@ -276,7 +276,7 @@ function serialize_google_protobuf_Any(arg) {
   if (!(arg instanceof google_protobuf_any_pb.Any)) {
     throw new Error('Expected argument of type google.protobuf.Any');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_google_protobuf_Any(buffer_arg) {
@@ -287,7 +287,7 @@ function serialize_google_protobuf_Empty(arg) {
   if (!(arg instanceof google_protobuf_empty_pb.Empty)) {
     throw new Error('Expected argument of type google.protobuf.Empty');
   }
-  return new Buffer(arg.serializeBinary());
+  return Buffer.from(arg.serializeBinary());
 }
 
 function deserialize_google_protobuf_Empty(buffer_arg) {

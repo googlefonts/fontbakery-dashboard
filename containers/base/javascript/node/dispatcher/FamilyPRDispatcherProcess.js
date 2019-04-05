@@ -10,7 +10,7 @@ const { Process:Parent } = require('./framework/Process')
       , DispatchReport
       , StorageKey
       , FontBakeryFinished
-      , DiffenatorWorkerResult
+      , GenericStorageWorkerResult
       , File
       , Files } = require('protocolbuffers/messages_pb')
     , {mixin: stateManagerMixin} = require('./framework/stateManagerMixin')
@@ -690,7 +690,7 @@ return FontbakeryTask;
 
 const DiffenatorTask = (function() {
 var anySetup = {
-    knownTypes: { DiffenatorWorkerResult }
+    knownTypes: { GenericStorageWorkerResult }
 };
 const DiffenatorTask = taskFactory('DiffenatorTask', anySetup);
 const _p = DiffenatorTask.prototype;
@@ -774,11 +774,15 @@ _p._activate = function() {
 
 
 _p.callbackDiffenatorFinished = function([requester, sessionID]
-                                        , diffenatorWorkerResult
+                                        , genericStorageWorkerResult
                                         , ...continuationArgs) {
     // jshint unused:vars
 
-    // message DiffenatorWorkerResult {
+    // message GenericStorageWorkerResult {
+    //     message Result {
+    //         string name = 1;
+    //         StorageKey storage_key = 2;
+    //     };
     //     string job_id = 1;
     //     // currently unused but generally interesting to track the
     //     // time from queuing to job start, or overall waiting time
@@ -790,9 +794,9 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
     //     // If set the job failed somehow, print pre-formated
     //     string exception = 5;
     //     repeated string preparation_logs = 6;
-    //     repeated DiffenatorResult results = 7;
+    //     repeated Result results = 7;
     // }
-    var exception = diffenatorWorkerResult.getException()
+    var exception = genericStorageWorkerResult.getException()
      , report = '## Diffenator Result'
      ;
 
@@ -806,7 +810,7 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
         ].join('\n');
     }
 
-    var preparationLogs = diffenatorWorkerResult.getPreparationLogsList();
+    var preparationLogs = genericStorageWorkerResult.getPreparationLogsList();
     if(preparationLogs.length) {
         report += '\n### Preparation Logs\n';
         for(let preparationLog of preparationLogs)
@@ -814,11 +818,11 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
     }
 
     // For now, just log the zip download url:
-    // message DiffenatorResult {
+    // message GenericStorageWorkerResult.Result {
     //     string name = 1;
     //     StorageKey storage_key = 2;
     // }
-    var results = diffenatorWorkerResult.getResultsList();
+    var results = genericStorageWorkerResult.getResultsList();
     if(results.length) {
         report += '\n### Results\n';
         for(let result of results) {
@@ -835,9 +839,9 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
     report += '\n';
     report += [
              // created is not used currently
-             // _mdFormatTimestamp(diffenatorWorkerResult, 'created')
-                _mdFormatTimestamp(diffenatorWorkerResult, 'started')
-              , _mdFormatTimestamp(diffenatorWorkerResult, 'finished')
+             // _mdFormatTimestamp(genericStorageWorkerResult, 'created')
+                _mdFormatTimestamp(genericStorageWorkerResult, 'started')
+              , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
               ].join('<br />\n');
 
     this._setLOG(report);

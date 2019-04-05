@@ -163,7 +163,7 @@ proto.fontbakery.dashboard.File.prototype.getName = function() {
 
 /** @param {string} value */
 proto.fontbakery.dashboard.File.prototype.setName = function(value) {
-  jspb.Message.setField(this, 1, value);
+  jspb.Message.setProto3StringField(this, 1, value);
 };
 
 
@@ -202,7 +202,7 @@ proto.fontbakery.dashboard.File.prototype.getData_asU8 = function() {
 
 /** @param {!(string|Uint8Array)} value */
 proto.fontbakery.dashboard.File.prototype.setData = function(value) {
-  jspb.Message.setField(this, 2, value);
+  jspb.Message.setProto3BytesField(this, 2, value);
 };
 
 
@@ -345,15 +345,15 @@ proto.fontbakery.dashboard.Files.serializeBinaryToWriter = function(message, wri
 
 /**
  * repeated File files = 1;
- * @return {!Array.<!proto.fontbakery.dashboard.File>}
+ * @return {!Array<!proto.fontbakery.dashboard.File>}
  */
 proto.fontbakery.dashboard.Files.prototype.getFilesList = function() {
-  return /** @type{!Array.<!proto.fontbakery.dashboard.File>} */ (
+  return /** @type{!Array<!proto.fontbakery.dashboard.File>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.fontbakery.dashboard.File, 1));
 };
 
 
-/** @param {!Array.<!proto.fontbakery.dashboard.File>} value */
+/** @param {!Array<!proto.fontbakery.dashboard.File>} value */
 proto.fontbakery.dashboard.Files.prototype.setFilesList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 1, value);
 };

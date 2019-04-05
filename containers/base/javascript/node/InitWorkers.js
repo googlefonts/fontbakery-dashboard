@@ -7,7 +7,7 @@
 const messages_pb = require('protocolbuffers/messages_pb')
   , grpc = require('grpc')
   , { FamilyJob, StorageKey, CompletedWorker, FontBakeryFinished
-      , WorkerJobDescription, DiffenatorWorkerResult } = messages_pb
+      , WorkerJobDescription, GenericStorageWorkerResult } = messages_pb
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , { InitWorkersService } = require('protocolbuffers/messages_grpc_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
@@ -646,7 +646,7 @@ Object.defineProperties(_p, {
     // expecting a StorageKey for persistence I guess ???
     // for cache would be maybe quicker, but we should store it
     // eventually ...
-  , CompletedMessage: { value: DiffenatorWorkerResult, enumerable:true }
+  , CompletedMessage: { value: GenericStorageWorkerResult, enumerable:true }
 });
 
 
@@ -703,7 +703,7 @@ _p.callInit = function(cacheKey) {
  */
 _p.registerCompleted = function(completedMessage) {
     // jshint unused:vars
-    // completedMessage is a DiffenatorWorkerResult and we can
+    // completedMessage is a GenericStorageWorkerResult and we can
     // just pass it on.
     var id = completedMessage.getJobId();
     this._runningJobs.delete(id);

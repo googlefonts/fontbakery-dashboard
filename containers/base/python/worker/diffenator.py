@@ -9,8 +9,7 @@ import traceback
 from protocolbuffers.messages_pb2 import (
                                           CompletedWorker
                                         , FamilyJob
-                                        , DiffenatorResult
-                                        , DiffenatorWorkerResult
+                                        , GenericStorageWorkerResult
                                         , Files
                                         , File
                                         )
@@ -165,7 +164,7 @@ class Diffenator(object):
     self._tmp_directory = tmp_directory
     self._out_dir = os.path.join(self._tmp_directory, 'diffenator')
     os.mkdir(self._out_dir)
-    self._answer = DiffenatorWorkerResult()
+    self._answer = GenericStorageWorkerResult()
     self._answer.job_id = self._job.docid
 
   def _prepare(self, files):
@@ -261,7 +260,7 @@ class Diffenator(object):
     storage_keys = self._persistence.put(files_msgs)
     results = []
     for result_name, storage_key in zip(result_dirs, storage_keys):
-      dr = DiffenatorResult()
+      dr = GenericStorageWorkerResult.Result()
       dr.name = result_name
       dr.storage_key.CopyFrom(storage_key)
       results.append(dr)
@@ -300,14 +299,14 @@ class Diffenator(object):
 # The intention for main was ever only for debugging/profiling.
 # debug_run.py:
 #     #!/usr/bin/env python3
-#     
+#
 #     import logging
 #     FORMAT = '%(asctime)s:%(name)s:%(levelname)s:%(message)s'
 #     logging.basicConfig(format=FORMAT)
-#     
+#
 #     import sys
 #     print('python version:', sys.version)
-#     
+#
 #     from worker.diffenator import main
 #     main()
 # with memory profiling:
