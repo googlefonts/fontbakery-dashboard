@@ -9,7 +9,7 @@ RUN npm install -g bower browserify requirejs;
 
 ADD ./.bowerrc ./bower.json ./package.json /var/javascript/
 
-RUN touch /tmp/cache_spoof_1
+RUN touch /tmp/cache_spoof_2
 ADD ./generated_modules /var/javascript/generated_modules
 
 RUN touch /tmp/cache_spoof_1

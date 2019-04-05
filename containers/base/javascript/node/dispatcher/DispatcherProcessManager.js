@@ -24,7 +24,7 @@ function _makeFamilyRequest(sourceId, familyName) {
     var familyRequestMessage = new FamilyRequest();
     familyRequestMessage.setSourceId(sourceId);
     familyRequestMessage.setFamilyName(familyName);
-    return familyRequestMessage
+    return familyRequestMessage;
 }
 
 function DispatcherProcessManager(setup, ...args) {

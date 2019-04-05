@@ -4,8 +4,7 @@
 const { Process:Parent } = require('./framework/Process')
     , { Step } = require('./framework/Step')
     , { Task } = require('./framework/Task')
-    , { FamilyRequest
-      , PullRequest
+    , { PullRequest
       , ProcessCommand
       , DispatchReport
       , StorageKey
@@ -87,11 +86,8 @@ const TODO = (...args)=>console.log('TODO:', ...args)
    , FIXME = (...args)=>console.log('FIXME:', ...args)
    ;
 
-function renderMD(){
-    return '**NOT IMPLEMENTED:** renderMD';
-}
-
-const EmptyTask = (function() {
+// keeping this for now moment, it was useful for mocking up steps
+const EmptyTask = (function() {//jshint ignore:line
 
 // just a placeholder to get infrastructure running before actually
 // implementing this module.
@@ -109,102 +105,6 @@ _p._activate = function() {
 
 return EmptyTask;
 })();
-
-
-
-const GetFamilyDataTask = (function(){
-
-const Parent = Task;
-function GetFamilyDataTask(step, state) {
-    Parent.call(this, step, state);
-}
-
-const _p = GetFamilyDataTask.prototype = Object.create(Parent.prototype);
-_p.constructor = GetFamilyDataTask;
-
-/**
- * _activate runs when the step is activated the first time
- * and it possibly re-runs when explicitly requested; e.g. a Task
- * can be re-tried via the UI, in some cases, when dependent from
- * external sources this may change the result of the task.
- */
-_p._activate = function() {
-    this._setLOG('Requesting familyData for ', this.process.familyName
-                                                , 'from source upstream.');
-    var familyRequest = new FamilyRequest();
-    familyRequest.setSourceId('CSVSpreadsheet');
-    familyRequest.setFamilyName(this.process.familyName);
-    FIXME('This can timeout if the google/fonts repo is not fetched yet!'
-          ,'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
-          , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
-    return this.grpcSourceClient.get(familyRequest)
-        .then(familyDataMessage => {
-            // this is nice, we'll have all the info of the files
-            // of the progress available in the document
-            let familyDataSummaryMarkdown = renderMD(familyDataMessage);
-            this._setLOG(familyDataSummaryMarkdown);
-            return this._setSharedData('familyData', familyDataMessage)
-                .then(()=>this._setOK('Family data is persisted.'));
-        });
-        // error case will be handled and FAIL will be set
-};
-
-return GetFamilyDataTask;
-})();
-
-const InitProcessStep = (function() {
-const Parent = Step;
-function InitProcessStep(process, state) {
-    Parent.call(this, process, state, {
-        GetFamilyData: GetFamilyDataTask // => where to put the files etc?
-    });
-}
-
-const _p = InitProcessStep.prototype = Object.create(Parent.prototype);
-_p.constructor = InitProcessStep;
-return InitProcessStep;
-})();
-
-
-const DiffbrowsersTask = EmptyTask;
-
-const RegressionsStep = (function(){
-const Parent = Step;
-function RegressionsStep(process, state) {
-    Parent.call(this, process, state, {
-        // needs font files package
-        // produces images
-        // the UI will need the images
-        Diffbrowsers: DiffbrowsersTask // queue diffbrowsers tool (can this run on our workers?)
-                        // OR maybe a simple diffbrowsers service that's not massively parallel
-                        // when we need more we can still scale this
-                        // will call back when done
-                        // wait for user interaction to judge result
-        });
-}
-const _p = RegressionsStep.prototype = Object.create(Parent.prototype);
-_p.constructor = RegressionsStep;
-})();
-
-
-const DispatchPRTask = EmptyTask;
-
-const DispatchStep = (function(){
-const Parent = Step;
-/**
- * Make a the PR or manually fail with a reasoning.
- */
-function DispatchStep(process, state) {
-    Parent.call(this, process, state, {
-        DispatchPR: DispatchPRTask // we want this to be done by authorized engineers only
-                    // will create a nice PR with good message
-    });
-}
-const _p = DispatchStep.prototype = Object.create(Parent.prototype);
-_p.constructor = DispatchStep;
-return DispatchStep;
-})();
-
 
 const ApproveProcessTask = (function() {
 
@@ -886,27 +786,179 @@ _p.callbackConfirmDiffenator = function([requester, sessionID]
 return DiffenatorTask;
 })();
 
-const GFregressionsTaskDummy = (function(){
-const GFregressionsTask = taskFactory('GFregressionsTask');
-const _p = GFregressionsTask.prototype;
+// FIXME: this is basically copypasta from DiffenatorTask!
+const DiffbrowsersTask = (function() {
+var anySetup = {
+    knownTypes: { GenericStorageWorkerResult }
+};
+const DiffbrowsersTask = taskFactory('DiffbrowsersTask', anySetup);
+const _p = DiffbrowsersTask.prototype;
+
+function makeFile(filename, arrBuff) {
+    var file = new File();
+    file.setName(filename);
+    file.setData(arrBuff);
+    return file;
+}
+
+function copyFiles(fromFiles, toFiles, prefix) {
+    var files = fromFiles.getFilesList();
+    for(let file of files) {
+
+        let name = (prefix || '') + file.getName()
+          , newFile = makeFile(name, file.getData())
+          ;
+        console.log('COPYING: ', file.getName(), 'to', name);
+        toFiles.addFiles(newFile);
+    }
+}
 
 _p._activate = function() {
-    this._setExpectedAnswer('Confirm GFregressions'
-                                  , 'callbackConfirmGFregressions'
-                                  , 'uiConfirmGFregressions');
+
+    // may fail if not found
+    // in which case we also don't need the new family data in the cache!
+    // so, we do this first!
+    return this.resources.getGoogleFontsAPIFamilyFiles(this.process.familyName)
+    .then(familyDataMessage=>familyDataMessage.getFiles())// => 'filesMessage'
+    // copy to 'before/{filename}'
+    .then(beforeFilesMessage=>{
+        this.log.debug('DiffbrowsersTask.activate got "before" files.');
+        var filesMessage = new Files();
+        this.log.debug('DiffbrowsersTask.activate start copy before files ...');
+        copyFiles(beforeFilesMessage, filesMessage, 'before/');
+        this.log.debug('DiffbrowsersTask.activate DONE! copy before files ...');
+        return filesMessage;
+    })
+    .then(filesMessage=>{
+        var persistenceKey = this.process._state.filesStorageKey
+          , storageKey = new StorageKey()
+          ;
+        storageKey.setKey(persistenceKey);
+        this.log.debug('DiffbrowsersTask.activate getting "after" files:', persistenceKey);
+        return this.resources.persistence.get(storageKey)// => 'filesMessage'
+            // copy to 'after/{filename}'
+            .then(afterFilesMessage=>{
+                this.log.debug('DiffbrowsersTask.activate got "after" files.');
+                this.log.debug('DiffbrowsersTask.activate start copy after files ...');
+                copyFiles(afterFilesMessage, filesMessage, 'after/');
+                this.log.debug('DiffbrowsersTask.activate DONE! copy after files ...');
+                return filesMessage;
+            });
+    })
+    .then(filesMessage=>this.resources.cache.put([filesMessage])
+                           .then(cacheKeys=>cacheKeys[0]))
+
+     // initWorker('diffbrowsers', 'callbackDiffbrowsersFinished', cacheKey)
+    .then(cacheKey=>{
+        this.log.debug('DiffbrowsersTask.activate sending to Diffbrowsers.');
+        var [callbackName, ticket] = this._setExpectedAnswer(
+                                        'Diffbrowsers'
+                                      , 'callbackDiffbrowsersFinished'
+                                      , null)
+          , processCommand = new ProcessCommand()
+          ;
+        processCommand.setTargetPath(this.path.toString());
+        processCommand.setTicket(ticket);
+        processCommand.setCallbackName(callbackName);
+        processCommand.setResponseQueueName(this.resources.executeQueueName);
+        return this.resources.initWorker('diffbrowsers', cacheKey, processCommand);
+    })
+    //.then(whateverInitMessage=>{
+    //    // var docid = familyJob.getDocid();
+    //    // this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
+    //    this._setLOG('Diffbrowsers worker initialized …');
+    //})
+    ;
 };
 
-_p.uiConfirmGFregressions = function() {
+
+_p.callbackDiffbrowsersFinished = function([requester, sessionID]
+                                        , genericStorageWorkerResult
+                                        , ...continuationArgs) {
+    // jshint unused:vars
+
+    // message GenericStorageWorkerResult {
+    //     message Result {
+    //         string name = 1;
+    //         StorageKey storage_key = 2;
+    //     };
+    //     string job_id = 1;
+    //     // currently unused but generally interesting to track the
+    //     // time from queuing to job start, or overall waiting time
+    //     // finished - start is the time the worker took
+    //     // started - finished is the time the job was in the queue
+    //     google.protobuf.Timestamp created = 2;
+    //     google.protobuf.Timestamp started = 3;
+    //     google.protobuf.Timestamp finished = 4;
+    //     // If set the job failed somehow, print pre-formated
+    //     string exception = 5;
+    //     repeated string preparation_logs = 6;
+    //     repeated Result results = 7;
+    // }
+    var exception = genericStorageWorkerResult.getException()
+     , report = '## Diffbrowsers Result'
+     ;
+
+    if(exception) {
+        report += [
+            '\n'
+            , '### EXCEPTION'
+            , '```'
+            , exception
+            , '```\n'
+        ].join('\n');
+    }
+
+    var preparationLogs = genericStorageWorkerResult.getPreparationLogsList();
+    if(preparationLogs.length) {
+        report += '\n### Preparation Logs\n';
+        for(let preparationLog of preparationLogs)
+            report += ` * \`${preparationLog}\`\n`;
+    }
+
+    // For now, just log the zip download url:
+    // message GenericStorageWorkerResult.Result {
+    //     string name = 1;
+    //     StorageKey storage_key = 2;
+    // }
+    var results = genericStorageWorkerResult.getResultsList();
+    if(results.length) {
+        report += '\n### Results\n';
+        for(let result of results) {
+            let name = result.getName()
+              , storageKey = result.getStorageKey()
+              ;
+            // FIXME: a hard coded url is bad :-/
+            report += ` * **${name}** download: [zip file]`
+                    + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
+        }
+    }
+    report += '\n';
+    report += [
+             // created is not used currently
+             // _mdFormatTimestamp(genericStorageWorkerResult, 'created')
+                _mdFormatTimestamp(genericStorageWorkerResult, 'started')
+              , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
+              ].join('<br />\n');
+
+    this._setLOG(report);
+
+    this._setExpectedAnswer('Confirm Diffbrowsers'
+                                 , 'callbackConfirmDiffbrowsers'
+                                 , 'uiConfirmDiffbrowsers');
+};
+
+_p.uiConfirmDiffbrowsers = function() {
     return {
         roles: ['engineer']
       , ui: [
             {
                 type: 'info'
-              , content: 'Please run GFregressions and report the result:'
+              , content: 'Please review the Diffbrowsers result:'
             }
           , {   name: 'accept'
               , type:'binary'
-              , label: 'GFregressions looks good!'
+              , label: 'Diffbrowsers looks good!'
             }
           , {   name: 'notes'
               , type: 'text' // input type:text
@@ -916,27 +968,25 @@ _p.uiConfirmGFregressions = function() {
     };
 };
 
-_p.callbackConfirmGFregressions = function([requester, sessionID]
+_p.callbackConfirmDiffbrowsers = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
     if(values.notes)
         this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
     if(values.accept === true) {
-        this._setOK('**' + requester + '** GFregressions looks good.');
+        this._setOK('**' + requester + '** Diffbrowsers looks good.');
     }
     else
-        this._setFAILED('**' + requester + '** GFregressions is failing.');
+        this._setFAILED('**' + requester + '** Diffbrowsers is failing.');
 };
 
-return GFregressionsTask;
+return DiffbrowsersTask;
 })();
-
-
 
 const QAToolsStep = stepFactory('QAToolsStep', {
     Fontbakery: FontbakeryTask
   , Diffenator: DiffenatorTask
-  , GFregressions: GFregressionsTaskDummy
+  , Diffbrowsers: DiffbrowsersTask
 });
 
 
