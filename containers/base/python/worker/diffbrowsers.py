@@ -5,6 +5,13 @@ import os
 import pytz
 from datetime import datetime
 import traceback
+
+from .worker_base import(
+                        WorkerBase
+                      , WorkerError
+                      , PreparationError
+                      )
+
 from collections import namedtuple
 from protocolbuffers.messages_pb2 import (
                                           CompletedWorker
@@ -20,12 +27,6 @@ import json
 from diffbrowsers.diffbrowsers import DiffBrowsers
 from diffbrowsers.browsers import test_browsers
 
-class DiffbrowsersWorkerError(Exception):
-  pass
-
-
-class DiffbrowsersPreparationError(DiffbrowsersWorkerError):
-  pass
 
 #################
 # START taken from gftools-qa
@@ -60,7 +61,7 @@ def on_each_matching_font(func):
         fonts_after_h = font_instances(fonts_after_ttfonts)
         shared = set(fonts_before_h.keys()) & set(fonts_after_h.keys())
         if not shared:
-            raise DiffenatorPreparationError(("Cannot find matching fonts. "
+            raise PreparationError(("Cannot find matching fonts. "
                              "Are font filenames the same?"))
         logger.info('Found %s comparable font instances.',  len(shared))
         for style in shared:
@@ -121,7 +122,7 @@ def validate_filename(logs, seen, expected_prefixes, filename):
   prefix, basename = filename.split('/', 1)
 
   if basename in {'', '.', '..'} or '/' in basename:
-    raise DiffenatorPreparationError('Invalid filename: "{0}".'.format(filename))
+    raise PreparationError('Invalid filename: "{0}".'.format(filename))
 
   if filename in seen:
     logs.append('Skipping duplicate file name "{0}".'.format(filename))
@@ -138,7 +139,7 @@ def getSetup():
   bstack_username = os.environ.get("BROWSERSTACK_USERNAME", None)
   bstack_access_key = os.environ.get("BROWSERSTACK_ACCESS_KEY", None)
   if bstack_username is None or bstack_access_key is None:
-    raise DiffbrowsersWorkerError('Browserstack authentication '
+    raise WorkerError('Browserstack authentication '
                 'information is missing, please set the '
                 'BROWSERSTACK_USERNAME and BROWSERSTACK_ACCESS_KEY '
                 'environment variables.')
@@ -151,7 +152,7 @@ def getSetup():
 # directly when the module is loaded. I.e. in this case directly on process
 # start.
 SETUP = getSetup();
-class DiffbrowsersWorker(object):
+class DiffbrowsersWorker(WorkerBase):
   JobType=FamilyJob
   def __init__(self, logging, job, cache, persistence, queue, tmp_directory):
     self._log = logging
@@ -209,7 +210,7 @@ class DiffbrowsersWorker(object):
       filecount += 1
 
     if filecount > maxfiles:
-      raise DiffbrowsersPreparationError('Found {} font files, but maximum '
+      raise PreparationError('Found {} font files, but maximum '
                       'is limiting to {}.'.format(len(fontfiles), maxfiles))
 
     return fontfiles

@@ -198,7 +198,7 @@ def consume(workers, static_resources, resource_managers, method, properties, bo
         # If name is missing a KeyError will be raised
         # which seems appropriate.
         resources.append(static_resources[name])
-    # enter context and executr
+    # enter context and execute
     run = stack.enter_context(CTX(Worker, resources))
     run()
 
@@ -245,6 +245,9 @@ def main():
       # if we want to read more data types this must probably change?
     , cache=StorageClient(setup.cache_host, setup.cache_port, Files)
     , persistence=StorageClient(setup.persistence_host, setup.persistence_port, Files)
+    # hmm, this is very specific for FontBakeryCheckerWorker
+    # probably it should read its own, uniqe setup values, as done in
+    # e.g. in the `diffbrowsers` moduke of `DiffbrowsersWorker`
     , ticks_to_flush=setup.ticks_to_flush
   )
 

@@ -3,8 +3,16 @@ from __future__ import print_function, division, unicode_literals
 
 import os
 import pytz
+
 from datetime import datetime
 from copy import deepcopy
+
+from .worker_base import(
+                        WorkerBase
+                      , WorkerError
+                      , PreparationError
+                      )
+
 from protocolbuffers.messages_pb2 import (
                                           FamilyJob
                                         , WorkerJobDescription
@@ -41,15 +49,6 @@ def get_fontbakery(fonts):
     setattr(check_skip_filter,'__mark', __private_marker)
     profile.check_skip_filter = check_skip_filter
   return runner, profile
-
-
-class FontbakeryWorkerError(Exception):
-  pass
-
-
-class FontbakeryPreparationError(FontbakeryWorkerError):
-  pass
-
 
 class DBOperations(object):
   def __init__(self, rethinkdb, job):
@@ -121,14 +120,14 @@ class DBOperations(object):
 
     result = self.q.get(self._docid).update(doc).run(self.conn)
     if result['errors']:
-      raise FontbakeryWorkerError('RethinkDB: {}'.format(result['first_error']))
+      raise WorkerError('RethinkDB: {}'.format(result['first_error']))
 
 
 def validate_filename(logs, seen, filename):
   # Basic input validation
   # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
   if filename in {'', '.', '..'} or '/' in filename:
-    raise FontbakeryPreparationError('Invalid filename: "{0}".'.format(filename))
+    raise PreparationError('Invalid filename: "{0}".'.format(filename))
 
   if filename in seen:
     logs.append('Skipping duplicate file name "{0}".'.format(filename))
@@ -175,7 +174,7 @@ def _prepare(job, cache, dbOps=None, tmp_directory=None):
       fontfiles.append(path)
 
   if len(fontfiles) > maxfiles:
-    raise FontbakeryPreparationError('Found {} font files, but maximum '
+    raise PreparationError('Found {} font files, but maximum '
                     'is limiting to {}.'.format(len(fontfiles), maxfiles))
 
   # If this is a problem, fontbakery itself should have a check for
@@ -267,7 +266,7 @@ class DashbordWorkerReporter(FontbakeryReporter):
     self._collectedChecks = None
 
 
-class Distributor(object):
+class Distributor(WorkerBase):
   JobType=FamilyJob
   def __init__(self, logging, job, cache, rethinkdb, queue):
     self._log = logging
@@ -372,7 +371,7 @@ class Distributor(object):
     return True # exception handled
 
 
-class Checker(object):
+class Checker(WorkerBase):
   JobType=FamilyJob
   def __init__(self, logging, job, cache, rethinkdb, queue, tmp_directory, ticks_to_flush):
     self._log = logging
