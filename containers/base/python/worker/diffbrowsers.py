@@ -46,6 +46,7 @@ def run_diffbrowsers(logger, font_before, font_after, out, auth, gfr_url):
     if has_vfs:
         for i in range(15, 17):
             diff_browsers.diff_view("glyphs_all", pt=i)
+
 #################
 # /END taken from gftools-qa
 #################

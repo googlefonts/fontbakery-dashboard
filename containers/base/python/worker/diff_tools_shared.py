@@ -5,6 +5,7 @@ import os
 import pytz
 from datetime import datetime
 import traceback
+from functools import wraps
 
 from .worker_base import(
                         WorkerBase
@@ -25,6 +26,8 @@ from fontTools.ttLib import TTFont
 #################
 # START taken from gftools-qa
 # https://github.com/googlefonts/gftools/blob/master/bin/gftools-qa.py
+# and mixed with suggestions from
+# https://github.com/googlefonts/fontdiffenator/issues/54#issuecomment-479614229
 #################
 
 def instances_in_font(ttfont):
@@ -47,23 +50,28 @@ def font_instances(ttfonts):
             styles[style] = ttfont.reader.file.name
     return styles
 
-def on_each_matching_font(func):
-    def func_wrapper(logger, fonts_before, fonts_after, out, *args, **kwargs):
-        fonts_before_ttfonts = [TTFont(f) for f in fonts_before]
-        fonts_after_ttfonts = [TTFont(f) for f in fonts_after]
-        fonts_before_h = font_instances(fonts_before_ttfonts)
-        fonts_after_h = font_instances(fonts_after_ttfonts)
-        shared = set(fonts_before_h.keys()) & set(fonts_after_h.keys())
-        if not shared:
-            raise PreparationError(("Cannot find matching fonts. "
-                             "Are font filenames the same?"))
-        logger.info('Found %s comparable font instances.',  len(shared))
-        for font in shared:
-            out_for_font = os.path.join(out, font)
-            func(logger, fonts_before_h[font], fonts_after_h[font], out_for_font,
-                 *args, **kwargs)
-    return func_wrapper
+def get_matching_fonts(logger, fonts_before, fonts_after):
+    fonts_before_ttfonts = [TTFont(f) for f in fonts_before]
+    fonts_after_ttfonts = [TTFont(f) for f in fonts_after]
+    fonts_before_h = font_instances(fonts_before_ttfonts)
+    fonts_after_h = font_instances(fonts_after_ttfonts)
+    shared = set(fonts_before_h.keys()) & set(fonts_after_h.keys())
+    if not shared:
+        raise PreparationError(("Cannot find matching fonts. "
+                         "Are font filenames the same?"))
+    logger.info('Found %s comparable font instances.',  len(shared))
+    for style in shared:
+        yield (style,  fonts_before_h[style], fonts_after_h[style])
 
+def on_each_matching_font(func):
+    @wraps(func)
+    def func_wrapper(logger, fonts_before, fonts_after, out, *args, **kwargs):
+        for (style, font_before, font_after) in\
+                            get_matching_fonts(logger, fonts_before, fonts_after):
+            out_for_font = os.path.join(out, style)
+            func(font_before, font_after, out_for_font, *args, **kwargs)
+
+    return func_wrapper
 #################
 # /END taken from gftools-qa
 #################

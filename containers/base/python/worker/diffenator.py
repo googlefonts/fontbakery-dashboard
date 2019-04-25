@@ -41,7 +41,7 @@ DIFFENATOR_THRESHOLDS = {
 }
 
 @on_each_matching_font
-def run_diffenator(logger, font_before, font_after, out, thresholds):
+def run_diffenator(logger, font_before, font_after, out, thresholds=DIFFENATOR_THRESHOLDS['normal']):
     logger.debug('run_diffenator with fonts before: %s after: %s'
                                               , font_before, font_after)
 
@@ -66,6 +66,7 @@ def run_diffenator(logger, font_before, font_after, out, thresholds):
     diff.to_txt(20, os.path.join(out, "report.txt"))
     diff.to_md(20, os.path.join(out, "report.md"))
     diff.to_html(20, os.path.join(out, "report.html"), image_dir=".")
+
 #################
 # /END taken from gftools-qa
 #################
