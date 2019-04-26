@@ -69,7 +69,7 @@ def on_each_matching_font(func):
         for (style, font_before, font_after) in\
                             get_matching_fonts(logger, fonts_before, fonts_after):
             out_for_font = os.path.join(out, style)
-            func(font_before, font_after, out_for_font, *args, **kwargs)
+            func(logger, font_before, font_after, out_for_font, *args, **kwargs)
 
     return func_wrapper
 #################

@@ -76,8 +76,6 @@ SETUP = getSetup();
 class DiffbrowsersWorker(DiffWorkerBase):
   def __init__(self, logging, job, cache, persistence, queue, tmp_directory):
     self._workername = 'diffbrowsers'
-    self._out_dir = os.path.join(self._tmp_directory, self._workername)
-    os.mkdir(self._out_dir)
     super().__init__(logging, job, cache, persistence, queue, tmp_directory)
 
   def run(self):
