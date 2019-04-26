@@ -1575,7 +1575,7 @@ Object.defineProperties(_p, {
 });
 
 _p.getFilesStorageKey = function() {
-    var filesStorageKey = this.process._state.filesStorageKey
+    var filesStorageKey = this._state.filesStorageKey
       , storageKeyMessage
       ;
     if(filesStorageKey === null)
