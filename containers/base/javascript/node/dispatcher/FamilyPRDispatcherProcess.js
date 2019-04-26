@@ -868,8 +868,12 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
               , storageKey = result.getStorageKey()
               ;
             // FIXME: a hard coded url is bad :-/
-            report += ` * **${name}** download: [zip file]`
+            report += ` * browse report: [**${name}**]`
+                      // uses index.html or autoindex
+                    + `(/browse/persistence/${storageKey.getKey()}/)`
+                    + ` or download: [zip file]`
                     + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
+
         }
     }
     report += '\n';

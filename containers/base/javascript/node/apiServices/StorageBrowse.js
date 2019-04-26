@@ -33,7 +33,18 @@ function StorageBrowse(server, app, logging, storages /* { e.g.: cache, persiste
     this._messageRequests = new Map();
     this._queues = new Map();
 
-    this._app.get('/:storage/:key_extension/:filename', this._browse.bind(this));
+    // Not sure if the trailing slash is needed here.
+    // Behavior similar to http://nginx.org/en/docs/http/ngx_http_autoindex_module.html
+    // rephrased for this case:
+    //     Processes requests ending with the slash character (‘/’) and
+    //     produces a directory listing. Usually a request is passed to
+    //     [`browseAutoindex`] when the message does not provide an
+    //     `index.html` file.
+    this._app.get('/:storage/:key_extension/', this.browseIndex.bind(this));
+    // if there's a index.html file, we still provide a way to get to the autoindex
+    this._app.get('/:storage/:key_extension/.autoindex', this.browseAutoindex.bind(this));
+
+    this._app.get('/:storage/:key_extension/:filename', this.browse.bind(this));
 
     // garbage collection
     // keep messages in dataDir for 60 min or so, if there was no cache
@@ -240,6 +251,22 @@ function getTypeName(knownTypes, message) {
     return null;
 }
 
+
+/**
+ * filename can be a dummy to hint mime.getType(filename);
+ */
+_p._sendFileData = function(filename, data, res) {
+    let contentType = mime.getType(filename);
+    if(contentType) {
+        let charset = null;
+        if(contentType.indexOf('text/') !== -1)
+            charset = 'UTF-8';
+        res.setHeader('Content-Type', contentType + (charset ? '; charset=' + charset : ''));
+    }
+    res.send(data);
+    return true;
+};
+
 /**
  * return true on success
  * false if file does not exist
@@ -248,19 +275,94 @@ function getTypeName(knownTypes, message) {
 _p._sendFile = function(filename, res) {
     return nodeCallback2Promise(fs.readFile, filename)
     // .then(buffer=>resolve(new Uint8Array(buffer)), reject);
-    .then(data=>{
-        let contentType = mime.getType(filename);
-        if(contentType) {
-            let charset = null;
-            if(contentType.indexOf('text/') === -1)
-                charset = 'UTF-8';
-            res.setHeader('Content-Type', contentType + (charset ? '; charset=' + charset : ''));
+    .then(
+        data=>this._sendFileData(filename, data, res)
+      , error=>{
+            if(error.code === 'ENOENT')
+                return false;
+            // re-raise
+            throw error;
         }
-        res.send(data);
-        return true;
+    );
+};
+
+function _deepDirListing(dir) {
+    return nodeCallback2Promise(fs.readdir, dir, {withFileTypes: true})
+    .then(entries=>{
+        var promises = [];
+        for(let entry of entries) {
+            let entryPath = path.join(dir, entry.name);
+            if(entry.isDirectory())
+                promises.push(_deepDirListing(entryPath));
+            else if(entry.isFile())
+                promises.push(entryPath);
+        }
+        return Promise.all(promises);
+    })
+    .then(entries=>_deepFlattenArray(entries));
+}
+
+/**
+ * changes array in place
+ */
+function _deepFlattenArray(arr) {
+    for(let i=0;i<arr.length;) {
+        let item = arr[i];
+        if(Array.isArray(item)) {
+            arr.splice(i, 1, ...item);
+            // We got to revisit this index it may be an array again.
+            continue;
+        }
+        i++;
+    }
+    return arr;
+}
+
+
+_p._generateAutoindex = function(dirname, hrefRoot) {
+    // get a directory listing
+    return _deepDirListing(dirname)
+    .then(entries=>entries.map(entry=>entry.slice(dirname.length + 1)))
+    .then(entries=>{
+        // for now, make a *very simple* index page
+        var links = entries.map(
+                entry=>`<li><a href="${hrefRoot}/${entry}">${entry}</a></li>`)
+                .join('\n');
+        return `<!doctype html>
+<html lang="en">
+<head>
+</head>
+<body>
+<h1>Index of ${dirname}</h1>
+<ul>
+${links}
+</ul>
+</body>
+</html>
+`;
     });
 };
 
+/**
+ * If filename is null we always send autoindex, otherwise,
+ * we try to send the file first, if it doesn't exist we send autoindex.
+ */
+_p._sendAutoindex = function(dirname, hrefRoot, filename, res) {
+    var generateAutoindexAndSend = ()=>{
+        return this._generateAutoindex(dirname, hrefRoot)// => data
+            .then(data=>this._sendFileData('index.html', data, res));
+    };
+
+    if(filename === null)
+        return generateAutoindexAndSend();
+
+    var filepath = path.join(dirname, filename);
+    return this._sendFile(filepath, res)
+    .then(result=>{
+        if(result) return; // done
+        return generateAutoindexAndSend();
+    });
+};
 
 _p._makeMessageDir = function(messageId, message, directory) {
     // if applicable, dump its files into this._dataDir/storage_key/ ...
@@ -323,14 +425,9 @@ _p._makeMessageDir = function(messageId, message, directory) {
     });
 };
 
-/**
- * GET
- */
-_p._browse = function(req, res, next) {
+_p._serve = function(requestedView, req, res, next) {
     // jshint unused:vars
 
-
-    // else:
     // get the message
     //     if applicable, dump it's files into this._dataDir/storage_key/ ...
     //     right now we only do flat structures, no nested files
@@ -355,18 +452,10 @@ _p._browse = function(req, res, next) {
         return;
     }
 
-    if(req.params.filename.indexOf('..') !== -1) {
-        res.status(404)
-           .send('Not Found: ".." is not allowed in filename: "'+req.params.filename+'".');
-        return;
-    }
-
-
     // TODO:FIXME: from here on: use asyncQueue for dir name,
     // so we don't have race conditions when creating/deleting message dirs
 
     messageId = [req.params.storage, req.params.key_extension].join('_');
-
 
     // sendFile before could speed up delivery of existing files tremendously!
     // especially paralell requests for the same message would not have to
@@ -376,8 +465,8 @@ _p._browse = function(req, res, next) {
     // could be collected, the message could be fetched, then a sendFile
     // for each request could be dispatched...
     //
-    // how do we know the message exists?
-    // that'sbasically the main question the queue should answer.
+    // How do we know the message exists?
+    // that's basically the main question the queue should answer.
     // A requets comes in
     //      * create a queued get-job that answers *all* requests for the queue
     //        when fetching or failing to fetch the message has been done.
@@ -399,7 +488,8 @@ _p._browse = function(req, res, next) {
 
     // Pushing before scheduling the job, because it would
     // start immediately if the queue is empty.
-    requests.push([res, req.params.filename]);
+    // request = [res, type, filename]
+    requests.push([req, res, next, ...requestedView]);
 
     if(!needsQueue)
         return;
@@ -407,7 +497,7 @@ _p._browse = function(req, res, next) {
 };
 
 /**
- * This must be run in an AsyncQueue for, so that there's no race condition.
+ * This must be run in an AsyncQueue, so that there's no race condition.
  *
  *
  */
@@ -448,17 +538,31 @@ _p._checkMessage = function(storage, storageKey, messageId) {
         // Consume requests using shift() so we don't handle them in
         // the catch handler below if we end there.
         while((request = requests.shift())) {
-            let [res, filename] = request
-              , filepath = path.join(dirname, filename);
-            this._sendFile(filepath, res)
-            .then(null, error=>{// jshint ignore:line
-                if(error.code === 'ENOENT')
-                    res.status(404).send('404 File Not Found');
-                else {
-                    this._log.error('Sending file "'+filepath+'" failed:', error);
-                    res.status(500).send('Internal Server Error:' + error);
+            let [req, res, /*next*/, type, filename] = request
+              , promise
+              ;
+            if(type === 'file') {
+                let filepath = path.join(dirname, filename);
+                promise = this._sendFile(filepath, res);
+            }
+            else if(type === 'autoindex') {
+                // if filename is null we always send autoindex, otherwise,
+                // we try to send filepath first, if it exist.
+                // usually, if set `filename` is "index.html"
+                let hrefRoot = `${req.baseUrl}/${storage}/${storageKey}`;
+                promise = this._sendAutoindex(dirname, hrefRoot, filename, res);
+            }
+
+            promise.then(result=>{// jshint ignore:line
+                    if(!result)
+                        res.status(404).send('404 File Not Found');
+                    // else: all good!
                 }
-            });
+              , error=>{// jshint ignore:line
+                    this._log.error('Sending '+type+' "'+dirname+'/'+filename
+                                    +'" failed:', error);
+                    res.status(500).send('Internal Server Error:' + error);
+                });
         }
         this._messageRequests.delete(messageId);
         // Mark as accessed for garbage collector/cache invalidation.
@@ -484,6 +588,40 @@ _p._checkMessage = function(storage, storageKey, messageId) {
         //if(statusCode === 500)
         // should probably clean up directory ... ???
     });
+};
+
+/**
+ * GET
+ */
+_p.browse = function(req, res, next) {
+    // jshint unused:vars
+    if(req.params.filename.indexOf('..') !== -1) {
+        res.status(404)
+           .send('Not Found: ".." is not allowed in filename: "'+req.params.filename+'".');
+        return;
+    }
+    var requestedView = ['file', req.params.filename];
+    return this._serve(requestedView, req, res, next);
+};
+
+/**
+ * GET
+ */
+_p.browseAutoindex = function(req, res, next) {
+    // jshint unused:vars
+    var requestedView = ['autoindex', null];
+    return this._serve(requestedView, req, res, next);
+};
+
+/**
+ * GET
+ *
+ * If there's an index.html file, serve that, else, serve autoindex.
+ */
+_p.browseIndex = function(req, res, next) {
+    // jshint unused:vars
+    var requestedView = ['autoindex', 'index.html'];
+    return this._serve(requestedView, req, res, next);
 };
 
 
