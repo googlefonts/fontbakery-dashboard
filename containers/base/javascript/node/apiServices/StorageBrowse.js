@@ -44,7 +44,7 @@ function StorageBrowse(server, app, logging, storages /* { e.g.: cache, persiste
     // if there's a index.html file, we still provide a way to get to the autoindex
     this._app.get('/:storage/:key_extension/.autoindex', this.browseAutoindex.bind(this));
 
-    this._app.get('/:storage/:key_extension/:filename', this.browse.bind(this));
+    this._app.get('/:storage/:key_extension/*', this.browse.bind(this));
 
     // garbage collection
     // keep messages in dataDir for 60 min or so, if there was no cache
@@ -322,7 +322,11 @@ function _deepFlattenArray(arr) {
 _p._generateAutoindex = function(dirname, hrefRoot) {
     // get a directory listing
     return _deepDirListing(dirname)
-    .then(entries=>entries.map(entry=>entry.slice(dirname.length + 1)))
+    .then(entries=>entries
+            // .. files are considered private e.g. "..accessed"
+            // or an attempt to break out of dirname
+            .filter(entry=>entry.indexOf('..') === -1)
+            .map(entry=>entry.slice(dirname.length + 1)))
     .then(entries=>{
         // for now, make a *very simple* index page
         var links = entries.map(
@@ -595,12 +599,14 @@ _p._checkMessage = function(storage, storageKey, messageId) {
  */
 _p.browse = function(req, res, next) {
     // jshint unused:vars
-    if(req.params.filename.indexOf('..') !== -1) {
+
+    var filename = req.params[0];
+    if(filename.indexOf('..') !== -1) {
         res.status(404)
-           .send('Not Found: ".." is not allowed in filename: "'+req.params.filename+'".');
+           .send('Not Found: ".." is not allowed in filename: "'+filename+'".');
         return;
     }
-    var requestedView = ['file', req.params.filename];
+    var requestedView = ['file', filename];
     return this._serve(requestedView, req, res, next);
 };
 
