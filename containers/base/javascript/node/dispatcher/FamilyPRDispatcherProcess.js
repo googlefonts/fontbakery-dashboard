@@ -139,7 +139,11 @@ _p._expectEditInitialState = function() {
 _p.uiApproveProcess = function() {
     var actionOptions = [];
     actionOptions.push(['Accept and proceed.', 'accept']);
-    this.log.debug("this.initType === 'new'", this.process.initType === 'new', this.process.initType, this.process._state.initType, this.constructor.name);
+    this.log.debug("this.initType === 'new'"
+                    , this.process.initType === 'new'
+                    , this.process.initType
+                    , this.process._state.initType
+                    , this.constructor.name);
     if(this.process.initType === 'new')
         // currently there's nothing to edit when initType is an update
         actionOptions.push(['Edit data.', 'edit']);
@@ -452,9 +456,7 @@ const GetFilesPackageStep = stepFactory('GetFilesPackageStep', {
 });
 
 function persistenceKey2cacheKey(resources, persistenceKey) {
-    var storageKey = new StorageKey();
-    storageKey.setKey(persistenceKey);
-    return resources.persistence.get(storageKey)
+    return resources.persistence.get(persistenceKey)
         .then(filesMessage=>resources.cache.put([filesMessage]))
         .then(cacheKeys=>cacheKeys[0])
         ;
@@ -482,21 +484,12 @@ const FontbakeryTask = taskFactory('FontbakeryTask', anySetup);
 const _p = FontbakeryTask.prototype;
 
 _p._activate = function() {
-    var persistenceKey = this.process._state.filesStorageKey;
+    var persistenceKey = this.process.getFilesStorageKey();
     return persistenceKey2cacheKey(this.resources, persistenceKey)
-    .then(cacheKey=>{
-        var [callbackName, ticket] = this._setExpectedAnswer(
-                                        'Font Bakery'
-                                      , 'callbackFontBakeryFinished'
-                                      , null)
-          , processCommand = new ProcessCommand()
-          ;
-        processCommand.setTargetPath(this.path.toString());
-        processCommand.setTicket(ticket);
-        processCommand.setCallbackName(callbackName);
-        processCommand.setResponseQueueName(this.resources.executeQueueName);
-        return this.resources.initWorker('fontbakery', cacheKey, processCommand);
-    })
+    .then(cacheKey=>_taskInitWorker.call(this
+                                       , 'fontbakery'
+                                       , cacheKey
+                                       , 'callbackFontBakeryFinished'))
     .then(familyJob=>{
         var docid = familyJob.getDocid();
         this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
@@ -588,6 +581,99 @@ _p.callbackConfirmFontbakery = function([requester, sessionID]
 return FontbakeryTask;
 })();
 
+
+function _makeFileMessage(filename, arrBuff) {
+    var file = new File();
+    file.setName(filename);
+    file.setData(arrBuff);
+    return file;
+}
+
+function _copyFilesMessage(fromFiles, toFiles, prefix, log) {
+    var files = fromFiles.getFilesList();
+    for(let file of files) {
+        let name = (prefix || '') + file.getName()
+          , newFile = _makeFileMessage(name, file.getData())
+          ;
+        if(log)
+            log.debug('COPYING: ', file.getName(), 'to', name);
+        toFiles.addFiles(newFile);
+    }
+}
+
+function _taskPrepareDiffFiles() { // => filesMessage
+    //jshint validthis:true
+    return this.resources.getGoogleFontsAPIFamilyFiles(this.process.familyName)
+    .then(familyDataMessage=>familyDataMessage.getFiles())// => 'filesMessage'
+        // copy to 'before/{filename}'
+    .then(beforeFilesMessage=>{
+        this.log.debug(this.constructor.name, '_taskPrepareDiffFiles got "before" files.');
+        var filesMessage = new Files();
+        this.log.debug(this.constructor.name, '_taskPrepareDiffFiles start copy before files ...');
+        _copyFilesMessage(beforeFilesMessage, filesMessage, 'before/', this.log);
+        this.log.debug(this.constructor.name, '_taskPrepareDiffFiles DONE! copy before files ...');
+        return filesMessage;
+    })
+    .then(filesMessage=>{
+
+    var storageKey = this.process.getFilesStorageKey();
+    this.log.debug(this.constructor.name, '_taskPrepareDiffFiles getting "after" files:', storageKey.getKey());
+    return this.resources.persistence.get(storageKey)// => 'filesMessage'
+        // copy to 'after/{filename}'
+        .then(afterFilesMessage=>{
+            this.log.debug(this.constructor.name, '_taskPrepareDiffFiles got "after" files.');
+            this.log.debug(this.constructor.name, '_taskPrepareDiffFiles start copy after files ...');
+            _copyFilesMessage(afterFilesMessage, filesMessage, 'after/', this.log);
+            this.log.debug(this.constructor.name, '_taskPrepareDiffFiles DONE! copy after files ...');
+            return filesMessage;
+        });
+    });
+}
+
+function _taskInitWorker(workerName
+                       , initMessage /*e.g. a CacheKey message*/
+                       , callbackName) {
+    //jshint validthis: true
+
+    this.log.debug(this.constructor.name
+                , '_taskInitWorker sending to worker:', workerName
+                , 'with callback:', callbackName || '(no callback!)');
+    var callbackName_, ticket
+      , processCommand = null
+      ;
+    if(callbackName) {
+        // The initWorker API allows dispatching workers without callback,
+        // however, it seems unlikely that we need it that way.
+        processCommand = new ProcessCommand();
+        [callbackName_, ticket] = this._setExpectedAnswer(
+                                                           workerName
+                                                         , callbackName
+                                                         , null);
+        processCommand.setTargetPath(this.path.toString());
+        processCommand.setTicket(ticket);
+        processCommand.setCallbackName(callbackName_);
+        processCommand.setResponseQueueName(this.resources.executeQueueName);
+    }
+    return this.resources.initWorker(workerName, initMessage, processCommand);
+}
+
+function _taskActivateDiffWorker(workerName, callbackName) {
+    // jshint validthis:true
+    // may fail if not found in google api
+    return _taskPrepareDiffFiles.call(this) // => filesMessage
+    .then(filesMessage=>this.resources.cache.put([filesMessage])
+                           .then(cacheKeys=>cacheKeys[0]))
+    .then(cacheKey=>_taskInitWorker.call(this
+                                      , workerName
+                                      , cacheKey
+                                      , callbackName))
+    //.then((message)=>{
+    //    this._setLOG(workerName + ' worker initialized …');
+    //})
+    ;
+}
+
+
 const DiffenatorTask = (function() {
 var anySetup = {
     knownTypes: { GenericStorageWorkerResult }
@@ -595,83 +681,9 @@ var anySetup = {
 const DiffenatorTask = taskFactory('DiffenatorTask', anySetup);
 const _p = DiffenatorTask.prototype;
 
-function makeFile(filename, arrBuff) {
-    var file = new File();
-    file.setName(filename);
-    file.setData(arrBuff);
-    return file;
-}
-
-function copyFiles(fromFiles, toFiles, prefix) {
-    var files = fromFiles.getFilesList();
-    for(let file of files) {
-
-        let name = (prefix || '') + file.getName()
-          , newFile = makeFile(name, file.getData())
-          ;
-        console.log('COPYING: ', file.getName(), 'to', name);
-        toFiles.addFiles(newFile);
-    }
-}
-
 _p._activate = function() {
-
-    // may fail if not found
-    // in which case we also don't need the new family data in the cache!
-    // so, we do this first!
-    return this.resources.getGoogleFontsAPIFamilyFiles(this.process.familyName)
-    .then(familyDataMessage=>familyDataMessage.getFiles())// => 'filesMessage'
-    // copy to 'before/{filename}'
-    .then(beforeFilesMessage=>{
-        this.log.debug('DiffenatorTask.activate got "before" files.');
-        var filesMessage = new Files();
-        this.log.debug('DiffenatorTask.activate start copy before files ...');
-        copyFiles(beforeFilesMessage, filesMessage, 'before/');
-        this.log.debug('DiffenatorTask.activate DONE! copy before files ...');
-        return filesMessage;
-    })
-    .then(filesMessage=>{
-        var persistenceKey = this.process._state.filesStorageKey
-          , storageKey = new StorageKey()
-          ;
-        storageKey.setKey(persistenceKey);
-        this.log.debug('DiffenatorTask.activate getting "after" files:', persistenceKey);
-        return this.resources.persistence.get(storageKey)// => 'filesMessage'
-            // copy to 'after/{filename}'
-            .then(afterFilesMessage=>{
-                this.log.debug('DiffenatorTask.activate got "after" files.');
-                this.log.debug('DiffenatorTask.activate start copy after files ...');
-                copyFiles(afterFilesMessage, filesMessage, 'after/');
-                this.log.debug('DiffenatorTask.activate DONE! copy after files ...');
-                return filesMessage;
-            });
-    })
-    .then(filesMessage=>this.resources.cache.put([filesMessage])
-                           .then(cacheKeys=>cacheKeys[0]))
-
-     // initWorker('diffenator', 'callbackDiffenatorFinished', cacheKey)
-    .then(cacheKey=>{
-        this.log.debug('DiffenatorTask.activate sending to Diffenator.');
-        var [callbackName, ticket] = this._setExpectedAnswer(
-                                        'Diffenator'
-                                      , 'callbackDiffenatorFinished'
-                                      , null)
-          , processCommand = new ProcessCommand()
-          ;
-        processCommand.setTargetPath(this.path.toString());
-        processCommand.setTicket(ticket);
-        processCommand.setCallbackName(callbackName);
-        processCommand.setResponseQueueName(this.resources.executeQueueName);
-        return this.resources.initWorker('diffenator', cacheKey, processCommand);
-    })
-    //.then(whateverInitMessage=>{
-    //    // var docid = familyJob.getDocid();
-    //    // this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
-    //    this._setLOG('Diffenator worker initialized …');
-    //})
-    ;
+    return _taskActivateDiffWorker.call(this, 'diffenator', 'callbackDiffenatorFinished');
 };
-
 
 _p.callbackDiffenatorFinished = function([requester, sessionID]
                                         , genericStorageWorkerResult
@@ -786,6 +798,7 @@ _p.callbackConfirmDiffenator = function([requester, sessionID]
 return DiffenatorTask;
 })();
 
+
 // FIXME: this is basically copypasta from DiffenatorTask!
 const DiffbrowsersTask = (function() {
 var anySetup = {
@@ -794,83 +807,9 @@ var anySetup = {
 const DiffbrowsersTask = taskFactory('DiffbrowsersTask', anySetup);
 const _p = DiffbrowsersTask.prototype;
 
-function makeFile(filename, arrBuff) {
-    var file = new File();
-    file.setName(filename);
-    file.setData(arrBuff);
-    return file;
-}
-
-function copyFiles(fromFiles, toFiles, prefix) {
-    var files = fromFiles.getFilesList();
-    for(let file of files) {
-
-        let name = (prefix || '') + file.getName()
-          , newFile = makeFile(name, file.getData())
-          ;
-        console.log('COPYING: ', file.getName(), 'to', name);
-        toFiles.addFiles(newFile);
-    }
-}
-
 _p._activate = function() {
-
-    // may fail if not found
-    // in which case we also don't need the new family data in the cache!
-    // so, we do this first!
-    return this.resources.getGoogleFontsAPIFamilyFiles(this.process.familyName)
-    .then(familyDataMessage=>familyDataMessage.getFiles())// => 'filesMessage'
-    // copy to 'before/{filename}'
-    .then(beforeFilesMessage=>{
-        this.log.debug('DiffbrowsersTask.activate got "before" files.');
-        var filesMessage = new Files();
-        this.log.debug('DiffbrowsersTask.activate start copy before files ...');
-        copyFiles(beforeFilesMessage, filesMessage, 'before/');
-        this.log.debug('DiffbrowsersTask.activate DONE! copy before files ...');
-        return filesMessage;
-    })
-    .then(filesMessage=>{
-        var persistenceKey = this.process._state.filesStorageKey
-          , storageKey = new StorageKey()
-          ;
-        storageKey.setKey(persistenceKey);
-        this.log.debug('DiffbrowsersTask.activate getting "after" files:', persistenceKey);
-        return this.resources.persistence.get(storageKey)// => 'filesMessage'
-            // copy to 'after/{filename}'
-            .then(afterFilesMessage=>{
-                this.log.debug('DiffbrowsersTask.activate got "after" files.');
-                this.log.debug('DiffbrowsersTask.activate start copy after files ...');
-                copyFiles(afterFilesMessage, filesMessage, 'after/');
-                this.log.debug('DiffbrowsersTask.activate DONE! copy after files ...');
-                return filesMessage;
-            });
-    })
-    .then(filesMessage=>this.resources.cache.put([filesMessage])
-                           .then(cacheKeys=>cacheKeys[0]))
-
-     // initWorker('diffbrowsers', 'callbackDiffbrowsersFinished', cacheKey)
-    .then(cacheKey=>{
-        this.log.debug('DiffbrowsersTask.activate sending to Diffbrowsers.');
-        var [callbackName, ticket] = this._setExpectedAnswer(
-                                        'Diffbrowsers'
-                                      , 'callbackDiffbrowsersFinished'
-                                      , null)
-          , processCommand = new ProcessCommand()
-          ;
-        processCommand.setTargetPath(this.path.toString());
-        processCommand.setTicket(ticket);
-        processCommand.setCallbackName(callbackName);
-        processCommand.setResponseQueueName(this.resources.executeQueueName);
-        return this.resources.initWorker('diffbrowsers', cacheKey, processCommand);
-    })
-    //.then(whateverInitMessage=>{
-    //    // var docid = familyJob.getDocid();
-    //    // this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
-    //    this._setLOG('Diffbrowsers worker initialized …');
-    //})
-    ;
+    return _taskActivateDiffWorker.call(this, 'diffbrowsers', 'callbackDiffbrowsersFinished');
 };
-
 
 _p.callbackDiffbrowsersFinished = function([requester, sessionID]
                                         , genericStorageWorkerResult
@@ -1630,5 +1569,16 @@ Object.defineProperties(_p, {
         }
     }
 });
+
+_p.getFilesStorageKey = function() {
+    var filesStorageKey = this.process._state.filesStorageKey
+      , storageKeyMessage
+      ;
+    if(filesStorageKey === null)
+        throw new Error('State has not defined a "filesStorageKey" yet.');
+    storageKeyMessage = new StorageKey();
+    storageKeyMessage.setKey(filesStorageKey);
+    return storageKeyMessage;
+};
 
 exports.FamilyPRDispatcherProcess = FamilyPRDispatcherProcess;
