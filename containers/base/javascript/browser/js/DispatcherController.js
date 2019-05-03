@@ -298,8 +298,10 @@ define([
         for(let [key, value] of Object.entries(processState || {})) {
             if(!value)
                 // Skip empty values for now, it could be annoying.
-                // Always a good idea?
-                continue;
+                // Always a good idea? => no!
+                // FIXME: this should be much more reasonable.
+                if(typeof value !== 'boolean')
+                    continue;
             let renderer = key in renderers
                         ? renderers[key]
                         : renderers['@default'];
