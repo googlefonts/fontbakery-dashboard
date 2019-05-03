@@ -443,7 +443,7 @@ _p._sendDispatchResult = function(preparedProcessCommand
     // processCommand.setCallbackName(callbackName);
     processCommand.setRequester('GitHub PR Server');
     processCommand.setPbPayload(anyPayload);
-    buffer = new Buffer(processCommand.serializeBinary());
+    buffer = Buffer.from(processCommand.serializeBinary());
     return this._io.sendQueueMessage(responseQueue, buffer);
 };
 

@@ -202,7 +202,7 @@ _p._familyNameFromFilesData = function(path, filesData) {
 
     // use family name from METADATA.pb
     if(metadataIndex !== -1 ) {
-        let metadataBlob = new Buffer(filesData[metadataIndex][1] /* = Uint8Array */);
+        let metadataBlob = Buffer.from(filesData[metadataIndex][1] /* = Uint8Array */);
         return parseMetadata(metadataBlob)
         .then(familyProto=>{
             let familyName = familyProto.getName();
