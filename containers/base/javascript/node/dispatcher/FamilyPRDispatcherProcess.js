@@ -601,6 +601,26 @@ function _copyFilesMessage(fromFiles, toFiles, prefix, log) {
     }
 }
 
+function _taskPreparePreviewFiles() { // => filesMessage
+    //jshint validthis:true
+    // FIXME: make the copy to 'files/{filename}' uneccessary
+    // the storageKey of the files of this process should be just
+    // fine for the worker, eventually. Right know, however, the
+    // worker expects the files in a sub-directory, hence this effort.
+    var storageKey = this.process.getFilesStorageKey();
+    this.log.debug(this.constructor.name, '_taskPreparePreviewFiles getting files:', storageKey.getKey());
+    return this.resources.persistence.get(storageKey)// => 'filesMessage'
+    // copy to 'files/{filename}'
+    .then(jobFilesMessage=>{
+        this.log.debug(this.constructor.name, '_taskPreparePreviewFiles got files.');
+        var filesMessage = new Files();
+        this.log.debug(this.constructor.name, '_taskPreparePreviewFiles start copy files ...');
+        _copyFilesMessage(jobFilesMessage, filesMessage, 'files/', this.log);
+        this.log.debug(this.constructor.name, '_taskPreparePreviewFiles DONE! copy files ...');
+        return filesMessage;
+    });
+}
+
 function _taskPrepareDiffFiles() { // => filesMessage
     //jshint validthis:true
     return this.resources.getGoogleFontsAPIFamilyFiles(this.process.familyName)
@@ -932,10 +952,157 @@ _p.callbackConfirmDiffbrowsers = function([requester, sessionID]
 return DiffbrowsersTask;
 })();
 
+// FIXME: this is basically copypasta from, or at least *very similar* to
+// DiffenatorTask and DiffbrowsersTask!
+const PreviewsTask = (function() {
+var anySetup = {
+    knownTypes: { GenericStorageWorkerResult }
+};
+const PreviewsTask = taskFactory('PreviewsTask', anySetup);
+const _p = PreviewsTask.prototype;
+
+_p._activate = function() {
+    var workerName = 'previews'
+      , callbackName = 'callbackPreviewsFinished'
+      ;
+
+    if(this.process._state.isUpdate) {
+        this._setOK('Skipping ' + workerName + ': using diff workers instead.');
+        return;
+    }
+
+    return _taskPreparePreviewFiles.call(this) // => filesMessage
+    .then(filesMessage=>this.resources.cache.put([filesMessage])
+                           .then(cacheKeys=>cacheKeys[0]))
+    .then(cacheKey=>_taskInitWorker.call(this
+                                      , workerName
+                                      , cacheKey
+                                      , callbackName))
+    //.then((message)=>{
+    //    this._setLOG(workerName + ' worker initialized …');
+    //})
+    ;
+};
+
+_p.callbackPreviewsFinished = function([requester, sessionID]
+                                        , genericStorageWorkerResult
+                                        , ...continuationArgs) {
+    // jshint unused:vars
+
+    // message GenericStorageWorkerResult {
+    //     message Result {
+    //         string name = 1;
+    //         StorageKey storage_key = 2;
+    //     };
+    //     string job_id = 1;
+    //     // currently unused but generally interesting to track the
+    //     // time from queuing to job start, or overall waiting time
+    //     // finished - start is the time the worker took
+    //     // started - finished is the time the job was in the queue
+    //     google.protobuf.Timestamp created = 2;
+    //     google.protobuf.Timestamp started = 3;
+    //     google.protobuf.Timestamp finished = 4;
+    //     // If set the job failed somehow, print pre-formated
+    //     string exception = 5;
+    //     repeated string preparation_logs = 6;
+    //     repeated Result results = 7;
+    // }
+    var exception = genericStorageWorkerResult.getException()
+     , report = '## Previews Result'
+     ;
+
+    if(exception) {
+        report += [
+            '\n'
+            , '### EXCEPTION'
+            , '```'
+            , exception
+            , '```\n'
+        ].join('\n');
+    }
+
+    var preparationLogs = genericStorageWorkerResult.getPreparationLogsList();
+    if(preparationLogs.length) {
+        report += '\n### Preparation Logs\n';
+        for(let preparationLog of preparationLogs)
+            report += ` * \`${preparationLog}\`\n`;
+    }
+
+    // For now, just log the zip download url:
+    // message GenericStorageWorkerResult.Result {
+    //     string name = 1;
+    //     StorageKey storage_key = 2;
+    // }
+    var results = genericStorageWorkerResult.getResultsList();
+    if(results.length) {
+        report += '\n### Results\n';
+        for(let result of results) {
+            let name = result.getName()
+              , storageKey = result.getStorageKey()
+              ;
+            // FIXME: a hard coded url is bad :-/
+            report += ` * browse report: [**${name}**]`
+                    // uses index.html or autoindex
+                    + `(/browse/persistence/${storageKey.getKey()}/)`
+                    + ` or download: [zip file]`
+                    + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
+        }
+    }
+    report += '\n';
+    report += [
+             // created is not used currently
+             // _mdFormatTimestamp(genericStorageWorkerResult, 'created')
+                _mdFormatTimestamp(genericStorageWorkerResult, 'started')
+              , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
+              ].join('<br />\n');
+
+    this._setLOG(report);
+
+    this._setExpectedAnswer('Confirm Previews'
+                                 , 'callbackConfirmPreviews'
+                                 , 'uiConfirmPreviews');
+};
+
+_p.uiConfirmPreviews = function() {
+    return {
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'Please review the Previews result:'
+            }
+          , {   name: 'accept'
+              , type:'binary'
+              , label: 'Previews looks good!'
+            }
+          , {   name: 'notes'
+              , type: 'text' // input type:text
+              , label: 'Notes'
+            }
+        ]
+    };
+};
+
+_p.callbackConfirmPreviews = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
+    if(values.notes)
+        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    if(values.accept === true) {
+        this._setOK('**' + requester + '** Previews looks good.');
+    }
+    else
+        this._setFAILED('**' + requester + '** Previews is failing.');
+};
+
+return PreviewsTask;
+})();
+
 const QAToolsStep = stepFactory('QAToolsStep', {
     Fontbakery: FontbakeryTask
   , Diffenator: DiffenatorTask
   , Diffbrowsers: DiffbrowsersTask
+  , Previews: PreviewsTask
 });
 
 
@@ -1285,6 +1452,7 @@ without the access control etc. from above, that's the init
  * a 4chan.or/r kind of attack.
  */
 
+// see: https://github.com/googlefonts/fontbakery/issues/637#issuecomment-175243241
 const fontFamilyGenres = [
         'Display'
       , 'Serif'
