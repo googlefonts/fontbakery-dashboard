@@ -40,7 +40,7 @@ def get_fontbakery(fonts):
       getattr(old_check_skip_filter,'__mark', None) is not __private_marker:
     def check_skip_filter(checkid, font=None, **iterargs):
         # Familyname must be unique according to namecheck.fontdata.com
-      if checkid == 'com.google.fonts/check/165':
+      if checkid == 'com.google.fonts/check/fontdata_namecheck':
         return False, ('Disabled for Fontbakery-Dashboard, see: '
                         'https://github.com/googlefonts/fontbakery/issues/1680')
       if old_check_skip_filter:
