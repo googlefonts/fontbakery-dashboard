@@ -15,6 +15,7 @@ const { spawn } = require('child_process')
     , { FamilyProto } = require('protocolbuffers/fonts_public_pb')
 // > START INLINE PYTHON SCRIPT
 // needs: $ pip install git+https://github.com/googlefonts/gftools.git@master
+// sys.argv[1] is the unicode text content of a METADATA.pb file
     , PYTHON_PARSE_FAMILY_PROTO = `
 import sys
 import gftools.fonts_public_pb2 as fonts_pb2
@@ -22,6 +23,17 @@ from google.protobuf import text_format
 msg = fonts_pb2.FamilyProto()
 text_format.Merge(sys.argv[1], msg)
 sys.stdout.write(msg.SerializeToString())
+`// < END INLINE PYTHON SCRIPT
+// > START INLINE PYTHON SCRIPT
+// sys.stdin returns the binary serialization of a FamilyProto Message
+// i.e.: `Buffer.from(processCommand.serializeBinary())`
+    , PYTHON_SERIALIZE_FAMILY_PROTO = `
+import sys
+import gftools.fonts_public_pb2 as fonts_pb2
+from google.protobuf import text_format
+msg = fonts_pb2.FamilyProto()
+msg.ParseFromString(sys.stdin.read())
+sys.stdout.write(text_format.MessageToString(msg))
 `// < END INLINE PYTHON SCRIPT
     , fs = require('fs')
     , tmp = require('tmp')
@@ -65,6 +77,7 @@ function parseMetadata(metadataPbTxt) {
                                 ? '\nSTDERR>\n' + stderr.join('')
                                 : '')
                     ));
+                return;
             }
             var metadataBlob = new Uint8Array(Buffer.concat(stdout));
             try {
@@ -79,6 +92,56 @@ function parseMetadata(metadataPbTxt) {
 }
 
 exports.parseMetadata = parseMetadata;
+
+/**
+ * return the METADATA.pb contents as a string
+ */
+function serializeMetadata(familyProtoMessage) {
+    var buffer = Buffer.from(familyProtoMessage.serializeBinary())
+      , py = spawn('python', ['-c', PYTHON_SERIALIZE_FAMILY_PROTO, buffer])
+      , stderr = []
+      , stdout = []
+      ;
+    return new Promise((resolve, reject)=> {
+                                     // data is a Buffer
+        py.stdout.on('data', (data)=>stdout.push(data));
+        py.stderr.on('data', (data) => {
+            var strData = data.toString();
+            stderr.push(strData);
+            // This may also end in the rejection message if the closing
+            // code is not zero. But, if the code is zero, we still want
+            // to log this.
+            console.warn(strData);
+        });
+
+        py.on('close', (code) => {
+            if(code !== 0) {
+                // if there's a non 0 code reject
+                reject(new Error('serializeMetadata python closed with a none zero'
+                    + ' code: "'+code+'";'
+                    + (stderr.length
+                                ? '\nSTDERR>\n' + stderr.join('')
+                                : '')
+                    ));
+                return;
+            }
+            try {
+                let metadataPbTxt = new Uint8Array(Buffer.concat(stdout));
+                resolve(metadataPbTxt);
+            }
+            catch(error) {
+                reject(error);
+            }
+        });
+        py.stdin.write(buffer, err=>{
+            if(err)
+                reject(err);
+            py.stdin.end();
+        });
+    });
+}
+
+exports.serializeMetadata = serializeMetadata;
 
 function getTmpDir(options) {
     return new Promise((resolve, reject)=>{
