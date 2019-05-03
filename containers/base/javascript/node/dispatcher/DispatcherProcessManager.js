@@ -92,7 +92,12 @@ function DispatcherProcessManager(setup, ...args) {
                 // rpc Get (FamilyRequest) returns (FamilyData){}
                 // returns a promise for FamilyData
                 var familyRequestMessage = _makeFamilyRequest('upstream', familyName);
-                return this._manifestUpstreamClient.get(familyRequestMessage);
+                return this._manifestUpstreamClient.get(familyRequestMessage)
+                    .then(null, error=>{
+                        this._log.error(`Error getUpstreamFamilyFiles(${familyName})`, error);
+                        // re-raise
+                        throw error;
+                    });
             }
         }
       , getGoogleFontsAPIFamilyFiles: {
