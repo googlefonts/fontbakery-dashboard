@@ -34,7 +34,7 @@ const { GitShared: Parent /*is a _Source*/ } = require('./Git')
   , http = require('http')
   , fs = require('fs')
   , url = require('url')
-  , { createMetadata } = require('../util/getMetadataPb')
+  , { createMetadata, parseMetadata, serializeMetadata } = require('../util/getMetadataPb')
   ;
 
 /**
@@ -207,6 +207,8 @@ var CSVData = (function() {
           , 'family name is confirmed as good?': 'nameConfirmed' // "Passed" is true everything else is false
           , 'upstream': 'upstream' // starts with 'http://' or 'https://' (or 'git://'?)
           , 'fontfiles prefix': 'fontfilesPrefix' // seems like problematic data in the sheet
+          , 'genre': 'genre'
+          , 'designer': 'designer'
         }
       ;
 
@@ -689,16 +691,79 @@ function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
         };
 }
 
-_p._insertMetadataPB = function (filesData, licenseDir) {
-    return createMetadata(filesData, licenseDir)// -> <Uint8Array>
+// insightful:
+//  https://github.com/googlefonts/fontbakery/issues/637#issuecomment-175243241
+function _fontFamilyGenre2Category(genre) {
+    // 'Display' => 'DISPLAY'
+    // 'Serif' => 'SERIF'
+    // 'Sans Serif' => 'SANS_SERIF'
+    // 'sans-serif' => 'SANS_SERIF' // this is not what we use
+    // 'Handwriting' => 'HANDWRITING'
+    // 'Monospace' => 'MONOSPACE'
+    return genre.toUpperCase().replace(' ', '_').replace('-', '_');
+}
+
+_p._insertMetadataPB = function (filesData, metadata) {
+    // We ALWAYS set our expectations from the CSV data row here,
+    // making the CSV the single source of truth for that data, otherwise,
+    // we don't learn about wrong/outdated information in the CSV data
+    // via Font Bakery checking!
+
+    // Uses the infamous gftools-add-fonts.py script, which does the
+    // best it can, but fails to set the information an engineer would
+    // do by hand in the human editable METADATA.pb file.
+    // We use the CSV entry to set that information. Partly also, because
+    // the names etc. set, for a new family taken from the font files, become
+    // self-referential when checking metadata vs. font data and may yield
+    // in false positives. Another good reason is to have a way to control
+    // parts of the contents of METADATA.pb via the CSV row.
+    this._log.debug('createMetadata ...')
+    return createMetadata(filesData, metadata.licenseDir)// -> fileData <Uint8Array>
+    // START manipulating METADATA.pb
     .then(fileData=>{
+        this._log.debug('parseMetadata ...')
+        return parseMetadata(Buffer.from(fileData))
+    }) // -> familyProtoMessage <FamilyProto>
+    .then(familyProtoMessage=>{
+        // e.g. sourceDetails = {
+        //      "status": "OK"
+        //    , "name": "ANRT Baskervville"
+        //    , "nameConfirmed": "Not checked",
+        //    , "upstream": "https://github.com/anrt-type/ANRT-Baskervville"
+        //    , "fontfilesPrefix": "fonts/Baskervville_TTF/Baskervville-"
+        // }
+        // default: python: _FileFamilyStyleWeights(fontdir)[0].family
+        this._log.debug('changing familyProtoMessage ...')
+        familyProtoMessage.setName(metadata.sourceDetails.name);
+        let category = _fontFamilyGenre2Category(metadata.sourceDetails.genre);
+        familyProtoMessage.setCategory(category); // default: "SANS_SERIF"
+        if(metadata.sourceDetails.designer)
+            // default: "UNKNOWN" if new or the value of the old METADATA.pb
+            // We initially didn't have the designer field in the CSV data,
+            // hence we just use the default gftools-add-fonts  behavior
+            // if there was no designer in the csv field.
+            familyProtoMessage.setDesigner(metadata.sourceDetails.designer);
+        for(let font of familyProtoMessage.getFontsList())
+            font.setName(metadata.sourceDetails.name);
+        this._log.debug('DONE changing familyProtoMessage ...');
+        return familyProtoMessage;
+    })
+    .then(familyProtoMessage=>{
+        this._log.debug('serializeMetadata ...')
+        return serializeMetadata(familyProtoMessage);
+    }) // -> fileData <Uint8Array>
+    // DONE manipulating METADATA.pb
+    .then(fileData=>{
+        this._log.debug('saving  METADATA.pb', Buffer.from(fileData).toString() ,'...');
         var metaDataFile = 'METADATA.pb'
           , resultFilesData = filesData.slice()
           ;
+        // remove all existing entries for metaDataFile
         for(let i=resultFilesData.length-1;i>=0;i--) {
             if(resultFilesData[i][0] === metaDataFile)
                 resultFilesData.splice(i, 1);
         }
+        // insert the updated/new metaDataFile
         resultFilesData.push([metaDataFile, fileData]);
         return resultFilesData;
     }, err=>{
@@ -749,7 +814,7 @@ _p._collectDataGit = function(familyData, commit, tree, rootTree
         var metadata = _getMetadata(files, familyData, commit, tree, masterFamilyTree);
         return this._insertMetadataPB(
                         Array.from(files.entries()) // -> filesData
-                     ,  metadata.licenseDir
+                     ,  metadata
                      ) // -> filesData
             .then(filesData=>[metadata, filesData]);
     })
@@ -970,7 +1035,11 @@ if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
       , familyWhitelist = setup.develFamilyWhitelist
       , repoPath = './git-repositories'
-      , sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ampzD9veEdrwUMkOAJkMNkftqtv1jEygiPR0wZ6eNl8/pub?gid=0&single=true&output=csv'
+      // TODO: should be configured via setup
+      // This is the production data
+      //, sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ampzD9veEdrwUMkOAJkMNkftqtv1jEygiPR0wZ6eNl8/pub?gid=0&single=true&output=csv'
+      // this is the development version
+      , sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ODnp-yRYw1LrI3RTX-VZZsigPPieviE954sOsrlcx5o/pub?gid=0&single=true&output=csv'
       // NOTE: temporary local copy for development can be specified like.
       //, sheetCSVUrl = 'file://upstream-sources.csv'
       , grpcPort=50051
