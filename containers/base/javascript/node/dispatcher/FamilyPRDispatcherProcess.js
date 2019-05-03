@@ -660,6 +660,12 @@ function _taskInitWorker(workerName
 function _taskActivateDiffWorker(workerName, callbackName) {
     // jshint validthis:true
     // may fail if not found in google api
+
+    if(!this.process._state.isUpdate) {
+        this._setOK('Skipping ' + workerName + ': there\'s no existing data to diff.');
+        return;
+    }
+
     return _taskPrepareDiffFiles.call(this) // => filesMessage
     .then(filesMessage=>this.resources.cache.put([filesMessage])
                            .then(cacheKeys=>cacheKeys[0]))
