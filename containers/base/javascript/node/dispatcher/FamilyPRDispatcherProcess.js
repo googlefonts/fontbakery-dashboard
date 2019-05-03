@@ -12,7 +12,7 @@ const { Process:Parent } = require('./framework/Process')
       , GenericStorageWorkerResult
       , File
       , Files } = require('protocolbuffers/messages_pb')
-    , {mixin: stateManagerMixin} = require('./framework/stateManagerMixin')
+    , { mixin: stateManagerMixin } = require('./framework/stateManagerMixin')
     ;
 
 /**
@@ -139,12 +139,12 @@ _p._expectEditInitialState = function() {
 _p.uiApproveProcess = function() {
     var actionOptions = [];
     actionOptions.push(['Accept and proceed.', 'accept']);
-    this.log.debug("this.initType === 'new'"
-                    , this.process.initType === 'new'
+    this.log.debug("this.initType === 'register'"
+                    , this.process.initType === 'register'
                     , this.process.initType
                     , this.process._state.initType
                     , this.constructor.name);
-    if(this.process.initType === 'new')
+    if(this.process.initType === 'register')
         // currently there's nothing to edit when initType is an update
         actionOptions.push(['Edit data.', 'edit']);
     // else assert this.initType === 'update'
@@ -175,7 +175,7 @@ _p.uiApproveProcess = function() {
             // or with
 
           , {   name: 'genre'
-              , condition: ['action', 'new']
+              , condition: ['action', 'register']
               , type:'choice' // => could be a select or a radio
               , label: 'Genre:'
               , options: fontFamilyGenres
@@ -196,8 +196,8 @@ _p.callbackApproveProcess = function([requester, sessionID]
                                       , 'callbackSignOffSpreadsheet'
                                       , 'uiSignOffSpreadsheet');
     }
-    else if(this.process.initType === 'new' && action === 'edit' ) {
-        // could be two different UIs for either "update" or "new" processes.
+    else if(this.process.initType === 'register' && action === 'edit' ) {
+        // could be two different UIs for either "update" or "register" processes.
         this._expectEditInitialState();
     }
     else if(action === 'dismiss' )
@@ -208,14 +208,14 @@ _p.callbackApproveProcess = function([requester, sessionID]
 };
 
 _p.uiEditInitialState = function() {
-    // assert this.initType === 'new'
-    if(this.process.initType !== 'new')
+    // assert this.initType === 'register'
+    if(this.process.initType !== 'register')
         throw new Error('NOT IMPLEMENTED: initType "'+this.process.initType+'"');
 
     var result = {
         roles: ['input-provider', 'engineer']
       , ui: _getInitNewUI().map(item=>{
-            // show only when "action" has the value "new"
+            // show only when "action" has the value "register"
             if(item.name === 'genre' && this.process._state.genre)
                 item.default = this.process._state.genre;
             if(item.name === 'fontfilesPrefix')
@@ -239,7 +239,7 @@ _p.uiEditInitialState = function() {
 _p.callbackEditInitialState = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    values.action = 'new';
+    values.action = 'register';
     values.note = this.process._state.note;
     // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
     values.isOFL = true;
@@ -1357,8 +1357,8 @@ function uiPreInit(resources) {
               , type:'choice' // => could be a select or a radio
               , label: 'What do you want to do?'
               , options: [
-                    ['Update an existing Google Fonts font family.', 'update']
-                  , ['Add a new family to Google Fonts.', 'new']]
+                    ['Update a registered Google Fonts font family.', 'update']
+                  , ['Register and update a new family to Google Fonts.', 'register']]
               , default: 'update' // 0 => the first item is the default
             }
             // condition:update is ~ update an existing family, hence just a select input
@@ -1381,8 +1381,8 @@ function uiPreInit(resources) {
             // added, but also for new entries, when initial authors are added.
             // This info is not yet in the CSV though!
     var newUi = _getInitNewUI().map(item=>{
-        // show only when "action" has the value "new"
-        item.condition = ['action', 'new'];
+        // show only when "action" has the value "register"
+        item.condition = ['action', 'register'];
         return item;
     });
     result.ui.push(...newUi);
@@ -1457,8 +1457,8 @@ function callbackPreInit(resources, requester, values) {
         });
     };
 
-    if(values.action === 'new') {
-        initType = 'new';
+    if(values.action === 'register') {
+        initType = 'register';
         checkNew();
         promise = Promise.resolve();
     }
