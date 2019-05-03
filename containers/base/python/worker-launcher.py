@@ -24,6 +24,7 @@ from worker.fontbakery import (
                     )
 from worker.diffenator import DiffenatorWorker
 from worker.diffbrowsers import DiffbrowsersWorker
+from worker.previews import PreviewsWorker
 
 logger = logging.getLogger('FB_WORKER')
 r = RethinkDB()
@@ -260,6 +261,7 @@ def main():
     , fontbakery_checker=FontBakeryCheckerWorker
     , diffenator=DiffenatorWorker
     , diffbrowsers=DiffbrowsersWorker
+    , previews=PreviewsWorker
   )
 
   logger.info('Waiting for messages in %s...', queue_worker_name)

@@ -72,11 +72,13 @@ _p.initialize = function(workerName, initMessage, processCommand/*optional*/) {
             'fontbakery': 'StorageKey'
           , 'diffenator': 'StorageKey'
           , 'diffbrowsers': 'StorageKey'
+          , 'previews': 'StorageKey'
         }
       , answerMessageTypes = {
             'fontbakery': FamilyJob
           , 'diffenator': Empty
           , 'diffbrowsers': Empty
+          , 'previews': Empty
         }
       , workerDescription = new WorkerDescription()
       , any = pack(initMessage, initMessageTypes[workerName])

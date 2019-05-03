@@ -126,7 +126,7 @@ class DiffWorkerBase(WorkerBase):
     self._answer = GenericStorageWorkerResult()
     self._answer.job_id = self._job.docid
 
-  def _prepare(self, files):
+  def _prepare(self, files, target_dirs):
     """
       Write files from the grpc.StorageServer to tmp_directory.
 
@@ -142,7 +142,6 @@ class DiffWorkerBase(WorkerBase):
     logs = self._answer.preparation_logs
     seen = set()
 
-    target_dirs = ['before', 'after']
     expected_prefixes = tuple(map('{}/'.format, target_dirs))
     fontfiles = {prefix: [] for prefix in target_dirs}
     filecount = 0
@@ -171,7 +170,7 @@ class DiffWorkerBase(WorkerBase):
 
     if filecount > maxfiles:
       raise PreparationError('Found {} font files, but maximum '
-                      'is limiting to {}.'.format(len(fontfiles), maxfiles))
+                      'is limiting to {}.'.format(filecount, maxfiles))
 
     return fontfiles
 

@@ -78,7 +78,7 @@ class DiffenatorWorker(DiffWorkerBase):
 
   def run(self):
     self._set_answer_timestamp('started')
-    fonts = self._prepare(self._cache.get(self._job.cache_key).files)
+    fonts = self._prepare(self._cache.get(self._job.cache_key).files, ['before', 'after'])
     # all_fonts = reduce(lambda a,b: a+b, fonts.values(),[])
     all_files = [os.path.join(dp, f) for dp, dn, fn \
                           in os.walk(self._tmp_directory) for f in fn]

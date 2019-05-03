@@ -99,7 +99,7 @@ var _p = InitWorkers.prototype;
 
 _p._initWorkerDefinitions = function(workerDefinitions, resources) {
     var defs = new Map();
-    for(let [workerName, def] of Object.entries(workerDefinitions)){
+    for(let [workerName, def] of Object.entries(workerDefinitions)) {
         let Ctor = def[0]
           , dependencyNames = def.slice(1)
           , dependencies = []
@@ -109,7 +109,6 @@ _p._initWorkerDefinitions = function(workerDefinitions, resources) {
                 throw new Error('Dependency "'+name+'" is not in resources.');
             }
             dependencies.push(resources[name]);
-
         }
         defs.set(workerName, new Ctor(...dependencies));
     }
@@ -625,9 +624,9 @@ return FontBakeryWorker;
 // DIFFWORKER SPECIFIC //
 /////////////////////////
 
-const GenericDiffWorker = (function() {
+const GenericStorageWorker = (function() {
 
-function GenericDiffWorker(workerName, logging, io/*, cache*/) {
+function GenericStorageWorker(workerName, logging, io/*, cache*/) {
     WorkerDefinition.call(this, logging);
     this._workerName = workerName;
     this._io = io;
@@ -637,7 +636,7 @@ function GenericDiffWorker(workerName, logging, io/*, cache*/) {
     this._any = new ProtobufAnyHandler(this._log, messages_pb);
 }
 
-var _p = GenericDiffWorker.prototype = Object.create(WorkerDefinition.prototype);
+var _p = GenericStorageWorker.prototype = Object.create(WorkerDefinition.prototype);
 
 Object.defineProperties(_p, {
     // Expecting  a specially crafted cacheKey pointing to a files
@@ -693,7 +692,6 @@ _p.callInit = function(cacheKey) {
 
     return Promise.resolve(promise)
             .then(()=>[id, answer, null]);
-
 };
 
 /**
@@ -712,19 +710,23 @@ _p.registerCompleted = function(completedMessage) {
     return [id, completedMessage];
 };
 
-return GenericDiffWorker;
+return GenericStorageWorker;
 })();
 
 function DiffenatorWorker(...args) {
-    GenericDiffWorker.call(this, 'diffenator', ...args);
+    GenericStorageWorker.call(this, 'diffenator', ...args);
 }
-DiffenatorWorker.prototype = Object.create(GenericDiffWorker.prototype);
+DiffenatorWorker.prototype = Object.create(GenericStorageWorker.prototype);
 
 function DiffbrowsersWorker(...args) {
-    GenericDiffWorker.call(this, 'diffbrowsers', ...args);
+    GenericStorageWorker.call(this, 'diffbrowsers', ...args);
 }
-DiffbrowsersWorker.prototype = Object.create(GenericDiffWorker.prototype);
+DiffbrowsersWorker.prototype = Object.create(GenericStorageWorker.prototype);
 
+function PreviewsWorker(...args) {
+    GenericStorageWorker.call(this, 'previews', ...args);
+}
+PreviewsWorker.prototype = Object.create(GenericStorageWorker.prototype);
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup()
@@ -746,6 +748,7 @@ if (typeof require != 'undefined' && require.main==module) {
             fontbakery: [FontBakeryWorker, 'logging', 'io', 'cache']
           , diffenator: [DiffenatorWorker, 'logging', 'io'/*, 'cache'*/]
           , diffbrowsers: [DiffbrowsersWorker, 'logging', 'io'/*, 'cache'*/]
+          , previews: [PreviewsWorker, 'logging', 'io'/*, 'cache'*/]
         }
       , resources = {
             logging: setup.logging
