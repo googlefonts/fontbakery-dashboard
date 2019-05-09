@@ -26,7 +26,7 @@
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: fontbakery-worker-checker-sprinter
+  name: fontbakery-worker-sprinter
 spec:
   # only use and scale these for collection wide jobs
   # used last => 107 pods per machine, 642 with 6 machines.
@@ -36,25 +36,33 @@ spec:
   template:
     metadata:
       labels:
-        run: fontbakery-worker-checker-sprinter
+        run: fontbakery-worker-sprinter
     spec:
-      # this has no node selector/determined node, so it will
-      # also attach to the short lived sprinter nodes
       nodeSelector:
         cloud.google.com/gke-nodepool: checker-sprinter-pool-1
       containers:
-      - name: fontbakery-worker-checker-sprinter
-        image: gcr.io/fontbakery-168509/base-python:32
+      - name: fontbakery-worker-sprinter
+        image: gcr.io/fontbakery-168509/base-python:1
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
           - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
             value: "20"
+          - name: BROWSERSTACK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-username
+          - name: BROWSERSTACK_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-access-key
           # python will put the jobs here and so harness the SSD goodnes
 #          - name: TMPDIR
 #            value: '/tmp/ssd/'
         workingDir: /var/python
-        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "worker-launcher.py"]
         resources:
           requests:
             cpu: 200m
@@ -75,7 +83,7 @@ spec:
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: fontbakery-worker-checker-sprinter-ssd
+  name: fontbakery-worker-sprinter-ssd
 spec:
   # only use and scale these for collection wide jobs
   # 109 pods per machine, 749 with  machines.
@@ -87,25 +95,33 @@ spec:
   template:
     metadata:
       labels:
-        run: fontbakery-worker-checker-sprinter-ssd
+        run: fontbakery-worker-sprinter-ssd
     spec:
-      # this has no node selector/determined node, so it will
-      # also attach to the short lived sprinter nodes
       nodeSelector:
         cloud.google.com/gke-nodepool: checker-sprinter-ssd-pool-1
       containers:
-      - name: fontbakery-worker-checker-sprinter-ssd
-        image: gcr.io/fontbakery-168509/base-python:32
+      - name: fontbakery-worker-sprinter-ssd
+        image: gcr.io/fontbakery-168509/base-python:1
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
           - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
             value: "20"
+          - name: BROWSERSTACK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-username
+          - name: BROWSERSTACK_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-access-key
           # python will put the jobs here and so harness the SSD goodnes
           - name: TMPDIR
             value: '/tmp/ssd/'
         workingDir: /var/python
-        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "worker-launcher.py"]
         resources:
           requests:
             cpu: 200m
@@ -126,28 +142,36 @@ spec:
 apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
-  name: fontbakery-worker-checker
+  name: fontbakery-worker
 spec:
-  replicas: 8
+  replicas: 1 # 8
   template:
     metadata:
       labels:
-        run: fontbakery-worker-checker
+        run: fontbakery-worker
     spec:
-      # this has no node selector/determined node, so it will
-      # also attach to the short lived sprinter nodes
       nodeSelector:
         cloud.google.com/gke-nodepool: default-pool
       containers:
-      - name: fontbakery-worker-checker
-        image: gcr.io/fontbakery-168509/base-python:32
+      - name: fontbakery-worker
+        image: gcr.io/fontbakery-168509/base-python:1
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
           - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
             value: "1"
+          - name: BROWSERSTACK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-username
+          - name: BROWSERSTACK_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-access-key
         workingDir: /var/python
-        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "worker-launcher.py"]
         resources:
           requests:
             cpu: 200m
