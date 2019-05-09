@@ -1,5 +1,6 @@
-# :latest at the moment pointing to 11.10.1-stretch
-FROM node:latest
+# that's Debian Stretch (current stable: Debian 9)
+# and node 11.15.0; currently nodegit doesnt build with node 12.x
+FROM node:11.15.0-stretch
 
 
 RUN touch /tmp/cache_spoof_1
