@@ -232,7 +232,7 @@ Turns out building `pyfontaine` with this: `RUN pip install --upgrade git+https:
 
 ```
 $ docker tag worker-fontbakery:1 gcr.io/fontbakery-168509/worker-fontbakery:1
-$ gcloud docker -- push gcr.io/fontbakery-168509/worker-fontbakery:1
+$ docker push gcr.io/fontbakery-168509/worker-fontbakery:1
 $ kubectl apply -f kubernetes/gcloud-worker-fontbakery.yaml
 ```
 
@@ -311,7 +311,7 @@ Commented these settings.
 ```
 $ docker build -t www-fontbakery:1.01 containers/www-fontbakery/;
 $ docker tag www-fontbakery:1.01 gcr.io/fontbakery-168509/www-fontbakery:1.01
-$ gcloud docker -- push gcr.io/fontbakery-168509/www-fontbakery:1.01
+$ docker push gcr.io/fontbakery-168509/www-fontbakery:1.01
 $ kubectl apply -f kubernetes/gcloud-www-fontbakery.yaml
 ```
 
@@ -388,7 +388,7 @@ WEB_SERVER_COOKIE_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 DISPATCHER_MANAGER_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 
 # Note: the "-n fontbakery" argument is only needed if kubectl must address
-# a special namespace.
+# a special namespace e.g. in minikube but not on gcloud
 
 kubectl -n fontbakery delete secret external-resources
 kubectl -n fontbakery create secret generic external-resources \
@@ -445,13 +445,13 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
-docker build -t fontbakery/base-javascript:44 containers/base/javascript;
-docker tag fontbakery/base-javascript:44 gcr.io/fontbakery-168509/base-javascript:44
-gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:44
+docker build -t fontbakery/base-javascript:1 containers/base/javascript;
+docker tag fontbakery/base-javascript:1 gcr.io/fontbakery-168509/base-javascript:1
+docker push gcr.io/fontbakery-168509/base-javascript:1
 
-docker build -t fontbakery/base-python:32 containers/base/python;
-docker tag fontbakery/base-python:32 gcr.io/fontbakery-168509/base-python:32
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:32
+docker build -t fontbakery/base-python:1 containers/base/python;
+docker tag fontbakery/base-python:1 gcr.io/fontbakery-168509/base-python:1
+docker push gcr.io/fontbakery-168509/base-python:1
 ```
 
 # Deploy
@@ -557,4 +557,19 @@ kubectl delete deployment rethinkdb-admin rethinkdb-proxy rethinkdb-replica-1 re
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-1.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-proxy.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
+```
+
+
+## May 2019 deployment
+
+### docker
+
+```
+# do once:
+$ gcloud auth configure-docker
+# instead of the old workflow
+$ gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:1
+# we now use simply
+$ docker push gcr.io/fontbakery-168509/base-javascript:1
+# that's all
 ```
