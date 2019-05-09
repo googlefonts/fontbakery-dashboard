@@ -465,9 +465,10 @@ kubectl apply -f kubernetes/gcloud-rethinkdb-proxy.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
 
 kubectl apply -f kubernetes/gcloud-fontbakery-storage-cache.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-worker-cleanup.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-worker-checker.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-worker-distributor.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-storage-persistence.yaml
+
+kubectl apply -f kubernetes/gcloud-fontbakery-worker.yaml
+
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-reports.yaml
 
