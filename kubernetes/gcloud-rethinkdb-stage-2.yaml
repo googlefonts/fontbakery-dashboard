@@ -94,6 +94,14 @@ spec:
     spec:
       nodeSelector:
         cloud.google.com/gke-nodepool: default-pool
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "failure-domain.beta.kubernetes.io/zone"
+                  operator: In
+                  values: ["us-central1-a"] # the storage volume must be here!
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         #args:
@@ -144,10 +152,10 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            memory: 10Gi
+            memory: 5Gi
           requests:
-            cpu: 2
-            memory: 8Gi
+            cpu: 1
+            memory: 3Gi
         volumeMounts:
         - mountPath: /data
           name: storage
@@ -174,6 +182,14 @@ spec:
     spec:
       nodeSelector:
         cloud.google.com/gke-nodepool: default-pool
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "failure-domain.beta.kubernetes.io/zone"
+                  operator: In
+                  values: ["us-central1-c"] # the storage volume must be here!
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         #args:
@@ -224,10 +240,10 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            memory: 10Gi
+            memory: 5Gi
           requests:
-            cpu: 2
-            memory: 8Gi
+            cpu: 1
+            memory: 3Gi
         volumeMounts:
         - mountPath: /data
           name: storage
@@ -254,6 +270,14 @@ spec:
     spec:
       nodeSelector:
         cloud.google.com/gke-nodepool: default-pool
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "failure-domain.beta.kubernetes.io/zone"
+                  operator: In
+                  values: ["us-central1-c"] # the storage volume must be here!
       containers:
       - image: rosskukulinski/rethinkdb-kubernetes:latest
         #args:
@@ -304,10 +328,10 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            memory: 10Gi
+            memory: 5Gi
           requests:
-            cpu: 2
-            memory: 8Gi
+            cpu: 1
+            memory: 3Gi
         volumeMounts:
         - mountPath: /data
           name: storage

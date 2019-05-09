@@ -69,6 +69,14 @@ spec:
     spec:
       nodeSelector:
         cloud.google.com/gke-nodepool: default-pool
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "failure-domain.beta.kubernetes.io/zone"
+                  operator: In
+                  values: ["us-central1-a"] # the storage volume must be here!
       containers:
 # review looked OK, but we should think about our trust model
 # here, some binaries are included that we just need to trust and
@@ -122,10 +130,10 @@ spec:
           timeoutSeconds: 5
         resources:
           limits:
-            memory: 10Gi
+            memory: 5Gi
           requests:
-            cpu: 2
-            memory: 8Gi
+            cpu: 1
+            memory: 3Gi
         volumeMounts:
         - mountPath: /data
           name: storage
