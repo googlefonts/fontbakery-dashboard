@@ -13,10 +13,15 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:44
+        image: gcr.io/fontbakery-168509/base-javascript:3
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
+          - name: WEB_SERVER_COOKIE_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: web-server-cookie-secret
         ports:
         - containerPort: 3000
         # debugger chrome://inspect port if active
