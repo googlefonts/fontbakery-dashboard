@@ -16,7 +16,7 @@ function _getter(target, [source, sourceName], toKey, fromKey, parser, ...defaul
             var val = source[fromKey];
             if(!val || !val.length) {
                 if(defaultVal.length)
-                    val = defaultVal;
+                    val = defaultVal[0];
                 else
                     throw new Error('SETUP MISSING value for "'+toKey+'" '
                         + 'at ' + sourceName + '["'+fromKey+'"].');
@@ -24,7 +24,6 @@ function _getter(target, [source, sourceName], toKey, fromKey, parser, ...defaul
             // e.g.: parser = JSON.parse
             if(!parser)
                 return val;
-
             try {
                 return parser(val);
             }
@@ -107,7 +106,7 @@ function getSetup() {
       , rethinkProviderName = process.env.RETHINKDB_PROXY_SERVICE_HOST
                               // in gcloud, we use a cluster with proxy setup
                               // the proxy service is called: "rethinkdb-proxy" hence:
-                              ? 'RETHINKDB_PROXY_SERVICE '
+                              ? 'RETHINKDB_PROXY_SERVICE'
                               // Fall back to "rethinkdb-driver"
                               : 'RETHINKDB_DRIVER_SERVICE'
       ;
