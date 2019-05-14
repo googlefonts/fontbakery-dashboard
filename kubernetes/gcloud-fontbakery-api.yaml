@@ -24,6 +24,12 @@ spec:
                 key: web-server-cookie-secret
         ports:
         - containerPort: 3000
+        # demanded by https://cloud.google.com/kubernetes-engine/docs/concepts/ingress
+        # we use just the standard client response here, which has a http 200 status
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
         # debugger chrome://inspect port if active
         # - containerPort: 9229
         workingDir: /var/javascript
@@ -38,14 +44,44 @@ metadata:
   labels:
     run: fontbakery-api
 spec:
-  type: LoadBalancer
-  loadBalancerIP: "35.225.170.228"
+  type: NodePort
+  # loadBalancerIP: "35.225.170.228"
 # need this for socketIO
-  sessionAffinity: ClientIP
+#  sessionAffinity: ClientIP
   ports:
     - port: 80
       targetPort: 3000
       protocol: TCP
       name: http
+    #- port: 443
+    #  targetPort: 3000
+    #  protocol: TCP
+    #  name: https
   selector:
     run: fontbakery-api
+---
+apiVersion: networking.gke.io/v1beta1
+kind: ManagedCertificate
+metadata:
+  name: fontbakery-graphicore-de
+spec:
+  domains:
+    - fontbakery.graphicore.de
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: fontbakery-api-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: fontbakery-dashboard # 34.96.110.16
+    networking.gke.io/managed-certificates: fontbakery-graphicore-de
+    # only https:
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+  - host: fontbakery.graphicore.de
+    http:
+      paths:
+      - backend:
+          serviceName: fontbakery-api
+          servicePort: http
