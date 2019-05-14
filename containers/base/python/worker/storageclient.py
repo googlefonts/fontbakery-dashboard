@@ -62,7 +62,7 @@ def backoff(f, *args, **kwds):
       if code not in MAX_TRIES_BY_CODE:
         raise error
 
-      # There's no better way than to check the see details, see #56 and #59
+      # There's no better way than to check the details, see #56 and #59
       if code == grpc.StatusCode.UNKNOWN and error.details() not in {'Stream removed'}:
         raise error
 
