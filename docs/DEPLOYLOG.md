@@ -445,9 +445,9 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
-docker build -t fontbakery/base-javascript:1 containers/base/javascript;
-docker tag fontbakery/base-javascript:1 gcr.io/fontbakery-168509/base-javascript:1
-docker push gcr.io/fontbakery-168509/base-javascript:1
+docker build -t fontbakery/base-javascript:3 containers/base/javascript;
+docker tag fontbakery/base-javascript:3 gcr.io/fontbakery-168509/base-javascript:3
+docker push gcr.io/fontbakery-168509/base-javascript:3
 
 docker build -t fontbakery/base-python:1 containers/base/python;
 docker tag fontbakery/base-python:1 gcr.io/fontbakery-168509/base-python:1
@@ -469,14 +469,19 @@ kubectl apply -f kubernetes/gcloud-fontbakery-storage-persistence.yaml
 
 kubectl apply -f kubernetes/gcloud-fontbakery-worker.yaml
 
-kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-reports.yaml
+kubectl apply -f kubernetes/minikube-fontbakery-init-workers.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
 
-kubectl apply -f kubernetes/gcloud-fontbakery-api.yaml
+kubectl apply -f kubernetes/minikube-fontbakery-github-auth.yaml
+kubectl apply -f kubernetes/minikube-fontbakery-github-pr.yaml
+
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-csvupstream.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-gfapi.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-githubgf.yaml
 
+kubectl apply -f kubernetes/gcloud-dispatcher.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-api.yaml
 ```
 ### delete deployments
 
@@ -569,8 +574,8 @@ kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
 # do once:
 $ gcloud auth configure-docker
 # instead of the old workflow
-$ gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:1
+$ gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:3
 # we now use simply
-$ docker push gcr.io/fontbakery-168509/base-javascript:1
+$ docker push gcr.io/fontbakery-168509/base-javascript:3
 # that's all
 ```
