@@ -12,19 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-all: push
-
-TAG = 0.1.0
-PREFIX = codylundquist/helm-rethinkdb-cluster
-
 buildprobe:
 	(cd ./rethinkdb-probe && ./build-probe.sh)
-
-container: buildprobe
-	docker build -t $(PREFIX):$(TAG) .
-
-push: container
-	docker push $(PREFIX):$(TAG)
-
-clean:
-	docker rmi $(PREFIX):$(TAG)
