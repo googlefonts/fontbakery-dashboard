@@ -71,16 +71,16 @@ if [[ -n "${PROXY}" ]]; then
   set -x
   exec rethinkdb \
     proxy \
-    --canonical-address ${POD_IP} \
     --initial-password ${RETHINKDB_PASSWORD} \
+    --canonical-address ${POD_IP} \
     ${JOIN_ENDPOINTS} \
     ${@}
 else
   set -x
   exec rethinkdb \
     --server-name ${SERVER_NAME} \
-    --canonical-address ${POD_IP} \
     --initial-password ${RETHINKDB_PASSWORD} \
+    --canonical-address ${POD_IP} \
     ${JOIN_ENDPOINTS} \
     ${@}
 fi
