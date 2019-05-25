@@ -13,7 +13,7 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:3
+        image: gcr.io/fontbakery-168509/base-javascript:4
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
@@ -22,6 +22,11 @@ spec:
               secretKeyRef:
                 name: external-resources
                 key: web-server-cookie-secret
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 3000
         # demanded by https://cloud.google.com/kubernetes-engine/docs/concepts/ingress

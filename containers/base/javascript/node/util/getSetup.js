@@ -114,6 +114,8 @@ function getSetup() {
     _subSetupGetter(dbSetup, 'rethink', _multiEnvGetter(rethinkSetup, [
             ['host', rethinkProviderName + '_HOST']
           , ['port', rethinkProviderName + '_PORT']
+          , ['user', 'RETHINKDB_USER', null, 'admin']
+          , ['password', 'RETHINKDB_PASSWORD', null, '']
         ])
     );
     setup.db = dbSetup;
@@ -121,7 +123,7 @@ function getSetup() {
     // this kind of sub-setup is so common  we can
     // define it more compact it in here
     for(let [key, toFromParserDefault] of Object.entries({
-          amqp: [
+            amqp: [
                 ['host', 'RABBITMQ_SERVICE_SERVICE_HOST'
                               , null, process.env.BROKER || '127.0.0.1']
             ]

@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-init-workers
-        image: gcr.io/fontbakery-168509/base-javascript:3
+        image: gcr.io/fontbakery-168509/base-javascript:4
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
@@ -21,6 +21,11 @@ spec:
               configMapKeyRef:
                 name: env-config
                 key: ENVIRONMENT_VERSION
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 50051
         workingDir: /var/javascript

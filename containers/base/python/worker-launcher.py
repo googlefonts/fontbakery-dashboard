@@ -69,6 +69,7 @@ def setLoglevel(logger, loglevel):
   logger.setLevel(numeric_level)
 
 Setup = namedtuple('Setup', ['log_level', 'db_host', 'db_port'
+                           , 'db_user', 'db_password'
                            , 'msgqueue_host', 'cache_host', 'cache_port'
                            , 'persistence_host', 'persistence_port'
                            , 'ticks_to_flush'])
@@ -83,6 +84,9 @@ def getSetup():
     # Fall back to "rethinkdb-driver"
     db_host = os.environ.get("RETHINKDB_DRIVER_SERVICE_HOST")
     db_port = os.environ.get("RETHINKDB_DRIVER_SERVICE_PORT", 28015)
+
+  db_user = os.environ.get("RETHINKDB_USER", 'admin')
+  db_password = os.environ.get("RETHINKDB_PASSWORD", None)
 
   # FIXME: Where would BROKER be set? RABBITMQ_SERVICE_SERVICE_HOST is
   # set by kubernetes for the service named "rabbitmq-service" AFAIK
@@ -100,8 +104,8 @@ def getSetup():
 
   ticks_to_flush = int(os.environ.get("FONTBAKERY_CHECKER_TICKS_TO_FLUSH", 1))
 
-  return Setup(log_level, db_host, db_port, msgqueue_host
-                              , cache_host, cache_port
+  return Setup(log_level, db_host, db_port, db_user, db_password
+                              , msgqueue_host, cache_host, cache_port
                               , persistence_host, persistence_port
                               , ticks_to_flush)
 
@@ -220,7 +224,9 @@ def main():
   logger.info('loglevel: ' + setup.log_level)
 
   logger.info(' '.join(['RethinkDB', 'HOST', setup.db_host, 'PORT', setup.db_port]))
-  rdb_connection = r.connect(host=setup.db_host, port=setup.db_port, timeout=120)
+  rdb_connection = r.connect(host=setup.db_host, port=setup.db_port
+                           , user=setup.db_user, password=setup.db_password
+                           , timeout=120)
   rdb_name = 'fontbakery'
 
   queue_worker_name='fontbakery-worker'

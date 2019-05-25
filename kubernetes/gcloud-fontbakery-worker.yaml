@@ -42,12 +42,17 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-pool-1
       containers:
       - name: fontbakery-worker-sprinter
-        image: gcr.io/fontbakery-168509/base-python:1
+        image: gcr.io/fontbakery-168509/base-python:2
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
           - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
             value: "20"
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
           - name: BROWSERSTACK_USERNAME
             valueFrom:
               secretKeyRef:
@@ -101,12 +106,17 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-ssd-pool-1
       containers:
       - name: fontbakery-worker-sprinter-ssd
-        image: gcr.io/fontbakery-168509/base-python:1
+        image: gcr.io/fontbakery-168509/base-python:2
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
           - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
             value: "20"
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
           - name: BROWSERSTACK_USERNAME
             valueFrom:
               secretKeyRef:
@@ -154,12 +164,17 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker
-        image: gcr.io/fontbakery-168509/base-python:1
+        image: gcr.io/fontbakery-168509/base-python:2
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
           - name: FONTBAKERY_CHECKER_TICKS_TO_FLUSH
             value: "1"
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
           - name: BROWSERSTACK_USERNAME
             valueFrom:
               secretKeyRef:

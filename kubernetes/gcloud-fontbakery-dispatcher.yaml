@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-dispatcher
-        image: gcr.io/fontbakery-168509/base-javascript:3
+        image: gcr.io/fontbakery-168509/base-javascript:4
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
@@ -20,6 +20,11 @@ spec:
               secretKeyRef:
                 name: external-resources
                 key: dispatcher-manager-secret
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 50051
         workingDir: /var/javascript
