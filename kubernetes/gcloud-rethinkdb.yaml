@@ -1,0 +1,318 @@
+# $ gcloud compute disks list | grep rethink
+# rethinkdb-storage-ssd-1    us-central1-a    zone   100    pd-ssd    READY
+# rethinkdb-storage-ssd-2    us-central1-a    zone   100    pd-ssd    READY
+# rethinkdb-storage-ssd-3    us-central1-c    zone   100    pd-ssd    READY
+# rethinkdb-storage-ssd-4    us-central1-c    zone   100    pd-ssd    READY
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: rethinkdata-rethinkdb-0
+  labels:
+    failure-domain.beta.kubernetes.io/zone: us-central1-a
+    provisioning: static
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteOnce
+  gcePersistentDisk:
+    pdName: rethinkdb-storage-ssd-1
+    fsType: ext4
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: rethinkdata-rethinkdb-1
+  labels:
+    failure-domain.beta.kubernetes.io/zone: us-central1-a
+    provisioning: static
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteOnce
+  gcePersistentDisk:
+    pdName: rethinkdb-storage-ssd-2
+    fsType: ext4
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: rethinkdata-rethinkdb-2
+  labels:
+    failure-domain.beta.kubernetes.io/zone: us-central1-c
+    provisioning: static
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteOnce
+  gcePersistentDisk:
+    pdName: rethinkdb-storage-ssd-3
+    fsType: ext4
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: rethinkdata-rethinkdb-3
+  labels:
+    failure-domain.beta.kubernetes.io/zone: us-central1-c
+    provisioning: static
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteOnce
+  gcePersistentDisk:
+    pdName: rethinkdb-storage-ssd-4
+    fsType: ext4
+---
+# https://github.com/rosskukulinski/kubernetes-rethinkdb-cluster/blob/master/rethinkdb-services.yml
+# we creatd the services first
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-admin
+spec:
+# We can use `kubectl proxy` to access this, not exposing
+# it to the public internet (what LoadBalancer does).
+#  type: LoadBalancer
+# ClusterIP is the default
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  ports:
+   - port: 8080
+     targetPort: admin
+  selector:
+    db: rethinkdb
+    role: proxy
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb
+spec:
+  ports:
+  - port: 29015
+    targetPort: cluster
+  selector:
+    db: rethinkdb
+    role: replica
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-proxy
+spec:
+# I don't know why all these thing should be exposed to the internet
+# I don't want to see any `LoadBalancer` despite our one web frontend.
+#  type: LoadBalancer
+  ports:
+    - port: 28015
+      targetPort: driver
+  selector:
+    db: rethinkdb
+    role: proxy
+---
+# two replicas, one proxy...
+# https://github.com/rosskukulinski/kubernetes-rethinkdb-cluster/blob/master/rethinkdb-replica.1.yml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rethinkdb
+  labels:
+    db: rethinkdb
+spec:
+  serviceName: rethinkdb
+  selector:
+    matchLabels:
+      # has to match .spec.template.metadata.labels
+      db: rethinkdb
+      role: replica
+  serviceName: rethinkdb
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        # has to match .spec.selector.matchLabels
+        db: rethinkdb
+        role: replica
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
+      containers:
+        - name: rethinkdb
+          image: gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
+          #args:
+          #  - "--cache-size"
+          #  - "100"
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 28015
+            name: driver
+          - containerPort: 29015
+            name: cluster
+          # we'll have admin via a proxy
+          # - containerPort: 8080
+          #   name: admin
+          args:
+            - "/run.sh"
+            - "--bind"
+            - "all"
+            - "--no-http-admin"
+          volumeMounts:
+            - name: rethinkdata # must match volumeClaimTemplates.metadata.name
+              mountPath: /data
+          env:
+            - name: RETHINKDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: external-resources
+                  key: rethinkdb-password
+            - name: RETHINK_CLUSTER_SERVICE
+              value: rethinkdb
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: status.podIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          livenessProbe:
+            exec:
+              command:
+                - /rethinkdb-probe
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          readinessProbe:
+            exec:
+              command:
+                - /rethinkdb-probe
+            failureThreshold: 3
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 5
+          resources:
+            limits:
+              memory: 5Gi
+            requests:
+              cpu: 1
+              memory: 3Gi
+  volumeClaimTemplates:
+  - metadata:
+      name: rethinkdata # rethinkdata-rethinkdb-0 (-1, -2, -3 ...)
+    spec:
+      storageClassName: ""
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi
+      selector:
+        matchLabels:
+          provisioning: static
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  labels:
+    db: rethinkdb
+  name: rethinkdb-proxy
+spec:
+  # I had up to 16 running, ~ one per checker-vm
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        db: rethinkdb
+        role: proxy
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
+      containers:
+      - name: rethinkdb
+        image: gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
+        imagePullPolicy: Always
+        env:
+        - name: PROXY
+          value: "true"
+        - name: RETHINKDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: external-resources
+              key: rethinkdb-password
+        - name: RETHINK_CLUSTER_SERVICE
+          value: rethinkdb
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
+        - name: RETHINK_CLUSTER
+          value: rethinkdb
+        ports:
+        - containerPort: 8080
+          name: admin
+        - containerPort: 28015
+          name: driver
+        - containerPort: 29015
+          name: cluster
+        args:
+          - "/run.sh"
+          - "--bind"
+          - "all"
+        livenessProbe:
+          exec:
+            command:
+              - /rethinkdb-probe
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            command:
+              - /rethinkdb-probe
+          failureThreshold: 3
+          initialDelaySeconds: 15
+          periodSeconds: 10
+          successThreshold: 1
+          timeoutSeconds: 5
+        resources:
+          limits:
+            cpu: 1
+            memory: 5Gi
+          requests:
+            cpu: 1
+            memory: 2Gi
+        volumeMounts:
+        - mountPath: /data/rethinkdb_data
+          name: storage
+      volumes:
+      - name: storage
+        emptyDir: {}
