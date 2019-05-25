@@ -387,6 +387,8 @@ GITHUB_AUTH_ENGINEERS="[\"userlogina\", \"userloginb\", \"userloginc\"]"
 WEB_SERVER_COOKIE_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 DISPATCHER_MANAGER_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 
+RETHINKDB_PASSWORD=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
+
 # Note: the "-n fontbakery" argument is only needed if kubectl must address
 # a special namespace e.g. in minikube but not on gcloud
 
@@ -399,6 +401,7 @@ kubectl -n fontbakery create secret generic external-resources \
      --from-literal=github-auth-engineers="$GITHUB_AUTH_ENGINEERS"\
      --from-literal=web-server-cookie-secret=$WEB_SERVER_COOKIE_SECRET\
      --from-literal=dispatcher-manager-secret=$DISPATCHER_MANAGER_SECRET\
+     --from-literal=rethinkdb-password=$RETHINKDB_PASSWORD\
       ;
 
 ENVIRONMENT_VERSION="$(date)" # like: Mi 8. Nov 03:57:01 CET 2017
@@ -445,13 +448,17 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
-docker build -t fontbakery/base-javascript:3 containers/base/javascript;
-docker tag fontbakery/base-javascript:3 gcr.io/fontbakery-168509/base-javascript:3
-docker push gcr.io/fontbakery-168509/base-javascript:3
+docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-6 containers/rethinkdb
+docker tag fontbakery/rethinkdb:2.3.6-fontbakery-6 gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
+docker push gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
 
-docker build -t fontbakery/base-python:1 containers/base/python;
-docker tag fontbakery/base-python:1 gcr.io/fontbakery-168509/base-python:1
-docker push gcr.io/fontbakery-168509/base-python:1
+docker build -t fontbakery/base-javascript:4 containers/base/javascript;
+docker tag fontbakery/base-javascript:4 gcr.io/fontbakery-168509/base-javascript:4
+docker push gcr.io/fontbakery-168509/base-javascript:4
+
+docker build -t fontbakery/base-python:2 containers/base/python;
+docker tag fontbakery/base-python:2 gcr.io/fontbakery-168509/base-python:1
+docker push gcr.io/fontbakery-168509/base-python:2
 ```
 
 # Deploy
