@@ -21,6 +21,11 @@ spec:
               configMapKeyRef:
                 name: env-config
                 key: ENVIRONMENT_VERSION
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 50051
         workingDir: /var/javascript

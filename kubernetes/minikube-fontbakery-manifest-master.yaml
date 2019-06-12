@@ -16,5 +16,10 @@ spec:
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         workingDir: /var/javascript
         command: ["node", "node/ManifestMaster.js"]

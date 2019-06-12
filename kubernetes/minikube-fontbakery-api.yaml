@@ -20,6 +20,11 @@ spec:
               secretKeyRef:
                 name: external-resources
                 key: web-server-cookie-secret
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 3000
         # NOT IN PRODUCTION

@@ -25,5 +25,10 @@ spec:
               secretKeyRef:
                 name: external-resources
                 key: browserstack-access-key
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         workingDir: /var/python
         command: ["python3",  "-u", "worker-launcher.py"]

@@ -252,6 +252,7 @@ $ /fontbakery-dashboard/containers/base$ ./update_protobufs.sh
 ```
 $ minikube start
 $ . <(minikube docker-env)
+$ docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-1 containers/rethinkdb
 $ docker build -t fontbakery/base-javascript:1 containers/base/javascript/
 $ docker build -t fontbakery/base-python:1 containers/base/python/
 $ kubectl create namespace fontbakery
