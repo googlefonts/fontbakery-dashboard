@@ -20,7 +20,7 @@ define([
   , DispatcherController
 ) {
     "use strict";
-    /*global document, window, FileReader, Set*/
+    /*global document, window, FileReader, Set, console*/
     // jshint browser:true
 
     function makeFileInput(fileOnLoad, element) {
@@ -72,7 +72,6 @@ define([
         Array.from(container.getElementsByClassName(klass)).forEach(_makefileInput);
     }
 
-
     function getTemplatesContainer(klass) {
         return document.querySelector('body > .' + klass);
     }
@@ -113,10 +112,27 @@ define([
           , templatesContainer = getTemplatesContainer('report-templates')
           , socket = socketio('/')
           , report = new Report(container, templatesContainer, data)
+          , subscriptionRequest = 'subscribe-report'
           ;
 
+        function subscribe() {
+            return socket.emit(subscriptionRequest, { id: data.id });
+        }
+
         socket.on('changes-report', report.onChange.bind(report));
-        socket.emit('subscribe-report', { id: data.id });
+        subscribe();
+
+        // A disconnection will unsubscribe the socket on the server
+        // we'll have to reconnect
+        // since this is a new subscription, the server will send an
+        // initial document and it seems like the client is re-initializing
+        // the document correctly. CAUTION, this could be a source of a
+        // hard to find bug, but it seems alright.
+        function reconnectHandler (attemptNumber) {
+            console.log('socket on reconnect', '#'+attemptNumber+':', subscriptionRequest);
+            subscribe();
+        }
+        socket.on('reconnect', reconnectHandler);
     }
 
     function _initCollectionsInterface() {
@@ -138,10 +154,26 @@ define([
           , templatesContainer = getTemplatesContainer('collection-report-templates')
           , socket = socketio('/')
           , report = new CollectionReport(container, templatesContainer, data)
+          , subscriptionRequest = 'subscribe-collection'
           ;
 
+        function subscribe() {
+            socket.emit(subscriptionRequest, { id: data.id });
+        }
+
         socket.on('changes-collection', report.onChange.bind(report));
-        socket.emit('subscribe-collection', { id: data.id });
+        subscribe();
+        // A disconnection will unsubscribe the socket on the server
+        // we'll have to reconnect
+        // since this is a new subscription, the server will send an
+        // initial document and it seems like the client is re-initializing
+        // the document correctly. CAUTION, this could be a source of a
+        // hard to find bug, but it seems alright.
+        function reconnectHandler (attemptNumber) {
+            console.log('socket on reconnect', '#'+attemptNumber+':', subscriptionRequest);
+            subscribe();
+        }
+        socket.on('reconnect', reconnectHandler);
     }
 
 
@@ -161,7 +193,16 @@ define([
         var socket = socketio('/')
          , lastQuery = null
          , socketChangeHandler = null
+         , subscriptionRequest = 'subscribe-dashboard'
+         , subscribe = null
          ;
+
+        function reconnectHandler (attemptNumber) {
+            if(subscribe === null) return;
+            console.log('socket on reconnect', '#'+attemptNumber+':', subscriptionRequest);
+            subscribe();
+        }
+
         function onQueryFilterChange() {
             ignoreNextPopState = true;
             var hash = decodeURIComponent(window.location.hash) // it's a firefox bug apparently
@@ -184,7 +225,9 @@ define([
 
             if(socketChangeHandler) {
                 socket.off('changes-dashboard', socketChangeHandler);
+                socket.off('reconnect', reconnectHandler);
                 socketChangeHandler = null;
+                subscribe = null;
             }
             // replace the whole thing!
             var container = activateTemplate('dashboard-interface')
@@ -199,8 +242,12 @@ define([
 
             console.log('subscribe-dashboard, filter:' + queryFilter);
             socketChangeHandler = dashboard.onChange.bind(dashboard);
+            subscribe = function() {
+                return socket.emit('subscribe-dashboard', {filter: queryFilter});
+            };
             socket.on('changes-dashboard', socketChangeHandler);
-            socket.emit('subscribe-dashboard', {filter: queryFilter});
+            socket.on('reconnect', reconnectHandler);
+            subscribe();
         }
 
         // init
@@ -496,7 +543,7 @@ define([
                 if(pathparts[i+1]==='process')
                     i+=1; // => dispatcher/process/{id}
                     // falls through
-                    // now behaves exactly like report, but `id` is for collection_id
+                    // now behaves exactly like report, but `id` is for process_id
                 else {
                     data = defaultData;
                     break;

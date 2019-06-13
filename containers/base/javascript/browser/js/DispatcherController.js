@@ -73,6 +73,13 @@ define([
     _p._showProcess = function(processId) {
         var processElem = dom.createElement('div')
           , listener = this._onChangeProcess.bind(this, processElem)
+          , subscriptionRequest = 'subscribe-dispatcher-process'
+          , subscribe = null
+          , reconnectHandler = (attemptNumber) => {
+              if(subscribe === null) return;
+              console.log('socket on reconnect', '#'+attemptNumber+':', subscriptionRequest);
+              subscribe();
+            }
           , destructor = (e)=>{
                 //jshint unused:vars
                 this._currentProcessListener = null;
@@ -82,10 +89,13 @@ define([
                 this._log.info('OH, Hey!, the destroy event got received');
 
                 this._socket.off('changes-dispatcher-process', listener);
-                if(processId)
+                if(processId) {
+                    subscribe = null;
+                    this._socket.off('reconnect', reconnectHandler);
                     this._socket.emit('unsubscribe-dispatcher-process', {
                         processId: processId
                     });
+                }
             }
           ;
 
@@ -99,10 +109,12 @@ define([
         this._socket.on('changes-dispatcher-process', listener);
         this._container.addEventListener('destroy', destructor, false);
         processElem.addEventListener('destroy', destructor, false);
-        if(processId)
-            this._socket.emit('subscribe-dispatcher-process', {
-                processId: processId
-            });
+        if(processId) {
+            this._socket.on('reconnect', reconnectHandler);
+            subscribe = ()=>this._socket.emit(subscriptionRequest
+                                                , { processId: processId});
+            subscribe();
+        }
     };
 
     _p.onInitializingUI = function(...data) {
@@ -139,7 +151,6 @@ define([
         console.log('onChangeProcess', ...data);
         var [processId, processState, uiDescriptions, isInit] = data;
         this._renderProcess(processElem, processId, processState, uiDescriptions, isInit);
-
     };
 
     _p._createUserInteractions = function(uiDescriptions, isInit, pathParts) {
