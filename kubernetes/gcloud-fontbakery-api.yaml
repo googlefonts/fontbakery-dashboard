@@ -42,17 +42,32 @@ spec:
         # command: ["node", "--inspect=0.0.0.0:9229", "node/api.js"]
         command: ["npm", "start"]
 ---
+apiVersion: cloud.google.com/v1beta1
+kind: BackendConfig
+metadata:
+  name: fontbakery-api-backendconfig
+spec:
+  timeoutSec: 900
+  # TODO: need this for socketIO and multiple fontbakery-api servers
+  # needs a "VPC-native cluster" (--enable-ip-alias) but the current
+  # cluster was not created like this and can't be changed on the fly
+  # apparently.
+  # see: https://cloud.google.com/kubernetes-engine/docs/how-to/configure-backend-service#setting_generated_cookie_affinity
+  # sessionAffinity:
+  #  affinityType: "GENERATED_COOKIE" # OR "CLIENT_IP"
+---
 apiVersion: v1
 kind: Service
 metadata:
   name: fontbakery-api
   labels:
     run: fontbakery-api
+  annotations:
+    # see sessionAffinity in fontbakery-api-backendconfig
+    # cloud.google.com/neg: '{"ingress": true}'
+    beta.cloud.google.com/backend-config: '{"ports": {"80":"fontbakery-api-backendconfig"}}'
 spec:
   type: NodePort
-  # loadBalancerIP: "35.225.170.228"
-# need this for socketIO
-#  sessionAffinity: ClientIP
   ports:
     - port: 80
       targetPort: 3000
