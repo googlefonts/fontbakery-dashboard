@@ -29,6 +29,7 @@ spec:
         - containerPort: 50051
         workingDir: /var/javascript
         # command: ["node", "node/dispatcher/DispatcherProcessManager.js", "-p", "50051"]
+        #  kf port-forward fontbakery-dispatcher-12334-123 9229:9229
         command: ["node", "--inspect=0.0.0.0:9229", "node/dispatcher/DispatcherProcessManager.js", "-p", "50051"]
 ---
 apiVersion: v1

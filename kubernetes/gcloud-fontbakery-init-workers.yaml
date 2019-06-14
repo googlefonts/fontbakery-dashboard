@@ -29,8 +29,8 @@ spec:
         ports:
         - containerPort: 50051
         workingDir: /var/javascript
-        # command: ["node", "node/InitWorkers.js", "-p", "50051"]
-        command: ["node", "--inspect=0.0.0.0:9222", "node/InitWorkers.js", "-p", "50051"]
+        command: ["node", "node/InitWorkers.js", "-p", "50051"]
+        #command: ["node", "--inspect=0.0.0.0:9222", "node/InitWorkers.js", "-p", "50051"]
 ---
 apiVersion: v1
 kind: Service
