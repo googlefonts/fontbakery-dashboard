@@ -263,6 +263,7 @@ define([
           , renderers = {
                 'tasks': this._statusMakeTasks.bind(this, uiDescriptions, isInit, processId, stepPathKey)
               , 'isActivated': null// done via css
+              , 'augmented:label': null// done in here
               , 'finishedStatus': this._statusMakeStatusEntry.bind(this, 'div')// same as in task.history, but should also be a indicator
               , '@default': this._statusMakeKeyValue
             }
@@ -272,6 +273,9 @@ define([
           ;
         dom.insertAtMarkerComment(target, 'insert: step-key'
                                             , dom.createTextNode(stepKey));
+        dom.insertAtMarkerComment(target, 'insert: step-label'
+                                            , dom.createTextNode(step['augmented:label']));
+
         dom.insertAtMarkerComment(target, 'insert: user-interfaces', userInterfaces);
         this._renderDOMToTarget(target, renderers, order, step);
 

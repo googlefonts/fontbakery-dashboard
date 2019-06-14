@@ -58,12 +58,12 @@ function makeClass(name, parentPrototype, constructor) {
  * });
  *
  */
-function stepFactory(name, tasks) {
+function stepFactory(name, tasks, anySetup) {
     const Parent = Step;
     // this injects Parent and tasks
     // also, this is like the actual constructor implementation.
-    function StepConstructor (process, state) {
-        Parent.call(this, process, state, tasks);
+    function StepConstructor (process, state, ...args) {
+        Parent.call(this, process, state, tasks, anySetup, ...args);
     }
     return makeClass(name, Parent.prototype, StepConstructor);
 }
@@ -1304,14 +1304,14 @@ const FailStep = stepFactory('FailStep', {
 const stepCtors = [
               // * Review form info is good.
               // * Form then updates spreadsheet (if necessary).
-              ApproveProcessStep
+              [ApproveProcessStep, {label: 'Review the Request'}]
               // * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
-            , GetFilesPackageStep
-            , QAToolsStep
-            , SignOffAndDispatchStep
+            , [GetFilesPackageStep, {label: 'Generate the Files Package'}]
+            , [QAToolsStep, {label: 'Quality Assurance'}]
+            , [SignOffAndDispatchStep, {label: 'Create the Pull Request'}]
           //, DispatchStep
     ]
-  , FailStepCtor = FailStep
+  , FailStepCtor = [FailStep, {label: 'Report the Issue'}]
   , FinallyStepCtor = null
   ;
 

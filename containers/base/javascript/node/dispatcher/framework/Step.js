@@ -28,7 +28,7 @@ const {mixin: stateManagerMixin} = require('./stateManagerMixin')
  *             status without interaction otherwise: just keep waiting
  *     * hard: set the FAILED status
  */
-function Step(process, state, taskCtors, anySetup) {
+function Step(process, state, taskCtors, anySetup, {label=this.constructor.name}={}) {
     // expectedAnswersMixin can extract a pbMessage from a commandMessage
     // in _executeExpectedAnswer, but the concrete implementation must
     // define the message Classes and namespace.
@@ -39,12 +39,12 @@ function Step(process, state, taskCtors, anySetup) {
               , typesNamespace: '(no namespace)'
               };
     this._any = new ProtobufAnyHandler(process.log, anySetup_.knownTypes, anySetup_.typesNamespace);
-
     Object.defineProperties(this, {
         process: {value: process}
         // needed by expectedAnswersMixin
       , secret: {value: process.secret}
       , log: {value: process.log}
+      , label: {value: label}
     });
 
     // taskCtors must be an object of {taskName: TaskConstructor}
@@ -179,6 +179,14 @@ const stateDefinition = {
 
 stateManagerMixin(_p, stateDefinition);
 
+const _stateManagerSerialize = _p.serialize;
+_p.serialize = function(options) {
+    var data = _stateManagerSerialize.call(this, options);
+    if(options && options.augment && options.augment.has('STEP.LABEL'))
+        data['augmented:label'] = this.label;
+    return data;
+};
+
 _p.uiHandleFailedStep = function(){
     return {
         roles: ['input-provider', 'engineer']
@@ -196,6 +204,7 @@ _p.uiHandleFailedStep = function(){
 };
 
 _p.callbackHandleFailedStep = function([requester, sessionID], values, ...continuationArgs) {
+    //jshint unused:vars
     var { reason } = values;
     this._finishedFAILED('Failing with reason: ' + reason);
 };

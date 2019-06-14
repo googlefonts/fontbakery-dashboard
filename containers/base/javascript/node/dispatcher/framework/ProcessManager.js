@@ -563,7 +563,11 @@ _p._getProcessStateForClient = function(process) {
     // are sent separated from the actual process data.
     // TODO: introduce and filter the special key "private"?
     processState.setProcessData(JSON.stringify(
-            process.serialize({filterKeys: new Set(['expectedAnswer'])})
+            process.serialize({
+                filterKeys: new Set(['expectedAnswer'])
+                // I don't want this in the database, but for the UI
+              , augment: new Set(['STEP.LABEL'])
+            })
     ));
     processState.setUserInterface(JSON.stringify(process.getRequestedUserInteractions()));
     return processState;

@@ -546,29 +546,40 @@
         }
 
         .dispatcher-interface .dispatcher-process .step > .header {
-            margin: .5em 1em 0 0;
+            margin: .5em 0 0 0;
+            padding: .5em;
             display: block;
             cursor: pointer;
-        }
-
-        .dispatcher-interface .dispatcher-process .step > .header > * {
-            padding: .5em;
-        }
-
-        .dispatcher-interface .dispatcher-process .step > .header h3{
-            padding: .5em;
-            margin-bottom: 0;
             background: #888;
             color: #ddd;
         }
 
-        .dispatcher-interface .dispatcher-process .step.active > .header h3{
+        .dispatcher-interface .dispatcher-process .step > .header > * {
+            font-size: 1em;
+        }
+
+        .dispatcher-interface .dispatcher-process .step > .header h3 {
+            display: inline;
+            font-weight: normal;
+            color: #333;
+        }
+
+        .dispatcher-interface .dispatcher-process .step.finished > .header h3 {
+            color: black;
+        }
+
+        .dispatcher-interface .dispatcher-process .step.active > .header h3 {
+            color: LemonChiffon;
+        }
+
+        .dispatcher-interface .dispatcher-process .step.active > .header {
             background: #333;
             color: white;
         }
 
-        .dispatcher-interface .dispatcher-process .step.finished > .header h3{
+        .dispatcher-interface .dispatcher-process .step.finished > .header {
             color: white;
+            background: #aaa;
         }
 
         .dispatcher-interface .dispatcher-process.OK > .header::after,
@@ -608,7 +619,7 @@
 
         .dispatcher-interface .dispatcher-process .step .task{
             margin: 0 0 .5em 0;
-            padding: .5em 0;
+            padding: .5em;
             background: white;
         }
         .dispatcher-interface .dispatcher-process .step .task h4 {
@@ -731,7 +742,7 @@
 
     <li class='step'>
         <div class="header">
-            <h3>Step #<!-- insert: step-key --></h3>
+            <span>Step #<!-- insert: step-key --></span> <h3><!-- insert: step-label --></h3>
             <!-- insert: finishedStatus -->
         </div>
         <div class="body">

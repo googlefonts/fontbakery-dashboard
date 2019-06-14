@@ -17,7 +17,7 @@ function Process(resources
                          * first failed step and closes the process.
                          * => Needs a Task that does this!
                          *
-                         * I.e. Create an issue somewhere on GitHub.
+                         * E.g. Create an issue somewhere on GitHub.
                          */
                       , FailStepCtor
                         /*
@@ -56,10 +56,20 @@ exports.Process = Process;
 const _p = Process.prototype;
 _p.constructor = Process;
 
+_p._stepFactory = function (definition, state) {
+    // definition can be either just the constructor or an array
+    // of [function:Constructor, object:options]
+    var [Ctor, ...args] = (typeof definition === 'function')
+                ? [definition] // options = undefined
+                : definition
+                ;
+    return new Ctor(this, state, ...args);
+};
+
 _p._initSteps = function() {
     var steps = [];
     for(let StepCtor of this._stepCtors.steps)
-        steps.push(new StepCtor(this, null));
+        steps.push(this._stepFactory(StepCtor, null));
     return steps;
 };
 
@@ -77,24 +87,24 @@ _p._loadSteps = function(stepStates) {
     // can be built into StepCtor probably.
     var steps = [];
     for(let [i, StepCtor] of this._stepCtors.steps.entries())
-        steps.push(new StepCtor(this, stepStates[i]));
+        steps.push(this._stepFactory(StepCtor, stepStates[i]));
     return steps;
 };
 
 _p._initFailStep = function() {
-    return new this._stepCtors.FailStep(this, null);
+    return this._stepFactory(this._stepCtors.FailStep, null);
 };
 
 _p._loadFailStep = function(state) {
-    return new this._stepCtors.FailStep(this, state);
+    return this._stepFactory(this._stepCtors.FailStep, state);
 };
 
 _p._initFinallyStep = function() {
-    return new this._stepCtors.FinallyStep(this, null);
+    return this._stepFactory(this._stepCtors.FinallyStep, null);
 };
 
 _p._loadFinallyStep = function(state) {
-    return new this._stepCtors.FinallyStep(this, state);
+    return this._stepFactory(this._stepCtors.FinallyStep, state);
 };
 
 const dateTypeDefinition = {

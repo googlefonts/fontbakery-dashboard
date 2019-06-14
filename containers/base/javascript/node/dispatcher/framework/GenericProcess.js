@@ -93,7 +93,7 @@ function GenericProcess(resources, state) {
     if('steps' in state) {
         stepCtors = [];
         for(let i=0,l=state.steps.length;i<l;i++)
-            stepCtors.push(GenericStep);
+            stepCtors.push(['(Generic Step)', GenericStep]);
 
     }
     manipulateStateManagerValidation.call(this, state
