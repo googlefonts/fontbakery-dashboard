@@ -126,12 +126,6 @@ _p._expectApproveProcess = function() {
                                       , 'uiApproveProcess');
 };
 
-_p._expectEditInitialState = function() {
-    this._setExpectedAnswer('Edit Initial State'
-                                      , 'callbackEditInitialState'
-                                      , 'uiEditInitialState');
-};
-
 /**
  * - Review form info is good.
  * - Form then updates spreadsheet (if necessary).
@@ -155,19 +149,50 @@ _p.uiApproveProcess = function() {
       , ui: [
             {
                 type: 'info'
-              , content: 'Please review that the submitted info is good.'
+              , content: '### Please review that the submitted info is good:'
             }
+
           , {   name: 'action'
               , type:'choice'
               , label: 'Pick one:'
               , options: actionOptions
               //, default: 'accepted' // 0 => the first item is the default
             }
+          , {
+                type: 'info'
+              , condition: ['action', '!', 'edit']
+              , content: `
+**Family Name** \`${this.process.familyName}\`<br />
+**GitHub Repository** \`${this.process.repoNameWithOwner}\`<br />
+**Where are the TTF-files in your repo (folder and file-prefix)** \`${this.process._state.fontfilesPrefix}\`<br />
+**Genre** \`${this.process._state.genre}\`
+`
+            }
           , {   name: 'reason'
               , condition: ['action', 'dismiss']
               , type: 'line' // input type:text
               , label: 'Why do you dismiss this process request?'
             }
+            // spread! :-)
+            , ..._getInitNewUI().map(item=>{
+                // show only when "action" has the value "register"
+                if(item.name === 'genre' && this.process._state.genre)
+                    item.default = this.process._state.genre;
+                if(item.name === 'fontfilesPrefix')
+                    item.default = this.process._state.fontfilesPrefix;
+                if(item.name === 'ghNameWithOwner')
+                    item.default = this.process.repoNameWithOwner;
+                if(item.name === 'familyName')
+                    item.default = this.process.familyName;
+                if(item.name === 'isOFL')
+                    // always true at this point
+                    // and we can't go on otherwise (we don't even store that state).
+                    // the task can be dismissed in uiApproveProcess though.
+                    //item.default = true;
+                    return null;
+                item.condition = ['action', 'edit'];
+                return item;
+            }).filter(item=>!!item)
             /**
             // depending whether this is new or updated, we may need a different
             // form here!
@@ -198,7 +223,8 @@ _p.callbackApproveProcess = function([requester, sessionID]
     }
     else if(this.process.initType === 'register' && action === 'edit' ) {
         // could be two different UIs for either "update" or "register" processes.
-        this._expectEditInitialState();
+        // validate here!
+        return this._editInitialState(requester, values);
     }
     else if(action === 'dismiss' )
         this._setFAILED('**' + requester + '** decided to FAIL this process '
@@ -207,47 +233,46 @@ _p.callbackApproveProcess = function([requester, sessionID]
         throw new Error('Pick one of the actions from the list.');
 };
 
-_p.uiEditInitialState = function() {
-    // assert this.initType === 'register'
-    if(this.process.initType !== 'register')
-        throw new Error('NOT IMPLEMENTED: initType "'+this.process.initType+'"');
+// _p.uiEditInitialState = function() {
+//     // assert this.initType === 'register'
+//     if(this.process.initType !== 'register')
+//         throw new Error('NOT IMPLEMENTED: initType "'+this.process.initType+'"');
+//
+//     var result = {
+//         roles: ['input-provider', 'engineer']
+//       , ui: _getInitNewUI().map(item=>{
+//             // show only when "action" has the value "register"
+//             if(item.name === 'genre' && this.process._state.genre)
+//                 item.default = this.process._state.genre;
+//             if(item.name === 'fontfilesPrefix')
+//                 item.default = this.process._state.fontfilesPrefix;
+//             if(item.name === 'ghNameWithOwner')
+//                 item.default = this.process.repoNameWithOwner;
+//             if(item.name === 'familyName')
+//                 item.default = this.process.familyName;
+//             if(item.name === 'isOFL')
+//                 // always true at this point
+//                 // and we can't go on otherwise (we don't even store that state).
+//                 // the task can be dismissed in uiApproveProcess though.
+//                 //item.default = true;
+//                 return null;
+//             return item;
+//         }).filter(item=>!!item)
+//     };
+//     return result;
+// };
 
-    var result = {
-        roles: ['input-provider', 'engineer']
-      , ui: _getInitNewUI().map(item=>{
-            // show only when "action" has the value "register"
-            if(item.name === 'genre' && this.process._state.genre)
-                item.default = this.process._state.genre;
-            if(item.name === 'fontfilesPrefix')
-                item.default = this.process._state.fontfilesPrefix;
-            if(item.name === 'ghNameWithOwner')
-                item.default = this.process.repoNameWithOwner;
-            if(item.name === 'familyName')
-                item.default = this.process.familyName;
-            if(item.name === 'isOFL')
-                // always true at this point
-                // and we can't go on otherwise (we don't even store that state).
-                // the task can be dismissed in uiApproveProcess though.
-                //item.default = true;
-                return null;
-            return item;
-        }).filter(item=>!!item)
-    };
-    return result;
-};
-
-_p.callbackEditInitialState = function([requester, sessionID]
-                                        , values, ...continuationArgs) {
+_p._editInitialState = function(requester, values) {
     // jshint unused:vars
-    values.action = 'register';
+    values.registered = false;
     values.note = this.process._state.note;
     // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
     values.isOFL = true;
     return callbackPreInit(this.resources, requester, values)
     .then(([message, initArgs])=>{
         if(message) {
-            // Should just stay in the editInitialState realm until it's good.
-            this._expectEditInitialState();
+            // Should just stay in the expectApproveProcess realm until it's good.
+            this._expectApproveProcess();
             return {
                 status: 'FAIL'
               , message: message
@@ -1300,7 +1325,6 @@ const FailStep = stepFactory('FailStep', {
 });
 
 
-
 const stepCtors = [
               // * Review form info is good.
               // * Form then updates spreadsheet (if necessary).
@@ -1527,26 +1551,26 @@ function uiPreInit(resources) {
         // don't have a repoNameWithOwner to check against ;-)
         roles: null
       , ui: [
-            {   name: 'action'
-              , type:'choice' // => could be a select or a radio
-              , label: 'What do you want to do?'
-              , options: [
-                    ['Update a registered Google Fonts font family.', 'update']
-                  , ['Register and update a new family to Google Fonts.', 'register']]
-              , default: 'update' // 0 => the first item is the default
-            }
             // condition:update is ~ update an existing family, hence just a select input
-          , {   // don't want to create something overly complicated here,
+            {   // don't want to create something overly complicated here,
                 // otherwise we'd need a dependency tree i.e. to figure if
                 // a condition element is visible or not. But, what we
                 // can do is always make a condition false when it's dependency
                 // is not available or defined.
                 name: 'family'
-              , condition: ['action', 'update'] // show only when "action" has the value "update"
+              , condition: ['registered', true] // show only when "registered" has the value `true`
               , type:'choice' // => could be a select or a radio
-              , label: 'Pick one:'
+              , label: 'Pick the family to request an update:'
               , options: familyList
               //, default: 'Family Name' // 0 => the first item is the default
+            }
+          , {   name: 'registered'
+              , type:'binary'
+              , label: 'The family is not listed in the drop down.'
+              , invert: true // This inverts the interface, so we can change
+                             // the question, asking for the opposite, but
+                             // keep the variable name and default value.
+              , default: true
             }
         ]
     };
@@ -1555,8 +1579,8 @@ function uiPreInit(resources) {
             // added, but also for new entries, when initial authors are added.
             // This info is not yet in the CSV though!
     var newUi = _getInitNewUI().map(item=>{
-        // show only when "action" has the value "register"
-        item.condition = ['action', 'register'];
+        // show only when "registered" has the value "register"
+        item.condition = ['registered', false];
         return item;
     });
     result.ui.push(...newUi);
@@ -1631,17 +1655,20 @@ function callbackPreInit(resources, requester, values) {
         });
     };
 
-    if(values.action === 'register') {
+    if(values.registered === false) {
         initType = 'register';
+        // either, we could change the init type transparently OR we could
+        // just deny to go on, because update is the right choice here ...
+        FIXME('if this is requesting to register, but the font is already registered, we need to communicate this ...');
         checkNew();
         promise = Promise.resolve();
     }
-    else if(values.action === 'update') {
+    else if(values.registered === true) {
         initType = 'update';
         promise = checkUpdate();
     }
     else {
-        messages.push('"action" value is unexpected: ' + values.action);
+        messages.push('"registered" value is unexpected: ' + values.registered);
         promise = Promise.resolve();
     }
 
