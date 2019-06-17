@@ -715,15 +715,20 @@ define([
     _p._uiMakeBinary = function(description, disabled) {
         // jshint: unused:vars
         var input = dom.createElement('input', {type: 'checkbox'});
-        if(description.default)
-            input.checked = true;
+        input.checked = description.invert
+                    ? !description.default
+                    : !!description.default // not inverted
+                    ;
         if(disabled) input.disabled = true;
         return this._uiLabel(description, input, true);
     };
 
     _p._uiGetBinary = function(description, input) {
         // jshint: unused:vars
-        return !!input.checked;
+        return description.invert
+                    ? !input.checked
+                    : !!input.checked // not inverted
+                    ;
     };
 
     _p._getValue = function(uiField, input) {
