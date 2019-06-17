@@ -547,9 +547,13 @@ define([
             named[key] = [uiField, label, input];
         }
 
-        function change(uiField, input, value, target/*, event (not always!)*/) {
+        function change(uiField, input, value, negated, target/*, event (not always!)*/) {
             // jshint validthis:true, unused:vars
-            target.style.display = this._getValue(uiField, input) === value
+
+            var visible =  this._getValue(uiField, input) === value;
+            if(negated)
+                visible = !visible;
+            target.style.display = visible
                                         // visible
                                         ? null
                                         // invisible
@@ -557,15 +561,26 @@ define([
                                         ;
         }
         var conditionName, conditionValue, condition_uiField_Input
-          , conditionUiField, conditionInput;
+          , conditionUiField, conditionInput
+          , negated
+          ;
         for(key in named) {
             uiField = named[key][0];
             label = named[key][1];
             // input = named[key][2];
             if(!('condition' in uiField))
                 continue;
+
             conditionName = uiField.condition[0];
-            conditionValue = uiField.condition[1];
+            if(uiField.condition.length >= 3 && uiField.condition[1] === '!') {
+                conditionValue = uiField.condition[2];
+                negated = true;
+            }
+            else {
+                conditionValue = uiField.condition[1];
+                negated = false;
+            }
+
             condition_uiField_Input = named[conditionName];
             if(!condition_uiField_Input)
                 // not found
@@ -573,6 +588,8 @@ define([
             conditionUiField = condition_uiField_Input[0];
             if('condition' in conditionUiField)
                 // prevents deep and circular dependencies
+                // i.e. a field that is used as condition can't define
+                // a condition itself. To keep it simple.
                 continue;
 
             conditionInput = condition_uiField_Input[2];
@@ -587,6 +604,7 @@ define([
                         , conditionUiField
                         , conditionInput
                         , conditionValue
+                        , negated
                         , label)
                     , false);
             // aaand init
@@ -594,6 +612,7 @@ define([
                       , conditionUiField
                       , conditionInput
                       , conditionValue
+                      , negated
                       , label);
         }
 
