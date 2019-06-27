@@ -11,7 +11,8 @@ const { Process:Parent } = require('./framework/Process')
       , FontBakeryFinished
       , GenericStorageWorkerResult
       , File
-      , Files } = require('protocolbuffers/messages_pb')
+      , Files
+      , FamilyData } = require('protocolbuffers/messages_pb')
     , { mixin: stateManagerMixin } = require('./framework/stateManagerMixin')
     ;
 
@@ -523,23 +524,63 @@ const ApproveProcessStep = stepFactory('ApproveProcessStep', {
 
 // * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
 const GetFilesPackageTask = (function() {
-const GetFilesPackageTask = taskFactory('GetFilesPackageTask');
+
+var anySetup = {
+    knownTypes: { FamilyData }
+};
+
+const GetFilesPackageTask = taskFactory('GetFilesPackageTask', anySetup);
 const _p = GetFilesPackageTask.prototype;
 
 /**
  * Expected by Parent.
  */
 _p._activate = function() {
-    FIXME('This can timeout if the google/fonts repo is not fetched yet!'
-          ,'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
-          , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
-          // NOW we can respond via amqp execute from getUpstreamFamilyFiles!
-    return this.resources.getUpstreamFamilyFiles(this.process.familyName)
-    .then(familyDataMessage=>Promise.all([
+    // This used to timeout when the google/fonts repo was not fetched
+    // in the upstream mainifestSource, e.g. because of a restart of
+    // the service. That can still happen when using the `get` gRPC interface
+    // with a too small deadline. Now, this uses the processCommand path.
+    // the error with the gRPC timeout was:
+    //    'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
+    //  , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
+    //
+    // NOW we can respond via amqp execute from getUpstreamFamilyFiles!
+    // This has also the advantage, that the user interface will report
+    // what it is currently waiting for. A long unresponsive phase,
+    // because a Tasks `activate` takes long time is not optimal.
+    var [callbackName, ticket] = this._setExpectedAnswer(
+                                    'Creating files package.'
+                                  , 'callbackReceiveFiles'
+                                  , null)
+      , processCommand = new ProcessCommand()
+      ;
+    processCommand.setTargetPath(this.path.toString());
+    processCommand.setTicket(ticket);
+    processCommand.setCallbackName(callbackName);
+    processCommand.setResponseQueueName(this.resources.executeQueueName);
+    return this.resources.getUpstreamFamilyFiles(this.process.familyName
+                                                        , processCommand);
+};
+
+_p.callbackReceiveFiles = function([requester, sessionID]
+                                , familyDataMessage /* a FamilyData */
+                                , ...continuationArgs) {
+    // jshint unused:vars
+    if(familyDataMessage.getStatus() === FamilyData.Result.FAIL) {
+        // hmm, this must not fail directly, it could also suggest to
+        // change the spreadsheet and try again!
+        // FIXME: if this fails inform the user abpout steps to do and
+        // provide options.
+        this._setFAILED('**' + requester + '** can\'t create files package.'
+                    + '\n\n **ERROR** ' + familyDataMessage.getError());
+        return;
+    }
+
+    return Promise.all([
               this.resources.persistence.put([familyDataMessage.getFiles()])
                                         .then(storageKeys=>storageKeys[0])
             , familyDataMessage
-    ]))
+    ])
     .then(([storageKey, familyDataMessage])=> {
         /*
         message FamilyData {

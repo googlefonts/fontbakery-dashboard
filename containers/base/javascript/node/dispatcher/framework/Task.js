@@ -279,7 +279,7 @@ _p._setExpectedAnswer = function(waitingFor
         this._setPENDING('Waiting for ' + (requestedUserInteractionName
                     ? 'user interaction'
                     : 'external resource'
-                    ) + ' '+ waitingFor);
+                    ) + ': '+ waitingFor);
     return this.__setExpectedAnswer(waitingFor, callbackName
                         , requestedUserInteractionName, continuationArgs);
 };
