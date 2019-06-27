@@ -100,6 +100,19 @@ function DispatcherProcessManager(setup, ...args) {
                     });
             }
         }
+      , getUpstreamFamilySourceDetails: {
+            value: familyName=>{
+                // rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){}
+                // returns a promise for SourceDetails
+                var familyRequestMessage = _makeFamilyRequest('upstream', familyName);
+                return this._manifestUpstreamClient.getSourceDetails(familyRequestMessage)
+                    .then(null, error=>{
+                        this._log.error(`Error getUpstreamFamilyFiles(${familyName})`, error);
+                        // re-raise
+                        throw error;
+                    });
+            }
+        }
       , getGoogleFontsAPIFamilyFiles: {
             value: familyName=>{
                 // rpc Get (FamilyRequest) returns (FamilyData){}

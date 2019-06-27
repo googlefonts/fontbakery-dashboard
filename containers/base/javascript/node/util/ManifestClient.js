@@ -66,6 +66,14 @@ _p.list = function(manifestSourceId){
     .then(null, error=>this._raiseUnhandledError(error));
 };
 
+//  rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){}
+_p.getSourceDetails = function(familyRequest) {
+    return nodeCallback2Promise((callback)=>
+        this._client.getSourceDetails(familyRequest, {deadline: this.deadline}, callback))
+    .then(null, error=>this._raiseUnhandledError(error));
+};
+
+
 _p.waitForReady = function() {
     return nodeCallback2Promise((callback)=>
                     this._client.waitForReady(this.deadline, callback))

@@ -110,6 +110,11 @@ class ManifestStub(object):
         request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
         response_deserializer=messages__pb2.FamilyNamesList.FromString,
         )
+    self.GetSourceDetails = channel.unary_unary(
+        '/fontbakery.dashboard.Manifest/GetSourceDetails',
+        request_serializer=messages__pb2.FamilyRequest.SerializeToString,
+        response_deserializer=messages__pb2.SourceDetails.FromString,
+        )
 
 
 class ManifestServicer(object):
@@ -156,6 +161,13 @@ class ManifestServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def GetSourceDetails(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_ManifestServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -173,6 +185,11 @@ def add_ManifestServicer_to_server(servicer, server):
           servicer.List,
           request_deserializer=messages__pb2.ManifestSourceId.FromString,
           response_serializer=messages__pb2.FamilyNamesList.SerializeToString,
+      ),
+      'GetSourceDetails': grpc.unary_unary_rpc_method_handler(
+          servicer.GetSourceDetails,
+          request_deserializer=messages__pb2.FamilyRequest.FromString,
+          response_serializer=messages__pb2.SourceDetails.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

@@ -86,8 +86,8 @@ service Manifest {
   // CollectionFamilyJob for Font Bakery.
   rpc Get (FamilyRequest) returns (FamilyData){};
   rpc List (ManifestSourceId) returns (FamilyNamesList){};
+  rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){};
 }
-
 
 message ManifestSourceId {
     string source_id = 1;
@@ -100,6 +100,15 @@ message FamilyNamesList {
 message FamilyRequest {
     string source_id = 1;
     string family_name = 2;
+}
+
+message SourceDetails {
+    oneof payload {
+      // This way we can do better structured protobuf messages OR
+      // faster to initially implemented JSON.
+      string json_payload = 1;
+      google.protobuf.Any pb_payload = 2;
+    }
 }
 
 message CollectionFamilyJob {

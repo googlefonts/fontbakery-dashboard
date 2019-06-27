@@ -1031,6 +1031,17 @@ _p.get = function(familyName) {
         .then(([filesData, metadata, path, familyName])=>[familyName, filesData, metadata]);
 };
 
+
+_p.getSourceDetails = function(familyName) {
+    return this._downloadCSVData(true)// -> instance of CSVData
+        // get the row of the requested family
+        // raises if familyName is not found
+        .then(csvData=>csvData.get(familyName)) // -> instance of CSVFamily; raises if familyName doesn't exist
+        // get the files
+        .then(familyData=>familyData.toDictionary());
+};
+
+
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
       , familyWhitelist = setup.develFamilyWhitelist
