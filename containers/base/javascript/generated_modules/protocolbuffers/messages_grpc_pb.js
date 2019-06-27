@@ -391,6 +391,19 @@ var ManifestService = exports.ManifestService = {
     responseSerialize: serialize_fontbakery_dashboard_FamilyData,
     responseDeserialize: deserialize_fontbakery_dashboard_FamilyData,
   },
+  // same as get but replies via AMQP/ProcessCommand and hence is immune
+  // to timeout issues. FamilyRequest must specify a ProcessCommand.
+  getDelayed: {
+    path: '/fontbakery.dashboard.Manifest/GetDelayed',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.FamilyRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_fontbakery_dashboard_FamilyRequest,
+    requestDeserialize: deserialize_fontbakery_dashboard_FamilyRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   list: {
     path: '/fontbakery.dashboard.Manifest/List',
     requestStream: false,

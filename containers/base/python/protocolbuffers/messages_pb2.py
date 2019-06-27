@@ -25,12 +25,34 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='fontbakery.dashboard',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0cshared.proto\"m\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x33\n\tcache_key\x18\x02 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"F\n\x0bStorageItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"H\n\nStorageKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"/\n\rStorageStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\"%\n\x10ManifestSourceId\x12\x11\n\tsource_id\x18\x01 \x01(\t\"\'\n\x0f\x46\x61milyNamesList\x12\x14\n\x0c\x66\x61mily_names\x18\x01 \x03(\t\"7\n\rFamilyRequest\x12\x11\n\tsource_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\"^\n\rSourceDetails\x12\x16\n\x0cjson_payload\x18\x01 \x01(\tH\x00\x12*\n\npb_payload\x18\x02 \x01(\x0b\x32\x14.google.protobuf.AnyH\x00\x42\t\n\x07payload\"\xb1\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12\x33\n\tcache_key\x18\x03 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\x9f\x01\n\nFamilyData\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12*\n\x05\x66iles\x18\x03 \x01(\x0b\x32\x1b.fontbakery.dashboard.Files\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\xda\x01\n\x06Report\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07type_id\x18\x02 \x01(\t\x12\x0e\n\x06method\x18\x03 \x01(\t\x12+\n\x07started\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04\x64\x61ta\x18\x06 \x01(\t\x12\n\n\x02id\x18\x07 \x01(\t\x12,\n\x08reported\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x96\x04\n\x0cReportsQuery\x12@\n\x07\x66ilters\x18\x01 \x03(\x0b\x32/.fontbakery.dashboard.ReportsQuery.FiltersEntry\x12\x41\n\npagination\x18\x04 \x01(\x0b\x32-.fontbakery.dashboard.ReportsQuery.Pagination\x12\x14\n\x0cinclude_data\x18\x05 \x01(\x08\x1a\xa6\x01\n\x06\x46ilter\x12<\n\x04type\x18\x01 \x01(\x0e\x32..fontbakery.dashboard.ReportsQuery.Filter.Type\x12\x0e\n\x06values\x18\x02 \x03(\t\x12\x31\n\rmin_max_dates\x18\x03 \x03(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1b\n\x04Type\x12\t\n\x05VALUE\x10\x00\x12\x08\n\x04\x44\x41TE\x10\x01\x1aY\n\x0c\x46iltersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).fontbakery.dashboard.ReportsQuery.Filter:\x02\x38\x01\x1ag\n\nPagination\x12\x31\n\ritem_reported\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07item_id\x18\x02 \x01(\t\x12\x15\n\rprevious_page\x18\x03 \x01(\x08\"\x18\n\tReportIds\x12\x0b\n\x03ids\x18\x01 \x03(\t\"\x86\x01\n\x14ProcessCommandResult\x12\x41\n\x06result\x18\x01 \x01(\x0e\x32\x31.fontbakery.dashboard.ProcessCommandResult.Result\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1a\n\x06Result\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x06\n\x02OK\x10\x01\"@\n\x15\x44ispatcherInitProcess\x12\x11\n\trequester\x18\x01 \x01(\t\x12\x14\n\x0cjson_payload\x18\x02 \x01(\t\"\"\n\x0cProcessQuery\x12\x12\n\nprocess_id\x18\x01 \x01(\t\"P\n\x0cProcessState\x12\x12\n\nprocess_id\x18\x01 \x01(\t\x12\x14\n\x0cprocess_data\x18\x02 \x01(\t\x12\x16\n\x0euser_interface\x18\x03 \x01(\t\"!\n\x10ProcessListQuery\x12\r\n\x05query\x18\x01 \x01(\t\"%\n\x0fProcessListItem\x12\x12\n\nprocess_id\x18\x01 \x01(\t\"G\n\x0bProcessList\x12\x38\n\tprocesses\x18\x06 \x03(\x0b\x32%.fontbakery.dashboard.ProcessListItem\"\xdf\x01\n\x0eProcessCommand\x12\x0e\n\x06ticket\x18\x01 \x01(\t\x12\x13\n\x0btarget_path\x18\x02 \x01(\t\x12\x15\n\rcallback_name\x18\x03 \x01(\t\x12\x11\n\trequester\x18\x04 \x01(\t\x12\x1b\n\x13response_queue_name\x18\x05 \x01(\t\x12\x16\n\x0cjson_payload\x18\x06 \x01(\tH\x00\x12*\n\npb_payload\x18\x07 \x01(\x0b\x32\x14.google.protobuf.AnyH\x00\x12\x12\n\nsession_id\x18\x08 \x01(\tB\t\n\x07payload\"\xa3\x02\n\nAuthStatus\x12;\n\x06status\x18\x01 \x01(\x0e\x32+.fontbakery.dashboard.AuthStatus.StatusCode\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x15\n\rauthorize_url\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x11\n\tuser_name\x18\x05 \x01(\t\x12\x12\n\navatar_url\x18\x06 \x01(\t\"u\n\nStatusCode\x12\t\n\x05\x45RROR\x10\x00\x12\x06\n\x02OK\x10\x01\x12\x0b\n\x07INITIAL\x10\x02\x12\r\n\tNOT_READY\x10\x03\x12\x0e\n\nNO_SESSION\x10\x04\x12\x19\n\x15WRONG_AUTHORIZE_STATE\x10\x05\x12\r\n\tTIMED_OUT\x10\x06\"T\n\x10\x41uthorizeRequest\x12\x13\n\x0bo_auth_code\x18\x01 \x01(\t\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x17\n\x0f\x61uthorize_state\x18\x03 \x01(\t\"\x1f\n\tSessionId\x12\x12\n\nsession_id\x18\x01 \x01(\t\"J\n\x16\x41uthorizedRolesRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x1c\n\x14repo_name_with_owner\x18\x02 \x01(\t\"3\n\x0f\x41uthorizedRoles\x12\r\n\x05roles\x18\x01 \x03(\t\x12\x11\n\tuser_name\x18\x02 \x01(\t\"R\n\nOAuthToken\x12\x11\n\tuser_name\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63\x65ss_token\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\x12\r\n\x05scope\x18\x04 \x01(\t\"\xdc\x01\n\x0bPullRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0bstorage_key\x18\x02 \x01(\t\x12\x18\n\x10target_directory\x18\x03 \x01(\t\x12\x19\n\x11p_r_message_title\x18\x04 \x01(\t\x12\x18\n\x10p_r_message_body\x18\x05 \x01(\t\x12\x16\n\x0e\x63ommit_message\x18\x06 \x01(\t\x12=\n\x0fprocess_command\x18\x07 \x01(\x0b\x32$.fontbakery.dashboard.ProcessCommand\"\xaa\x01\n\x0e\x44ispatchReport\x12;\n\x06status\x18\x01 \x01(\x0e\x32+.fontbakery.dashboard.DispatchReport.Result\x12\x11\n\x07p_r_url\x18\x02 \x01(\tH\x00\x12\x0f\n\x05\x65rror\x18\x03 \x01(\tH\x00\x12\x12\n\nbranch_url\x18\x04 \x01(\t\"\x1a\n\x06Result\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x06\n\x02OK\x10\x01\x42\x07\n\x05value\"\x8a\x01\n\x11WorkerDescription\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12!\n\x03job\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\x12=\n\x0fprocess_command\x18\x03 \x01(\x0b\x32$.fontbakery.dashboard.ProcessCommand\"N\n\x14WorkerJobDescription\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12!\n\x03job\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\"W\n\x0f\x43ompletedWorker\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12/\n\x11\x63ompleted_message\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\"\xdb\x01\n\x12\x46ontBakeryFinished\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x18\n\x10\x66inished_orderly\x18\x02 \x01(\x08\x12\x14\n\x0cresults_json\x18\x03 \x01(\t\x12+\n\x07\x63reated\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xfa\x02\n\x1aGenericStorageWorkerResult\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x11\n\texception\x18\x05 \x01(\t\x12\x18\n\x10preparation_logs\x18\x06 \x03(\t\x12H\n\x07results\x18\x07 \x03(\x0b\x32\x37.fontbakery.dashboard.GenericStorageWorkerResult.Result\x1aM\n\x06Result\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x35\n\x0bstorage_key\x18\x02 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey2\xee\x01\n\x07Storage\x12P\n\x03Put\x12!.fontbakery.dashboard.StorageItem\x1a .fontbakery.dashboard.StorageKey\"\x00(\x01\x30\x01\x12?\n\x03Get\x12 .fontbakery.dashboard.StorageKey\x1a\x14.google.protobuf.Any\"\x00\x12P\n\x05Purge\x12 .fontbakery.dashboard.StorageKey\x1a#.fontbakery.dashboard.StorageStatus\"\x00\x32\xdd\x02\n\x08Manifest\x12H\n\x04Poke\x12&.fontbakery.dashboard.ManifestSourceId\x1a\x16.google.protobuf.Empty\"\x00\x12N\n\x03Get\x12#.fontbakery.dashboard.FamilyRequest\x1a .fontbakery.dashboard.FamilyData\"\x00\x12W\n\x04List\x12&.fontbakery.dashboard.ManifestSourceId\x1a%.fontbakery.dashboard.FamilyNamesList\"\x00\x12^\n\x10GetSourceDetails\x12#.fontbakery.dashboard.FamilyRequest\x1a#.fontbakery.dashboard.SourceDetails\"\x00\x32\xe2\x01\n\x07Reports\x12>\n\x04\x46ile\x12\x1c.fontbakery.dashboard.Report\x1a\x16.google.protobuf.Empty\"\x00\x12M\n\x05Query\x12\".fontbakery.dashboard.ReportsQuery\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x12H\n\x03Get\x12\x1f.fontbakery.dashboard.ReportIds\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x32\xcc\x03\n\x0eProcessManager\x12^\n\x10SubscribeProcess\x12\".fontbakery.dashboard.ProcessQuery\x1a\".fontbakery.dashboard.ProcessState\"\x00\x30\x01\x12V\n\nGetProcess\x12\".fontbakery.dashboard.ProcessQuery\x1a\".fontbakery.dashboard.ProcessState\"\x00\x12]\n\x07\x45xecute\x12$.fontbakery.dashboard.ProcessCommand\x1a*.fontbakery.dashboard.ProcessCommandResult\"\x00\x12Q\n\x0bInitProcess\x12\x14.google.protobuf.Any\x1a*.fontbakery.dashboard.ProcessCommandResult\"\x00\x12P\n\x10GetInitProcessUi\x12\x16.google.protobuf.Empty\x1a\".fontbakery.dashboard.ProcessState\"\x00\x32\x81\x01\n\x18\x44ispatcherProcessManager\x12\x65\n\x14SubscribeProcessList\x12&.fontbakery.dashboard.ProcessListQuery\x1a!.fontbakery.dashboard.ProcessList\"\x00\x30\x01\x32\x84\x04\n\x0b\x41uthService\x12I\n\x0bInitSession\x12\x16.google.protobuf.Empty\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12\x43\n\x06Logout\x12\x1f.fontbakery.dashboard.SessionId\x1a\x16.google.protobuf.Empty\"\x00\x12W\n\tAuthorize\x12&.fontbakery.dashboard.AuthorizeRequest\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12S\n\x0c\x43heckSession\x12\x1f.fontbakery.dashboard.SessionId\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12\x61\n\x08GetRoles\x12,.fontbakery.dashboard.AuthorizedRolesRequest\x1a%.fontbakery.dashboard.AuthorizedRoles\"\x00\x12T\n\rGetOAuthToken\x12\x1f.fontbakery.dashboard.SessionId\x1a .fontbakery.dashboard.OAuthToken\"\x00\x32`\n\x15PullRequestDispatcher\x12G\n\x08\x44ispatch\x12!.fontbakery.dashboard.PullRequest\x1a\x16.google.protobuf.Empty\"\x00\x32V\n\x0bInitWorkers\x12G\n\x04Init\x12\'.fontbakery.dashboard.WorkerDescription\x1a\x14.google.protobuf.Any\"\x00P\x03\x62\x06proto3')
+  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0cshared.proto\"m\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x33\n\tcache_key\x18\x02 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"F\n\x0bStorageItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"H\n\nStorageKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"/\n\rStorageStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\"%\n\x10ManifestSourceId\x12\x11\n\tsource_id\x18\x01 \x01(\t\"\'\n\x0f\x46\x61milyNamesList\x12\x14\n\x0c\x66\x61mily_names\x18\x01 \x03(\t\"v\n\rFamilyRequest\x12\x11\n\tsource_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12=\n\x0fprocess_command\x18\x03 \x01(\x0b\x32$.fontbakery.dashboard.ProcessCommand\"^\n\rSourceDetails\x12\x16\n\x0cjson_payload\x18\x01 \x01(\tH\x00\x12*\n\npb_payload\x18\x02 \x01(\x0b\x32\x14.google.protobuf.AnyH\x00\x42\t\n\x07payload\"\xb1\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12\x33\n\tcache_key\x18\x03 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\x83\x02\n\nFamilyData\x12\x37\n\x06status\x18\x01 \x01(\x0e\x32\'.fontbakery.dashboard.FamilyData.Result\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\x14\n\x0c\x63ollectionid\x18\x03 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x04 \x01(\t\x12*\n\x05\x66iles\x18\x05 \x01(\x0b\x32\x1b.fontbakery.dashboard.Files\x12(\n\x04\x64\x61te\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x07 \x01(\t\"\x1a\n\x06Result\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x06\n\x02OK\x10\x01\"\xda\x01\n\x06Report\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07type_id\x18\x02 \x01(\t\x12\x0e\n\x06method\x18\x03 \x01(\t\x12+\n\x07started\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04\x64\x61ta\x18\x06 \x01(\t\x12\n\n\x02id\x18\x07 \x01(\t\x12,\n\x08reported\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x96\x04\n\x0cReportsQuery\x12@\n\x07\x66ilters\x18\x01 \x03(\x0b\x32/.fontbakery.dashboard.ReportsQuery.FiltersEntry\x12\x41\n\npagination\x18\x04 \x01(\x0b\x32-.fontbakery.dashboard.ReportsQuery.Pagination\x12\x14\n\x0cinclude_data\x18\x05 \x01(\x08\x1a\xa6\x01\n\x06\x46ilter\x12<\n\x04type\x18\x01 \x01(\x0e\x32..fontbakery.dashboard.ReportsQuery.Filter.Type\x12\x0e\n\x06values\x18\x02 \x03(\t\x12\x31\n\rmin_max_dates\x18\x03 \x03(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1b\n\x04Type\x12\t\n\x05VALUE\x10\x00\x12\x08\n\x04\x44\x41TE\x10\x01\x1aY\n\x0c\x46iltersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).fontbakery.dashboard.ReportsQuery.Filter:\x02\x38\x01\x1ag\n\nPagination\x12\x31\n\ritem_reported\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07item_id\x18\x02 \x01(\t\x12\x15\n\rprevious_page\x18\x03 \x01(\x08\"\x18\n\tReportIds\x12\x0b\n\x03ids\x18\x01 \x03(\t\"\x86\x01\n\x14ProcessCommandResult\x12\x41\n\x06result\x18\x01 \x01(\x0e\x32\x31.fontbakery.dashboard.ProcessCommandResult.Result\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1a\n\x06Result\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x06\n\x02OK\x10\x01\"@\n\x15\x44ispatcherInitProcess\x12\x11\n\trequester\x18\x01 \x01(\t\x12\x14\n\x0cjson_payload\x18\x02 \x01(\t\"\"\n\x0cProcessQuery\x12\x12\n\nprocess_id\x18\x01 \x01(\t\"P\n\x0cProcessState\x12\x12\n\nprocess_id\x18\x01 \x01(\t\x12\x14\n\x0cprocess_data\x18\x02 \x01(\t\x12\x16\n\x0euser_interface\x18\x03 \x01(\t\"!\n\x10ProcessListQuery\x12\r\n\x05query\x18\x01 \x01(\t\"%\n\x0fProcessListItem\x12\x12\n\nprocess_id\x18\x01 \x01(\t\"G\n\x0bProcessList\x12\x38\n\tprocesses\x18\x06 \x03(\x0b\x32%.fontbakery.dashboard.ProcessListItem\"\xdf\x01\n\x0eProcessCommand\x12\x0e\n\x06ticket\x18\x01 \x01(\t\x12\x13\n\x0btarget_path\x18\x02 \x01(\t\x12\x15\n\rcallback_name\x18\x03 \x01(\t\x12\x11\n\trequester\x18\x04 \x01(\t\x12\x1b\n\x13response_queue_name\x18\x05 \x01(\t\x12\x16\n\x0cjson_payload\x18\x06 \x01(\tH\x00\x12*\n\npb_payload\x18\x07 \x01(\x0b\x32\x14.google.protobuf.AnyH\x00\x12\x12\n\nsession_id\x18\x08 \x01(\tB\t\n\x07payload\"\xa3\x02\n\nAuthStatus\x12;\n\x06status\x18\x01 \x01(\x0e\x32+.fontbakery.dashboard.AuthStatus.StatusCode\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x15\n\rauthorize_url\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x11\n\tuser_name\x18\x05 \x01(\t\x12\x12\n\navatar_url\x18\x06 \x01(\t\"u\n\nStatusCode\x12\t\n\x05\x45RROR\x10\x00\x12\x06\n\x02OK\x10\x01\x12\x0b\n\x07INITIAL\x10\x02\x12\r\n\tNOT_READY\x10\x03\x12\x0e\n\nNO_SESSION\x10\x04\x12\x19\n\x15WRONG_AUTHORIZE_STATE\x10\x05\x12\r\n\tTIMED_OUT\x10\x06\"T\n\x10\x41uthorizeRequest\x12\x13\n\x0bo_auth_code\x18\x01 \x01(\t\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x17\n\x0f\x61uthorize_state\x18\x03 \x01(\t\"\x1f\n\tSessionId\x12\x12\n\nsession_id\x18\x01 \x01(\t\"J\n\x16\x41uthorizedRolesRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x1c\n\x14repo_name_with_owner\x18\x02 \x01(\t\"3\n\x0f\x41uthorizedRoles\x12\r\n\x05roles\x18\x01 \x03(\t\x12\x11\n\tuser_name\x18\x02 \x01(\t\"R\n\nOAuthToken\x12\x11\n\tuser_name\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63\x65ss_token\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\x12\r\n\x05scope\x18\x04 \x01(\t\"\xdc\x01\n\x0bPullRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0bstorage_key\x18\x02 \x01(\t\x12\x18\n\x10target_directory\x18\x03 \x01(\t\x12\x19\n\x11p_r_message_title\x18\x04 \x01(\t\x12\x18\n\x10p_r_message_body\x18\x05 \x01(\t\x12\x16\n\x0e\x63ommit_message\x18\x06 \x01(\t\x12=\n\x0fprocess_command\x18\x07 \x01(\x0b\x32$.fontbakery.dashboard.ProcessCommand\"\xaa\x01\n\x0e\x44ispatchReport\x12;\n\x06status\x18\x01 \x01(\x0e\x32+.fontbakery.dashboard.DispatchReport.Result\x12\x11\n\x07p_r_url\x18\x02 \x01(\tH\x00\x12\x0f\n\x05\x65rror\x18\x03 \x01(\tH\x00\x12\x12\n\nbranch_url\x18\x04 \x01(\t\"\x1a\n\x06Result\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x06\n\x02OK\x10\x01\x42\x07\n\x05value\"\x8a\x01\n\x11WorkerDescription\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12!\n\x03job\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\x12=\n\x0fprocess_command\x18\x03 \x01(\x0b\x32$.fontbakery.dashboard.ProcessCommand\"N\n\x14WorkerJobDescription\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12!\n\x03job\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\"W\n\x0f\x43ompletedWorker\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12/\n\x11\x63ompleted_message\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\"\xdb\x01\n\x12\x46ontBakeryFinished\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x18\n\x10\x66inished_orderly\x18\x02 \x01(\x08\x12\x14\n\x0cresults_json\x18\x03 \x01(\t\x12+\n\x07\x63reated\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xfa\x02\n\x1aGenericStorageWorkerResult\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x11\n\texception\x18\x05 \x01(\t\x12\x18\n\x10preparation_logs\x18\x06 \x03(\t\x12H\n\x07results\x18\x07 \x03(\x0b\x32\x37.fontbakery.dashboard.GenericStorageWorkerResult.Result\x1aM\n\x06Result\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x35\n\x0bstorage_key\x18\x02 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey2\xee\x01\n\x07Storage\x12P\n\x03Put\x12!.fontbakery.dashboard.StorageItem\x1a .fontbakery.dashboard.StorageKey\"\x00(\x01\x30\x01\x12?\n\x03Get\x12 .fontbakery.dashboard.StorageKey\x1a\x14.google.protobuf.Any\"\x00\x12P\n\x05Purge\x12 .fontbakery.dashboard.StorageKey\x1a#.fontbakery.dashboard.StorageStatus\"\x00\x32\xaa\x03\n\x08Manifest\x12H\n\x04Poke\x12&.fontbakery.dashboard.ManifestSourceId\x1a\x16.google.protobuf.Empty\"\x00\x12N\n\x03Get\x12#.fontbakery.dashboard.FamilyRequest\x1a .fontbakery.dashboard.FamilyData\"\x00\x12K\n\nGetDelayed\x12#.fontbakery.dashboard.FamilyRequest\x1a\x16.google.protobuf.Empty\"\x00\x12W\n\x04List\x12&.fontbakery.dashboard.ManifestSourceId\x1a%.fontbakery.dashboard.FamilyNamesList\"\x00\x12^\n\x10GetSourceDetails\x12#.fontbakery.dashboard.FamilyRequest\x1a#.fontbakery.dashboard.SourceDetails\"\x00\x32\xe2\x01\n\x07Reports\x12>\n\x04\x46ile\x12\x1c.fontbakery.dashboard.Report\x1a\x16.google.protobuf.Empty\"\x00\x12M\n\x05Query\x12\".fontbakery.dashboard.ReportsQuery\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x12H\n\x03Get\x12\x1f.fontbakery.dashboard.ReportIds\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x32\xcc\x03\n\x0eProcessManager\x12^\n\x10SubscribeProcess\x12\".fontbakery.dashboard.ProcessQuery\x1a\".fontbakery.dashboard.ProcessState\"\x00\x30\x01\x12V\n\nGetProcess\x12\".fontbakery.dashboard.ProcessQuery\x1a\".fontbakery.dashboard.ProcessState\"\x00\x12]\n\x07\x45xecute\x12$.fontbakery.dashboard.ProcessCommand\x1a*.fontbakery.dashboard.ProcessCommandResult\"\x00\x12Q\n\x0bInitProcess\x12\x14.google.protobuf.Any\x1a*.fontbakery.dashboard.ProcessCommandResult\"\x00\x12P\n\x10GetInitProcessUi\x12\x16.google.protobuf.Empty\x1a\".fontbakery.dashboard.ProcessState\"\x00\x32\x81\x01\n\x18\x44ispatcherProcessManager\x12\x65\n\x14SubscribeProcessList\x12&.fontbakery.dashboard.ProcessListQuery\x1a!.fontbakery.dashboard.ProcessList\"\x00\x30\x01\x32\x84\x04\n\x0b\x41uthService\x12I\n\x0bInitSession\x12\x16.google.protobuf.Empty\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12\x43\n\x06Logout\x12\x1f.fontbakery.dashboard.SessionId\x1a\x16.google.protobuf.Empty\"\x00\x12W\n\tAuthorize\x12&.fontbakery.dashboard.AuthorizeRequest\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12S\n\x0c\x43heckSession\x12\x1f.fontbakery.dashboard.SessionId\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12\x61\n\x08GetRoles\x12,.fontbakery.dashboard.AuthorizedRolesRequest\x1a%.fontbakery.dashboard.AuthorizedRoles\"\x00\x12T\n\rGetOAuthToken\x12\x1f.fontbakery.dashboard.SessionId\x1a .fontbakery.dashboard.OAuthToken\"\x00\x32`\n\x15PullRequestDispatcher\x12G\n\x08\x44ispatch\x12!.fontbakery.dashboard.PullRequest\x1a\x16.google.protobuf.Empty\"\x00\x32V\n\x0bInitWorkers\x12G\n\x04Init\x12\'.fontbakery.dashboard.WorkerDescription\x1a\x14.google.protobuf.Any\"\x00P\x03\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,shared__pb2.DESCRIPTOR,],
   public_dependencies=[shared__pb2.DESCRIPTOR,])
 
 
+
+_FAMILYDATA_RESULT = _descriptor.EnumDescriptor(
+  name='Result',
+  full_name='fontbakery.dashboard.FamilyData.Result',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='FAIL', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='OK', index=1, number=1,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=1159,
+  serialized_end=1185,
+)
+_sym_db.RegisterEnumDescriptor(_FAMILYDATA_RESULT)
 
 _REPORTSQUERY_FILTER_TYPE = _descriptor.EnumDescriptor(
   name='Type',
@@ -49,8 +71,8 @@ _REPORTSQUERY_FILTER_TYPE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1557,
-  serialized_end=1584,
+  serialized_start=1720,
+  serialized_end=1747,
 )
 _sym_db.RegisterEnumDescriptor(_REPORTSQUERY_FILTER_TYPE)
 
@@ -71,8 +93,8 @@ _PROCESSCOMMANDRESULT_RESULT = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1917,
-  serialized_end=1943,
+  serialized_start=1159,
+  serialized_end=1185,
 )
 _sym_db.RegisterEnumDescriptor(_PROCESSCOMMANDRESULT_RESULT)
 
@@ -113,8 +135,8 @@ _AUTHSTATUS_STATUSCODE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=2677,
-  serialized_end=2794,
+  serialized_start=2840,
+  serialized_end=2957,
 )
 _sym_db.RegisterEnumDescriptor(_AUTHSTATUS_STATUSCODE)
 
@@ -135,8 +157,8 @@ _DISPATCHREPORT_RESULT = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1917,
-  serialized_end=1943,
+  serialized_start=1159,
+  serialized_end=1185,
 )
 _sym_db.RegisterEnumDescriptor(_DISPATCHREPORT_RESULT)
 
@@ -404,6 +426,13 @@ _FAMILYREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='process_command', full_name='fontbakery.dashboard.FamilyRequest.process_command', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -417,7 +446,7 @@ _FAMILYREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=529,
-  serialized_end=584,
+  serialized_end=647,
 )
 
 
@@ -457,8 +486,8 @@ _SOURCEDETAILS = _descriptor.Descriptor(
       name='payload', full_name='fontbakery.dashboard.SourceDetails.payload',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=586,
-  serialized_end=680,
+  serialized_start=649,
+  serialized_end=743,
 )
 
 
@@ -516,8 +545,8 @@ _COLLECTIONFAMILYJOB = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=683,
-  serialized_end=860,
+  serialized_start=746,
+  serialized_end=923,
 )
 
 
@@ -529,36 +558,50 @@ _FAMILYDATA = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='collectionid', full_name='fontbakery.dashboard.FamilyData.collectionid', index=0,
-      number=1, type=9, cpp_type=9, label=1,
-      has_default_value=False, default_value=_b("").decode('utf-8'),
+      name='status', full_name='fontbakery.dashboard.FamilyData.status', index=0,
+      number=1, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='family_name', full_name='fontbakery.dashboard.FamilyData.family_name', index=1,
+      name='error', full_name='fontbakery.dashboard.FamilyData.error', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='files', full_name='fontbakery.dashboard.FamilyData.files', index=2,
-      number=3, type=11, cpp_type=10, label=1,
+      name='collectionid', full_name='fontbakery.dashboard.FamilyData.collectionid', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='family_name', full_name='fontbakery.dashboard.FamilyData.family_name', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='files', full_name='fontbakery.dashboard.FamilyData.files', index=4,
+      number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='date', full_name='fontbakery.dashboard.FamilyData.date', index=3,
-      number=4, type=11, cpp_type=10, label=1,
+      name='date', full_name='fontbakery.dashboard.FamilyData.date', index=5,
+      number=6, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='metadata', full_name='fontbakery.dashboard.FamilyData.metadata', index=4,
-      number=5, type=9, cpp_type=9, label=1,
+      name='metadata', full_name='fontbakery.dashboard.FamilyData.metadata', index=6,
+      number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -568,6 +611,7 @@ _FAMILYDATA = _descriptor.Descriptor(
   ],
   nested_types=[],
   enum_types=[
+    _FAMILYDATA_RESULT,
   ],
   serialized_options=None,
   is_extendable=False,
@@ -575,8 +619,8 @@ _FAMILYDATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=863,
-  serialized_end=1022,
+  serialized_start=926,
+  serialized_end=1185,
 )
 
 
@@ -655,8 +699,8 @@ _REPORT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1025,
-  serialized_end=1243,
+  serialized_start=1188,
+  serialized_end=1406,
 )
 
 
@@ -701,8 +745,8 @@ _REPORTSQUERY_FILTER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1418,
-  serialized_end=1584,
+  serialized_start=1581,
+  serialized_end=1747,
 )
 
 _REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
@@ -738,8 +782,8 @@ _REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1586,
-  serialized_end=1675,
+  serialized_start=1749,
+  serialized_end=1838,
 )
 
 _REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
@@ -782,8 +826,8 @@ _REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1677,
-  serialized_end=1780,
+  serialized_start=1840,
+  serialized_end=1943,
 )
 
 _REPORTSQUERY = _descriptor.Descriptor(
@@ -826,8 +870,8 @@ _REPORTSQUERY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1246,
-  serialized_end=1780,
+  serialized_start=1409,
+  serialized_end=1943,
 )
 
 
@@ -857,8 +901,8 @@ _REPORTIDS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1782,
-  serialized_end=1806,
+  serialized_start=1945,
+  serialized_end=1969,
 )
 
 
@@ -896,8 +940,8 @@ _PROCESSCOMMANDRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1809,
-  serialized_end=1943,
+  serialized_start=1972,
+  serialized_end=2106,
 )
 
 
@@ -934,8 +978,8 @@ _DISPATCHERINITPROCESS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1945,
-  serialized_end=2009,
+  serialized_start=2108,
+  serialized_end=2172,
 )
 
 
@@ -965,8 +1009,8 @@ _PROCESSQUERY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2011,
-  serialized_end=2045,
+  serialized_start=2174,
+  serialized_end=2208,
 )
 
 
@@ -1010,8 +1054,8 @@ _PROCESSSTATE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2047,
-  serialized_end=2127,
+  serialized_start=2210,
+  serialized_end=2290,
 )
 
 
@@ -1041,8 +1085,8 @@ _PROCESSLISTQUERY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2129,
-  serialized_end=2162,
+  serialized_start=2292,
+  serialized_end=2325,
 )
 
 
@@ -1072,8 +1116,8 @@ _PROCESSLISTITEM = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2164,
-  serialized_end=2201,
+  serialized_start=2327,
+  serialized_end=2364,
 )
 
 
@@ -1103,8 +1147,8 @@ _PROCESSLIST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2203,
-  serialized_end=2274,
+  serialized_start=2366,
+  serialized_end=2437,
 )
 
 
@@ -1186,8 +1230,8 @@ _PROCESSCOMMAND = _descriptor.Descriptor(
       name='payload', full_name='fontbakery.dashboard.ProcessCommand.payload',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=2277,
-  serialized_end=2500,
+  serialized_start=2440,
+  serialized_end=2663,
 )
 
 
@@ -1253,8 +1297,8 @@ _AUTHSTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2503,
-  serialized_end=2794,
+  serialized_start=2666,
+  serialized_end=2957,
 )
 
 
@@ -1298,8 +1342,8 @@ _AUTHORIZEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2796,
-  serialized_end=2880,
+  serialized_start=2959,
+  serialized_end=3043,
 )
 
 
@@ -1329,8 +1373,8 @@ _SESSIONID = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2882,
-  serialized_end=2913,
+  serialized_start=3045,
+  serialized_end=3076,
 )
 
 
@@ -1367,8 +1411,8 @@ _AUTHORIZEDROLESREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2915,
-  serialized_end=2989,
+  serialized_start=3078,
+  serialized_end=3152,
 )
 
 
@@ -1405,8 +1449,8 @@ _AUTHORIZEDROLES = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2991,
-  serialized_end=3042,
+  serialized_start=3154,
+  serialized_end=3205,
 )
 
 
@@ -1457,8 +1501,8 @@ _OAUTHTOKEN = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3044,
-  serialized_end=3126,
+  serialized_start=3207,
+  serialized_end=3289,
 )
 
 
@@ -1530,8 +1574,8 @@ _PULLREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3129,
-  serialized_end=3349,
+  serialized_start=3292,
+  serialized_end=3512,
 )
 
 
@@ -1586,8 +1630,8 @@ _DISPATCHREPORT = _descriptor.Descriptor(
       name='value', full_name='fontbakery.dashboard.DispatchReport.value',
       index=0, containing_type=None, fields=[]),
   ],
-  serialized_start=3352,
-  serialized_end=3522,
+  serialized_start=3515,
+  serialized_end=3685,
 )
 
 
@@ -1631,8 +1675,8 @@ _WORKERDESCRIPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3525,
-  serialized_end=3663,
+  serialized_start=3688,
+  serialized_end=3826,
 )
 
 
@@ -1669,8 +1713,8 @@ _WORKERJOBDESCRIPTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3665,
-  serialized_end=3743,
+  serialized_start=3828,
+  serialized_end=3906,
 )
 
 
@@ -1707,8 +1751,8 @@ _COMPLETEDWORKER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3745,
-  serialized_end=3832,
+  serialized_start=3908,
+  serialized_end=3995,
 )
 
 
@@ -1773,8 +1817,8 @@ _FONTBAKERYFINISHED = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=3835,
-  serialized_end=4054,
+  serialized_start=3998,
+  serialized_end=4217,
 )
 
 
@@ -1811,8 +1855,8 @@ _GENERICSTORAGEWORKERRESULT_RESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4358,
-  serialized_end=4435,
+  serialized_start=4521,
+  serialized_end=4598,
 )
 
 _GENERICSTORAGEWORKERRESULT = _descriptor.Descriptor(
@@ -1883,12 +1927,13 @@ _GENERICSTORAGEWORKERRESULT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=4057,
-  serialized_end=4435,
+  serialized_start=4220,
+  serialized_end=4598,
 )
 
 _FAMILYJOB.fields_by_name['cache_key'].message_type = _STORAGEKEY
 _STORAGEITEM.fields_by_name['payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_FAMILYREQUEST.fields_by_name['process_command'].message_type = _PROCESSCOMMAND
 _SOURCEDETAILS.fields_by_name['pb_payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
 _SOURCEDETAILS.oneofs_by_name['payload'].fields.append(
   _SOURCEDETAILS.fields_by_name['json_payload'])
@@ -1898,8 +1943,10 @@ _SOURCEDETAILS.oneofs_by_name['payload'].fields.append(
 _SOURCEDETAILS.fields_by_name['pb_payload'].containing_oneof = _SOURCEDETAILS.oneofs_by_name['payload']
 _COLLECTIONFAMILYJOB.fields_by_name['cache_key'].message_type = _STORAGEKEY
 _COLLECTIONFAMILYJOB.fields_by_name['date'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_FAMILYDATA.fields_by_name['status'].enum_type = _FAMILYDATA_RESULT
 _FAMILYDATA.fields_by_name['files'].message_type = shared__pb2._FILES
 _FAMILYDATA.fields_by_name['date'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_FAMILYDATA_RESULT.containing_type = _FAMILYDATA
 _REPORT.fields_by_name['started'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _REPORT.fields_by_name['finished'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _REPORT.fields_by_name['reported'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
@@ -2262,8 +2309,8 @@ _STORAGE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=4438,
-  serialized_end=4676,
+  serialized_start=4601,
+  serialized_end=4839,
   methods=[
   _descriptor.MethodDescriptor(
     name='Put',
@@ -2304,8 +2351,8 @@ _MANIFEST = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   serialized_options=None,
-  serialized_start=4679,
-  serialized_end=5028,
+  serialized_start=4842,
+  serialized_end=5268,
   methods=[
   _descriptor.MethodDescriptor(
     name='Poke',
@@ -2326,9 +2373,18 @@ _MANIFEST = _descriptor.ServiceDescriptor(
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='GetDelayed',
+    full_name='fontbakery.dashboard.Manifest.GetDelayed',
+    index=2,
+    containing_service=None,
+    input_type=_FAMILYREQUEST,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='List',
     full_name='fontbakery.dashboard.Manifest.List',
-    index=2,
+    index=3,
     containing_service=None,
     input_type=_MANIFESTSOURCEID,
     output_type=_FAMILYNAMESLIST,
@@ -2337,7 +2393,7 @@ _MANIFEST = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetSourceDetails',
     full_name='fontbakery.dashboard.Manifest.GetSourceDetails',
-    index=3,
+    index=4,
     containing_service=None,
     input_type=_FAMILYREQUEST,
     output_type=_SOURCEDETAILS,
@@ -2355,8 +2411,8 @@ _REPORTS = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=2,
   serialized_options=None,
-  serialized_start=5031,
-  serialized_end=5257,
+  serialized_start=5271,
+  serialized_end=5497,
   methods=[
   _descriptor.MethodDescriptor(
     name='File',
@@ -2397,8 +2453,8 @@ _PROCESSMANAGER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=3,
   serialized_options=None,
-  serialized_start=5260,
-  serialized_end=5720,
+  serialized_start=5500,
+  serialized_end=5960,
   methods=[
   _descriptor.MethodDescriptor(
     name='SubscribeProcess',
@@ -2457,8 +2513,8 @@ _DISPATCHERPROCESSMANAGER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=4,
   serialized_options=None,
-  serialized_start=5723,
-  serialized_end=5852,
+  serialized_start=5963,
+  serialized_end=6092,
   methods=[
   _descriptor.MethodDescriptor(
     name='SubscribeProcessList',
@@ -2481,8 +2537,8 @@ _AUTHSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=5,
   serialized_options=None,
-  serialized_start=5855,
-  serialized_end=6371,
+  serialized_start=6095,
+  serialized_end=6611,
   methods=[
   _descriptor.MethodDescriptor(
     name='InitSession',
@@ -2550,8 +2606,8 @@ _PULLREQUESTDISPATCHER = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=6,
   serialized_options=None,
-  serialized_start=6373,
-  serialized_end=6469,
+  serialized_start=6613,
+  serialized_end=6709,
   methods=[
   _descriptor.MethodDescriptor(
     name='Dispatch',
@@ -2574,8 +2630,8 @@ _INITWORKERS = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=7,
   serialized_options=None,
-  serialized_start=6471,
-  serialized_end=6557,
+  serialized_start=6711,
+  serialized_end=6797,
   methods=[
   _descriptor.MethodDescriptor(
     name='Init',

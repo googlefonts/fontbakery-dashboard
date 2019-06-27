@@ -23,7 +23,7 @@ cd protocolbuffers;
 if [ -d ./gftools ]; then
     pushd .; cd gftools && git pull || exit 1; popd;
 else
-    git clone --depth 1 -b master http://github.com/googlefonts/gftools.git || exit 1;
+    git clone --depth 1 -b master https://github.com/googlefonts/gftools.git || exit 1;
 fi
 cp gftools/Lib/gftools/fonts_public.proto . || exit 1
 

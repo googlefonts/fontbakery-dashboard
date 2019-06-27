@@ -6,6 +6,7 @@
 
 const { initAmqp }= require('./getSetup')
   , { StorageClient } = require('./StorageClient')
+  , { ProtobufAnyHandler } = require('./ProtobufAnyHandler')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
   , { File, Files, CollectionFamilyJob, FamilyData, FamilyNamesList
@@ -41,7 +42,9 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._amqpSetup = amqpSetup;
     this._amqp = null;
     this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
-    //
+
+    this._any = new ProtobufAnyHandler(this._log, {FamilyData:FamilyData});
+
     // FIXME: do we need this?
     // if it's only about the POKE function, we may as well just wait for
     // incoming queues or such.
@@ -289,14 +292,9 @@ _p.list = function(call, callback) {
     );
 };
 
-_p.get = function(call, callback) {
-    var sourceId = call.request.getSourceId() // call.request is a FamilyRequest
-       // checks for this._ready!
-     , [error, source] = this._getSource(sourceId)
-     , familyName = call.request.getFamilyName() // call.request is a FamilyRequest
-     ;
-
-    this._log.info('[GET:'+sourceId+'/'+familyName+'] ...');
+_p._get = function(sourceId, familyName) {
+         // checks for this._ready!
+     var [error, source] = this._getSource(sourceId);
 
     return (error ? Promise.reject(error)
                   : source.get(familyName))
@@ -307,13 +305,22 @@ _p.get = function(call, callback) {
           , timestamp = new Timestamp()
           ;
         timestamp.fromDate(new Date());
+        familyData.setStatus(FamilyData.Result.OK);
         familyData.setCollectionid(collectionId);
         familyData.setFamilyName(familyName);
         familyData.setFiles(filesMessage);
         familyData.setDate(timestamp);
         familyData.setMetadata(JSON.stringify(metadata));
         return familyData;
-    })
+    });
+};
+
+_p.get = function (call, callback) {
+    var sourceId = call.request.getSourceId() // call.request is a FamilyRequest
+      , familyName = call.request.getFamilyName() // call.request is a FamilyRequest
+      ;
+    this._log.info('[GET:'+sourceId+'/'+familyName+'] ...');
+    return this._get(sourceId, familyName)
     .then(
           familyData=>callback(null, familyData)
         , err=>{
@@ -321,6 +328,57 @@ _p.get = function(call, callback) {
             callback(err, null);
           }
     );
+};
+
+_p._dispatchProcessCommand = function(preparedProcessCommand, payload, sourceId=null) {
+    var processCommand = preparedProcessCommand.cloneMessage()
+      , anyPayload = this._any.pack(payload)
+      , buffer
+      , responseQueue = preparedProcessCommand.getResponseQueueName()
+      , requester = 'Manifest Server ' + this._id
+                                       + (sourceId ? '/' + sourceId : '')
+      ;
+    // expecting these to be already set
+    // processCommand.setTicket(ticket);
+    // processCommand.setTargetPath(targetPath);
+    // processCommand.setCallbackName(callbackName);
+    processCommand.setRequester(requester);
+    processCommand.setPbPayload(anyPayload);
+    buffer = Buffer.from(processCommand.serializeBinary());
+    return this._sendAMQPMessage(responseQueue, buffer);
+};
+
+
+// rpc GetDelayed (FamilyRequest) returns (google.protobuf.Empty){};
+_p.getDelayed = function(call, callback) {
+    var sourceId = call.request.getSourceId() // call.request is a FamilyRequest
+      , familyName = call.request.getFamilyName() // call.request is a FamilyRequest
+      , processCommand = call.request.getProcessCommand()
+      ;
+    this._log.info('[GET_DELAYED:'+sourceId+'/'+familyName+'] ...');
+    if(!processCommand) {
+        callback(new Error('GetDelayed requires FamilyRequest to define '
+                                + 'a ProcessCommand, which it doesn\'t.'));
+        return;
+    }
+    callback(null, new Empty());
+    return this._get(sourceId, familyName)
+    .then(
+          null
+        , err=>{
+            this._log.error('[GET_DELAYED:'+sourceId+'/'+familyName+']', err);
+            var familyData = new FamilyData()
+              , collectionId = [this._id, sourceId].join('/')
+              ;
+            familyData.setStatus(FamilyData.Result.FAIL);
+            familyData.setError('' + err);
+            familyData.setCollectionid(collectionId);
+            familyData.setFamilyName(familyName);
+            return familyData;
+          }
+    )
+    .then(payloadMessage=>this._dispatchProcessCommand(processCommand
+                                                , payloadMessage, sourceId));
 };
 
 // rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){}

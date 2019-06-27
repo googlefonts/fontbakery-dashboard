@@ -53,11 +53,18 @@ _p.poke = function(manifestSourceId){
 };
 
 //  rpc Get (FamilyRequest) returns (FamilyData){}
-_p.get = function(familyRequest){
+_p.get = function(familyRequest, deadline=this.deadline){
     return nodeCallback2Promise((callback)=>
-        this._client.get(familyRequest, {deadline: this.deadline}, callback))
+        this._client.get(familyRequest, {deadline: deadline}, callback))
     .then(null, error=>this._raiseUnhandledError(error));
 };
+
+_p.getDelayed = function(familyRequest, deadline=this.deadline){
+    return nodeCallback2Promise((callback)=>
+        this._client.getDelayed(familyRequest, {deadline: deadline}, callback))
+    .then(null, error=>this._raiseUnhandledError(error));
+};
+
 
 //  rpc List (ManifestSourceId) returns (FamilyNamesList){}
 _p.list = function(manifestSourceId){
