@@ -26,6 +26,7 @@
  * There's no scheduling in the ManifestSource itself.
  */
 const { GitShared: Parent /*is a _Source*/ } = require('./Git')
+  , { status: grpcStatus } = require('grpc')
   , csvParse = require('csv-parse')
   , NodeGit = require('nodegit')
   , { ManifestServer } = require('../util/ManifestServer')
@@ -335,7 +336,9 @@ var CSVData = (function() {
         if(!this._data.has(familyName)) {
             if(arguments.length > 1)
                 return defaultVal;
-            throw new Error('No family found for "' + familyName + '".');
+            var error = new Error('No family found for "' + familyName + '".');
+            error.code = grpcStatus.NOT_FOUND;
+            throw error;
         }
         return this._data.get(familyName);
     };
@@ -1017,7 +1020,7 @@ _p.get = function(familyName) {
     // update the csv
     return this._downloadCSVData(true)// -> instance of CSVData
         // get the row of the requested family
-        // raises if familyName is not fond
+        // raises if familyName is not found
         .then(csvData=>csvData.get(familyName)) // -> instance of CSVFamily; raises if familyName doesn't exist
         // get the files
         .then(familyData=>{
