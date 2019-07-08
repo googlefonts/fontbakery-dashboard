@@ -125,7 +125,11 @@ function _renderSourceDetails(sourceDetails, indentationDepth) {
 
 const ApproveProcessTask = (function() {
 
-const ApproveProcessTask = taskFactory('ApproveProcessTask');
+var anySetup = {
+    knownTypes: { FamilyData }
+};
+
+const ApproveProcessTask = taskFactory('ApproveProcessTask', anySetup);
 const _p = ApproveProcessTask.prototype;
 
 _p._getSourceDetails = function() {
@@ -308,9 +312,10 @@ _p.callbackApproveProcess = function([requester, sessionID]
         // validate here!
         return this._editInitialState(requester, values);
     }
-    else if(action === 'dismiss')
-        this._setFAILED('**' + requester + '** decided to FAIL this process '
-                     + 'request with reason:\n' + values.reason);
+    else if(action === 'dismiss') {
+        this._setFAILED('**' + requester + '** decided to FAIL this process.'
+            + values.reason ? '\n\n' + values.reason : '');
+    }
     else
         throw new Error('Pick one of the actions from the list.');
 };
@@ -479,12 +484,13 @@ _p.callbackSignOffSpreadsheet = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
     if(values.action === 'accept') {
-        this._setOK('**' + requester + '** confirms spreadsheet entry.\n'
+        this._setLOG('**' + requester + '** confirms spreadsheet entry.\n'
                   // hmm, although the data may be outdated, we still may
                   //  want to log it, as it's the basis for the decision
                   +  this._mdCompareSourceDetails());
         TODO('callbackSignOffSpreadsheet: eventually we want to put this info into a database that we manage ourselves.');
         // that needs some more CRUD interfaces though.
+        this._getFilesPackage();
     }
     else if(values.action === 'back') {
         let message = values.message || '(no message)';
@@ -500,42 +506,22 @@ _p.callbackSignOffSpreadsheet = function([requester, sessionID]
         // this._setLOG('**' + requester +'** accepted this process.');
         return this._expectSignOffSpreadsheet();
     }
-    else if (values.action === 'deny')
+    else if (values.action === 'deny') {
+        // hmm, although the data may be outdated, we still may
+        //  want to log it, as it's the basis for the decision
+        this._setREPORT( this._mdCompareSourceDetails() );
         this._setFAILED('**' + requester + '** can\'t confirm the spreadheet '
-                + 'entry is good:\n' + values.reason + '\n'
-                  // hmm, although the data may be outdated, we still may
-                  //  want to log it, as it's the basis for the decision
-                  +  this._mdCompareSourceDetails());
+                + 'entry is good.'
+                + values.reason ? '\n\n' + values.reason : ''
+                );
+    }
 };
 
-
-return ApproveProcessTask;
-})();
-
-const ApproveProcessStep = stepFactory('ApproveProcessStep', {
-    //(engineer): Review form info is good.
-    //        -> should have a way to modify the state from init
-    //(engineer): updates spreadsheet -> just a sign off
-    //        -> may be done by the form eventually
-    ApproveProcess: ApproveProcessTask
-});
-
-
-
-// * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
-const GetFilesPackageTask = (function() {
-
-var anySetup = {
-    knownTypes: { FamilyData }
-};
-
-const GetFilesPackageTask = taskFactory('GetFilesPackageTask', anySetup);
-const _p = GetFilesPackageTask.prototype;
 
 /**
  * Expected by Parent.
  */
-_p._activate = function() {
+_p._getFilesPackage = function() {
     // This used to timeout when the google/fonts repo was not fetched
     // in the upstream mainifestSource, e.g. because of a restart of
     // the service. That can still happen when using the `get` gRPC interface
@@ -571,8 +557,8 @@ _p.callbackReceiveFiles = function([requester, sessionID]
         // change the spreadsheet and try again!
         // FIXME: if this fails inform the user abpout steps to do and
         // provide options.
-        this._setFAILED('**' + requester + '** can\'t create files package.'
-                    + '\n\n **ERROR** ' + familyDataMessage.getError());
+        this._setREPORT('**ERROR** ' + familyDataMessage.getError());
+        this._setFAILED('**' + requester + '** can\'t create files package.');
         return;
     }
 
@@ -662,7 +648,7 @@ _p.callbackReceiveFiles = function([requester, sessionID]
                                 + '```';
                 }).join('  \n')
         );
-        this._setLOG(familyDataSummaryMarkdown.join('\n'));
+        this._setREPORT(familyDataSummaryMarkdown.join('\n'));
         this._setExpectedAnswer('Check Family Files Package'
                                   , 'callbackCheckFamilyFilesPackage'
                                   , 'uiCheckFamilyFilesPackage');
@@ -675,14 +661,27 @@ _p.uiCheckFamilyFilesPackage = function() {
       , ui: [
             {
                 type: 'info'
-              , content: 'Please check the logged family package.'
+              , content: 'Please check the logged family package.\n\n'
+                        + 'Reloading the files package may be interesting '
+                        + 'if you changed the spreadsheet entry or the '
+                        + 'repository data in the meantime.'
             }
-          , {   name: 'accept'
-              , type:'binary'
-              , label: 'Looks good, go to QA!'
+          , {   name: 'action'
+                , type:'choice'
+                , label: 'How to proceed:'
+                , options: [
+                      ['Looks good, go to QA!', 'accept']
+                    , ['Dismiss the files package and fail the task.', 'deny']
+                    // back? hmm, maybe it's nice to have this option,
+                    // although, the spreadsheet can be changed without
+                    // doing it in here.
+                    // , ['Go back and change the request.', 'back']
+                    , ['Reload the files package.', 'retry'] // e.g. because the spreadsheet entry was changed
+                  ]
+                //, default: 'accept' // 0 => the first item is the default
             }
           , {   name: 'reason'
-              , condition: ['accept', false]
+              , condition: ['action', 'deny']
               , type: 'line' // input type:text
               , label: 'What went wrong?'
             }
@@ -693,20 +692,39 @@ _p.uiCheckFamilyFilesPackage = function() {
 _p.callbackCheckFamilyFilesPackage = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.accept === true) {
+    if(values.action === 'accept') {
+        // no values.reason here
         this._setOK('**' + requester + '** confirms the family package.');
     }
-    else
+    else if(values.action === 'retry'){
+        this._setLOG('**' + requester + '** retries to generate the files package.');
+        // delete the storage
+        var storageKey = this.process.getFilesStorageKey();
+        this._setLOG('Cleaning up: deleting persistence files for key: '
+                    + this.process._state.filesStorageKey);
+        return this.resources.persistence.purge(storageKey)// => 'filesMessage'
+            .then(()=>{this.process._state.filesStorageKey = null;})
+            .then(()=>this._getFilesPackage());
+    }
+    else { // assert values.action === 'deny'
         this._setFAILED('**' + requester + '** can\'t confirm the '
-                + 'family package:\n' + values.reason);
+                + 'family package.'
+                + values.reason ? '\n\n' + values.reason : '');
+    }
 };
 
-return GetFilesPackageTask;
+
+return ApproveProcessTask;
 })();
 
-const GetFilesPackageStep = stepFactory('GetFilesPackageStep', {
-    GetFilesPackage: GetFilesPackageTask
+const ApproveProcessStep = stepFactory('ApproveProcessStep', {
+    //(engineer): Review form info is good.
+    //        -> should have a way to modify the state from init
+    //(engineer): updates spreadsheet -> just a sign off
+    //        -> may be done by the form eventually
+    ApproveProcess: ApproveProcessTask
 });
+
 
 function persistenceKey2cacheKey(resources, persistenceKey) {
     return resources.persistence.get(persistenceKey)
