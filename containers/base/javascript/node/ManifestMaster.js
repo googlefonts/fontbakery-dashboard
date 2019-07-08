@@ -7,7 +7,8 @@
 const { getSetup } = require('./util/getSetup')
   , { IOOperations } = require('./util/IOOperations')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , { CacheClient }  = require('./util/CacheClient')
+  , { StorageClient }  = require('./util/StorageClient')
+  , { InitWorkersClient } = require('./util/InitWorkersClient')
   ;
 
 /**
@@ -44,25 +45,28 @@ const { getSetup } = require('./util/getSetup')
  * else
  *      create the full entry
  */
-function ManifestMaster(logging, amqpSetup, dbSetup, cacheSetup) {
+function ManifestMaster(logging, setup) {
     this._log = logging;
-    this._dbSetup = dbSetup;
-    this._io = new IOOperations(logging, dbSetup, amqpSetup);
+    this._io = new IOOperations(logging, setup.db, setup.amqp);
     this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
-    this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port);
+    this._cache = new StorageClient(logging, setup.cache.host, setup.cache.port);
+    this._initWorkers = new InitWorkersClient(logging, setup.initWorkers.host, setup.initWorkers.port);
 
     // Start serving when the database and rabbitmq queue is ready
     Promise.all([
                  this._io.init()
                , this._cache.waitForReady()
+               , this._initWorkers.waitForReady()
                ])
     //.then(resources => {
     //    amqp = resources[0][1];
     //})
     .then(this._listen.bind(this))
-    .catch(err => {
-        this._log.error('Can\'t initialize server.', err);
-        process.exit(1);
+    .then(
+        ()=>this._log.info('Server ready!')
+      , err => {
+            this._log.error('Can\'t initialize server.', err);
+            process.exit(1);
     });
 }
 
@@ -93,31 +97,16 @@ _p._getCollectionFamilyJob = function(messageContent) {
 _p._consumeQueue = function(message) {
     var job = this._getCollectionFamilyJob(message.content)
       , cacheKey = job.getCacheKey()
-      , test_data_hash = cacheKey.getHash()
       ;
-    return this._io.getDocId(test_data_hash) // => [created, docid]
-        .then(created_docid => {
-            var [created, docid, environment_version] = created_docid
-              , promise
-              ;
-            if(!created) {
-                this._log.debug('familytests_id ', docid, 'exists for'
-                    , 'ENVIRONMENT_VERSION:', environment_version
-                    , 'test_data_hash:', test_data_hash
-                );
-                // purge cacheKey!!!
-                promise = this._cache.purge(cacheKey);
-            }
-            else
-                // dispatch to worker-distributor
-                promise = this._io.dispatchFamilyJob(cacheKey, docid);
 
-            return promise.then(()=>this._createCollectionEntry(job, docid));
-
-        })
-        .then(() => this._io.ackQueueMessage(message))
-        .catch(err=>this._log.error(err)) // die now?
-        ;
+    return this._initWorkers.initialize('fontbakery', cacheKey)
+    .then(familyJob=>{
+        var docid = familyJob.getDocid();
+        return this._createCollectionEntry(job, docid);
+    })
+    .then(() => this._io.ackQueueMessage(message))
+    .catch(err=>this._log.error(err)) // die now?
+    ;
 };
 
 
@@ -163,5 +152,11 @@ _p._createCollectionEntry = function(job, familytests_id) {
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    new ManifestMaster(setup.logging, setup.amqp, setup.db, setup.cache);
+    new ManifestMaster(setup.logging, {
+        // passing these explicitly to document the dependencies
+        db: setup.db
+      , amqp: setup.amqp
+      , cache: setup.cache
+      , initWorkers: setup.initWorkers
+    });
 }

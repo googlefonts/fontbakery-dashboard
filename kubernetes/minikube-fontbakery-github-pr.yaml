@@ -1,0 +1,39 @@
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-github-pr
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fontbakery-github-pr
+    spec:
+      containers:
+      - name: fontbakery-github-pr
+        image: fontbakery/base-javascript:1
+        env:
+          - name: FONTBAKERY_LOG_LEVEL
+            value: "DEBUG"
+          - name: GITHUB_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: github-api-token
+        ports:
+        - containerPort: 50051
+        workingDir: /var/javascript
+        command: ["node", "node/GitHubPRServer.js", "-p", "50051"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fontbakery-github-pr
+  labels:
+    component: fontbakery-github-pr
+spec:
+  ports:
+    - port: 50051
+      targetPort: 50051
+  selector:
+    component: fontbakery-github-pr

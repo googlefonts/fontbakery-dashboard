@@ -14,10 +14,15 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-reports
-        image: gcr.io/fontbakery-168509/base-javascript:44
+        image: gcr.io/fontbakery-168509/base-javascript:5
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 50051
         workingDir: /var/javascript

@@ -8,8 +8,12 @@ const express = require('express')
   , path = require('path')
   , messages_pb = require('protocolbuffers/messages_pb')
   , { IOOperations } = require('./util/IOOperations')
-  , { CacheClient }  = require('./util/CacheClient')
+  , { StorageClient }  = require('./util/StorageClient')
   , { ReportsClient } = require('./util/ReportsClient')
+  , { DispatcherProcessManagerClient } = require('./util/DispatcherProcessManagerClient')
+  , { GitHubAuthClient } = require('./util/GitHubAuthClient')
+  , { ManifestClient } = require('./util/ManifestClient')
+  , { InitWorkersClient } = require('./util/InitWorkersClient')
   , ROOT_PATH = __dirname.split(path.sep).slice(0, -1).join(path.sep)
   ;
 
@@ -48,10 +52,18 @@ function _BaseServer(logging, portNum, setup) {
             ]
         ]
       , ['cache', [
-                ()=>new CacheClient(
+                ()=>new StorageClient(
                                 this._log
                               , setup.cache.host, setup.cache.port
-                              , messages_pb, 'fontbakery.dashboard')
+                              , messages_pb)
+              , 'waitForReady'
+            ]
+        ]
+        , ['persistence', [
+                ()=>new StorageClient(
+                                this._log
+                              , setup.persistence.host, setup.persistence.port
+                              , messages_pb)
               , 'waitForReady'
             ]
         ]
@@ -61,15 +73,43 @@ function _BaseServer(logging, portNum, setup) {
               , 'waitForReady'
             ]
         ]
-      // TODO
-      //, ['dispatcher', [
-      //          ()=>new DispatcherClient(
-      //                          this._log
-      //                        , setup.dispatcher.host
-      //                        , setup.dispatcher.port)
-      //        , 'waitForReady'
-      //      ]
-      //  ]
+      , ['dispatcher', [
+                ()=>new DispatcherProcessManagerClient(
+                                this._log
+                              , setup.dispatcher.host
+                              , setup.dispatcher.port)
+              , 'waitForReady'
+            ]
+        ]
+      , ['ghauth', [
+                ()=>new GitHubAuthClient(
+                                this._log
+                              , setup.gitHubAuth.host
+                              , setup.gitHubAuth.port)
+              , 'waitForReady'
+            ]
+        ]
+      , ['webServerCookieSecret',[
+                ()=>setup.webServerCookieSecret
+            ]
+
+        ]
+      , ['manifestUpstream', [
+            ()=>new ManifestClient(
+                                this._log
+                              , setup.manifestUpstream.host
+                              , setup.manifestUpstream.port)
+              , 'waitForReady'
+            ]
+        ]
+      , ['initWorkers', [
+            ()=>new InitWorkersClient(
+                                this._log
+                              , setup.initWorkers.host
+                              , setup.initWorkers.port)
+              , 'waitForReady'
+            ]
+        ]
     ]);
     this._resources = new Map();
     this._resources.set('*app:/', this._app); // root express app
@@ -109,7 +149,7 @@ _p._getServiceDependency = function(appLocation, name) {
             let [builder, initFunc] = this._DIResourceBuilders.get(key)
               , resource = builder.call(this)
               ;
-            // initFinc is e.g. 'waitForReady' for gRPC clients
+            // initFunc is e.g. 'waitForReady' for gRPC clients
             if(initFunc)
                 promise = resource[initFunc]();
             this._resources.set(key, resource);
@@ -120,19 +160,45 @@ _p._getServiceDependency = function(appLocation, name) {
     return [this._resources.get(key), promise];
 };
 
+_p._getServiceDependencyObject = function(appLocation, object) {
+    var result = {}, promises = [];
+    for(let [k, name] of Object.entries(object)) {
+        let [dependency, promise] = this._getServiceDependency(appLocation, name);
+        result[k] = dependency;
+        if(promise)
+            promises.push(promise);
+    }
+    return [result, promises];
+};
+
 _p._initService = function(appLocation, Constructor, dependencies) {
     this._log.info('Initializing service', Constructor.name, 'at', appLocation);
     var service
       , promises = []
       , args = []
       ;
-    for(let name of dependencies) {
-        let [dependency, promise] = this._getServiceDependency(appLocation, name);
+    for(let item of dependencies) {
+        let itemPromises = [], dependency;
+        if(typeof item === 'string') {
+            let name = item, promise;
+            [dependency, promise] = this._getServiceDependency(appLocation, name);
+            if(promise)
+                itemPromises.push(promise);
+        }
+        else if(typeof item === 'object')
+            // This is to enable optional arguments, that are loaded via
+            // an object argument, e.g. item can be:
+            // {cache: 'cache', persistence: 'persistence'}
+            [dependency, itemPromises] = this._getServiceDependencyObject(appLocation, item);
+        else
+            throw new Error('Don\'t know hoe to handle dependency: '
+                                +'('+typeof item+') ' + item.toString());
+        promises.push(...itemPromises);
         args.push(dependency);
-        if(promise)
-            promises.push(promise);
     }
     service = new Constructor(...args);
+    if(service.init)
+        promises.push(Promise.all([...promises]).then(()=>service.init()));
     return [service, promises];
 };
 
@@ -194,12 +260,16 @@ _p.fbIndex = function(req, res, next) {
  */
 _p._socketOnSubscribe = function(socket, eventName, handler, ...data_callback) {
     var [data, ...moredata_callback] = data_callback;
-    this._log.info('_onSocketConnect: socket', socket.id ,'subscription '
-                                        + 'requested for', eventName, data, ...moredata_callback);
-    if(typeof data.id !== 'string')
+    this._log.info('_onSocketConnect: socket', socket.id
+                            ,'received event:', eventName
+                            , 'with data:',data, ...moredata_callback);
+    if(data !== null && typeof data === 'object' && typeof data.id !== 'string')
         // this is actually required (historically)
         // ??? why can't we fix this with an error?
         // and at the position where data.id is actually needed/evaluated?
+        // FIXME: this should be fixed where it is expected.
+        // execute-dispatcher-process already uses a string for sessionId
+        // in the prosition of the data argument ...
         data.id = '';
     handler.call(this, socket, data, ...moredata_callback);
 };

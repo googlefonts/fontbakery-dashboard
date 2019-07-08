@@ -50,14 +50,14 @@ $ docker build -t fontbakery/base-python:1 containers/base-python/
 In the yaml file, the container is referenced directly by its tag `fontbakery/base-python:1`:
 
 ```yaml
-# minikube-fontbakery-worker-checker.yaml
+# minikube-fontbakery-worker.yaml
 […]
     spec:
       containers:
-      - name: fontbakery-worker-checker
+      - name: fontbakery-worker
         image: fontbakery/base-python:1
         workingDir: /var/python
-        command: ["python3",  "-u", "fontbakery-worker-checker.py"]
+        command: ["python3",  "-u", "worker-launcher.py"]
 […]
 ```
 
@@ -65,7 +65,7 @@ This can be applied directly **without** `$ docker push`:
 
 ```
 # NAMESPACE=fontbakery
-$ kubectl -n $NAMESPACE apply -f minikube-fontbakery-worker-checker.yaml
+$ kubectl -n $NAMESPACE apply -f minikube-fontbakery-worker.yaml
 ```
 
 
@@ -252,35 +252,68 @@ $ /fontbakery-dashboard/containers/base$ ./update_protobufs.sh
 ```
 $ minikube start
 $ . <(minikube docker-env)
-$ docker build -t fontbakery/base-javascript:4 containers/base/javascript/
-$ docker build -t fontbakery/base-python:5 containers/base/python/
+$ docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-1 containers/rethinkdb
+$ docker build -t fontbakery/base-javascript:1 containers/base/javascript/
+$ docker build -t fontbakery/base-python:1 containers/base/python/
 $ kubectl create namespace fontbakery
 $ alias kf="kubectl -n fontbakery"
-$ ENVIRONMENT_VERSION="$(date)"
-$ kf create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
+#$ ENVIRONMENT_VERSION="$(date)"
+#$ kf create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
+$ ./set-minikube-vars
 # same order as in DEPLOY log
 $ kf apply -f kubernetes/minikube-rabbitmq.yaml
 $ kf apply -f kubernetes/minikube-rethinkdb.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-cache.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-worker-cleanup.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-worker-checker.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-storage-cache.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-storage-persistence.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-init-workers.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-worker.yaml
 # SKIP for now (don't want to kick of the checking at the moment!)
-# $ kf apply -f kubernetes/minikube-fontbakery-worker-distributor.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-manifest-master.yaml
+# new stuff
+$ kf apply -f kubernetes/minikube-fontbakery-github-auth.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-github-pr.yaml
+# end new stuff
+
+$ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
+# SKIP: (do not need right now)
+# $ kf apply -f kubernetes/minikube-fontbakery-manifest-githubgf.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-gfapi.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-csvupstream.yaml
+
+
+
+$ kf apply -f kubernetes/minikube-fontbakery-dispatcher.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-api.yaml
 # now: open web frontend: $ minikube -n fontbakery service fontbakery-api
-# SKIP: (do not need right now)
-# $ kf apply -f kubernetes/minikube-fontbakery-manifest-gfapi.yaml
-# $ kf apply -f kubernetes/minikube-fontbakery-manifest-githubgf.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-manifest-csvupstream.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
-
-
 
 ```
 
-
 # cheat sheet:
+
+## Run with working github OATUH
+
+The OAUTH setup is currently pointing at http://localhost:3000 as a
+app adress, hence we need to make sure that exists:
+
+```
+$ kf port-forward service/fontbakery-api 3000:80
+```
+## Get a shell in a running pod
+
+```
+$ kf get pods
+NAME                                               READY     STATUS    RESTARTS   AGE
+[...]
+fontbakery-worker-5b5f68fc48-g847t                 1/1       Running   0          1m
+[...]
+$ kf exec -it fontbakery-worker-5b5f68fc48-g847t -- /bin/bash
+```
+
+## Get the logs of a pod in a tail -f fashion
+
+```
+$ kf logs -f fontbakery-worker-5b5f68fc48-g847t
+```
 
 ## services:
 
@@ -293,4 +326,17 @@ $ minikube -n fontbakery service fontbakery-api
 
 # rabbitmq admin interface; user: "guest" password: "guest"
 $ minikube -n fontbakery service rabbitmq-management
+```
+
+### heapster resource monitoring
+```
+# activate
+minikube addons enable heapster
+
+# deactivate
+
+# when active
+$ minikube addons open heapster
+
+
 ```

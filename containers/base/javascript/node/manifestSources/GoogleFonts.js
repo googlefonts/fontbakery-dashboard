@@ -104,6 +104,9 @@ function apiData2Map(data) {
     return result;
 }
 
+
+// FIXME: I think we should cache this, for at least 5 Minutes
+// The API changes seldomly.
 function downloadAPIData(url) {
     return download(url)
             .then(download2JSON)
@@ -168,18 +171,37 @@ _p._update = function(apiData) {
 
         updating.push(
             this._loadFamily(familyData) // -> filesData
-                .then(filesData=>this._dispatchFamily(familyName, filesData)) // jshint ignore:line
+                // Including familyData as metadata, leaves a
+                // trail for documentation.
+                .then(filesData=>this._dispatchFamily(familyName, filesData, familyData)) // jshint ignore:line
         );
     }
     return this._waitForAll(updating);
 };
 
+_p.get = function(familyName) {
+    // familyName from the API is with spaces i.e. "Aguafina Script"
+    // to be fair, the family name in the spreadsheet source is the same
+    return downloadAPIData(this._apiAPIDataUrl)
+    .then(apiData=>{
+        var familyData = apiData.get(familyName);
+        if(!familyData)
+            throw new Error('Not found family by name "'+familyName+'"');
+        return familyData;
+    })
+    .then(familyData=>Promise.all([
+          familyName
+        , this._loadFamily(familyData) // filesData -> [[name, blob], [name, blob], ...]
+        , familyData]))
+    ;
+    // -> [familyName, filesData, metadata]
+};
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
        , familyWhitelist = setup.develFamilyWhitelist
        , apiDataBaseUrl = 'https://www.googleapis.com/webfonts/v1/webfonts?key='
-       , apiDataUrl = apiDataBaseUrl + process.env.GOOGLE_API_KEY
+       , apiDataUrl = apiDataBaseUrl + setup.googleAPIKey
        , grpcPort=50051
        ;
 
@@ -191,13 +213,6 @@ if (typeof require != 'undefined' && require.main==module) {
             break;
         }
     }
-
-    if(!process.env.GOOGLE_API_KEY)
-        // see: Using Secrets as Environment Variables
-        // in:  https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables
-        // and: https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure
-        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=google-api-key=$GOOGLE_API_KEY
-        throw new Error('MISSING: process.env.GOOGLE_API_KEY');
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
     if(familyWhitelist)
@@ -217,4 +232,14 @@ if (typeof require != 'undefined' && require.main==module) {
           , setup.cache
           , setup.amqp
     );
+    server.serve()
+        //.then(()=>server.updateAll())
+        .then(()=>setup.logging.warning('activate: `server.updateAll()`'))
+        .then(
+            ()=>setup.logging.info('Server ready!')
+            , error=>{
+                setup.logging.error('Can\'t initialize server.', error);
+                process.exit(1);
+            }
+        );
 }

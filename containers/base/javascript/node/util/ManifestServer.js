@@ -5,62 +5,15 @@
 /* jshint esnext:true */
 
 const { initAmqp }= require('./getSetup')
-  , { CacheClient } = require('./CacheClient')
+  , { StorageClient } = require('./StorageClient')
   , grpc = require('grpc')
   , messages_pb = require('protocolbuffers/messages_pb')
-  , services_pb = require('protocolbuffers/messages_grpc_pb')
-  , ManifestService = services_pb.ManifestService
+  , { File, Files, CollectionFamilyJob, FamilyData, FamilyNamesList } = messages_pb
+  , { ManifestService } = require('protocolbuffers/messages_grpc_pb')
   , { Timestamp } = require('google-protobuf/google/protobuf/timestamp_pb.js')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
+  , { AsyncQueue } = require('./AsyncQueue')
   ;
-
-
-// TODO: this is a nice helper for _Source.schedule as well!
-function AsyncQueue() {
-    this._current = null;
-    this._thread = [];
-}
-AsyncQueue.prototype._tick = function() {
-    if(!this._thread.length || this._current) {
-        return;
-    }
-
-    this._current = this._thread.pop();
-    this._current().then(() => {
-        this._current = null;
-        this._tick();
-    });
-};
-
-AsyncQueue.prototype.schedule = function(job) {
-    var resolve, reject
-        // resolve, reject of the closure are
-      , jobPromise = new Promise((res, rej) => {
-            resolve = res;
-            reject = rej;
-        })
-      ;
-    this._thread.unshift(() => {
-        var result;
-        try {
-            result = job();
-            resolve(result);
-        } catch(err) {
-            reject(err);
-        }
-
-        return (result && typeof result.then === 'function')
-              // run next after result; no matter if result succeeds or fails
-            ? result.then(()=>null, ()=>null)
-              // run next queue.thread item asap
-            : Promise.resolve(null)
-            ;
-    });
-    this._tick();
-    return jobPromise;
-};
-
-exports.AsyncQueue = AsyncQueue;
 
 /**
  * This connects the manifestSources to the world (cluster)
@@ -75,8 +28,15 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._server.addService(ManifestService, this);
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 
-    this._cache = new CacheClient(logging, cacheSetup.host, cacheSetup.port
-                            , messages_pb, 'fontbakery.dashboard');
+    if(cacheSetup)
+        this._cache = new StorageClient(logging, cacheSetup.host, cacheSetup.port
+                            , messages_pb);
+    else
+        // that's a feature used in development sometimes
+        this._log.warning('cacheSetup is not defined!');
+
+    this._sourcesSetup = sources;
+    this._amqpSetup = amqpSetup;
     this._amqp = null;
     this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
     //
@@ -88,37 +48,31 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._sources = Object.create(null);
     this._queues = new Map();
     this.__queue = this._queue.bind(this);
+}
 
+var _p = ManifestServer.prototype;
+
+_p.serve = function() {
     // Start serving when the database and rabbitmq queue is ready
-    Promise.all([
-                 initAmqp(this._log, amqpSetup)
-               , this._cache.waitForReady()
-               , this._addSources(sources)
+    return Promise.all([
+                 initAmqp(this._log, this._amqpSetup)
+               , this._cache && this._cache.waitForReady() || null
+               , this._addSources(this._sourcesSetup)
                ])
     .then(resources => {
         this._amqp = resources[0];
     })
-    // default on startup
     .then(()=>{
         this._ready = true;
-        this._log.info('Ready now!');
         return this._server.start();
     })
-    .catch(function(err) {
-        this._log.error('Can\'t initialize server.', err);
-        process.exit(1);
-    }.bind(this))
-    .then(this.updateAll.bind(this))
    ;
-}
-
-var _p = ManifestServer.prototype;
+};
 
 _p._addSources = function(sources) {
     return Promise.all(sources.map(this._addSource, this)
                               .filter(promise=>!!promise));
 };
-
 
 _p._registerSource = function(sourceID) {
     // jshint unused:vars
@@ -160,14 +114,13 @@ _p.update = function(sourceId) {
         });
 };
 
-
 /**
  * Manifest source? This is useful for all Manifests.
  * filesData is is an array of arrays:
  *          [ [string filename, Uint8Array fileData], ... ]
  */
-_p._wrapFamilyData = function(filesData) {
-    var filesMessage = new messages_pb.Files();
+_p._wrapFilesData = function(filesData) {
+    var filesMessage = new Files();
 
     // sort by file name
     function sortFilesData(a, b) {
@@ -177,7 +130,7 @@ _p._wrapFamilyData = function(filesData) {
     }
 
     function makeFile(item) {
-        var file = new messages_pb.File()
+        var file = new File()
           , [filename, arrBuff] = item
           ;
         file.setName(filename);
@@ -223,7 +176,7 @@ _p._sendAMQPMessage = function (queueName, message) {
 
 _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
     var collectionId = [this._id, sourceid].join('/')
-      , job = new messages_pb.CollectionFamilyJob()
+      , job = new CollectionFamilyJob()
       , timestamp = new Timestamp()
       , buffer
       ;
@@ -243,7 +196,7 @@ _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
 };
 
 _p._dispatchFamily = function(sourceid, familyName, filesData, metadata) {
-    var filesMessage = this._wrapFamilyData(filesData); // => filesMessage
+    var filesMessage = this._wrapFilesData(filesData); // => filesMessage
     return this._queue('cache', () => this._cacheFamily(filesMessage)) // => cacheKey
         .then(cacheKey => {
             return this._dispatchFamilyJob(sourceid, familyName
@@ -271,11 +224,13 @@ _p._queue = function(name, job) {
 };
 
 // ManifestService implementation
-// rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
+// rpc Poke (ManifestSourceId) returns (google.protobuf.Empty) {};
 _p.poke = function(call, callback) {
-    if(!this._ready)
+    if(!this._ready) {
         callback(new Error('Not ready yet'));
-    var sourceId = call.request.getSource() // call.request is a PokeRequest
+        return;
+    }
+    var sourceId = call.request.getSourceId() // call.request is a ManifestSourceId
       , err = null
       , response
       ;
@@ -291,6 +246,77 @@ _p.poke = function(call, callback) {
 
     response = err ? null : new Empty();
     callback(err, response);
+};
+
+// rpc List (ManifestSourceId) returns (FamilyNamesList){}
+_p.list = function(call, callback) {
+    if(!this._ready) {
+        callback(new Error('Not ready yet'));
+        return;
+    }
+    var sourceId = call.request.getSourceId() // call.request is a ManifestSourceId
+      , error = null
+      ;
+
+    if(sourceId === '') {
+        error = new Error('sourceId can\t be empty, must be one of: '
+                                + Object.keys(this._sources).join(', '));
+    }
+    if( !(sourceId in this._sources) ) {
+        error = new Error('Not Found: The source "' + sourceId + '" is unknown.'
+                    + 'Known sources are: '
+                    + Object.keys(this._sources).join(', '));
+    }
+
+    return (error ? Promise.reject(error)
+                  : this._sources[sourceId].list())
+    .then(familyNamesList=>{
+          var response = new FamilyNamesList();
+            response.setFamilyNamesList(familyNamesList);
+            callback(null, response);
+        }
+      , error=>{
+            this._log.error('[LIST:'+sourceId+']', error);
+            callback(error, null);
+        }
+    );
+};
+
+_p.get = function(call, callback) {
+    var sourceId = call.request.getSourceId() // call.request is a FamilyRequest
+     , familyName = call.request.getFamilyName() // call.request is a FamilyRequest
+     , err = null
+     ;
+
+    this._log.info('[GET:'+sourceId+'/'+familyName+'] ...');
+    if(!this._ready)
+        err = new Error('Not ready yet');
+    else if(!(sourceId in this._sources))
+        err = new Error('sourceId "'+sourceId+'" not found.');
+
+    (err ? Promise.reject(err)
+         : this._sources[sourceId].get(familyName))
+    .then(([familyName, filesData, metadata])=>{
+        var familyData = new FamilyData()
+          , collectionId = [this._id, sourceId].join('/')
+          , filesMessage = this._wrapFilesData(filesData)
+          , timestamp = new Timestamp()
+          ;
+        timestamp.fromDate(new Date());
+        familyData.setCollectionid(collectionId);
+        familyData.setFamilyName(familyName);
+        familyData.setFiles(filesMessage);
+        familyData.setDate(timestamp);
+        familyData.setMetadata(JSON.stringify(metadata));
+        return familyData;
+    })
+    .then(
+          familyData=>callback(null, familyData)
+        , err=>{
+            this._log.error('[GET:'+sourceId+'/'+familyName+']', err);
+            callback(err, null);
+          }
+    );
 };
 
 exports.ManifestServer = ManifestServer;

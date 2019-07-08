@@ -1,0 +1,64 @@
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-storage-persistence
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fontbakery-storage-persistence
+        role: messagecache
+    spec:
+      nodeSelector:
+        cloud.google.com/gke-nodepool: default-pool
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                - key: "failure-domain.beta.kubernetes.io/zone"
+                  operator: In
+                  values: ["us-central1-a"] # the storage volume must be here!
+      containers:
+      - name: fontbakery-storage-persistence
+        image: gcr.io/fontbakery-168509/base-javascript:5
+        env:
+          - name: FONTBAKERY_LOG_LEVEL
+            value: "DEBUG"
+          - name: FONTBAKERY_PERSISTENT_DATA_DIR
+            value: "/data/persistence_server"
+        ports:
+        - containerPort: 50051
+#         resources:
+#           limits:
+#             cpu: 1
+#             memory: 5Gi
+#           requests:
+#             cpu: .5
+#             memory: 2Gi
+        volumeMounts:
+        - mountPath: /data
+          name: storage
+        workingDir: /var/javascript
+        command: ["node", "node/PersistenceServer.js", "-p", "50051"]
+      volumes:
+      - gcePersistentDisk:
+          # This GCE PD must already exist.
+          fsType: ext4
+          pdName: storage-persistence-ssd-1
+        name: storage
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fontbakery-storage-persistence
+  labels:
+    component: fontbakery-storage-persistence
+spec:
+  ports:
+    - port: 50051
+      targetPort: 50051
+  selector:
+    component: fontbakery-storage-persistence
+    role: messagecache

@@ -202,7 +202,7 @@ _p._familyNameFromFilesData = function(path, filesData) {
 
     // use family name from METADATA.pb
     if(metadataIndex !== -1 ) {
-        let metadataBlob = new Buffer(filesData[metadataIndex][1] /* = Uint8Array */);
+        let metadataBlob = Buffer.from(filesData[metadataIndex][1] /* = Uint8Array */);
         return parseMetadata(metadataBlob)
         .then(familyProto=>{
             let familyName = familyProto.getName();
@@ -477,7 +477,6 @@ function GitBranch(logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup) {
     GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup);
-    this._oldCommit = null;
 }
 
 var _p = GitBranch.prototype = Object.create(GitBase.prototype);
@@ -488,14 +487,9 @@ var _p = GitBranch.prototype = Object.create(GitBase.prototype);
  */
 _p._update = function(currentCommit) {
     let currentCommitTreePromise = currentCommit.getTree()
-      , dirsPromise = this._oldCommit
-            // based on diff
-            ? Promise.all([this._oldCommit.getTree(), currentCommitTreePromise])
-                     .then(([oldTree, newTree]) => this._dirsToCheck(oldTree, newTree))
-            // all families
-            : currentCommitTreePromise.then(tree => this._getRootTreeFamilies(tree))
+        // all families
+      , dirsPromise = currentCommitTreePromise.then(tree => this._getRootTreeFamilies(tree))
       ;
-    this._oldCommit = currentCommit;
 
     Promise.all([currentCommitTreePromise, dirsPromise])
     .then(([currentCommitTree, dirs]) => {
@@ -684,6 +678,10 @@ _p._queryPullRequestsData = function() {
 };
 
 
+/**
+ * usage:
+ * return this._getCommitResources(reference.owner(), reference.target())
+ */
 _p._getCommitResources = function(repo, commitOid) {
     var result = {
         commit: null
@@ -947,13 +945,6 @@ if (typeof require != 'undefined' && require.main==module) {
         }
     }
 
-    if(!process.env.GITHUB_API_TOKEN)
-        // see: Using Secrets as Environment Variables
-        // in:  https://kubernetes.io/docs/concepts/configuration/secret/#using-secrets-as-environment-variables
-        // and: https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure
-        // $ kubectl -n $NAMESPACE create secret generic external-resources --from-literal=github-api-token=$GITHUB_API_TOKEN
-        throw new Error('MISSING: process.env.GITHUB_API_TOKEN');
-
     setup.logging.log('Loglevel', setup.logging.loglevel);
     if(familyWhitelist)
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
@@ -969,7 +960,7 @@ if (typeof require != 'undefined' && require.main==module) {
     ));
     sources.push(new GitBranchGithubPRs(
             setup.logging, 'pulls', repoPath, baseReference
-          , process.env.GITHUB_API_TOKEN, familyWhitelist
+          , setup.gitHubAPIToken, familyWhitelist
     ));
 
     setup.logging.info('Starting manifest server');
@@ -981,4 +972,14 @@ if (typeof require != 'undefined' && require.main==module) {
       , setup.cache
       , setup.amqp
     );
+    server.serve()
+        //.then(()=>server.updateAll())
+        .then(()=>setup.logging.warning('activate: `server.updateAll()`'))
+        .then(
+            ()=>setup.logging.info('Server ready!')
+            , error=>{
+                setup.logging.error('Can\'t initialize server.', error);
+                process.exit(1);
+            }
+        );
 }

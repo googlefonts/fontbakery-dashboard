@@ -1,0 +1,34 @@
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-worker
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        run: fontbakery-worker
+    spec:
+      containers:
+      - name: fontbakery-worker
+        image: fontbakery/base-python:1
+        env:
+          - name: FONTBAKERY_WORKER_LOG_LEVEL
+            value: "DEBUG"
+          - name: BROWSERSTACK_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-username
+          - name: BROWSERSTACK_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: browserstack-access-key
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
+        workingDir: /var/python
+        command: ["python3",  "-u", "worker-launcher.py"]

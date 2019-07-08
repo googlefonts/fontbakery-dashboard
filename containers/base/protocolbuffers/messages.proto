@@ -9,7 +9,7 @@ package fontbakery.dashboard;
 
 message FamilyJob {
     string docid = 1;
-    CacheKey cache_key = 2;
+    StorageKey cache_key = 2;
     //
     // START distributed job fields
     //
@@ -23,29 +23,39 @@ message FamilyJob {
     //
 }
 
-// The Cache service
-service Cache {
-  // Sends a greeting
-  rpc Put (stream CacheItem) returns (stream CacheKey) {};
+
+// The Storage service
+
+service Storage {
+  rpc Put (stream StorageItem) returns (stream StorageKey) {};
   // Sends another greeting
-  rpc Get (CacheKey) returns (google.protobuf.Any) {};
-  rpc Purge (CacheKey) returns (CacheStatus) {};
+  rpc Get (StorageKey) returns (google.protobuf.Any) {};
+  rpc Purge (StorageKey) returns (StorageStatus) {};
 }
 
 // The request message containing the user's name.
-message CacheItem {
+message StorageItem {
   google.protobuf.Any payload = 1;
+  // this will be set in the response StorageKey of [PUT]
+  // so the client of the streaming interface can  match it's
+  // request to the responses
   string clientid = 2;
 }
 
-message CacheKey {
+message StorageKey {
+    // always set
     string key = 1;
-    string hash = 2; // hash of the binary payload data
-    string clientid = 3; // optional, set if CacheItem.clientid was set
-    bool force = 4; // used for purge
+    // optional, returned by PUT, not needed for GET or PURGE
+    // hash of the binary payload data
+    string hash = 2;
+    // optional, returned by PUT, not needed for GET or PURGE
+    // set if StorageItem.clientid was set
+    string clientid = 3;
+    // optional, used for PURGE
+    bool force = 4;
 }
 
-message CacheStatus {
+message StorageStatus {
     string key = 1;
     int32 instances = 2;
 }
@@ -71,17 +81,31 @@ service Manifest {
   // The Manifest itselt can in the meantime update itself etc.
   // I.e. We create a "Snapshot" of the manifest in the cache, then
   // we can forget about it
-  rpc Poke (PokeRequest) returns (google.protobuf.Empty) {};
+  rpc Poke (ManifestSourceId) returns (google.protobuf.Empty) {};
+  // This is the same data as the manifestSource would dispatch as
+  // CollectionFamilyJob for Font Bakery.
+  rpc Get (FamilyRequest) returns (FamilyData){};
+  rpc List (ManifestSourceId) returns (FamilyNamesList){};
 }
 
-message PokeRequest {
-    string sourceid = 1; // '' === default/not set for all
+
+message ManifestSourceId {
+    string source_id = 1;
+}
+
+message FamilyNamesList {
+    repeated string family_names = 1;
+}
+
+message FamilyRequest {
+    string source_id = 1;
+    string family_name = 2;
 }
 
 message CollectionFamilyJob {
     string collectionid = 1; // the name that identifies the collection
     string family_name = 2; // the name that identifies the family
-    CacheKey cache_key = 3;
+    StorageKey cache_key = 3;
     google.protobuf.Timestamp date = 4; // when the job was created
     // We'll have more information about the job eventually
     // i.e. a "Upstream" or "PullRequests" source will likely be created
@@ -91,6 +115,19 @@ message CollectionFamilyJob {
     string metadata = 5;
 }
 
+
+
+// TODO: this is very similar to CollectionFamilyJob, but the cache_key/files
+// fields differ. Since they represent the same thing though, maybe it would
+// be nice to merge the two message formats into one?
+// could be a oneof data { cache_key|files }
+message FamilyData {
+    string collectionid = 1; // the name that identifies the collection
+    string family_name = 2; // the name that identifies the family
+    Files files = 3;
+    google.protobuf.Timestamp date = 4; // when the data was created
+    string metadata = 5;//json?
+}
 
 // The Reports service
 
@@ -156,4 +193,281 @@ message ReportsQuery {
 
 message ReportIds {
     repeated string ids = 1;
+}
+
+// The Process Manager service ...
+
+service ProcessManager {
+  // returns the current Process state initially and on each change of
+  // the Process state a new Process
+  rpc SubscribeProcess (ProcessQuery) returns (stream ProcessState) {};
+  // same as SubscribeProcess but only returns the current state once
+  rpc GetProcess (ProcessQuery) returns (ProcessState) {};
+  // issue a state change for a Process. `ticket` will be used to make
+  // sure only expected commands are executed.
+  rpc Execute (ProcessCommand) returns (ProcessCommandResult) {};
+  // the any will have to unpack to a specific message defined in the
+  // ProcessManagerImplementation. e.g. DispatcherProcessManager will
+  // expect here a DispatcherInitProcess
+  // this may also be part of making it possible to create different
+  // kinds of processes in the same process manager.
+  // but right now we only deal with one process implementation at a time!
+  rpc InitProcess (google.protobuf.Any) returns (ProcessCommandResult) {};
+  rpc GetInitProcessUi (google.protobuf.Empty) returns (ProcessState) {};
+}
+
+// This service is added next to the ProcessManager service, it
+// implements specific interfaces for the Font Bakery DispatcherProcessManager
+// In this case things that can't be done without specific knowledge about
+// how the specific process implementation (FamilyPRDispatcherProcess)
+// is stored in the database and thus, how to query them.
+// FamilyPRDispatcherProcess adds an important "family" name key to it's
+// state which is used as a secondary key in the database and has no
+// semantic/use in other implementations.
+service DispatcherProcessManager {
+  // returns the ProcessList for the current query and then an updated
+  // ProcessList when the list changes.
+  rpc SubscribeProcessList (ProcessListQuery) returns (stream ProcessList) {};
+}
+
+message ProcessCommandResult {
+    enum Result {
+        FAIL = 0;
+        OK = 1;
+    };
+    Result result = 1;
+    string message = 2; // string/not set
+    // could add maybe structured data (JSON) for special cases
+    // but then again, in these cases the message field can transport
+    // the data.
+}
+
+// whatever we need to get a dispatcher process rolling!
+message DispatcherInitProcess {
+    string requester = 1; // for authorization etc.
+    string json_payload = 2;
+}
+
+message ProcessQuery {
+    string process_id = 1;
+}
+
+message ProcessState {
+  string process_id = 1;
+  // JSON serialized actual process data
+  string process_data = 2;
+  // JSON required user interaction descriptions
+  // i.e. a structure that allows us to build forms for user interactions
+  string user_interface = 3;
+}
+
+message ProcessListQuery {
+    string query = 1;// TODO!
+}
+
+message ProcessListItem {
+  string process_id = 1;
+  // TODO ...
+}
+
+message ProcessList {
+    // TODO!
+    repeated ProcessListItem processes = 6;
+}
+
+message ProcessCommand {
+    string ticket = 1;
+    string target_path = 2;
+    string callback_name = 3;
+    string requester = 4; // for authorization if needed
+    string response_queue_name = 5;
+    oneof payload {
+      // This way we can do better structured protobuf messages OR
+      // faster to initially implemented JSON.
+      string json_payload = 6;
+      google.protobuf.Any pb_payload = 7;
+    }
+    string session_id = 8; // e.g. to get the GitHub oAuthToken from AuthService
+}
+
+///////
+// Authorization/GitHub OAuth stuff
+///////
+
+service AuthService {
+  // **authentication**
+  rpc InitSession (google.protobuf.Empty) returns (AuthStatus) {};
+  rpc Logout (SessionId) returns (google.protobuf.Empty) {};
+  // named like this due to the OAuth workflow
+  rpc Authorize (AuthorizeRequest) returns (AuthStatus) {};
+  rpc CheckSession (SessionId) returns (AuthStatus) {};
+  //
+  // **authorization** (could be another service)
+  rpc GetRoles (AuthorizedRolesRequest) returns (AuthorizedRoles) {};
+  rpc GetOAuthToken (SessionId) returns (OAuthToken) {};
+}
+
+message AuthStatus {
+    enum StatusCode {
+        ERROR = 0;
+        OK = 1;
+        INITIAL = 2;
+        NOT_READY = 3;
+        NO_SESSION = 4;
+        WRONG_AUTHORIZE_STATE = 5;
+        TIMED_OUT = 6;
+    };
+    // always
+    StatusCode status = 1;
+    // only if OK or INITIAL
+    string session_id = 2;
+    // only if INITIAL
+    string authorize_url = 3;
+    // only if *not* OK or INITIAL,
+    // To help the user finding out what
+    // went wrong. Otherwise, "just working"
+    // authentication is enough of a message.
+    string message = 4;
+    // only if OK
+    string user_name = 5;
+    // only if OK
+    string avatar_url = 6;
+}
+
+message AuthorizeRequest {
+    string o_auth_code = 1;
+    string session_id = 2;
+    string authorize_state = 3;
+}
+
+message SessionId {
+    string session_id = 1;
+}
+
+message AuthorizedRolesRequest {
+    string session_id = 1;
+    string repo_name_with_owner = 2;
+}
+
+message AuthorizedRoles {
+    repeated string roles = 1;
+    string user_name = 2;
+};
+
+message OAuthToken {
+    string user_name = 1; // session.user.login
+    string access_token = 2; // session.accessToken.accessToken
+    string type = 3; // session.accessToken.token_type 'bearer'
+    string scope = 4; // session.accessToken.scope 'user:email'
+}
+
+
+// The Pull Request Dispatcher service
+
+service PullRequestDispatcher {
+  // If answering directly THIS COULD TIME OUT!
+  // instead, we answer with Empty and send the
+  // DispatchReport message via another channel,
+  // currently this is implement using an
+  // AMQP queue which feeds into ProcessManager.Execute
+  rpc Dispatch (PullRequest) returns (google.protobuf.Empty) {};
+}
+
+message PullRequest {
+    string session_id = 1;
+    // (file) data location, actually will return a FamilyData message
+    string storage_key = 2;
+    // "ofl/myfont"
+    string target_directory = 3;
+    // simple string as a title
+    string p_r_message_title = 4;
+    // github-markdown string
+    string p_r_message_body = 5;
+    // multi line string, first line and details should be
+    // separated by an empty line
+    string commit_message = 6;
+
+    // to make answering easier in the PR dispatcher, this will have
+    // the essentials already configured
+    ProcessCommand process_command = 7;
+
+    // we should not override already existing remote branches...
+    // maybe create in here using family name and date
+    // can we use also target_directory or should we add a
+    // branch_name_keyword>>> best of both worlds?
+    // string targetBranchName = 7;
+}
+
+message DispatchReport {
+    enum Result {
+        FAIL = 0;
+        OK = 1;
+    };
+    Result status = 1;
+    oneof value {
+      // the url of the PR
+      string p_r_url = 2;
+      // an error message if the operation failed
+      string error = 3;
+    }
+    // where is (or should have been if FAILED) the new remote branch?
+    string branch_url = 4; // branch_url
+    // more data?
+}
+
+service InitWorkers {
+    // the message type of the answer is worker implementation dependent.
+    rpc Init (WorkerDescription) returns (google.protobuf.Any) {};
+}
+
+message WorkerDescription {
+    string worker_name = 1;
+    // the message type of job is worker implementation dependent.
+    google.protobuf.Any job = 2;
+    // (optional) the way to answer once the job has finished
+    ProcessCommand process_command = 3;
+}
+
+message WorkerJobDescription {
+    string worker_name = 1;
+    // the message type of job is worker implementation dependent.
+    google.protobuf.Any job = 2;
+}
+
+// the workers dispatch this message to the AMQP queue
+message CompletedWorker {
+    string worker_name = 1;
+    // the message type of completed_message is worker implementation dependent.
+    google.protobuf.Any completed_message = 2;
+}
+
+message FontBakeryFinished {
+    // probably not needed, but nice to have anyways
+    string docid = 1;
+    // If the report or a sub-job had any exceptions, it means
+    // the job failed to finish orderly, i.e. the result is probably incomplete.
+    bool finished_orderly = 2;
+    string results_json = 3;
+    google.protobuf.Timestamp created = 4;
+    google.protobuf.Timestamp started = 5;
+    google.protobuf.Timestamp finished = 6;
+}
+
+message GenericStorageWorkerResult {
+    message Result {
+        string name = 1;
+        StorageKey storage_key = 2;
+    };
+    string job_id = 1;
+    // currently unused but generally interesting to track the
+    // time from queuing to job start, or overall waiting time
+    // finished - start is the time the worker took
+    // started - finished is the time the job was in the queue
+    google.protobuf.Timestamp created = 2;
+    google.protobuf.Timestamp started = 3;
+    google.protobuf.Timestamp finished = 4;
+    // If set the job failed somehow, print pre-formated
+    string exception = 5;
+    repeated string preparation_logs = 6;
+    repeated Result results = 7;
 }

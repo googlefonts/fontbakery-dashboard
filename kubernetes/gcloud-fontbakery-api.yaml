@@ -13,19 +13,28 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:44
+        image: gcr.io/fontbakery-168509/base-javascript:5
         env:
-          - name: COLLECTION_AUTH_SECRET
-            value: ""
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
-          - name: ENVIRONMENT_VERSION
+          - name: WEB_SERVER_COOKIE_SECRET
             valueFrom:
-              configMapKeyRef:
-                name: env-config
-                key: ENVIRONMENT_VERSION
+              secretKeyRef:
+                name: external-resources
+                key: web-server-cookie-secret
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 3000
+        # demanded by https://cloud.google.com/kubernetes-engine/docs/concepts/ingress
+        # we use just the standard client response here, which has a http 200 status
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
         # debugger chrome://inspect port if active
         # - containerPort: 9229
         workingDir: /var/javascript
@@ -33,21 +42,66 @@ spec:
         # command: ["node", "--inspect=0.0.0.0:9229", "node/api.js"]
         command: ["npm", "start"]
 ---
+apiVersion: cloud.google.com/v1beta1
+kind: BackendConfig
+metadata:
+  name: fontbakery-api-backendconfig
+spec:
+  timeoutSec: 900
+  # TODO: need this for socketIO and multiple fontbakery-api servers
+  # needs a "VPC-native cluster" (--enable-ip-alias) but the current
+  # cluster was not created like this and can't be changed on the fly
+  # apparently.
+  # see: https://cloud.google.com/kubernetes-engine/docs/how-to/configure-backend-service#setting_generated_cookie_affinity
+  # sessionAffinity:
+  #  affinityType: "GENERATED_COOKIE" # OR "CLIENT_IP"
+---
 apiVersion: v1
 kind: Service
 metadata:
   name: fontbakery-api
   labels:
     run: fontbakery-api
+  annotations:
+    # see sessionAffinity in fontbakery-api-backendconfig
+    # cloud.google.com/neg: '{"ingress": true}'
+    beta.cloud.google.com/backend-config: '{"ports": {"80":"fontbakery-api-backendconfig"}}'
 spec:
-  type: LoadBalancer
-  loadBalancerIP: "35.225.170.228"
-# need this for socketIO
-  sessionAffinity: ClientIP
+  type: NodePort
   ports:
     - port: 80
       targetPort: 3000
       protocol: TCP
       name: http
+    #- port: 443
+    #  targetPort: 3000
+    #  protocol: TCP
+    #  name: https
   selector:
     run: fontbakery-api
+---
+apiVersion: networking.gke.io/v1beta1
+kind: ManagedCertificate
+metadata:
+  name: fontbakery-graphicore-de
+spec:
+  domains:
+    - fontbakery.graphicore.de
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: fontbakery-api-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: fontbakery-dashboard # 34.96.110.16
+    networking.gke.io/managed-certificates: fontbakery-graphicore-de
+    # only https:
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+  - host: fontbakery.graphicore.de
+    http:
+      paths:
+      - backend:
+          serviceName: fontbakery-api
+          servicePort: http

@@ -232,7 +232,7 @@ Turns out building `pyfontaine` with this: `RUN pip install --upgrade git+https:
 
 ```
 $ docker tag worker-fontbakery:1 gcr.io/fontbakery-168509/worker-fontbakery:1
-$ gcloud docker -- push gcr.io/fontbakery-168509/worker-fontbakery:1
+$ docker push gcr.io/fontbakery-168509/worker-fontbakery:1
 $ kubectl apply -f kubernetes/gcloud-worker-fontbakery.yaml
 ```
 
@@ -311,7 +311,7 @@ Commented these settings.
 ```
 $ docker build -t www-fontbakery:1.01 containers/www-fontbakery/;
 $ docker tag www-fontbakery:1.01 gcr.io/fontbakery-168509/www-fontbakery:1.01
-$ gcloud docker -- push gcr.io/fontbakery-168509/www-fontbakery:1.01
+$ docker push gcr.io/fontbakery-168509/www-fontbakery:1.01
 $ kubectl apply -f kubernetes/gcloud-www-fontbakery.yaml
 ```
 
@@ -357,14 +357,71 @@ I accessed this and deleted the 'draganddrop' database, which is no longer neede
 ## Secrets
 
 ```bash
+# we have some server side secrets for session cookies or similar
+# this is how they can be created:
+
+# using 33 bytes, we could use 32 bytes (which amounts to 256 bits, as much
+# as is used for a sha256 hash, however, with 32 bytes base64 puts out
+# a padding character (=) in the end and with 33 the padding is gone, the
+# encoded result is as long and we have one extra byte of random, and
+# we're using the resulting string probably, and not the bytes directly
+# e.g. in salting|signing
+$ head -c 33  /dev/urandom | base64 --wrap=0 ;echo ''
+XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+
+```
+
+### set-gcloud-vars
+
+Script Template:
+
+```bash
+#!/usr/bin/env bash
 GOOGLE_API_KEY=AAAAAAAAABBBBBBXXXXXX{PRIVATE}XXXXAAAABBBB
 GITHUB_API_TOKEN=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+GITHUB_OAUTH_CLIENT_ID=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+GITHUB_OAUTH_CLIENT_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+# whitelist user login names on github to have the role "engineer"
+GITHUB_AUTH_ENGINEERS="[\"userlogina\", \"userloginb\", \"userloginc\"]"
+# generated like so: $ head -c 33  /dev/urandom | base64 --wrap=0 ;echo ''
+WEB_SERVER_COOKIE_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
+DISPATCHER_MANAGER_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 
-kubectl delete secret external-resources
-kubectl create secret generic external-resources \
+RETHINKDB_PASSWORD=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
+
+# Note: the "-n fontbakery" argument is only needed if kubectl must address
+# a special namespace e.g. in minikube but not on gcloud
+
+kubectl -n fontbakery delete secret external-resources
+kubectl -n fontbakery create secret generic external-resources \
      --from-literal=google-api-key=$GOOGLE_API_KEY \
-     --from-literal=github-api-token=$GITHUB_API_TOKEN;
+     --from-literal=github-api-token=$GITHUB_API_TOKEN\
+     --from-literal=github-oauth-client-id=$GITHUB_OAUTH_CLIENT_ID\
+     --from-literal=github-oauth-client-secret=$GITHUB_OAUTH_CLIENT_SECRET\
+     --from-literal=github-auth-engineers="$GITHUB_AUTH_ENGINEERS"\
+     --from-literal=web-server-cookie-secret=$WEB_SERVER_COOKIE_SECRET\
+     --from-literal=dispatcher-manager-secret=$DISPATCHER_MANAGER_SECRET\
+     --from-literal=rethinkdb-password=$RETHINKDB_PASSWORD\
+      ;
+
+ENVIRONMENT_VERSION="$(date)" # like: Mi 8. Nov 03:57:01 CET 2017
+kubectl -n fontbakery delete configmap env-config
+kubectl -n fontbakery create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
 ```
+
+Insert secrets, then run it:
+
+```
+# This can be done in a not public file
+
+$ set-minikube-vars
+
+# or
+
+$ set-gcloud-vars
+
+```
+
 
 ## ENVIRONMENT_VERSION
 
@@ -381,7 +438,7 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 
 1. gcloud-rabbitmq.yaml, gcloud-rethinkdb-stage-1.yaml
 2. gcloud-rethinkdb-stage-2.yaml
-3. gcloud-fontbakery-cache.yaml
+3. gcloud-fontbakery-storage-cache.yaml
 4. gcloud-fontbakery-worker-cleanup.yaml, gcloud-fontbakery-worker-checker.yaml,
    gcloud-fontbakery-worker-distributor.yaml, gcloud-fontbakery-manifest-master.yaml
 5. gcloud-fontbakery-api.yaml
@@ -391,13 +448,17 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 ## Docker stuff
 
 ```
-docker build -t fontbakery/base-javascript:44 containers/base/javascript;
-docker tag fontbakery/base-javascript:44 gcr.io/fontbakery-168509/base-javascript:44
-gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:44
+docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-6 containers/rethinkdb
+docker tag fontbakery/rethinkdb:2.3.6-fontbakery-6 gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
+docker push gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
 
-docker build -t fontbakery/base-python:32 containers/base/python;
-docker tag fontbakery/base-python:32 gcr.io/fontbakery-168509/base-python:32
-gcloud docker -- push gcr.io/fontbakery-168509/base-python:32
+docker build -t fontbakery/base-javascript:5 containers/base/javascript;
+docker tag fontbakery/base-javascript:5 gcr.io/fontbakery-168509/base-javascript:5
+docker push gcr.io/fontbakery-168509/base-javascript:5
+
+docker build -t fontbakery/base-python:2 containers/base/python;
+docker tag fontbakery/base-python:2 gcr.io/fontbakery-168509/base-python:1
+docker push gcr.io/fontbakery-168509/base-python:2
 ```
 
 # Deploy
@@ -410,23 +471,29 @@ kubectl apply -f kubernetes/gcloud-rethinkdb-stage-1.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-proxy.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
 
-kubectl apply -f kubernetes/gcloud-fontbakery-cache.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-worker-cleanup.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-worker-checker.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-worker-distributor.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-reports.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-storage-cache.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-storage-persistence.yaml
 
-kubectl apply -f kubernetes/gcloud-fontbakery-api.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-worker.yaml
+
+kubectl apply -f kubernetes/gcloud-fontbakery-reports.yaml
+kubectl apply -f kubernetes/minikube-fontbakery-init-workers.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
+
+kubectl apply -f kubernetes/minikube-fontbakery-github-auth.yaml
+kubectl apply -f kubernetes/minikube-fontbakery-github-pr.yaml
+
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-csvupstream.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-gfapi.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-githubgf.yaml
 
+kubectl apply -f kubernetes/gcloud-dispatcher.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-api.yaml
 ```
 ### delete deployments
 
 ```
-kubectl delete deployment fontbakery-cache;
+kubectl delete deployment fontbakery-storage-cache;
 kubectl delete deployment fontbakery-worker-cleanup
 kubectl delete deployment fontbakery-worker-checker
 kubectl delete deployment fontbakery-worker-distributor
@@ -503,4 +570,19 @@ kubectl delete deployment rethinkdb-admin rethinkdb-proxy rethinkdb-replica-1 re
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-1.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-proxy.yaml
 kubectl apply -f kubernetes/gcloud-rethinkdb-stage-2.yaml
+```
+
+
+## May 2019 deployment
+
+### docker
+
+```
+# do once:
+$ gcloud auth configure-docker
+# instead of the old workflow
+$ gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:3
+# we now use simply
+$ docker push gcr.io/fontbakery-168509/base-javascript:3
+# that's all
 ```

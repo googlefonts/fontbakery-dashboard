@@ -3,6 +3,6 @@
     "laxbreak": true,
     "undef": true,
     "unused": true,
-    "predef": [ "define", "require" ],
+    "predef": [ "define", "require", "Promise"],
     "sub": true
 }

@@ -63,6 +63,10 @@ define([
         return createElementfromHTML(tag, attr, marked(mardownText, {gfd: true}));
     }
 
+    function createFragmentFromMarkdown(mardownText) {
+        return createFragmentFromHTML(marked(mardownText, {gfd: true}));
+    }
+
     function appendHTML(elem, html) {
         var parsed = createElementfromHTML('div', null, html);
         while(parsed.firstChild)
@@ -140,10 +144,10 @@ define([
         }
     }
 
-    function getChildElementForSelector(element, klass, deep) {
+    function getChildElementForSelector(element, selector, deep) {
 
         var elements = Array.prototype.slice
-                            .call(element.querySelectorAll(klass));
+                            .call(element.querySelectorAll(selector));
         if(!deep)
             // I don't know an easier way to only allow
             // direct children.
@@ -186,9 +190,14 @@ define([
             throw new Error('Marker <!-- '+marker+' --> not found');
     }
 
-    function clear(elem) {
-        while(elem.lastChild)
-            removeNode(elem.lastChild);
+    function clear(target, destroyEventName) {
+        while(target.lastChild) {
+            if(destroyEventName)
+                // children can listen for the event and cleanup if needed
+                // activatedElement.addEventListener('destroy', function (e) { //... }, false);
+                target.lastChild.dispatchEvent(new Event(destroyEventName));
+            removeNode(target.lastChild);
+        }
     }
 
     function validateChildEvent(event, stopElement, searchAttribute) {
@@ -232,6 +241,7 @@ define([
       , createFragment: createFragment
       , createComment: createComment
       , createFragmentFromHTML: createFragmentFromHTML
+      , createFragmentFromMarkdown: createFragmentFromMarkdown
       , isDOMElement: isDOMElement
       , replaceNode: replaceNode
       , removeNode: removeNode

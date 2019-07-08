@@ -14,16 +14,28 @@ spec:
         instance: one
     spec:
       containers:
-# review looked OK, but we should think about our trust model
-# here, some binaries are included that we just need to trust and
-# it runs NOT through Debian or something.
-      - image: rosskukulinski/rethinkdb-kubernetes:2.3.5
+      - image: fontbakery/rethinkdb:2.3.6-fontbakery-1
         args:
+          - "/run.sh"
+          - "--bind"
+          - "all"
           - "--cache-size"
           - "100"
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: rethinkdb
         env:
+        - name: RETHINKDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: external-resources
+              key: rethinkdb-password
+        - name: RETHINK_CLUSTER_SERVICE
+          value: rethinkdb
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: status.podIP
         - name: POD_NAMESPACE
           valueFrom:
             fieldRef:
@@ -49,7 +61,7 @@ spec:
         livenessProbe:
           exec:
             command:
-              - /probe
+              - /rethinkdb-probe
           failureThreshold: 3
           initialDelaySeconds: 15
           periodSeconds: 10
@@ -58,7 +70,7 @@ spec:
         readinessProbe:
           exec:
             command:
-              - /probe
+              - /rethinkdb-probe
           failureThreshold: 3
           initialDelaySeconds: 15
           periodSeconds: 10

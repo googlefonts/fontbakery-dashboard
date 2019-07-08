@@ -12,10 +12,15 @@ spec:
     spec:
       containers:
       - name: fontbakery-reports
-        image: fontbakery/base-javascript:4
+        image: fontbakery/base-javascript:1
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         ports:
         - containerPort: 50051
         workingDir: /var/javascript

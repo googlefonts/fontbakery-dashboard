@@ -17,18 +17,22 @@
   "license": "Apache-2.0",
   "dependencies": {
     "amqplib": "^0.5.2",
-    "body-parser": "^1.18.3",
+    "body-parser": "^1.19.0",
+    "cookie-parser": "^1.4.3",
     "csv-parse": "^2.2.0",
-    "express": "^4.16.3",
-    "google-protobuf": "^3.5.0",
-    "grpc": "^1.12.3",
-    "marked": "^0.4.0",
-    "nodegit": "^0.22.1",
+    "express": "^4.17.1",
+    "google-protobuf": "^3.8.0",
+    "grpc": "^1.21.1",
+    "marked": "^0.6.2",
+    "mime": "^2.4.4",
+    "nodegit": "^0.24.3",
     "rethinkdbdash": "^2.3.31",
-    "socketio": "^1.0.0",
-    "tmp": "0.0.33"
+    "socket.io": "^2.2.0",
+    "tmp": "0.0.33",
+    "uid-safe": "^2.1.5",
+    "yazl": "^2.5.1"
   },
   "devDependencies": {
-    "grpc-tools": "^1.6.6"
+    "grpc-tools": "^1.7.3"
   }
 }

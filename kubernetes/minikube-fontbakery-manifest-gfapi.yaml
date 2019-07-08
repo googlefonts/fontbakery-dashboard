@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-manifest-gfapi
-        image: fontbakery/base-javascript:4
+        image: fontbakery/base-javascript:1
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"

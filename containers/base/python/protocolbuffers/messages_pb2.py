@@ -7,7 +7,6 @@ from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
 from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
-from google.protobuf import descriptor_pb2
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -24,7 +23,8 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='messages.proto',
   package='fontbakery.dashboard',
   syntax='proto3',
-  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0cshared.proto\"k\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x31\n\tcache_key\x18\x02 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"D\n\tCacheItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"F\n\x08\x43\x61\x63heKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"-\n\x0b\x43\x61\x63heStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\"\x1f\n\x0bPokeRequest\x12\x10\n\x08sourceid\x18\x01 \x01(\t\"\xaf\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12\x31\n\tcache_key\x18\x03 \x01(\x0b\x32\x1e.fontbakery.dashboard.CacheKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\xda\x01\n\x06Report\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07type_id\x18\x02 \x01(\t\x12\x0e\n\x06method\x18\x03 \x01(\t\x12+\n\x07started\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04\x64\x61ta\x18\x06 \x01(\t\x12\n\n\x02id\x18\x07 \x01(\t\x12,\n\x08reported\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x96\x04\n\x0cReportsQuery\x12@\n\x07\x66ilters\x18\x01 \x03(\x0b\x32/.fontbakery.dashboard.ReportsQuery.FiltersEntry\x12\x41\n\npagination\x18\x04 \x01(\x0b\x32-.fontbakery.dashboard.ReportsQuery.Pagination\x12\x14\n\x0cinclude_data\x18\x05 \x01(\x08\x1a\xa6\x01\n\x06\x46ilter\x12<\n\x04type\x18\x01 \x01(\x0e\x32..fontbakery.dashboard.ReportsQuery.Filter.Type\x12\x0e\n\x06values\x18\x02 \x03(\t\x12\x31\n\rmin_max_dates\x18\x03 \x03(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1b\n\x04Type\x12\t\n\x05VALUE\x10\x00\x12\x08\n\x04\x44\x41TE\x10\x01\x1aY\n\x0c\x46iltersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).fontbakery.dashboard.ReportsQuery.Filter:\x02\x38\x01\x1ag\n\nPagination\x12\x31\n\ritem_reported\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07item_id\x18\x02 \x01(\t\x12\x15\n\rprevious_page\x18\x03 \x01(\x08\"\x18\n\tReportIds\x12\x0b\n\x03ids\x18\x01 \x03(\t2\xe2\x01\n\x05\x43\x61\x63he\x12L\n\x03Put\x12\x1f.fontbakery.dashboard.CacheItem\x1a\x1e.fontbakery.dashboard.CacheKey\"\x00(\x01\x30\x01\x12=\n\x03Get\x12\x1e.fontbakery.dashboard.CacheKey\x1a\x14.google.protobuf.Any\"\x00\x12L\n\x05Purge\x12\x1e.fontbakery.dashboard.CacheKey\x1a!.fontbakery.dashboard.CacheStatus\"\x00\x32O\n\x08Manifest\x12\x43\n\x04Poke\x12!.fontbakery.dashboard.PokeRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xe2\x01\n\x07Reports\x12>\n\x04\x46ile\x12\x1c.fontbakery.dashboard.Report\x1a\x16.google.protobuf.Empty\"\x00\x12M\n\x05Query\x12\".fontbakery.dashboard.ReportsQuery\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x12H\n\x03Get\x12\x1f.fontbakery.dashboard.ReportIds\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01P\x03\x62\x06proto3')
+  serialized_options=None,
+  serialized_pb=_b('\n\x0emessages.proto\x12\x14\x66ontbakery.dashboard\x1a\x19google/protobuf/any.proto\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0cshared.proto\"m\n\tFamilyJob\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x33\n\tcache_key\x18\x02 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey\x12\r\n\x05jobid\x18\x03 \x01(\t\x12\r\n\x05order\x18\x04 \x03(\t\"F\n\x0bStorageItem\x12%\n\x07payload\x18\x01 \x01(\x0b\x32\x14.google.protobuf.Any\x12\x10\n\x08\x63lientid\x18\x02 \x01(\t\"H\n\nStorageKey\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x0c\n\x04hash\x18\x02 \x01(\t\x12\x10\n\x08\x63lientid\x18\x03 \x01(\t\x12\r\n\x05\x66orce\x18\x04 \x01(\x08\"/\n\rStorageStatus\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x11\n\tinstances\x18\x02 \x01(\x05\"%\n\x10ManifestSourceId\x12\x11\n\tsource_id\x18\x01 \x01(\t\"\'\n\x0f\x46\x61milyNamesList\x12\x14\n\x0c\x66\x61mily_names\x18\x01 \x03(\t\"7\n\rFamilyRequest\x12\x11\n\tsource_id\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\"\xb1\x01\n\x13\x43ollectionFamilyJob\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12\x33\n\tcache_key\x18\x03 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\x9f\x01\n\nFamilyData\x12\x14\n\x0c\x63ollectionid\x18\x01 \x01(\t\x12\x13\n\x0b\x66\x61mily_name\x18\x02 \x01(\t\x12*\n\x05\x66iles\x18\x03 \x01(\x0b\x32\x1b.fontbakery.dashboard.Files\x12(\n\x04\x64\x61te\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08metadata\x18\x05 \x01(\t\"\xda\x01\n\x06Report\x12\x0c\n\x04type\x18\x01 \x01(\t\x12\x0f\n\x07type_id\x18\x02 \x01(\t\x12\x0e\n\x06method\x18\x03 \x01(\t\x12+\n\x07started\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04\x64\x61ta\x18\x06 \x01(\t\x12\n\n\x02id\x18\x07 \x01(\t\x12,\n\x08reported\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\x96\x04\n\x0cReportsQuery\x12@\n\x07\x66ilters\x18\x01 \x03(\x0b\x32/.fontbakery.dashboard.ReportsQuery.FiltersEntry\x12\x41\n\npagination\x18\x04 \x01(\x0b\x32-.fontbakery.dashboard.ReportsQuery.Pagination\x12\x14\n\x0cinclude_data\x18\x05 \x01(\x08\x1a\xa6\x01\n\x06\x46ilter\x12<\n\x04type\x18\x01 \x01(\x0e\x32..fontbakery.dashboard.ReportsQuery.Filter.Type\x12\x0e\n\x06values\x18\x02 \x03(\t\x12\x31\n\rmin_max_dates\x18\x03 \x03(\x0b\x32\x1a.google.protobuf.Timestamp\"\x1b\n\x04Type\x12\t\n\x05VALUE\x10\x00\x12\x08\n\x04\x44\x41TE\x10\x01\x1aY\n\x0c\x46iltersEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x38\n\x05value\x18\x02 \x01(\x0b\x32).fontbakery.dashboard.ReportsQuery.Filter:\x02\x38\x01\x1ag\n\nPagination\x12\x31\n\ritem_reported\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0f\n\x07item_id\x18\x02 \x01(\t\x12\x15\n\rprevious_page\x18\x03 \x01(\x08\"\x18\n\tReportIds\x12\x0b\n\x03ids\x18\x01 \x03(\t\"\x86\x01\n\x14ProcessCommandResult\x12\x41\n\x06result\x18\x01 \x01(\x0e\x32\x31.fontbakery.dashboard.ProcessCommandResult.Result\x12\x0f\n\x07message\x18\x02 \x01(\t\"\x1a\n\x06Result\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x06\n\x02OK\x10\x01\"@\n\x15\x44ispatcherInitProcess\x12\x11\n\trequester\x18\x01 \x01(\t\x12\x14\n\x0cjson_payload\x18\x02 \x01(\t\"\"\n\x0cProcessQuery\x12\x12\n\nprocess_id\x18\x01 \x01(\t\"P\n\x0cProcessState\x12\x12\n\nprocess_id\x18\x01 \x01(\t\x12\x14\n\x0cprocess_data\x18\x02 \x01(\t\x12\x16\n\x0euser_interface\x18\x03 \x01(\t\"!\n\x10ProcessListQuery\x12\r\n\x05query\x18\x01 \x01(\t\"%\n\x0fProcessListItem\x12\x12\n\nprocess_id\x18\x01 \x01(\t\"G\n\x0bProcessList\x12\x38\n\tprocesses\x18\x06 \x03(\x0b\x32%.fontbakery.dashboard.ProcessListItem\"\xdf\x01\n\x0eProcessCommand\x12\x0e\n\x06ticket\x18\x01 \x01(\t\x12\x13\n\x0btarget_path\x18\x02 \x01(\t\x12\x15\n\rcallback_name\x18\x03 \x01(\t\x12\x11\n\trequester\x18\x04 \x01(\t\x12\x1b\n\x13response_queue_name\x18\x05 \x01(\t\x12\x16\n\x0cjson_payload\x18\x06 \x01(\tH\x00\x12*\n\npb_payload\x18\x07 \x01(\x0b\x32\x14.google.protobuf.AnyH\x00\x12\x12\n\nsession_id\x18\x08 \x01(\tB\t\n\x07payload\"\xa3\x02\n\nAuthStatus\x12;\n\x06status\x18\x01 \x01(\x0e\x32+.fontbakery.dashboard.AuthStatus.StatusCode\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x15\n\rauthorize_url\x18\x03 \x01(\t\x12\x0f\n\x07message\x18\x04 \x01(\t\x12\x11\n\tuser_name\x18\x05 \x01(\t\x12\x12\n\navatar_url\x18\x06 \x01(\t\"u\n\nStatusCode\x12\t\n\x05\x45RROR\x10\x00\x12\x06\n\x02OK\x10\x01\x12\x0b\n\x07INITIAL\x10\x02\x12\r\n\tNOT_READY\x10\x03\x12\x0e\n\nNO_SESSION\x10\x04\x12\x19\n\x15WRONG_AUTHORIZE_STATE\x10\x05\x12\r\n\tTIMED_OUT\x10\x06\"T\n\x10\x41uthorizeRequest\x12\x13\n\x0bo_auth_code\x18\x01 \x01(\t\x12\x12\n\nsession_id\x18\x02 \x01(\t\x12\x17\n\x0f\x61uthorize_state\x18\x03 \x01(\t\"\x1f\n\tSessionId\x12\x12\n\nsession_id\x18\x01 \x01(\t\"J\n\x16\x41uthorizedRolesRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x1c\n\x14repo_name_with_owner\x18\x02 \x01(\t\"3\n\x0f\x41uthorizedRoles\x12\r\n\x05roles\x18\x01 \x03(\t\x12\x11\n\tuser_name\x18\x02 \x01(\t\"R\n\nOAuthToken\x12\x11\n\tuser_name\x18\x01 \x01(\t\x12\x14\n\x0c\x61\x63\x63\x65ss_token\x18\x02 \x01(\t\x12\x0c\n\x04type\x18\x03 \x01(\t\x12\r\n\x05scope\x18\x04 \x01(\t\"\xdc\x01\n\x0bPullRequest\x12\x12\n\nsession_id\x18\x01 \x01(\t\x12\x13\n\x0bstorage_key\x18\x02 \x01(\t\x12\x18\n\x10target_directory\x18\x03 \x01(\t\x12\x19\n\x11p_r_message_title\x18\x04 \x01(\t\x12\x18\n\x10p_r_message_body\x18\x05 \x01(\t\x12\x16\n\x0e\x63ommit_message\x18\x06 \x01(\t\x12=\n\x0fprocess_command\x18\x07 \x01(\x0b\x32$.fontbakery.dashboard.ProcessCommand\"\xaa\x01\n\x0e\x44ispatchReport\x12;\n\x06status\x18\x01 \x01(\x0e\x32+.fontbakery.dashboard.DispatchReport.Result\x12\x11\n\x07p_r_url\x18\x02 \x01(\tH\x00\x12\x0f\n\x05\x65rror\x18\x03 \x01(\tH\x00\x12\x12\n\nbranch_url\x18\x04 \x01(\t\"\x1a\n\x06Result\x12\x08\n\x04\x46\x41IL\x10\x00\x12\x06\n\x02OK\x10\x01\x42\x07\n\x05value\"\x8a\x01\n\x11WorkerDescription\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12!\n\x03job\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\x12=\n\x0fprocess_command\x18\x03 \x01(\x0b\x32$.fontbakery.dashboard.ProcessCommand\"N\n\x14WorkerJobDescription\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12!\n\x03job\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\"W\n\x0f\x43ompletedWorker\x12\x13\n\x0bworker_name\x18\x01 \x01(\t\x12/\n\x11\x63ompleted_message\x18\x02 \x01(\x0b\x32\x14.google.protobuf.Any\"\xdb\x01\n\x12\x46ontBakeryFinished\x12\r\n\x05\x64ocid\x18\x01 \x01(\t\x12\x18\n\x10\x66inished_orderly\x18\x02 \x01(\x08\x12\x14\n\x0cresults_json\x18\x03 \x01(\t\x12+\n\x07\x63reated\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x06 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xfa\x02\n\x1aGenericStorageWorkerResult\x12\x0e\n\x06job_id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12+\n\x07started\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12,\n\x08\x66inished\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x11\n\texception\x18\x05 \x01(\t\x12\x18\n\x10preparation_logs\x18\x06 \x03(\t\x12H\n\x07results\x18\x07 \x03(\x0b\x32\x37.fontbakery.dashboard.GenericStorageWorkerResult.Result\x1aM\n\x06Result\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x35\n\x0bstorage_key\x18\x02 \x01(\x0b\x32 .fontbakery.dashboard.StorageKey2\xee\x01\n\x07Storage\x12P\n\x03Put\x12!.fontbakery.dashboard.StorageItem\x1a .fontbakery.dashboard.StorageKey\"\x00(\x01\x30\x01\x12?\n\x03Get\x12 .fontbakery.dashboard.StorageKey\x1a\x14.google.protobuf.Any\"\x00\x12P\n\x05Purge\x12 .fontbakery.dashboard.StorageKey\x1a#.fontbakery.dashboard.StorageStatus\"\x00\x32\xfd\x01\n\x08Manifest\x12H\n\x04Poke\x12&.fontbakery.dashboard.ManifestSourceId\x1a\x16.google.protobuf.Empty\"\x00\x12N\n\x03Get\x12#.fontbakery.dashboard.FamilyRequest\x1a .fontbakery.dashboard.FamilyData\"\x00\x12W\n\x04List\x12&.fontbakery.dashboard.ManifestSourceId\x1a%.fontbakery.dashboard.FamilyNamesList\"\x00\x32\xe2\x01\n\x07Reports\x12>\n\x04\x46ile\x12\x1c.fontbakery.dashboard.Report\x1a\x16.google.protobuf.Empty\"\x00\x12M\n\x05Query\x12\".fontbakery.dashboard.ReportsQuery\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x12H\n\x03Get\x12\x1f.fontbakery.dashboard.ReportIds\x1a\x1c.fontbakery.dashboard.Report\"\x00\x30\x01\x32\xcc\x03\n\x0eProcessManager\x12^\n\x10SubscribeProcess\x12\".fontbakery.dashboard.ProcessQuery\x1a\".fontbakery.dashboard.ProcessState\"\x00\x30\x01\x12V\n\nGetProcess\x12\".fontbakery.dashboard.ProcessQuery\x1a\".fontbakery.dashboard.ProcessState\"\x00\x12]\n\x07\x45xecute\x12$.fontbakery.dashboard.ProcessCommand\x1a*.fontbakery.dashboard.ProcessCommandResult\"\x00\x12Q\n\x0bInitProcess\x12\x14.google.protobuf.Any\x1a*.fontbakery.dashboard.ProcessCommandResult\"\x00\x12P\n\x10GetInitProcessUi\x12\x16.google.protobuf.Empty\x1a\".fontbakery.dashboard.ProcessState\"\x00\x32\x81\x01\n\x18\x44ispatcherProcessManager\x12\x65\n\x14SubscribeProcessList\x12&.fontbakery.dashboard.ProcessListQuery\x1a!.fontbakery.dashboard.ProcessList\"\x00\x30\x01\x32\x84\x04\n\x0b\x41uthService\x12I\n\x0bInitSession\x12\x16.google.protobuf.Empty\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12\x43\n\x06Logout\x12\x1f.fontbakery.dashboard.SessionId\x1a\x16.google.protobuf.Empty\"\x00\x12W\n\tAuthorize\x12&.fontbakery.dashboard.AuthorizeRequest\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12S\n\x0c\x43heckSession\x12\x1f.fontbakery.dashboard.SessionId\x1a .fontbakery.dashboard.AuthStatus\"\x00\x12\x61\n\x08GetRoles\x12,.fontbakery.dashboard.AuthorizedRolesRequest\x1a%.fontbakery.dashboard.AuthorizedRoles\"\x00\x12T\n\rGetOAuthToken\x12\x1f.fontbakery.dashboard.SessionId\x1a .fontbakery.dashboard.OAuthToken\"\x00\x32`\n\x15PullRequestDispatcher\x12G\n\x08\x44ispatch\x12!.fontbakery.dashboard.PullRequest\x1a\x16.google.protobuf.Empty\"\x00\x32V\n\x0bInitWorkers\x12G\n\x04Init\x12\'.fontbakery.dashboard.WorkerDescription\x1a\x14.google.protobuf.Any\"\x00P\x03\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_any__pb2.DESCRIPTOR,google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,shared__pb2.DESCRIPTOR,],
   public_dependencies=[shared__pb2.DESCRIPTOR,])
@@ -39,19 +39,105 @@ _REPORTSQUERY_FILTER_TYPE = _descriptor.EnumDescriptor(
   values=[
     _descriptor.EnumValueDescriptor(
       name='VALUE', index=0, number=0,
-      options=None,
+      serialized_options=None,
       type=None),
     _descriptor.EnumValueDescriptor(
       name='DATE', index=1, number=1,
-      options=None,
+      serialized_options=None,
       type=None),
   ],
   containing_type=None,
-  options=None,
-  serialized_start=1185,
-  serialized_end=1212,
+  serialized_options=None,
+  serialized_start=1461,
+  serialized_end=1488,
 )
 _sym_db.RegisterEnumDescriptor(_REPORTSQUERY_FILTER_TYPE)
+
+_PROCESSCOMMANDRESULT_RESULT = _descriptor.EnumDescriptor(
+  name='Result',
+  full_name='fontbakery.dashboard.ProcessCommandResult.Result',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='FAIL', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='OK', index=1, number=1,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=1821,
+  serialized_end=1847,
+)
+_sym_db.RegisterEnumDescriptor(_PROCESSCOMMANDRESULT_RESULT)
+
+_AUTHSTATUS_STATUSCODE = _descriptor.EnumDescriptor(
+  name='StatusCode',
+  full_name='fontbakery.dashboard.AuthStatus.StatusCode',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='ERROR', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='OK', index=1, number=1,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='INITIAL', index=2, number=2,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='NOT_READY', index=3, number=3,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='NO_SESSION', index=4, number=4,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='WRONG_AUTHORIZE_STATE', index=5, number=5,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='TIMED_OUT', index=6, number=6,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=2581,
+  serialized_end=2698,
+)
+_sym_db.RegisterEnumDescriptor(_AUTHSTATUS_STATUSCODE)
+
+_DISPATCHREPORT_RESULT = _descriptor.EnumDescriptor(
+  name='Result',
+  full_name='fontbakery.dashboard.DispatchReport.Result',
+  filename=None,
+  file=DESCRIPTOR,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='FAIL', index=0, number=0,
+      serialized_options=None,
+      type=None),
+    _descriptor.EnumValueDescriptor(
+      name='OK', index=1, number=1,
+      serialized_options=None,
+      type=None),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=1821,
+  serialized_end=1847,
+)
+_sym_db.RegisterEnumDescriptor(_DISPATCHREPORT_RESULT)
 
 
 _FAMILYJOB = _descriptor.Descriptor(
@@ -67,201 +153,270 @@ _FAMILYJOB = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='cache_key', full_name='fontbakery.dashboard.FamilyJob.cache_key', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='jobid', full_name='fontbakery.dashboard.FamilyJob.jobid', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='order', full_name='fontbakery.dashboard.FamilyJob.order', index=3,
       number=4, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
   serialized_start=143,
-  serialized_end=250,
+  serialized_end=252,
 )
 
 
-_CACHEITEM = _descriptor.Descriptor(
-  name='CacheItem',
-  full_name='fontbakery.dashboard.CacheItem',
+_STORAGEITEM = _descriptor.Descriptor(
+  name='StorageItem',
+  full_name='fontbakery.dashboard.StorageItem',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='payload', full_name='fontbakery.dashboard.CacheItem.payload', index=0,
+      name='payload', full_name='fontbakery.dashboard.StorageItem.payload', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='clientid', full_name='fontbakery.dashboard.CacheItem.clientid', index=1,
+      name='clientid', full_name='fontbakery.dashboard.StorageItem.clientid', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=252,
-  serialized_end=320,
+  serialized_start=254,
+  serialized_end=324,
 )
 
 
-_CACHEKEY = _descriptor.Descriptor(
-  name='CacheKey',
-  full_name='fontbakery.dashboard.CacheKey',
+_STORAGEKEY = _descriptor.Descriptor(
+  name='StorageKey',
+  full_name='fontbakery.dashboard.StorageKey',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='fontbakery.dashboard.CacheKey.key', index=0,
+      name='key', full_name='fontbakery.dashboard.StorageKey.key', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='hash', full_name='fontbakery.dashboard.CacheKey.hash', index=1,
+      name='hash', full_name='fontbakery.dashboard.StorageKey.hash', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='clientid', full_name='fontbakery.dashboard.CacheKey.clientid', index=2,
+      name='clientid', full_name='fontbakery.dashboard.StorageKey.clientid', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='force', full_name='fontbakery.dashboard.CacheKey.force', index=3,
+      name='force', full_name='fontbakery.dashboard.StorageKey.force', index=3,
       number=4, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=322,
-  serialized_end=392,
+  serialized_start=326,
+  serialized_end=398,
 )
 
 
-_CACHESTATUS = _descriptor.Descriptor(
-  name='CacheStatus',
-  full_name='fontbakery.dashboard.CacheStatus',
+_STORAGESTATUS = _descriptor.Descriptor(
+  name='StorageStatus',
+  full_name='fontbakery.dashboard.StorageStatus',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='fontbakery.dashboard.CacheStatus.key', index=0,
+      name='key', full_name='fontbakery.dashboard.StorageStatus.key', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='instances', full_name='fontbakery.dashboard.CacheStatus.instances', index=1,
+      name='instances', full_name='fontbakery.dashboard.StorageStatus.instances', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=394,
-  serialized_end=439,
+  serialized_start=400,
+  serialized_end=447,
 )
 
 
-_POKEREQUEST = _descriptor.Descriptor(
-  name='PokeRequest',
-  full_name='fontbakery.dashboard.PokeRequest',
+_MANIFESTSOURCEID = _descriptor.Descriptor(
+  name='ManifestSourceId',
+  full_name='fontbakery.dashboard.ManifestSourceId',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='sourceid', full_name='fontbakery.dashboard.PokeRequest.sourceid', index=0,
+      name='source_id', full_name='fontbakery.dashboard.ManifestSourceId.source_id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=441,
-  serialized_end=472,
+  serialized_start=449,
+  serialized_end=486,
+)
+
+
+_FAMILYNAMESLIST = _descriptor.Descriptor(
+  name='FamilyNamesList',
+  full_name='fontbakery.dashboard.FamilyNamesList',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='family_names', full_name='fontbakery.dashboard.FamilyNamesList.family_names', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=488,
+  serialized_end=527,
+)
+
+
+_FAMILYREQUEST = _descriptor.Descriptor(
+  name='FamilyRequest',
+  full_name='fontbakery.dashboard.FamilyRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='source_id', full_name='fontbakery.dashboard.FamilyRequest.source_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='family_name', full_name='fontbakery.dashboard.FamilyRequest.family_name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=529,
+  serialized_end=584,
 )
 
 
@@ -278,49 +433,108 @@ _COLLECTIONFAMILYJOB = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='family_name', full_name='fontbakery.dashboard.CollectionFamilyJob.family_name', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='cache_key', full_name='fontbakery.dashboard.CollectionFamilyJob.cache_key', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='date', full_name='fontbakery.dashboard.CollectionFamilyJob.date', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='metadata', full_name='fontbakery.dashboard.CollectionFamilyJob.metadata', index=4,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=475,
-  serialized_end=650,
+  serialized_start=587,
+  serialized_end=764,
+)
+
+
+_FAMILYDATA = _descriptor.Descriptor(
+  name='FamilyData',
+  full_name='fontbakery.dashboard.FamilyData',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='collectionid', full_name='fontbakery.dashboard.FamilyData.collectionid', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='family_name', full_name='fontbakery.dashboard.FamilyData.family_name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='files', full_name='fontbakery.dashboard.FamilyData.files', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='date', full_name='fontbakery.dashboard.FamilyData.date', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='metadata', full_name='fontbakery.dashboard.FamilyData.metadata', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=767,
+  serialized_end=926,
 )
 
 
@@ -337,70 +551,70 @@ _REPORT = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='type_id', full_name='fontbakery.dashboard.Report.type_id', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='method', full_name='fontbakery.dashboard.Report.method', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='started', full_name='fontbakery.dashboard.Report.started', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='finished', full_name='fontbakery.dashboard.Report.finished', index=4,
       number=5, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='data', full_name='fontbakery.dashboard.Report.data', index=5,
       number=6, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='id', full_name='fontbakery.dashboard.Report.id', index=6,
       number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='reported', full_name='fontbakery.dashboard.Report.reported', index=7,
       number=8, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=653,
-  serialized_end=871,
+  serialized_start=929,
+  serialized_end=1147,
 )
 
 
@@ -417,21 +631,21 @@ _REPORTSQUERY_FILTER = _descriptor.Descriptor(
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='values', full_name='fontbakery.dashboard.ReportsQuery.Filter.values', index=1,
       number=2, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='min_max_dates', full_name='fontbakery.dashboard.ReportsQuery.Filter.min_max_dates', index=2,
       number=3, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -439,14 +653,14 @@ _REPORTSQUERY_FILTER = _descriptor.Descriptor(
   enum_types=[
     _REPORTSQUERY_FILTER_TYPE,
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1046,
-  serialized_end=1212,
+  serialized_start=1322,
+  serialized_end=1488,
 )
 
 _REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
@@ -462,28 +676,28 @@ _REPORTSQUERY_FILTERSENTRY = _descriptor.Descriptor(
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='value', full_name='fontbakery.dashboard.ReportsQuery.FiltersEntry.value', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=_descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001')),
+  serialized_options=_b('8\001'),
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1214,
-  serialized_end=1303,
+  serialized_start=1490,
+  serialized_end=1579,
 )
 
 _REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
@@ -499,35 +713,35 @@ _REPORTSQUERY_PAGINATION = _descriptor.Descriptor(
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='item_id', full_name='fontbakery.dashboard.ReportsQuery.Pagination.item_id', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='previous_page', full_name='fontbakery.dashboard.ReportsQuery.Pagination.previous_page', index=2,
       number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1305,
-  serialized_end=1408,
+  serialized_start=1581,
+  serialized_end=1684,
 )
 
 _REPORTSQUERY = _descriptor.Descriptor(
@@ -543,35 +757,35 @@ _REPORTSQUERY = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='pagination', full_name='fontbakery.dashboard.ReportsQuery.pagination', index=1,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
       name='include_data', full_name='fontbakery.dashboard.ReportsQuery.include_data', index=2,
       number=5, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[_REPORTSQUERY_FILTER, _REPORTSQUERY_FILTERSENTRY, _REPORTSQUERY_PAGINATION, ],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=874,
-  serialized_end=1408,
+  serialized_start=1150,
+  serialized_end=1684,
 )
 
 
@@ -588,27 +802,1055 @@ _REPORTIDS = _descriptor.Descriptor(
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
-      options=None, file=DESCRIPTOR),
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
   nested_types=[],
   enum_types=[
   ],
-  options=None,
+  serialized_options=None,
   is_extendable=False,
   syntax='proto3',
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1410,
-  serialized_end=1434,
+  serialized_start=1686,
+  serialized_end=1710,
 )
 
-_FAMILYJOB.fields_by_name['cache_key'].message_type = _CACHEKEY
-_CACHEITEM.fields_by_name['payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
-_COLLECTIONFAMILYJOB.fields_by_name['cache_key'].message_type = _CACHEKEY
+
+_PROCESSCOMMANDRESULT = _descriptor.Descriptor(
+  name='ProcessCommandResult',
+  full_name='fontbakery.dashboard.ProcessCommandResult',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='result', full_name='fontbakery.dashboard.ProcessCommandResult.result', index=0,
+      number=1, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='message', full_name='fontbakery.dashboard.ProcessCommandResult.message', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _PROCESSCOMMANDRESULT_RESULT,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1713,
+  serialized_end=1847,
+)
+
+
+_DISPATCHERINITPROCESS = _descriptor.Descriptor(
+  name='DispatcherInitProcess',
+  full_name='fontbakery.dashboard.DispatcherInitProcess',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='requester', full_name='fontbakery.dashboard.DispatcherInitProcess.requester', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='json_payload', full_name='fontbakery.dashboard.DispatcherInitProcess.json_payload', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1849,
+  serialized_end=1913,
+)
+
+
+_PROCESSQUERY = _descriptor.Descriptor(
+  name='ProcessQuery',
+  full_name='fontbakery.dashboard.ProcessQuery',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='process_id', full_name='fontbakery.dashboard.ProcessQuery.process_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1915,
+  serialized_end=1949,
+)
+
+
+_PROCESSSTATE = _descriptor.Descriptor(
+  name='ProcessState',
+  full_name='fontbakery.dashboard.ProcessState',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='process_id', full_name='fontbakery.dashboard.ProcessState.process_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='process_data', full_name='fontbakery.dashboard.ProcessState.process_data', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='user_interface', full_name='fontbakery.dashboard.ProcessState.user_interface', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1951,
+  serialized_end=2031,
+)
+
+
+_PROCESSLISTQUERY = _descriptor.Descriptor(
+  name='ProcessListQuery',
+  full_name='fontbakery.dashboard.ProcessListQuery',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='query', full_name='fontbakery.dashboard.ProcessListQuery.query', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2033,
+  serialized_end=2066,
+)
+
+
+_PROCESSLISTITEM = _descriptor.Descriptor(
+  name='ProcessListItem',
+  full_name='fontbakery.dashboard.ProcessListItem',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='process_id', full_name='fontbakery.dashboard.ProcessListItem.process_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2068,
+  serialized_end=2105,
+)
+
+
+_PROCESSLIST = _descriptor.Descriptor(
+  name='ProcessList',
+  full_name='fontbakery.dashboard.ProcessList',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='processes', full_name='fontbakery.dashboard.ProcessList.processes', index=0,
+      number=6, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2107,
+  serialized_end=2178,
+)
+
+
+_PROCESSCOMMAND = _descriptor.Descriptor(
+  name='ProcessCommand',
+  full_name='fontbakery.dashboard.ProcessCommand',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='ticket', full_name='fontbakery.dashboard.ProcessCommand.ticket', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='target_path', full_name='fontbakery.dashboard.ProcessCommand.target_path', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='callback_name', full_name='fontbakery.dashboard.ProcessCommand.callback_name', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='requester', full_name='fontbakery.dashboard.ProcessCommand.requester', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='response_queue_name', full_name='fontbakery.dashboard.ProcessCommand.response_queue_name', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='json_payload', full_name='fontbakery.dashboard.ProcessCommand.json_payload', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='pb_payload', full_name='fontbakery.dashboard.ProcessCommand.pb_payload', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='session_id', full_name='fontbakery.dashboard.ProcessCommand.session_id', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='payload', full_name='fontbakery.dashboard.ProcessCommand.payload',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=2181,
+  serialized_end=2404,
+)
+
+
+_AUTHSTATUS = _descriptor.Descriptor(
+  name='AuthStatus',
+  full_name='fontbakery.dashboard.AuthStatus',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='status', full_name='fontbakery.dashboard.AuthStatus.status', index=0,
+      number=1, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='session_id', full_name='fontbakery.dashboard.AuthStatus.session_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='authorize_url', full_name='fontbakery.dashboard.AuthStatus.authorize_url', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='message', full_name='fontbakery.dashboard.AuthStatus.message', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='user_name', full_name='fontbakery.dashboard.AuthStatus.user_name', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='avatar_url', full_name='fontbakery.dashboard.AuthStatus.avatar_url', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _AUTHSTATUS_STATUSCODE,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2407,
+  serialized_end=2698,
+)
+
+
+_AUTHORIZEREQUEST = _descriptor.Descriptor(
+  name='AuthorizeRequest',
+  full_name='fontbakery.dashboard.AuthorizeRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='o_auth_code', full_name='fontbakery.dashboard.AuthorizeRequest.o_auth_code', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='session_id', full_name='fontbakery.dashboard.AuthorizeRequest.session_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='authorize_state', full_name='fontbakery.dashboard.AuthorizeRequest.authorize_state', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2700,
+  serialized_end=2784,
+)
+
+
+_SESSIONID = _descriptor.Descriptor(
+  name='SessionId',
+  full_name='fontbakery.dashboard.SessionId',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='session_id', full_name='fontbakery.dashboard.SessionId.session_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2786,
+  serialized_end=2817,
+)
+
+
+_AUTHORIZEDROLESREQUEST = _descriptor.Descriptor(
+  name='AuthorizedRolesRequest',
+  full_name='fontbakery.dashboard.AuthorizedRolesRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='session_id', full_name='fontbakery.dashboard.AuthorizedRolesRequest.session_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='repo_name_with_owner', full_name='fontbakery.dashboard.AuthorizedRolesRequest.repo_name_with_owner', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2819,
+  serialized_end=2893,
+)
+
+
+_AUTHORIZEDROLES = _descriptor.Descriptor(
+  name='AuthorizedRoles',
+  full_name='fontbakery.dashboard.AuthorizedRoles',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='roles', full_name='fontbakery.dashboard.AuthorizedRoles.roles', index=0,
+      number=1, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='user_name', full_name='fontbakery.dashboard.AuthorizedRoles.user_name', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2895,
+  serialized_end=2946,
+)
+
+
+_OAUTHTOKEN = _descriptor.Descriptor(
+  name='OAuthToken',
+  full_name='fontbakery.dashboard.OAuthToken',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='user_name', full_name='fontbakery.dashboard.OAuthToken.user_name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='access_token', full_name='fontbakery.dashboard.OAuthToken.access_token', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='type', full_name='fontbakery.dashboard.OAuthToken.type', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='scope', full_name='fontbakery.dashboard.OAuthToken.scope', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2948,
+  serialized_end=3030,
+)
+
+
+_PULLREQUEST = _descriptor.Descriptor(
+  name='PullRequest',
+  full_name='fontbakery.dashboard.PullRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='session_id', full_name='fontbakery.dashboard.PullRequest.session_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='storage_key', full_name='fontbakery.dashboard.PullRequest.storage_key', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='target_directory', full_name='fontbakery.dashboard.PullRequest.target_directory', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='p_r_message_title', full_name='fontbakery.dashboard.PullRequest.p_r_message_title', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='p_r_message_body', full_name='fontbakery.dashboard.PullRequest.p_r_message_body', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='commit_message', full_name='fontbakery.dashboard.PullRequest.commit_message', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='process_command', full_name='fontbakery.dashboard.PullRequest.process_command', index=6,
+      number=7, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3033,
+  serialized_end=3253,
+)
+
+
+_DISPATCHREPORT = _descriptor.Descriptor(
+  name='DispatchReport',
+  full_name='fontbakery.dashboard.DispatchReport',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='status', full_name='fontbakery.dashboard.DispatchReport.status', index=0,
+      number=1, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='p_r_url', full_name='fontbakery.dashboard.DispatchReport.p_r_url', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='error', full_name='fontbakery.dashboard.DispatchReport.error', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='branch_url', full_name='fontbakery.dashboard.DispatchReport.branch_url', index=3,
+      number=4, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _DISPATCHREPORT_RESULT,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+    _descriptor.OneofDescriptor(
+      name='value', full_name='fontbakery.dashboard.DispatchReport.value',
+      index=0, containing_type=None, fields=[]),
+  ],
+  serialized_start=3256,
+  serialized_end=3426,
+)
+
+
+_WORKERDESCRIPTION = _descriptor.Descriptor(
+  name='WorkerDescription',
+  full_name='fontbakery.dashboard.WorkerDescription',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='worker_name', full_name='fontbakery.dashboard.WorkerDescription.worker_name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='job', full_name='fontbakery.dashboard.WorkerDescription.job', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='process_command', full_name='fontbakery.dashboard.WorkerDescription.process_command', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3429,
+  serialized_end=3567,
+)
+
+
+_WORKERJOBDESCRIPTION = _descriptor.Descriptor(
+  name='WorkerJobDescription',
+  full_name='fontbakery.dashboard.WorkerJobDescription',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='worker_name', full_name='fontbakery.dashboard.WorkerJobDescription.worker_name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='job', full_name='fontbakery.dashboard.WorkerJobDescription.job', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3569,
+  serialized_end=3647,
+)
+
+
+_COMPLETEDWORKER = _descriptor.Descriptor(
+  name='CompletedWorker',
+  full_name='fontbakery.dashboard.CompletedWorker',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='worker_name', full_name='fontbakery.dashboard.CompletedWorker.worker_name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='completed_message', full_name='fontbakery.dashboard.CompletedWorker.completed_message', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3649,
+  serialized_end=3736,
+)
+
+
+_FONTBAKERYFINISHED = _descriptor.Descriptor(
+  name='FontBakeryFinished',
+  full_name='fontbakery.dashboard.FontBakeryFinished',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='docid', full_name='fontbakery.dashboard.FontBakeryFinished.docid', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='finished_orderly', full_name='fontbakery.dashboard.FontBakeryFinished.finished_orderly', index=1,
+      number=2, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='results_json', full_name='fontbakery.dashboard.FontBakeryFinished.results_json', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='created', full_name='fontbakery.dashboard.FontBakeryFinished.created', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='started', full_name='fontbakery.dashboard.FontBakeryFinished.started', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='finished', full_name='fontbakery.dashboard.FontBakeryFinished.finished', index=5,
+      number=6, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3739,
+  serialized_end=3958,
+)
+
+
+_GENERICSTORAGEWORKERRESULT_RESULT = _descriptor.Descriptor(
+  name='Result',
+  full_name='fontbakery.dashboard.GenericStorageWorkerResult.Result',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='name', full_name='fontbakery.dashboard.GenericStorageWorkerResult.Result.name', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='storage_key', full_name='fontbakery.dashboard.GenericStorageWorkerResult.Result.storage_key', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=4262,
+  serialized_end=4339,
+)
+
+_GENERICSTORAGEWORKERRESULT = _descriptor.Descriptor(
+  name='GenericStorageWorkerResult',
+  full_name='fontbakery.dashboard.GenericStorageWorkerResult',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='job_id', full_name='fontbakery.dashboard.GenericStorageWorkerResult.job_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='created', full_name='fontbakery.dashboard.GenericStorageWorkerResult.created', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='started', full_name='fontbakery.dashboard.GenericStorageWorkerResult.started', index=2,
+      number=3, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='finished', full_name='fontbakery.dashboard.GenericStorageWorkerResult.finished', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='exception', full_name='fontbakery.dashboard.GenericStorageWorkerResult.exception', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='preparation_logs', full_name='fontbakery.dashboard.GenericStorageWorkerResult.preparation_logs', index=5,
+      number=6, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='results', full_name='fontbakery.dashboard.GenericStorageWorkerResult.results', index=6,
+      number=7, type=11, cpp_type=10, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[_GENERICSTORAGEWORKERRESULT_RESULT, ],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3961,
+  serialized_end=4339,
+)
+
+_FAMILYJOB.fields_by_name['cache_key'].message_type = _STORAGEKEY
+_STORAGEITEM.fields_by_name['payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_COLLECTIONFAMILYJOB.fields_by_name['cache_key'].message_type = _STORAGEKEY
 _COLLECTIONFAMILYJOB.fields_by_name['date'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_FAMILYDATA.fields_by_name['files'].message_type = shared__pb2._FILES
+_FAMILYDATA.fields_by_name['date'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _REPORT.fields_by_name['started'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _REPORT.fields_by_name['finished'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _REPORT.fields_by_name['reported'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
@@ -622,15 +1864,73 @@ _REPORTSQUERY_PAGINATION.fields_by_name['item_reported'].message_type = google_d
 _REPORTSQUERY_PAGINATION.containing_type = _REPORTSQUERY
 _REPORTSQUERY.fields_by_name['filters'].message_type = _REPORTSQUERY_FILTERSENTRY
 _REPORTSQUERY.fields_by_name['pagination'].message_type = _REPORTSQUERY_PAGINATION
+_PROCESSCOMMANDRESULT.fields_by_name['result'].enum_type = _PROCESSCOMMANDRESULT_RESULT
+_PROCESSCOMMANDRESULT_RESULT.containing_type = _PROCESSCOMMANDRESULT
+_PROCESSLIST.fields_by_name['processes'].message_type = _PROCESSLISTITEM
+_PROCESSCOMMAND.fields_by_name['pb_payload'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_PROCESSCOMMAND.oneofs_by_name['payload'].fields.append(
+  _PROCESSCOMMAND.fields_by_name['json_payload'])
+_PROCESSCOMMAND.fields_by_name['json_payload'].containing_oneof = _PROCESSCOMMAND.oneofs_by_name['payload']
+_PROCESSCOMMAND.oneofs_by_name['payload'].fields.append(
+  _PROCESSCOMMAND.fields_by_name['pb_payload'])
+_PROCESSCOMMAND.fields_by_name['pb_payload'].containing_oneof = _PROCESSCOMMAND.oneofs_by_name['payload']
+_AUTHSTATUS.fields_by_name['status'].enum_type = _AUTHSTATUS_STATUSCODE
+_AUTHSTATUS_STATUSCODE.containing_type = _AUTHSTATUS
+_PULLREQUEST.fields_by_name['process_command'].message_type = _PROCESSCOMMAND
+_DISPATCHREPORT.fields_by_name['status'].enum_type = _DISPATCHREPORT_RESULT
+_DISPATCHREPORT_RESULT.containing_type = _DISPATCHREPORT
+_DISPATCHREPORT.oneofs_by_name['value'].fields.append(
+  _DISPATCHREPORT.fields_by_name['p_r_url'])
+_DISPATCHREPORT.fields_by_name['p_r_url'].containing_oneof = _DISPATCHREPORT.oneofs_by_name['value']
+_DISPATCHREPORT.oneofs_by_name['value'].fields.append(
+  _DISPATCHREPORT.fields_by_name['error'])
+_DISPATCHREPORT.fields_by_name['error'].containing_oneof = _DISPATCHREPORT.oneofs_by_name['value']
+_WORKERDESCRIPTION.fields_by_name['job'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_WORKERDESCRIPTION.fields_by_name['process_command'].message_type = _PROCESSCOMMAND
+_WORKERJOBDESCRIPTION.fields_by_name['job'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_COMPLETEDWORKER.fields_by_name['completed_message'].message_type = google_dot_protobuf_dot_any__pb2._ANY
+_FONTBAKERYFINISHED.fields_by_name['created'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_FONTBAKERYFINISHED.fields_by_name['started'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_FONTBAKERYFINISHED.fields_by_name['finished'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_GENERICSTORAGEWORKERRESULT_RESULT.fields_by_name['storage_key'].message_type = _STORAGEKEY
+_GENERICSTORAGEWORKERRESULT_RESULT.containing_type = _GENERICSTORAGEWORKERRESULT
+_GENERICSTORAGEWORKERRESULT.fields_by_name['created'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_GENERICSTORAGEWORKERRESULT.fields_by_name['started'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_GENERICSTORAGEWORKERRESULT.fields_by_name['finished'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_GENERICSTORAGEWORKERRESULT.fields_by_name['results'].message_type = _GENERICSTORAGEWORKERRESULT_RESULT
 DESCRIPTOR.message_types_by_name['FamilyJob'] = _FAMILYJOB
-DESCRIPTOR.message_types_by_name['CacheItem'] = _CACHEITEM
-DESCRIPTOR.message_types_by_name['CacheKey'] = _CACHEKEY
-DESCRIPTOR.message_types_by_name['CacheStatus'] = _CACHESTATUS
-DESCRIPTOR.message_types_by_name['PokeRequest'] = _POKEREQUEST
+DESCRIPTOR.message_types_by_name['StorageItem'] = _STORAGEITEM
+DESCRIPTOR.message_types_by_name['StorageKey'] = _STORAGEKEY
+DESCRIPTOR.message_types_by_name['StorageStatus'] = _STORAGESTATUS
+DESCRIPTOR.message_types_by_name['ManifestSourceId'] = _MANIFESTSOURCEID
+DESCRIPTOR.message_types_by_name['FamilyNamesList'] = _FAMILYNAMESLIST
+DESCRIPTOR.message_types_by_name['FamilyRequest'] = _FAMILYREQUEST
 DESCRIPTOR.message_types_by_name['CollectionFamilyJob'] = _COLLECTIONFAMILYJOB
+DESCRIPTOR.message_types_by_name['FamilyData'] = _FAMILYDATA
 DESCRIPTOR.message_types_by_name['Report'] = _REPORT
 DESCRIPTOR.message_types_by_name['ReportsQuery'] = _REPORTSQUERY
 DESCRIPTOR.message_types_by_name['ReportIds'] = _REPORTIDS
+DESCRIPTOR.message_types_by_name['ProcessCommandResult'] = _PROCESSCOMMANDRESULT
+DESCRIPTOR.message_types_by_name['DispatcherInitProcess'] = _DISPATCHERINITPROCESS
+DESCRIPTOR.message_types_by_name['ProcessQuery'] = _PROCESSQUERY
+DESCRIPTOR.message_types_by_name['ProcessState'] = _PROCESSSTATE
+DESCRIPTOR.message_types_by_name['ProcessListQuery'] = _PROCESSLISTQUERY
+DESCRIPTOR.message_types_by_name['ProcessListItem'] = _PROCESSLISTITEM
+DESCRIPTOR.message_types_by_name['ProcessList'] = _PROCESSLIST
+DESCRIPTOR.message_types_by_name['ProcessCommand'] = _PROCESSCOMMAND
+DESCRIPTOR.message_types_by_name['AuthStatus'] = _AUTHSTATUS
+DESCRIPTOR.message_types_by_name['AuthorizeRequest'] = _AUTHORIZEREQUEST
+DESCRIPTOR.message_types_by_name['SessionId'] = _SESSIONID
+DESCRIPTOR.message_types_by_name['AuthorizedRolesRequest'] = _AUTHORIZEDROLESREQUEST
+DESCRIPTOR.message_types_by_name['AuthorizedRoles'] = _AUTHORIZEDROLES
+DESCRIPTOR.message_types_by_name['OAuthToken'] = _OAUTHTOKEN
+DESCRIPTOR.message_types_by_name['PullRequest'] = _PULLREQUEST
+DESCRIPTOR.message_types_by_name['DispatchReport'] = _DISPATCHREPORT
+DESCRIPTOR.message_types_by_name['WorkerDescription'] = _WORKERDESCRIPTION
+DESCRIPTOR.message_types_by_name['WorkerJobDescription'] = _WORKERJOBDESCRIPTION
+DESCRIPTOR.message_types_by_name['CompletedWorker'] = _COMPLETEDWORKER
+DESCRIPTOR.message_types_by_name['FontBakeryFinished'] = _FONTBAKERYFINISHED
+DESCRIPTOR.message_types_by_name['GenericStorageWorkerResult'] = _GENERICSTORAGEWORKERRESULT
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 FamilyJob = _reflection.GeneratedProtocolMessageType('FamilyJob', (_message.Message,), dict(
@@ -640,33 +1940,47 @@ FamilyJob = _reflection.GeneratedProtocolMessageType('FamilyJob', (_message.Mess
   ))
 _sym_db.RegisterMessage(FamilyJob)
 
-CacheItem = _reflection.GeneratedProtocolMessageType('CacheItem', (_message.Message,), dict(
-  DESCRIPTOR = _CACHEITEM,
+StorageItem = _reflection.GeneratedProtocolMessageType('StorageItem', (_message.Message,), dict(
+  DESCRIPTOR = _STORAGEITEM,
   __module__ = 'messages_pb2'
-  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CacheItem)
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.StorageItem)
   ))
-_sym_db.RegisterMessage(CacheItem)
+_sym_db.RegisterMessage(StorageItem)
 
-CacheKey = _reflection.GeneratedProtocolMessageType('CacheKey', (_message.Message,), dict(
-  DESCRIPTOR = _CACHEKEY,
+StorageKey = _reflection.GeneratedProtocolMessageType('StorageKey', (_message.Message,), dict(
+  DESCRIPTOR = _STORAGEKEY,
   __module__ = 'messages_pb2'
-  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CacheKey)
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.StorageKey)
   ))
-_sym_db.RegisterMessage(CacheKey)
+_sym_db.RegisterMessage(StorageKey)
 
-CacheStatus = _reflection.GeneratedProtocolMessageType('CacheStatus', (_message.Message,), dict(
-  DESCRIPTOR = _CACHESTATUS,
+StorageStatus = _reflection.GeneratedProtocolMessageType('StorageStatus', (_message.Message,), dict(
+  DESCRIPTOR = _STORAGESTATUS,
   __module__ = 'messages_pb2'
-  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CacheStatus)
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.StorageStatus)
   ))
-_sym_db.RegisterMessage(CacheStatus)
+_sym_db.RegisterMessage(StorageStatus)
 
-PokeRequest = _reflection.GeneratedProtocolMessageType('PokeRequest', (_message.Message,), dict(
-  DESCRIPTOR = _POKEREQUEST,
+ManifestSourceId = _reflection.GeneratedProtocolMessageType('ManifestSourceId', (_message.Message,), dict(
+  DESCRIPTOR = _MANIFESTSOURCEID,
   __module__ = 'messages_pb2'
-  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.PokeRequest)
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ManifestSourceId)
   ))
-_sym_db.RegisterMessage(PokeRequest)
+_sym_db.RegisterMessage(ManifestSourceId)
+
+FamilyNamesList = _reflection.GeneratedProtocolMessageType('FamilyNamesList', (_message.Message,), dict(
+  DESCRIPTOR = _FAMILYNAMESLIST,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.FamilyNamesList)
+  ))
+_sym_db.RegisterMessage(FamilyNamesList)
+
+FamilyRequest = _reflection.GeneratedProtocolMessageType('FamilyRequest', (_message.Message,), dict(
+  DESCRIPTOR = _FAMILYREQUEST,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.FamilyRequest)
+  ))
+_sym_db.RegisterMessage(FamilyRequest)
 
 CollectionFamilyJob = _reflection.GeneratedProtocolMessageType('CollectionFamilyJob', (_message.Message,), dict(
   DESCRIPTOR = _COLLECTIONFAMILYJOB,
@@ -674,6 +1988,13 @@ CollectionFamilyJob = _reflection.GeneratedProtocolMessageType('CollectionFamily
   # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CollectionFamilyJob)
   ))
 _sym_db.RegisterMessage(CollectionFamilyJob)
+
+FamilyData = _reflection.GeneratedProtocolMessageType('FamilyData', (_message.Message,), dict(
+  DESCRIPTOR = _FAMILYDATA,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.FamilyData)
+  ))
+_sym_db.RegisterMessage(FamilyData)
 
 Report = _reflection.GeneratedProtocolMessageType('Report', (_message.Message,), dict(
   DESCRIPTOR = _REPORT,
@@ -720,50 +2041,204 @@ ReportIds = _reflection.GeneratedProtocolMessageType('ReportIds', (_message.Mess
   ))
 _sym_db.RegisterMessage(ReportIds)
 
+ProcessCommandResult = _reflection.GeneratedProtocolMessageType('ProcessCommandResult', (_message.Message,), dict(
+  DESCRIPTOR = _PROCESSCOMMANDRESULT,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ProcessCommandResult)
+  ))
+_sym_db.RegisterMessage(ProcessCommandResult)
 
-_REPORTSQUERY_FILTERSENTRY.has_options = True
-_REPORTSQUERY_FILTERSENTRY._options = _descriptor._ParseOptions(descriptor_pb2.MessageOptions(), _b('8\001'))
+DispatcherInitProcess = _reflection.GeneratedProtocolMessageType('DispatcherInitProcess', (_message.Message,), dict(
+  DESCRIPTOR = _DISPATCHERINITPROCESS,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.DispatcherInitProcess)
+  ))
+_sym_db.RegisterMessage(DispatcherInitProcess)
 
-_CACHE = _descriptor.ServiceDescriptor(
-  name='Cache',
-  full_name='fontbakery.dashboard.Cache',
+ProcessQuery = _reflection.GeneratedProtocolMessageType('ProcessQuery', (_message.Message,), dict(
+  DESCRIPTOR = _PROCESSQUERY,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ProcessQuery)
+  ))
+_sym_db.RegisterMessage(ProcessQuery)
+
+ProcessState = _reflection.GeneratedProtocolMessageType('ProcessState', (_message.Message,), dict(
+  DESCRIPTOR = _PROCESSSTATE,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ProcessState)
+  ))
+_sym_db.RegisterMessage(ProcessState)
+
+ProcessListQuery = _reflection.GeneratedProtocolMessageType('ProcessListQuery', (_message.Message,), dict(
+  DESCRIPTOR = _PROCESSLISTQUERY,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ProcessListQuery)
+  ))
+_sym_db.RegisterMessage(ProcessListQuery)
+
+ProcessListItem = _reflection.GeneratedProtocolMessageType('ProcessListItem', (_message.Message,), dict(
+  DESCRIPTOR = _PROCESSLISTITEM,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ProcessListItem)
+  ))
+_sym_db.RegisterMessage(ProcessListItem)
+
+ProcessList = _reflection.GeneratedProtocolMessageType('ProcessList', (_message.Message,), dict(
+  DESCRIPTOR = _PROCESSLIST,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ProcessList)
+  ))
+_sym_db.RegisterMessage(ProcessList)
+
+ProcessCommand = _reflection.GeneratedProtocolMessageType('ProcessCommand', (_message.Message,), dict(
+  DESCRIPTOR = _PROCESSCOMMAND,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.ProcessCommand)
+  ))
+_sym_db.RegisterMessage(ProcessCommand)
+
+AuthStatus = _reflection.GeneratedProtocolMessageType('AuthStatus', (_message.Message,), dict(
+  DESCRIPTOR = _AUTHSTATUS,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.AuthStatus)
+  ))
+_sym_db.RegisterMessage(AuthStatus)
+
+AuthorizeRequest = _reflection.GeneratedProtocolMessageType('AuthorizeRequest', (_message.Message,), dict(
+  DESCRIPTOR = _AUTHORIZEREQUEST,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.AuthorizeRequest)
+  ))
+_sym_db.RegisterMessage(AuthorizeRequest)
+
+SessionId = _reflection.GeneratedProtocolMessageType('SessionId', (_message.Message,), dict(
+  DESCRIPTOR = _SESSIONID,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.SessionId)
+  ))
+_sym_db.RegisterMessage(SessionId)
+
+AuthorizedRolesRequest = _reflection.GeneratedProtocolMessageType('AuthorizedRolesRequest', (_message.Message,), dict(
+  DESCRIPTOR = _AUTHORIZEDROLESREQUEST,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.AuthorizedRolesRequest)
+  ))
+_sym_db.RegisterMessage(AuthorizedRolesRequest)
+
+AuthorizedRoles = _reflection.GeneratedProtocolMessageType('AuthorizedRoles', (_message.Message,), dict(
+  DESCRIPTOR = _AUTHORIZEDROLES,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.AuthorizedRoles)
+  ))
+_sym_db.RegisterMessage(AuthorizedRoles)
+
+OAuthToken = _reflection.GeneratedProtocolMessageType('OAuthToken', (_message.Message,), dict(
+  DESCRIPTOR = _OAUTHTOKEN,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.OAuthToken)
+  ))
+_sym_db.RegisterMessage(OAuthToken)
+
+PullRequest = _reflection.GeneratedProtocolMessageType('PullRequest', (_message.Message,), dict(
+  DESCRIPTOR = _PULLREQUEST,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.PullRequest)
+  ))
+_sym_db.RegisterMessage(PullRequest)
+
+DispatchReport = _reflection.GeneratedProtocolMessageType('DispatchReport', (_message.Message,), dict(
+  DESCRIPTOR = _DISPATCHREPORT,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.DispatchReport)
+  ))
+_sym_db.RegisterMessage(DispatchReport)
+
+WorkerDescription = _reflection.GeneratedProtocolMessageType('WorkerDescription', (_message.Message,), dict(
+  DESCRIPTOR = _WORKERDESCRIPTION,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.WorkerDescription)
+  ))
+_sym_db.RegisterMessage(WorkerDescription)
+
+WorkerJobDescription = _reflection.GeneratedProtocolMessageType('WorkerJobDescription', (_message.Message,), dict(
+  DESCRIPTOR = _WORKERJOBDESCRIPTION,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.WorkerJobDescription)
+  ))
+_sym_db.RegisterMessage(WorkerJobDescription)
+
+CompletedWorker = _reflection.GeneratedProtocolMessageType('CompletedWorker', (_message.Message,), dict(
+  DESCRIPTOR = _COMPLETEDWORKER,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.CompletedWorker)
+  ))
+_sym_db.RegisterMessage(CompletedWorker)
+
+FontBakeryFinished = _reflection.GeneratedProtocolMessageType('FontBakeryFinished', (_message.Message,), dict(
+  DESCRIPTOR = _FONTBAKERYFINISHED,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.FontBakeryFinished)
+  ))
+_sym_db.RegisterMessage(FontBakeryFinished)
+
+GenericStorageWorkerResult = _reflection.GeneratedProtocolMessageType('GenericStorageWorkerResult', (_message.Message,), dict(
+
+  Result = _reflection.GeneratedProtocolMessageType('Result', (_message.Message,), dict(
+    DESCRIPTOR = _GENERICSTORAGEWORKERRESULT_RESULT,
+    __module__ = 'messages_pb2'
+    # @@protoc_insertion_point(class_scope:fontbakery.dashboard.GenericStorageWorkerResult.Result)
+    ))
+  ,
+  DESCRIPTOR = _GENERICSTORAGEWORKERRESULT,
+  __module__ = 'messages_pb2'
+  # @@protoc_insertion_point(class_scope:fontbakery.dashboard.GenericStorageWorkerResult)
+  ))
+_sym_db.RegisterMessage(GenericStorageWorkerResult)
+_sym_db.RegisterMessage(GenericStorageWorkerResult.Result)
+
+
+_REPORTSQUERY_FILTERSENTRY._options = None
+
+_STORAGE = _descriptor.ServiceDescriptor(
+  name='Storage',
+  full_name='fontbakery.dashboard.Storage',
   file=DESCRIPTOR,
   index=0,
-  options=None,
-  serialized_start=1437,
-  serialized_end=1663,
+  serialized_options=None,
+  serialized_start=4342,
+  serialized_end=4580,
   methods=[
   _descriptor.MethodDescriptor(
     name='Put',
-    full_name='fontbakery.dashboard.Cache.Put',
+    full_name='fontbakery.dashboard.Storage.Put',
     index=0,
     containing_service=None,
-    input_type=_CACHEITEM,
-    output_type=_CACHEKEY,
-    options=None,
+    input_type=_STORAGEITEM,
+    output_type=_STORAGEKEY,
+    serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
     name='Get',
-    full_name='fontbakery.dashboard.Cache.Get',
+    full_name='fontbakery.dashboard.Storage.Get',
     index=1,
     containing_service=None,
-    input_type=_CACHEKEY,
+    input_type=_STORAGEKEY,
     output_type=google_dot_protobuf_dot_any__pb2._ANY,
-    options=None,
+    serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
     name='Purge',
-    full_name='fontbakery.dashboard.Cache.Purge',
+    full_name='fontbakery.dashboard.Storage.Purge',
     index=2,
     containing_service=None,
-    input_type=_CACHEKEY,
-    output_type=_CACHESTATUS,
-    options=None,
+    input_type=_STORAGEKEY,
+    output_type=_STORAGESTATUS,
+    serialized_options=None,
   ),
 ])
-_sym_db.RegisterServiceDescriptor(_CACHE)
+_sym_db.RegisterServiceDescriptor(_STORAGE)
 
-DESCRIPTOR.services_by_name['Cache'] = _CACHE
+DESCRIPTOR.services_by_name['Storage'] = _STORAGE
 
 
 _MANIFEST = _descriptor.ServiceDescriptor(
@@ -771,18 +2246,36 @@ _MANIFEST = _descriptor.ServiceDescriptor(
   full_name='fontbakery.dashboard.Manifest',
   file=DESCRIPTOR,
   index=1,
-  options=None,
-  serialized_start=1665,
-  serialized_end=1744,
+  serialized_options=None,
+  serialized_start=4583,
+  serialized_end=4836,
   methods=[
   _descriptor.MethodDescriptor(
     name='Poke',
     full_name='fontbakery.dashboard.Manifest.Poke',
     index=0,
     containing_service=None,
-    input_type=_POKEREQUEST,
+    input_type=_MANIFESTSOURCEID,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    options=None,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Get',
+    full_name='fontbakery.dashboard.Manifest.Get',
+    index=1,
+    containing_service=None,
+    input_type=_FAMILYREQUEST,
+    output_type=_FAMILYDATA,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='List',
+    full_name='fontbakery.dashboard.Manifest.List',
+    index=2,
+    containing_service=None,
+    input_type=_MANIFESTSOURCEID,
+    output_type=_FAMILYNAMESLIST,
+    serialized_options=None,
   ),
 ])
 _sym_db.RegisterServiceDescriptor(_MANIFEST)
@@ -795,9 +2288,9 @@ _REPORTS = _descriptor.ServiceDescriptor(
   full_name='fontbakery.dashboard.Reports',
   file=DESCRIPTOR,
   index=2,
-  options=None,
-  serialized_start=1747,
-  serialized_end=1973,
+  serialized_options=None,
+  serialized_start=4839,
+  serialized_end=5065,
   methods=[
   _descriptor.MethodDescriptor(
     name='File',
@@ -806,7 +2299,7 @@ _REPORTS = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_REPORT,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    options=None,
+    serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
     name='Query',
@@ -815,7 +2308,7 @@ _REPORTS = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_REPORTSQUERY,
     output_type=_REPORT,
-    options=None,
+    serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
     name='Get',
@@ -824,11 +2317,212 @@ _REPORTS = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_REPORTIDS,
     output_type=_REPORT,
-    options=None,
+    serialized_options=None,
   ),
 ])
 _sym_db.RegisterServiceDescriptor(_REPORTS)
 
 DESCRIPTOR.services_by_name['Reports'] = _REPORTS
+
+
+_PROCESSMANAGER = _descriptor.ServiceDescriptor(
+  name='ProcessManager',
+  full_name='fontbakery.dashboard.ProcessManager',
+  file=DESCRIPTOR,
+  index=3,
+  serialized_options=None,
+  serialized_start=5068,
+  serialized_end=5528,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='SubscribeProcess',
+    full_name='fontbakery.dashboard.ProcessManager.SubscribeProcess',
+    index=0,
+    containing_service=None,
+    input_type=_PROCESSQUERY,
+    output_type=_PROCESSSTATE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetProcess',
+    full_name='fontbakery.dashboard.ProcessManager.GetProcess',
+    index=1,
+    containing_service=None,
+    input_type=_PROCESSQUERY,
+    output_type=_PROCESSSTATE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Execute',
+    full_name='fontbakery.dashboard.ProcessManager.Execute',
+    index=2,
+    containing_service=None,
+    input_type=_PROCESSCOMMAND,
+    output_type=_PROCESSCOMMANDRESULT,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='InitProcess',
+    full_name='fontbakery.dashboard.ProcessManager.InitProcess',
+    index=3,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_any__pb2._ANY,
+    output_type=_PROCESSCOMMANDRESULT,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetInitProcessUi',
+    full_name='fontbakery.dashboard.ProcessManager.GetInitProcessUi',
+    index=4,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=_PROCESSSTATE,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_PROCESSMANAGER)
+
+DESCRIPTOR.services_by_name['ProcessManager'] = _PROCESSMANAGER
+
+
+_DISPATCHERPROCESSMANAGER = _descriptor.ServiceDescriptor(
+  name='DispatcherProcessManager',
+  full_name='fontbakery.dashboard.DispatcherProcessManager',
+  file=DESCRIPTOR,
+  index=4,
+  serialized_options=None,
+  serialized_start=5531,
+  serialized_end=5660,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='SubscribeProcessList',
+    full_name='fontbakery.dashboard.DispatcherProcessManager.SubscribeProcessList',
+    index=0,
+    containing_service=None,
+    input_type=_PROCESSLISTQUERY,
+    output_type=_PROCESSLIST,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_DISPATCHERPROCESSMANAGER)
+
+DESCRIPTOR.services_by_name['DispatcherProcessManager'] = _DISPATCHERPROCESSMANAGER
+
+
+_AUTHSERVICE = _descriptor.ServiceDescriptor(
+  name='AuthService',
+  full_name='fontbakery.dashboard.AuthService',
+  file=DESCRIPTOR,
+  index=5,
+  serialized_options=None,
+  serialized_start=5663,
+  serialized_end=6179,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='InitSession',
+    full_name='fontbakery.dashboard.AuthService.InitSession',
+    index=0,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=_AUTHSTATUS,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Logout',
+    full_name='fontbakery.dashboard.AuthService.Logout',
+    index=1,
+    containing_service=None,
+    input_type=_SESSIONID,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='Authorize',
+    full_name='fontbakery.dashboard.AuthService.Authorize',
+    index=2,
+    containing_service=None,
+    input_type=_AUTHORIZEREQUEST,
+    output_type=_AUTHSTATUS,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='CheckSession',
+    full_name='fontbakery.dashboard.AuthService.CheckSession',
+    index=3,
+    containing_service=None,
+    input_type=_SESSIONID,
+    output_type=_AUTHSTATUS,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetRoles',
+    full_name='fontbakery.dashboard.AuthService.GetRoles',
+    index=4,
+    containing_service=None,
+    input_type=_AUTHORIZEDROLESREQUEST,
+    output_type=_AUTHORIZEDROLES,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='GetOAuthToken',
+    full_name='fontbakery.dashboard.AuthService.GetOAuthToken',
+    index=5,
+    containing_service=None,
+    input_type=_SESSIONID,
+    output_type=_OAUTHTOKEN,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_AUTHSERVICE)
+
+DESCRIPTOR.services_by_name['AuthService'] = _AUTHSERVICE
+
+
+_PULLREQUESTDISPATCHER = _descriptor.ServiceDescriptor(
+  name='PullRequestDispatcher',
+  full_name='fontbakery.dashboard.PullRequestDispatcher',
+  file=DESCRIPTOR,
+  index=6,
+  serialized_options=None,
+  serialized_start=6181,
+  serialized_end=6277,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='Dispatch',
+    full_name='fontbakery.dashboard.PullRequestDispatcher.Dispatch',
+    index=0,
+    containing_service=None,
+    input_type=_PULLREQUEST,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_PULLREQUESTDISPATCHER)
+
+DESCRIPTOR.services_by_name['PullRequestDispatcher'] = _PULLREQUESTDISPATCHER
+
+
+_INITWORKERS = _descriptor.ServiceDescriptor(
+  name='InitWorkers',
+  full_name='fontbakery.dashboard.InitWorkers',
+  file=DESCRIPTOR,
+  index=7,
+  serialized_options=None,
+  serialized_start=6279,
+  serialized_end=6365,
+  methods=[
+  _descriptor.MethodDescriptor(
+    name='Init',
+    full_name='fontbakery.dashboard.InitWorkers.Init',
+    index=0,
+    containing_service=None,
+    input_type=_WORKERDESCRIPTION,
+    output_type=google_dot_protobuf_dot_any__pb2._ANY,
+    serialized_options=None,
+  ),
+])
+_sym_db.RegisterServiceDescriptor(_INITWORKERS)
+
+DESCRIPTOR.services_by_name['InitWorkers'] = _INITWORKERS
 
 # @@protoc_insertion_point(module_scope)

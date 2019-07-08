@@ -14,14 +14,14 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-manifest-master
-        image: gcr.io/fontbakery-168509/base-javascript:44
+        image: gcr.io/fontbakery-168509/base-javascript:5
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
-          - name: ENVIRONMENT_VERSION
+          - name: RETHINKDB_PASSWORD
             valueFrom:
-              configMapKeyRef:
-                name: env-config
-                key: ENVIRONMENT_VERSION
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
         workingDir: /var/javascript
         command: ["node", "node/ManifestMaster.js"]

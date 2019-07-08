@@ -1,9 +1,7 @@
-# :latest as pointing to: 10.4.0-jessie, 10.4-jessie, 10-jessie, jessie, 10.4.0, 10.4, 10, latest
-# https://github.com/nodejs/docker-node/blob/8efaa064853a2f866481f162eb4e424c5ee8ac9e/10/jessie/Dockerfile
-# does currently not build node-git: https://github.com/nodegit/nodegit/issues/1490
-# FROM node:latest
-# FIXME: use :latest when it builds again
-FROM node:9
+# that's Debian Stretch (current stable: Debian 9)
+# and node 11.15.0; currently nodegit doesnt build with node 12.x
+FROM node:11.15.0-stretch
+
 
 RUN touch /tmp/cache_spoof_1
 
@@ -12,13 +10,13 @@ RUN npm install -g bower browserify requirejs;
 
 ADD ./.bowerrc ./bower.json ./package.json /var/javascript/
 
-RUN touch /tmp/cache_spoof_1
+RUN touch /tmp/cache_spoof_2
 ADD ./generated_modules /var/javascript/generated_modules
 
-
+RUN touch /tmp/cache_spoof_1
 # will also invoke bower install etc.
 # --production: don't install dev-dependencies
-RUN cd /var/javascript && npm install --unsafe-perm  --production
+RUN cd /var/javascript && npm install --unsafe-perm --production
 
 
 # It seems to be moost roust to read our METADATA.pb files using python

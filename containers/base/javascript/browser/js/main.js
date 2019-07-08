@@ -7,6 +7,7 @@ define([
   , 'StatusController'
   , 'CollectionReport'
   , 'DashboardController'
+  , 'DispatcherController'
 ], function(
     dom
   , socketio
@@ -16,9 +17,10 @@ define([
   , StatusController
   , CollectionReport
   , DashboardController
+  , DispatcherController
 ) {
     "use strict";
-    /*global document, window, FileReader*/
+    /*global document, window, FileReader, Set, console*/
     // jshint browser:true
 
     function makeFileInput(fileOnLoad, element) {
@@ -70,25 +72,27 @@ define([
         Array.from(container.getElementsByClassName(klass)).forEach(_makefileInput);
     }
 
-
     function getTemplatesContainer(klass) {
         return document.querySelector('body > .' + klass);
     }
 
     function activateTemplate(klass) {
         var templatesContainer = getTemplatesContainer('templates')
-          , template = templatesContainer.getElementsByClassName(klass)[0]
           , target = document.getElementsByClassName('active-interface')[0]
-          , activatedElement
           ;
+        dom.clear(target, 'destroy');
+        return activateElement(templatesContainer, klass, target, null);
+    }
 
-        for(var i=0,l=target.children.length;i<l;i++)
-            // children can listen for the event and cleanup if needed
-            // activatedElement.addEventListener('destroy', function (e) { //... }, false);
-            target.children[i].dispatchEvent(new Event('destroy'));
-        dom.clear(target);
-        activatedElement = template.cloneNode(true);
-        target.appendChild(activatedElement);
+    function activateElement(templatesContainer, klass, targetContainer, markerComment) {
+        console.log('activateElement', templatesContainer, klass, targetContainer, markerComment);
+        var template = templatesContainer.getElementsByClassName(klass)[0]
+          , activatedElement = template.cloneNode(true)
+          ;
+        if(!markerComment)
+            targetContainer.appendChild(activatedElement);
+        else
+            dom.insertAtMarkerComment(targetContainer, markerComment, activatedElement, false);
         return activatedElement;
     }
 
@@ -108,10 +112,27 @@ define([
           , templatesContainer = getTemplatesContainer('report-templates')
           , socket = socketio('/')
           , report = new Report(container, templatesContainer, data)
+          , subscriptionRequest = 'subscribe-report'
           ;
 
+        function subscribe() {
+            return socket.emit(subscriptionRequest, { id: data.id });
+        }
+
         socket.on('changes-report', report.onChange.bind(report));
-        socket.emit('subscribe-report', { id: data.id });
+        subscribe();
+
+        // A disconnection will unsubscribe the socket on the server
+        // we'll have to reconnect
+        // since this is a new subscription, the server will send an
+        // initial document and it seems like the client is re-initializing
+        // the document correctly. CAUTION, this could be a source of a
+        // hard to find bug, but it seems alright.
+        function reconnectHandler (attemptNumber) {
+            console.log('socket on reconnect', '#'+attemptNumber+':', subscriptionRequest);
+            subscribe();
+        }
+        socket.on('reconnect', reconnectHandler);
     }
 
     function _initCollectionsInterface() {
@@ -133,10 +154,26 @@ define([
           , templatesContainer = getTemplatesContainer('collection-report-templates')
           , socket = socketio('/')
           , report = new CollectionReport(container, templatesContainer, data)
+          , subscriptionRequest = 'subscribe-collection'
           ;
 
+        function subscribe() {
+            socket.emit(subscriptionRequest, { id: data.id });
+        }
+
         socket.on('changes-collection', report.onChange.bind(report));
-        socket.emit('subscribe-collection', { id: data.id });
+        subscribe();
+        // A disconnection will unsubscribe the socket on the server
+        // we'll have to reconnect
+        // since this is a new subscription, the server will send an
+        // initial document and it seems like the client is re-initializing
+        // the document correctly. CAUTION, this could be a source of a
+        // hard to find bug, but it seems alright.
+        function reconnectHandler (attemptNumber) {
+            console.log('socket on reconnect', '#'+attemptNumber+':', subscriptionRequest);
+            subscribe();
+        }
+        socket.on('reconnect', reconnectHandler);
     }
 
 
@@ -156,7 +193,16 @@ define([
         var socket = socketio('/')
          , lastQuery = null
          , socketChangeHandler = null
+         , subscriptionRequest = 'subscribe-dashboard'
+         , subscribe = null
          ;
+
+        function reconnectHandler (attemptNumber) {
+            if(subscribe === null) return;
+            console.log('socket on reconnect', '#'+attemptNumber+':', subscriptionRequest);
+            subscribe();
+        }
+
         function onQueryFilterChange() {
             ignoreNextPopState = true;
             var hash = decodeURIComponent(window.location.hash) // it's a firefox bug apparently
@@ -179,7 +225,9 @@ define([
 
             if(socketChangeHandler) {
                 socket.off('changes-dashboard', socketChangeHandler);
+                socket.off('reconnect', reconnectHandler);
                 socketChangeHandler = null;
+                subscribe = null;
             }
             // replace the whole thing!
             var container = activateTemplate('dashboard-interface')
@@ -194,12 +242,269 @@ define([
 
             console.log('subscribe-dashboard, filter:' + queryFilter);
             socketChangeHandler = dashboard.onChange.bind(dashboard);
+            subscribe = function() {
+                return socket.emit('subscribe-dashboard', {filter: queryFilter});
+            };
             socket.on('changes-dashboard', socketChangeHandler);
-            socket.emit('subscribe-dashboard', {filter: queryFilter});
+            socket.on('reconnect', reconnectHandler);
+            subscribe();
         }
 
         // init
         onQueryFilterChange();
+    }
+
+    function initDispatcher(data, authController) {
+        var container = activateTemplate('dispatcher-interface')
+         , templatesContainer = getTemplatesContainer('dispatcher-templates')
+         , socket = socketio('/')
+         , dispatcher = new DispatcherController(container, templatesContainer, socket, data)
+         , sessionChangeHandler = dispatcher.sessionChangeHandler.bind(dispatcher)
+         , unsubscribeSessionChange = authController.onSessionChange(sessionChangeHandler, true)
+         ;
+        container.addEventListener('destroy', unsubscribeSessionChange, false);
+    }
+
+    var AuthenticationController = (function(){
+    function AuthenticationController(element) {
+        this._loginURL = '/github-oauth/login';
+        this._element = element;
+        this._button = this._element.querySelector('button.action');
+        this._user = this._element.querySelector('.user');
+        this._lastLoginWindow = null;
+
+        this._button.addEventListener('click', this._actionHandler.bind(this),false);
+        this.window.addEventListener('message', this._onMessage.bind(this), false);
+
+        this._sessionChangeHandlers = new Set();
+
+        // needs checkSession for init
+        // just to have the name officially defined for now
+        this._session = null;
+        // run the setter
+        this._setSession(null);
+    }
+    var _p = AuthenticationController.prototype;
+
+    _p.onSessionChange = function(callback, initial) {
+        this._sessionChangeHandlers.add(callback);
+        if(initial)
+            callback(this.session);
+        return function (){
+            this._sessionChangeHandlers.delete(callback);
+        }.bind(this);
+    };
+
+    function _sendXHR (verb/*GET|POST*/,url, responseType, body, contenType) {
+        var xhr = new XMLHttpRequest();
+        xhr.open(verb, url);
+        if(contenType)
+            xhr.setRequestHeader('Content-Type', contenType);
+        xhr.send(body || null);
+        xhr.responseType = responseType;
+
+        return new Promise(function(resolve, reject) {
+            xhr.onreadystatechange = function () {
+                if(xhr.readyState !== XMLHttpRequest.DONE)
+                    return;
+                if(xhr.status !== 200) {
+                    // We could handle other status codes reasonably here
+                    // especially if they are still structured as expected.
+                    // Though, the we may find well structured and not well
+                    // structured responses.
+                    // We could create a well structured response here and
+                    // then: `resolve(errorResponse);`
+                    reject(new Error(xhr.status + ': ' + xhr.statusText));
+                }
+                else
+                    resolve(xhr.response);
+            };
+        });
+    }
+
+    _p._expectStatus = function(initiator, promise) {
+        return promise.then(
+            function(result) {
+                this._setSession(result);
+                return this.loggedIn;
+            }.bind(this)
+          , function(error) {
+                console.error(initiator + ':', error);
+                // can't change status, because we don't know what it is
+            });
+    };
+
+    _p.checkSession = function() {
+        return this._expectStatus(
+                'sendXHRCheckSession'
+              , _sendXHR('GET', '/github-oauth/check-session', 'json')
+        );
+    };
+
+    function _toFeatureString(obj) {
+        var key, val, parts = [];
+        for (key in obj) {
+            val = obj[key];
+            if(typeof val === "boolean")
+                val = obj[key] && 'yes' || 'no';
+            parts.push(key + '=' + val);
+        }
+        return parts.join(',');
+    }
+
+    _p._openLoginWindow = function() {
+        var window = this.window
+          , url = window.location.protocol + '//' + location.host + this._loginURL
+          , width = Math.max(Math.min(750, window.screen.availWidth), 100)
+          , height = Math.max(Math.min(950, window.screen.availHeight), 100)
+          , options = {
+                 width: width
+               , height: height
+                 // trying to do some half-way reasonable positioning
+               , left: window.screenX + ((window.outerWidth - width) / 2)
+               , top: window.screenY + ((window.outerHeight - height) / 2.5)
+               , toolbar: false
+               , menubar: false
+               , location: true
+               , resizable: true
+               , scrollbars: true
+               , status: true
+            }
+          , strWindowFeatures = _toFeatureString(options)
+          ;
+        this._lastLoginWindow = this.window.open(url, 'login', strWindowFeatures);
+    };
+
+    /**
+     * event.data
+     *     The object passed from the other window.
+     *
+     * event.origin
+     *     The origin of the window that sent the message at the time
+     *     ostMessage was called. This string is the concatenation of
+     *     the protocol and "://", the host name if one exists, and ":"
+     *     followed by a port number if a port is present and differs
+     *     from the default port for the given protocol. Examples of
+     *     typical origins are https://example.org (implying port 443),
+     *     http://example.net (implying port 80), and http://example.com:8080.
+     *     Note that this origin is not guaranteed to be the current or
+     *     future origin of that window, which might have been navigated
+     *     to a different location since postMessage was called.
+     *
+     * event.source
+     *     A reference to the window object that sent the message; you
+     *     can use this to establish two-way communication between
+     *     two windows with different origins.
+     */
+    _p._onMessage = function(event) {
+        // window.opener.postMessage({type: 'authentication', session: session}, window.origin);
+        var data = event.data;
+        if(event.source !== this._lastLoginWindow)
+            // wrong source;
+            return;
+
+        if(event.origin !== this.window.origin)
+            // wrong origin
+            return;
+
+        if(!('type' in data) || data.type !== 'authentication')
+            // not our business
+            return;
+
+        // accepted
+        this._setSession(data.session);
+        this._lastLoginWindow.close();
+        this._lastLoginWindow = null;
+    };
+
+    _p._login = function() {
+        // login flow is:
+        //
+        // GET: checkSession
+        //     if we have don't have a login
+        // window open login page
+        // listen for window.message
+        this.checkSession().then(function(loggedIn){
+            if(loggedIn) return;
+            this._openLoginWindow();
+        }.bind(this));
+    };
+
+    _p.logout = function() {
+        return this._expectStatus(
+                'logout'
+              , _sendXHR('POST', '/github-oauth/logout', 'json')
+        );
+    };
+
+    // when the login/logout button is used
+    _p._actionHandler = function(event) {
+        // jshint unused:vars
+        if(!this.loggedIn)
+            this._login();
+        else
+            this.logout();
+    };
+
+    _p._setSession = function(session) {
+        this._session = session || null;
+        this._setLoginInterface();
+        this._sessionChangeHandlers.forEach(function(callback){
+             callback(this.session);
+        }.bind(this));
+
+    };
+
+    Object.defineProperties(_p, {
+        session: {
+            get: function(){
+                return this._session || {
+                    state: 'NEEDS_INIT'
+                  , message: 'Authentication is not initialized yet.'
+                };
+            }
+        }
+      , loggedIn: {
+            get: function(){
+                return this.session.status === 'OK';
+            }
+        }
+      , window: {
+            get: function(){
+                return this._element.ownerDocument.defaultView;
+            }
+        }
+    });
+
+    _p._setLoginInterface = function() {
+        var userChildren;
+        if(this.loggedIn) {
+            var session = this.session;
+            this._button.textContent = 'logout';
+            userChildren = [
+                dom.createElement('img', {src: session.avatarUrl})
+              , ' '
+              , dom.createElement('strong', null, session.userName)
+            ];
+        }
+        else {
+            this._button.textContent = 'login with GitHub';
+            userChildren = [dom.createElement('strong', null, '(not signed in)')];
+        }
+        dom.clear(this._user);
+        dom.appendChildren(this._user, userChildren);
+    };
+
+    return AuthenticationController;
+    })();
+
+    function initAutentication() {
+        var templatesContainer = getTemplatesContainer('templates')
+          , header = document.querySelector('body header')
+          , authenticationElement = activateElement(templatesContainer, 'authentication'
+                                              , header, 'insert: authentication-ui')
+          ;
+          return new AuthenticationController(authenticationElement);
     }
 
     function getInterfaceMode() {
@@ -220,6 +525,7 @@ define([
               , 'collection-report': initCollectionReportInterface
               , 'drag-and-drop': initDNDSendingInterface
               , 'dashboard': initDashboard
+              , 'dispatcher': initDispatcher
             }
           ;
         mode = defaultMode;
@@ -233,6 +539,15 @@ define([
         init = modes[mode];
         // extra data for mode?
         switch(mode) {
+            case('dispatcher'):
+                if(pathparts[i+1]==='process')
+                    i+=1; // => dispatcher/process/{id}
+                    // falls through
+                    // now behaves exactly like report, but `id` is for process_id
+                else {
+                    data = defaultData;
+                    break;
+                }// jshint ignore:line
             case('collection-report'):
             // falls through
             // behaves exactly like report, but `id` is for collection_id
@@ -256,7 +571,11 @@ define([
 
     var ignoreNextPopState = false;// bad hack;
     return function main() {
-        // here's a early difference:
+        var authController = initAutentication();
+        // returns a promise: true === logged in; false === logged out
+        authController.checkSession();
+
+        // here's an early difference:
         // either we want to bootstrap the sending interface OR the
         // reporting interface.
         // The sending interface will also transform into the reporting interface.
@@ -265,7 +584,7 @@ define([
           , data = interfaceMode[0]
           , init = interfaceMode[1]
           ;
-        init(data);
+        init(data, authController);
         // Using pushstate changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushstate was not used.
         window.onpopstate = function(event) {

@@ -1,0 +1,47 @@
+apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fontbakery-init-workers
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        component: fontbakery-init-workers
+        role: init-workers
+    spec:
+      containers:
+      - name: fontbakery-init-workers
+        image: fontbakery/base-javascript:1
+        env:
+          - name: FONTBAKERY_LOG_LEVEL
+            value: "DEBUG"
+          - name: ENVIRONMENT_VERSION
+            valueFrom:
+              configMapKeyRef:
+                name: env-config
+                key: ENVIRONMENT_VERSION
+          - name: RETHINKDB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: external-resources
+                key: rethinkdb-password
+        ports:
+        - containerPort: 50051
+        workingDir: /var/javascript
+        # command: ["node", "node/InitWorkers.js", "-p", "50051"]
+        command: ["node", "--inspect=0.0.0.0:9222", "node/InitWorkers.js", "-p", "50051"]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fontbakery-init-workers
+  labels:
+    component: fontbakery-init-workers
+spec:
+  ports:
+    - port: 50051
+      targetPort: 50051
+  selector:
+    component: fontbakery-init-workers
+    role: init-workers

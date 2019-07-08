@@ -11,6 +11,7 @@ var jspb = require('google-protobuf');
 var goog = jspb;
 var global = Function('return this')();
 
+goog.exportSymbol('proto.google.fonts.AxisProto', null, global);
 goog.exportSymbol('proto.google.fonts.FamilyProto', null, global);
 goog.exportSymbol('proto.google.fonts.FontProto', null, global);
 
@@ -36,7 +37,7 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<number>}
  * @const
  */
-proto.google.fonts.FamilyProto.repeatedFields_ = [6,7,8];
+proto.google.fonts.FamilyProto.repeatedFields_ = [6,7,8,10];
 
 
 
@@ -75,7 +76,10 @@ proto.google.fonts.FamilyProto.toObject = function(includeInstance, msg) {
     fontsList: jspb.Message.toObjectList(msg.getFontsList(),
     proto.google.fonts.FontProto.toObject, includeInstance),
     aliasesList: jspb.Message.getRepeatedField(msg, 7),
-    subsetsList: jspb.Message.getRepeatedField(msg, 8)
+    subsetsList: jspb.Message.getRepeatedField(msg, 8),
+    ttfAutohintArgs: jspb.Message.getField(msg, 9),
+    axesList: jspb.Message.toObjectList(msg.getAxesList(),
+    proto.google.fonts.AxisProto.toObject, includeInstance)
   };
 
   if (includeInstance) {
@@ -144,6 +148,15 @@ proto.google.fonts.FamilyProto.deserializeBinaryFromReader = function(msg, reade
     case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.addSubsets(value);
+      break;
+    case 9:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTtfAutohintArgs(value);
+      break;
+    case 10:
+      var value = new proto.google.fonts.AxisProto;
+      reader.readMessage(value,proto.google.fonts.AxisProto.deserializeBinaryFromReader);
+      msg.addAxes(value);
       break;
     default:
       reader.skipField();
@@ -231,6 +244,21 @@ proto.google.fonts.FamilyProto.serializeBinaryToWriter = function(message, write
       f
     );
   }
+  f = /** @type {string} */ (jspb.Message.getField(message, 9));
+  if (f != null) {
+    writer.writeString(
+      9,
+      f
+    );
+  }
+  f = message.getAxesList();
+  if (f.length > 0) {
+    writer.writeRepeatedMessage(
+      10,
+      f,
+      proto.google.fonts.AxisProto.serializeBinaryToWriter
+    );
+  }
 };
 
 
@@ -256,7 +284,7 @@ proto.google.fonts.FamilyProto.prototype.clearName = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FamilyProto.prototype.hasName = function() {
   return jspb.Message.getField(this, 1) != null;
@@ -285,7 +313,7 @@ proto.google.fonts.FamilyProto.prototype.clearDesigner = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FamilyProto.prototype.hasDesigner = function() {
   return jspb.Message.getField(this, 2) != null;
@@ -314,7 +342,7 @@ proto.google.fonts.FamilyProto.prototype.clearLicense = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FamilyProto.prototype.hasLicense = function() {
   return jspb.Message.getField(this, 3) != null;
@@ -343,7 +371,7 @@ proto.google.fonts.FamilyProto.prototype.clearCategory = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FamilyProto.prototype.hasCategory = function() {
   return jspb.Message.getField(this, 4) != null;
@@ -372,7 +400,7 @@ proto.google.fonts.FamilyProto.prototype.clearDateAdded = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FamilyProto.prototype.hasDateAdded = function() {
   return jspb.Message.getField(this, 5) != null;
@@ -381,15 +409,15 @@ proto.google.fonts.FamilyProto.prototype.hasDateAdded = function() {
 
 /**
  * repeated FontProto fonts = 6;
- * @return {!Array.<!proto.google.fonts.FontProto>}
+ * @return {!Array<!proto.google.fonts.FontProto>}
  */
 proto.google.fonts.FamilyProto.prototype.getFontsList = function() {
-  return /** @type{!Array.<!proto.google.fonts.FontProto>} */ (
+  return /** @type{!Array<!proto.google.fonts.FontProto>} */ (
     jspb.Message.getRepeatedWrapperField(this, proto.google.fonts.FontProto, 6));
 };
 
 
-/** @param {!Array.<!proto.google.fonts.FontProto>} value */
+/** @param {!Array<!proto.google.fonts.FontProto>} value */
 proto.google.fonts.FamilyProto.prototype.setFontsList = function(value) {
   jspb.Message.setRepeatedWrapperField(this, 6, value);
 };
@@ -412,21 +440,21 @@ proto.google.fonts.FamilyProto.prototype.clearFontsList = function() {
 
 /**
  * repeated string aliases = 7;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.google.fonts.FamilyProto.prototype.getAliasesList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 7));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 7));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.google.fonts.FamilyProto.prototype.setAliasesList = function(value) {
   jspb.Message.setField(this, 7, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
 proto.google.fonts.FamilyProto.prototype.addAliases = function(value, opt_index) {
@@ -441,21 +469,21 @@ proto.google.fonts.FamilyProto.prototype.clearAliasesList = function() {
 
 /**
  * repeated string subsets = 8;
- * @return {!Array.<string>}
+ * @return {!Array<string>}
  */
 proto.google.fonts.FamilyProto.prototype.getSubsetsList = function() {
-  return /** @type {!Array.<string>} */ (jspb.Message.getRepeatedField(this, 8));
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 8));
 };
 
 
-/** @param {!Array.<string>} value */
+/** @param {!Array<string>} value */
 proto.google.fonts.FamilyProto.prototype.setSubsetsList = function(value) {
   jspb.Message.setField(this, 8, value || []);
 };
 
 
 /**
- * @param {!string} value
+ * @param {string} value
  * @param {number=} opt_index
  */
 proto.google.fonts.FamilyProto.prototype.addSubsets = function(value, opt_index) {
@@ -465,6 +493,66 @@ proto.google.fonts.FamilyProto.prototype.addSubsets = function(value, opt_index)
 
 proto.google.fonts.FamilyProto.prototype.clearSubsetsList = function() {
   this.setSubsetsList([]);
+};
+
+
+/**
+ * optional string ttf_autohint_args = 9;
+ * @return {string}
+ */
+proto.google.fonts.FamilyProto.prototype.getTtfAutohintArgs = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 9, ""));
+};
+
+
+/** @param {string} value */
+proto.google.fonts.FamilyProto.prototype.setTtfAutohintArgs = function(value) {
+  jspb.Message.setField(this, 9, value);
+};
+
+
+proto.google.fonts.FamilyProto.prototype.clearTtfAutohintArgs = function() {
+  jspb.Message.setField(this, 9, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.google.fonts.FamilyProto.prototype.hasTtfAutohintArgs = function() {
+  return jspb.Message.getField(this, 9) != null;
+};
+
+
+/**
+ * repeated AxisProto axes = 10;
+ * @return {!Array<!proto.google.fonts.AxisProto>}
+ */
+proto.google.fonts.FamilyProto.prototype.getAxesList = function() {
+  return /** @type{!Array<!proto.google.fonts.AxisProto>} */ (
+    jspb.Message.getRepeatedWrapperField(this, proto.google.fonts.AxisProto, 10));
+};
+
+
+/** @param {!Array<!proto.google.fonts.AxisProto>} value */
+proto.google.fonts.FamilyProto.prototype.setAxesList = function(value) {
+  jspb.Message.setRepeatedWrapperField(this, 10, value);
+};
+
+
+/**
+ * @param {!proto.google.fonts.AxisProto=} opt_value
+ * @param {number=} opt_index
+ * @return {!proto.google.fonts.AxisProto}
+ */
+proto.google.fonts.FamilyProto.prototype.addAxes = function(opt_value, opt_index) {
+  return jspb.Message.addToRepeatedWrapperField(this, 10, opt_value, proto.google.fonts.AxisProto, opt_index);
+};
+
+
+proto.google.fonts.FamilyProto.prototype.clearAxesList = function() {
+  this.setAxesList([]);
 };
 
 
@@ -689,7 +777,7 @@ proto.google.fonts.FontProto.prototype.clearName = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FontProto.prototype.hasName = function() {
   return jspb.Message.getField(this, 1) != null;
@@ -718,7 +806,7 @@ proto.google.fonts.FontProto.prototype.clearStyle = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FontProto.prototype.hasStyle = function() {
   return jspb.Message.getField(this, 2) != null;
@@ -747,7 +835,7 @@ proto.google.fonts.FontProto.prototype.clearWeight = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FontProto.prototype.hasWeight = function() {
   return jspb.Message.getField(this, 3) != null;
@@ -776,7 +864,7 @@ proto.google.fonts.FontProto.prototype.clearFilename = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FontProto.prototype.hasFilename = function() {
   return jspb.Message.getField(this, 4) != null;
@@ -805,7 +893,7 @@ proto.google.fonts.FontProto.prototype.clearPostScriptName = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FontProto.prototype.hasPostScriptName = function() {
   return jspb.Message.getField(this, 5) != null;
@@ -834,7 +922,7 @@ proto.google.fonts.FontProto.prototype.clearFullName = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FontProto.prototype.hasFullName = function() {
   return jspb.Message.getField(this, 6) != null;
@@ -863,10 +951,289 @@ proto.google.fonts.FontProto.prototype.clearCopyright = function() {
 
 /**
  * Returns whether this field is set.
- * @return {!boolean}
+ * @return {boolean}
  */
 proto.google.fonts.FontProto.prototype.hasCopyright = function() {
   return jspb.Message.getField(this, 7) != null;
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.google.fonts.AxisProto = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, null);
+};
+goog.inherits(proto.google.fonts.AxisProto, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.google.fonts.AxisProto.displayName = 'proto.google.fonts.AxisProto';
+}
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.google.fonts.AxisProto.prototype.toObject = function(opt_includeInstance) {
+  return proto.google.fonts.AxisProto.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.google.fonts.AxisProto} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.google.fonts.AxisProto.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    tag: jspb.Message.getField(msg, 1),
+    minValue: jspb.Message.getOptionalFloatingPointField(msg, 2),
+    defaultValue: jspb.Message.getOptionalFloatingPointField(msg, 3),
+    maxValue: jspb.Message.getOptionalFloatingPointField(msg, 4)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.google.fonts.AxisProto}
+ */
+proto.google.fonts.AxisProto.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.google.fonts.AxisProto;
+  return proto.google.fonts.AxisProto.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.google.fonts.AxisProto} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.google.fonts.AxisProto}
+ */
+proto.google.fonts.AxisProto.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTag(value);
+      break;
+    case 2:
+      var value = /** @type {number} */ (reader.readFloat());
+      msg.setMinValue(value);
+      break;
+    case 3:
+      var value = /** @type {number} */ (reader.readFloat());
+      msg.setDefaultValue(value);
+      break;
+    case 4:
+      var value = /** @type {number} */ (reader.readFloat());
+      msg.setMaxValue(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.google.fonts.AxisProto.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.google.fonts.AxisProto.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.google.fonts.AxisProto} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.google.fonts.AxisProto.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = /** @type {string} */ (jspb.Message.getField(message, 1));
+  if (f != null) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = /** @type {number} */ (jspb.Message.getField(message, 2));
+  if (f != null) {
+    writer.writeFloat(
+      2,
+      f
+    );
+  }
+  f = /** @type {number} */ (jspb.Message.getField(message, 3));
+  if (f != null) {
+    writer.writeFloat(
+      3,
+      f
+    );
+  }
+  f = /** @type {number} */ (jspb.Message.getField(message, 4));
+  if (f != null) {
+    writer.writeFloat(
+      4,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string tag = 1;
+ * @return {string}
+ */
+proto.google.fonts.AxisProto.prototype.getTag = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.google.fonts.AxisProto.prototype.setTag = function(value) {
+  jspb.Message.setField(this, 1, value);
+};
+
+
+proto.google.fonts.AxisProto.prototype.clearTag = function() {
+  jspb.Message.setField(this, 1, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.google.fonts.AxisProto.prototype.hasTag = function() {
+  return jspb.Message.getField(this, 1) != null;
+};
+
+
+/**
+ * optional float min_value = 2;
+ * @return {number}
+ */
+proto.google.fonts.AxisProto.prototype.getMinValue = function() {
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 2, 0.0));
+};
+
+
+/** @param {number} value */
+proto.google.fonts.AxisProto.prototype.setMinValue = function(value) {
+  jspb.Message.setField(this, 2, value);
+};
+
+
+proto.google.fonts.AxisProto.prototype.clearMinValue = function() {
+  jspb.Message.setField(this, 2, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.google.fonts.AxisProto.prototype.hasMinValue = function() {
+  return jspb.Message.getField(this, 2) != null;
+};
+
+
+/**
+ * optional float default_value = 3;
+ * @return {number}
+ */
+proto.google.fonts.AxisProto.prototype.getDefaultValue = function() {
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 3, 0.0));
+};
+
+
+/** @param {number} value */
+proto.google.fonts.AxisProto.prototype.setDefaultValue = function(value) {
+  jspb.Message.setField(this, 3, value);
+};
+
+
+proto.google.fonts.AxisProto.prototype.clearDefaultValue = function() {
+  jspb.Message.setField(this, 3, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.google.fonts.AxisProto.prototype.hasDefaultValue = function() {
+  return jspb.Message.getField(this, 3) != null;
+};
+
+
+/**
+ * optional float max_value = 4;
+ * @return {number}
+ */
+proto.google.fonts.AxisProto.prototype.getMaxValue = function() {
+  return /** @type {number} */ (+jspb.Message.getFieldWithDefault(this, 4, 0.0));
+};
+
+
+/** @param {number} value */
+proto.google.fonts.AxisProto.prototype.setMaxValue = function(value) {
+  jspb.Message.setField(this, 4, value);
+};
+
+
+proto.google.fonts.AxisProto.prototype.clearMaxValue = function() {
+  jspb.Message.setField(this, 4, undefined);
+};
+
+
+/**
+ * Returns whether this field is set.
+ * @return {boolean}
+ */
+proto.google.fonts.AxisProto.prototype.hasMaxValue = function() {
+  return jspb.Message.getField(this, 4) != null;
 };
 
 

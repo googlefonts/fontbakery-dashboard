@@ -6,7 +6,7 @@
 
 
 const { initDB, initAmqp }= require('./getSetup')
-  , messages_pb = require('protocolbuffers/messages_pb')
+  , { FamilyJob } = require('protocolbuffers/messages_pb')
   ;
 
 function IOOperations(logging, dbSetup, amqpSetup) {
@@ -17,7 +17,6 @@ function IOOperations(logging, dbSetup, amqpSetup) {
     this._r = null;
     this._dbTables = this._dbSetup && this._dbSetup.tables || {};
     this._amqp = null;
-    this._distributorQueueName = 'fontbakery-worker-distributor';
 }
 
 var _p = IOOperations.prototype;
@@ -74,6 +73,11 @@ Object.defineProperties(_p, {
             return this._amqp;
         }
     }
+  , hasAmqp: {
+        get: function() {
+            return !!this._amqp;
+        }
+    }
 
 });
 
@@ -92,23 +96,6 @@ _p.insertDoc = function(dbTable, doc) {
         });
 };
 
-/**
- * a family-test document
- */
-_p._createFamilyDoc = function(environment_version, test_data_hash) {
-    var doc = {
-          created: new Date()
-        , test_data_hash: test_data_hash
-        , environment_version: environment_version
-    };
-
-    return this.insertDoc('family', doc)
-        .then(function(dbResponse) {
-            var docid = dbResponse.generated_keys[0];
-            return docid;
-        });
-};
-
 _p.getLatesCollectionEntry = function(collection_id, family_name) {
     return this.query('collection')
             .getAll([collection_id, family_name], {index:'collection_family'})
@@ -122,56 +109,6 @@ _p.getLatesCollectionEntry = function(collection_id, family_name) {
             ;
 };
 
-
-/**
- * If not present, create the doc
- *
- * CAUTION: This is prone to race conditions, we may end up with
- * multiple entries that have the [ENVIRONMENT_VERSION, test_data_hash]
- * key. That is not too bad, though, since the contents should be identical
- * all we did is running an identical test multiple times.
- *
- * Enforcing uniqueness here using rethink is possible but not straight
- * forward at this point:
- *
- * https://rethinkdb.com/api/javascript/table_create/:
- *      "The data type of a primary key is usually a string (like a UUID) or a
- *       number, but it can also be a time, binary object, boolean or an array.
- *       Data types can be mixed in the primary key field, but all values must
- *       be unique. Using an array as a primary key causes the primary key
- *       to behave like a compound index;"
- *
- * TODO:
- * - use the primary index:
- *   doc = {
- *        id: [ENVIRONMENT_VERSION, test_data_hash]
- *      , created: new Date()
- *   }
- * - make sure docid can be an array everwhere
- *      OR use something like id: [ENVIRONMENT_VERSION, test_data_hash].join(':')
- * - handle cases where inserting fails because of the uniqueness constraint!
- *   Be careful an don't forget to delete the cache entry!
- * - remove the env_hash secondary index
- */
-_p.getDocId = function(test_data_hash) {
-    // I'm using this envirionment variable directly here in the hope
-    // it is kept up to date by kubernetes and thus that we don't need to
-    // restart the pods when it is updated.
-    var environment_version = process.env.ENVIRONMENT_VERSION;
-
-    return this.query('family')
-        .getAll([environment_version, test_data_hash], {index:'env_hash'})
-        .run()
-        .then(function(docs) {
-            if(docs.length)
-                // it already exists!
-                return [false, docs[0].id, environment_version];
-            return this._createFamilyDoc(environment_version, test_data_hash)
-                       .then(docid => [true, docid, environment_version]);
-        }.bind(this))
-        ;
-};
-
 _p.sendQueueMessage = function (queueName, message) {
     var options = {
             // TODO: do we need persistent here/always?
@@ -180,32 +117,21 @@ _p.sendQueueMessage = function (queueName, message) {
         ;
     function sendMessage() {
         // jshint validthis:true
-        this._log.info('sendToQueue: ', queueName);
-        return this._amqp.channel.sendToQueue(queueName, message, options);
+        // this._log.info('sendToQueue: ', queueName);
+        return this.amqp.channel.sendToQueue(queueName, message, options);
     }
-    return this._amqp.channel.assertQueue(queueName, {durable: true})
+    return this.amqp.channel.assertQueue(queueName, {durable: true})
            .then(sendMessage.bind(this))
            ;
 };
 
-_p.dispatchFamilyJob = function(cacheKey, docid) {
-    this._log.debug('dispatchFamilyJob:', docid);
-    var job = new messages_pb.FamilyJob()
-     , buffer
-     ;
-    job.setDocid(docid);
-    job.setCacheKey(cacheKey);
-    buffer = new Buffer(job.serializeBinary());
-    return this.sendQueueMessage(this._distributorQueueName, buffer);
-};
-
 _p.queueListen = function(channelName, consumer) {
-    return this._amqp.channel.assertQueue(channelName)
-        .then(reply=>this._amqp.channel.consume(reply.queue, consumer));
+    return this.amqp.channel.assertQueue(channelName)
+        .then(reply=>this.amqp.channel.consume(reply.queue, consumer));
 };
 
 _p.ackQueueMessage = function(message) {
-    this._amqp.channel.ack(message);
+    this.amqp.channel.ack(message);
 };
 
 exports.IOOperations = IOOperations;
