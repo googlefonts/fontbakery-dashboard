@@ -139,6 +139,9 @@ function DispatcherProcessManager(setup, ...args) {
                    // -> Promise.resolve(new Empty())
             value: pullRequestMessage=>this._gitHubPRClient.dispatch(pullRequestMessage)
         }
+      , frontendBaseURL: {
+            value: setup.frontendBaseURL
+        }
     });
 }
 

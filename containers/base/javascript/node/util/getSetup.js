@@ -193,6 +193,7 @@ function getSetup() {
           , ['develFamilyWhitelist', 'DEVEL_FAMILY_WHITELIST'
               , value=>new Set(JSON.parse(value)), null
             ]
+          , ['frontendBaseURL', 'FRONTEND_BASE_URL']
     ]);
 
     setup.logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO');

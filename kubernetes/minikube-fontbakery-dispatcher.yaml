@@ -15,6 +15,11 @@ spec:
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
+          - name: FRONTEND_BASE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: env-config
+                key: frontend-base-url
           - name: DISPATCHER_MANAGER_SECRET
             valueFrom:
               secretKeyRef:
