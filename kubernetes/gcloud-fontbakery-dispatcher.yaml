@@ -11,10 +11,15 @@ spec:
     spec:
       containers:
       - name: fontbakery-dispatcher
-        image: gcr.io/fontbakery-168509/base-javascript:5
+        image: gcr.io/fontbakery-168509/base-javascript:7
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
+          - name: FRONTEND_BASE_URL
+            valueFrom:
+              configMapKeyRef:
+                name: env-config
+                key: frontend-base-url
           - name: DISPATCHER_MANAGER_SECRET
             valueFrom:
               secretKeyRef:

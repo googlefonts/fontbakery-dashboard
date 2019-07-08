@@ -119,7 +119,7 @@ _p._sendRequest = function(url, options, bodyData) {
         else // I guess 'text/plain' is the default
             body = querystring.stringify(bodyData);
 
-        options_.headers['Content-Length'] = body.length;
+        options_.headers['Content-Length'] = Buffer.byteLength(body);
     }
 
 

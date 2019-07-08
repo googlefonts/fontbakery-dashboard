@@ -85,9 +85,12 @@ service Manifest {
   // This is the same data as the manifestSource would dispatch as
   // CollectionFamilyJob for Font Bakery.
   rpc Get (FamilyRequest) returns (FamilyData){};
+  // same as get but replies via AMQP/ProcessCommand and hence is immune
+  // to timeout issues. FamilyRequest must specify a ProcessCommand.
+  rpc GetDelayed (FamilyRequest) returns (google.protobuf.Empty){};
   rpc List (ManifestSourceId) returns (FamilyNamesList){};
+  rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){};
 }
-
 
 message ManifestSourceId {
     string source_id = 1;
@@ -100,6 +103,18 @@ message FamilyNamesList {
 message FamilyRequest {
     string source_id = 1;
     string family_name = 2;
+    // optional, to configure answering in the GetDelayed method of
+    // service Manifest. This will have the essentials already configured.
+    ProcessCommand process_command = 3;
+}
+
+message SourceDetails {
+    oneof payload {
+      // This way we can do better structured protobuf messages OR
+      // faster to initially implemented JSON.
+      string json_payload = 1;
+      google.protobuf.Any pb_payload = 2;
+    }
 }
 
 message CollectionFamilyJob {
@@ -122,11 +137,19 @@ message CollectionFamilyJob {
 // be nice to merge the two message formats into one?
 // could be a oneof data { cache_key|files }
 message FamilyData {
-    string collectionid = 1; // the name that identifies the collection
-    string family_name = 2; // the name that identifies the family
-    Files files = 3;
-    google.protobuf.Timestamp date = 4; // when the data was created
-    string metadata = 5;//json?
+    enum Result {
+        FAIL = 0;
+        OK = 1;
+    };
+    Result status = 1;
+    // if status is FAIL
+    string error = 2;
+    // if status is OK
+    string collectionid = 3; // the name that identifies the collection
+    string family_name = 4; // the name that identifies the family
+    Files files = 5;
+    google.protobuf.Timestamp date = 6; // when the data was created
+    string metadata = 7;//json?
 }
 
 // The Reports service

@@ -105,10 +105,20 @@ class ManifestStub(object):
         request_serializer=messages__pb2.FamilyRequest.SerializeToString,
         response_deserializer=messages__pb2.FamilyData.FromString,
         )
+    self.GetDelayed = channel.unary_unary(
+        '/fontbakery.dashboard.Manifest/GetDelayed',
+        request_serializer=messages__pb2.FamilyRequest.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
     self.List = channel.unary_unary(
         '/fontbakery.dashboard.Manifest/List',
         request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
         response_deserializer=messages__pb2.FamilyNamesList.FromString,
+        )
+    self.GetSourceDetails = channel.unary_unary(
+        '/fontbakery.dashboard.Manifest/GetSourceDetails',
+        request_serializer=messages__pb2.FamilyRequest.SerializeToString,
+        response_deserializer=messages__pb2.SourceDetails.FromString,
         )
 
 
@@ -149,7 +159,22 @@ class ManifestServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def GetDelayed(self, request, context):
+    """same as get but replies via AMQP/ProcessCommand and hence is immune
+    to timeout issues. FamilyRequest must specify a ProcessCommand.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def List(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def GetSourceDetails(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -169,10 +194,20 @@ def add_ManifestServicer_to_server(servicer, server):
           request_deserializer=messages__pb2.FamilyRequest.FromString,
           response_serializer=messages__pb2.FamilyData.SerializeToString,
       ),
+      'GetDelayed': grpc.unary_unary_rpc_method_handler(
+          servicer.GetDelayed,
+          request_deserializer=messages__pb2.FamilyRequest.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
       'List': grpc.unary_unary_rpc_method_handler(
           servicer.List,
           request_deserializer=messages__pb2.ManifestSourceId.FromString,
           response_serializer=messages__pb2.FamilyNamesList.SerializeToString,
+      ),
+      'GetSourceDetails': grpc.unary_unary_rpc_method_handler(
+          servicer.GetSourceDetails,
+          request_deserializer=messages__pb2.FamilyRequest.FromString,
+          response_serializer=messages__pb2.SourceDetails.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(

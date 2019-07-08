@@ -66,7 +66,7 @@ RUN pip3 install lxml; # ==3.5.0
 ADD requirements.txt /var/python/requirements.txt
 RUN pip3 install -r /var/python/requirements.txt
 
-RUN touch /tmp/cache_spoof_18
+RUN touch /tmp/cache_spoof_20
 
 # FIXME: doesn't install all dependencies!
 # RUN pip3 install git+https://github.com/graphicore/fontbakery@dashboard_related

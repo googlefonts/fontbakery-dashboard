@@ -112,7 +112,11 @@ Object.defineProperties(_p, {
             return new Path(...this.step.path, this.pathPart);
         }
     }
-
+  , report: {
+        get: function() {
+            return this._state.report || null;
+        }
+    }
 });
 
 /**
@@ -165,6 +169,11 @@ const stateDefinition = {
         init: ()=>null//empty
       , serialize: state=>state
       , load: state=>state
+    }
+  , report:{
+        init: ()=>null//empty
+      , serialize: status=>status === null ? null : status.serialize()
+      , load: state=>state === null ? null : Status.load(state)
     }
 };
 
@@ -232,6 +241,7 @@ _p._reActivate = function() {
     // reset
     this._setLOG('*activate*');
     this._state.private = null;
+    this._state.report = null;
     this._unsetExpectedAnswer();
     // activate
     return this._activate();
@@ -279,7 +289,7 @@ _p._setExpectedAnswer = function(waitingFor
         this._setPENDING('Waiting for ' + (requestedUserInteractionName
                     ? 'user interaction'
                     : 'external resource'
-                    ) + ' '+ waitingFor);
+                    ) + ': '+ waitingFor);
     return this.__setExpectedAnswer(waitingFor, callbackName
                         , requestedUserInteractionName, continuationArgs);
 };
@@ -347,7 +357,10 @@ _p._failedAction = function() {
 };
 
 _p._setStatus = function(status, markdown, data) {
-    this._state.history.push(new Status(status, markdown, null, data));
+    if(status instanceof Status)
+        this._state.history.push(status);
+    else
+        this._state.history.push(new Status(status, markdown, null, data));
 };
 
 // These are helpers to use _setStatus, so a subclass doesn't need to
@@ -384,3 +397,8 @@ _p._setPENDING = function(markdown, data) {
     return this._setStatus(PENDING, markdown, data);
 };
 
+_p._setREPORT = function(markdown, data, statusCode=LOG) {
+    var status = new Status(statusCode, markdown, null, data);
+    this._state.report = status;
+    this._setStatus(status);
+};

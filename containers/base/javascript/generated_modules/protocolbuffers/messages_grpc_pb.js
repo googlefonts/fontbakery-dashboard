@@ -228,6 +228,17 @@ function deserialize_fontbakery_dashboard_SessionId(buffer_arg) {
   return messages_pb.SessionId.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_SourceDetails(arg) {
+  if (!(arg instanceof messages_pb.SourceDetails)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.SourceDetails');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_SourceDetails(buffer_arg) {
+  return messages_pb.SourceDetails.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_StorageItem(arg) {
   if (!(arg instanceof messages_pb.StorageItem)) {
     throw new Error('Expected argument of type fontbakery.dashboard.StorageItem');
@@ -380,6 +391,19 @@ var ManifestService = exports.ManifestService = {
     responseSerialize: serialize_fontbakery_dashboard_FamilyData,
     responseDeserialize: deserialize_fontbakery_dashboard_FamilyData,
   },
+  // same as get but replies via AMQP/ProcessCommand and hence is immune
+  // to timeout issues. FamilyRequest must specify a ProcessCommand.
+  getDelayed: {
+    path: '/fontbakery.dashboard.Manifest/GetDelayed',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.FamilyRequest,
+    responseType: google_protobuf_empty_pb.Empty,
+    requestSerialize: serialize_fontbakery_dashboard_FamilyRequest,
+    requestDeserialize: deserialize_fontbakery_dashboard_FamilyRequest,
+    responseSerialize: serialize_google_protobuf_Empty,
+    responseDeserialize: deserialize_google_protobuf_Empty,
+  },
   list: {
     path: '/fontbakery.dashboard.Manifest/List',
     requestStream: false,
@@ -390,6 +414,17 @@ var ManifestService = exports.ManifestService = {
     requestDeserialize: deserialize_fontbakery_dashboard_ManifestSourceId,
     responseSerialize: serialize_fontbakery_dashboard_FamilyNamesList,
     responseDeserialize: deserialize_fontbakery_dashboard_FamilyNamesList,
+  },
+  getSourceDetails: {
+    path: '/fontbakery.dashboard.Manifest/GetSourceDetails',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.FamilyRequest,
+    responseType: messages_pb.SourceDetails,
+    requestSerialize: serialize_fontbakery_dashboard_FamilyRequest,
+    requestDeserialize: deserialize_fontbakery_dashboard_FamilyRequest,
+    responseSerialize: serialize_fontbakery_dashboard_SourceDetails,
+    responseDeserialize: deserialize_fontbakery_dashboard_SourceDetails,
   },
 };
 

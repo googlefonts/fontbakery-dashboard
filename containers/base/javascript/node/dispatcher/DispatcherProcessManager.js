@@ -20,10 +20,12 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
     } = require('protocolbuffers/messages_pb')
   ;
 
-function _makeFamilyRequest(sourceId, familyName) {
+function _makeFamilyRequest(sourceId, familyName, processCommand=null) {
     var familyRequestMessage = new FamilyRequest();
     familyRequestMessage.setSourceId(sourceId);
     familyRequestMessage.setFamilyName(familyName);
+    if(processCommand)
+        familyRequestMessage.setProcessCommand(processCommand);
     return familyRequestMessage;
 }
 
@@ -88,13 +90,26 @@ function DispatcherProcessManager(setup, ...args) {
             }
         }
       , getUpstreamFamilyFiles: {
-            value: familyName=>{
+            value: (familyName, processCommand)=>{
                 // rpc Get (FamilyRequest) returns (FamilyData){}
                 // returns a promise for FamilyData
-                var familyRequestMessage = _makeFamilyRequest('upstream', familyName);
-                return this._manifestUpstreamClient.get(familyRequestMessage)
+                var familyRequestMessage = _makeFamilyRequest('upstream', familyName, processCommand);
+                return this._manifestUpstreamClient.getDelayed(familyRequestMessage)
                     .then(null, error=>{
                         this._log.error(`Error getUpstreamFamilyFiles(${familyName})`, error);
+                        // re-raise
+                        throw error;
+                    });
+            }
+        }
+      , getUpstreamFamilySourceDetails: {
+            value: familyName=>{
+                // rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){}
+                // returns a promise for SourceDetails
+                var familyRequestMessage = _makeFamilyRequest('upstream', familyName);
+                return this._manifestUpstreamClient.getSourceDetails(familyRequestMessage)
+                    .then(null, error=>{
+                        this._log.error(`Error getUpstreamFamilySourceDetails(${familyName})`, error);
                         // re-raise
                         throw error;
                     });
@@ -123,6 +138,9 @@ function DispatcherProcessManager(setup, ...args) {
       , dispatchPR: {
                    // -> Promise.resolve(new Empty())
             value: pullRequestMessage=>this._gitHubPRClient.dispatch(pullRequestMessage)
+        }
+      , frontendBaseURL: {
+            value: setup.frontendBaseURL
         }
     });
 }

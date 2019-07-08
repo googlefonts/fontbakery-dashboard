@@ -4,6 +4,7 @@
 const { Process:Parent } = require('./framework/Process')
     , { Step } = require('./framework/Step')
     , { Task } = require('./framework/Task')
+    , { LOG } = require('./framework/Status')
     , { PullRequest
       , ProcessCommand
       , DispatchReport
@@ -11,7 +12,8 @@ const { Process:Parent } = require('./framework/Process')
       , FontBakeryFinished
       , GenericStorageWorkerResult
       , File
-      , Files } = require('protocolbuffers/messages_pb')
+      , Files
+      , FamilyData } = require('protocolbuffers/messages_pb')
     , { mixin: stateManagerMixin } = require('./framework/stateManagerMixin')
     ;
 
@@ -106,10 +108,48 @@ _p._activate = function() {
 return EmptyTask;
 })();
 
+
+/**
+ * basically renders a flat dict of key:(string)value as markdown
+ */
+function _renderSourceDetails(sourceDetails, indentationDepth) {
+    var indentationChar = '&emsp;'
+      , indentation = new Array((indentationDepth || 0) + 1).join(indentationChar)
+      , entries = []
+      ;
+    for(let [key, value] of Object.entries(sourceDetails))
+        entries.push(indentation + '**' + key + '** `' + JSON.stringify(value)+ '`');
+
+    return entries.join('  \n');
+}
+
+
 const ApproveProcessTask = (function() {
 
-const ApproveProcessTask = taskFactory('ApproveProcessTask');
+var anySetup = {
+    knownTypes: { FamilyData }
+};
+
+const ApproveProcessTask = taskFactory('ApproveProcessTask', anySetup);
 const _p = ApproveProcessTask.prototype;
+
+_p._getSourceDetails = function() {
+    return this.resources.getUpstreamFamilySourceDetails(this.process.familyName)
+    .then(sourceDetails=>{
+        var payload;
+        if(sourceDetails.hasJsonPayload())
+            payload = JSON.parse(sourceDetails.getJsonPayload());
+        else if(sourceDetails.hasPbPayload()) {
+            let anyPayload = sourceDetails.getPbPayload(); // => Any
+            payload = this._any.unpack(anyPayload);
+        }
+        else
+            // though! maybe there is no payload needed, e.g. when
+            // the message is just something like: "resource ready now".
+            throw new Error('No payload in sourceDetails');
+        return payload;
+    });
+};
 
 /**
  * Expected by Parent.
@@ -118,6 +158,15 @@ _p._activate = function() {
     // could be a different path for new/update processes
     // after this task, we hopefully can proceed uniformly
     this._expectApproveProcess();
+    if(this.process.initType === 'update') {
+        return this._getSourceDetails()
+        .then(sourceDetails =>{
+            // upstream = `https://github.com/${repoNameWithOwner}.git`
+            this.process._state.repoNameWithOwner = _extractRepoNameWithOwner(sourceDetails.upstream);
+            this.process._state.genre = sourceDetails.genre;
+            this.process._state.fontfilesPrefix = sourceDetails.fontfilesPrefix;
+        });
+    }
 };
 
 _p._expectApproveProcess = function() {
@@ -126,30 +175,66 @@ _p._expectApproveProcess = function() {
                                       , 'uiApproveProcess');
 };
 
+_p._expectSignOffSpreadsheet = function() {
+    this._setExpectedAnswer('Sign-off Spreadsheet-update'
+                                      , 'callbackSignOffSpreadsheet'
+                                      , 'uiSignOffSpreadsheet');
+    return this._getSourceDetails()
+            .then(sourceDetails=>{
+                var sourceDetailsMD = _renderSourceDetails(sourceDetails, 1);
+                this._setLOG('**sourceDetails**, this is the current data from the spreadsheet:\n\n'
+                        + sourceDetailsMD
+                        + '\n\n*(caution: could be outdated)*');
+                this._setPrivateData('sourceDetails', {
+                    found: true
+                  , message: null // only if not found or some other error
+                  , data: sourceDetails
+                });
+            })
+            .then(null, error=>{
+                this._setPrivateData('sourceDetails', {
+                    found: false
+                  , message: '' + error
+                  , data: null
+                });
+            })
+            ;
+};
+
 /**
  * - Review form info is good.
  * - Form then updates spreadsheet (if necessary).
  */
 _p.uiApproveProcess = function() {
-    var actionOptions = [];
+    var actionOptions = []
+      , userTask
+      ;
     actionOptions.push(['Accept and proceed.', 'accept']);
-    this.log.debug("this.initType === 'register'"
+    actionOptions.push(['Edit info.', 'edit']);
+    actionOptions.push(['Dismiss and fail.', 'dismiss']);
+
+    this.log.debug("this.process.initType === 'register'"
                     , this.process.initType === 'register'
                     , this.process.initType
                     , this.process._state.initType
                     , this.constructor.name);
-    if(this.process.initType === 'register')
-        // currently there's nothing to edit when initType is an update
-        actionOptions.push(['Edit data.', 'edit']);
-    // else assert this.initType === 'update'
-    actionOptions.push(['Dismiss and fail.', 'dismiss']);
 
+    if(this.process.initType === 'register') {
+        userTask = 'Please review that the submitted info is good';
+    }
+    else { // assert this.process.initType === 'update'
+        userTask = 'Please review that the registered info is still good';
+    }
     return {
-        roles: ['engineer']
+        roles: ['input-provider', 'engineer']
       , ui: [
             {
                 type: 'info'
-              , content: '### Please review that the submitted info is good:'
+            , content: `**@${this.process.requester}** requests to **${this.process.initType}** a font family.
+
+### ${userTask}:` + (this.process._state.note
+                        ? '\n\n *with note:*\n\n' + this.process._state.note
+                        : '')
             }
 
           , {   name: 'action'
@@ -159,19 +244,19 @@ _p.uiApproveProcess = function() {
               //, default: 'accepted' // 0 => the first item is the default
             }
           , {
-                type: 'info'
-              , condition: ['action', '!', 'edit']
-              , content: `
-**Family Name** \`${this.process.familyName}\`<br />
-**GitHub Repository** \`${this.process.repoNameWithOwner}\`<br />
-**Where are the TTF-files in your repo (folder and file-prefix)** \`${this.process._state.fontfilesPrefix}\`<br />
-**Genre** \`${this.process._state.genre}\`
+                     type: 'info'
+                   , condition: ['action', '!', 'edit']
+                   , content: `
+**Family Name** \`${this.process.familyName || '—'}\`<br />
+**GitHub Repository** \`${this.process.repoNameWithOwner || '—'}\`<br />
+**Where are the TTF-files in your repo (folder and file-prefix)** \`${this.process._state.fontfilesPrefix || '—'}\`<br />
+**Genre** \`${this.process._state.genre || '—'}\`
 `
             }
           , {   name: 'reason'
               , condition: ['action', 'dismiss']
               , type: 'line' // input type:text
-              , label: 'Why do you dismiss this process request?'
+              , label: 'Why can\'t this process proceed?'
             }
             // spread! :-)
             , ..._getInitNewUI().map(item=>{
@@ -182,8 +267,12 @@ _p.uiApproveProcess = function() {
                     item.default = this.process._state.fontfilesPrefix;
                 if(item.name === 'ghNameWithOwner')
                     item.default = this.process.repoNameWithOwner;
-                if(item.name === 'familyName')
+                if(item.name === 'familyName') {
+                    // can't change the name if this is a update request
+                    if(this.process.initType === 'update')
+                        return null;
                     item.default = this.process.familyName;
+                }
                 if(item.name === 'isOFL')
                     // always true at this point
                     // and we can't go on otherwise (we don't even store that state).
@@ -215,20 +304,19 @@ _p.callbackApproveProcess = function([requester, sessionID]
     // jshint unused:vars
     var {action} = values;
 
-    if(action === 'accept' ) {
-        this._setLOG('**' + requester +'** accepted this process.');
-        this._setExpectedAnswer('Sign-off Spreadsheet-update'
-                                      , 'callbackSignOffSpreadsheet'
-                                      , 'uiSignOffSpreadsheet');
+    if(action === 'accept') {
+        this._setLOG('**@' + requester +'** accepted this process.');
+        return this._expectSignOffSpreadsheet();
     }
-    else if(this.process.initType === 'register' && action === 'edit' ) {
+    else if(action === 'edit') {
         // could be two different UIs for either "update" or "register" processes.
         // validate here!
         return this._editInitialState(requester, values);
     }
-    else if(action === 'dismiss' )
-        this._setFAILED('**' + requester + '** decided to FAIL this process '
-                     + 'request with reason:\n' + values.reason);
+    else if(action === 'dismiss') {
+        this._setFAILED('**@' + requester + '** decided to FAIL this process.'
+            + values.reason ? '\n\n' + values.reason : '');
+    }
     else
         throw new Error('Pick one of the actions from the list.');
 };
@@ -268,18 +356,25 @@ _p._editInitialState = function(requester, values) {
     values.note = this.process._state.note;
     // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
     values.isOFL = true;
-    return callbackPreInit(this.resources, requester, values)
+    var isChangedUpdate = this.process.initType === 'update';
+    if(isChangedUpdate)
+        values.familyName = this.process._state.familyName;
+    return callbackPreInit(this.resources, requester, values, isChangedUpdate)
     .then(([message, initArgs])=>{
         if(message) {
             // Should just stay in the expectApproveProcess realm until it's good.
             this._expectApproveProcess();
+            // Where is this status used ever???
+            // Seems like it is logged to the client directly,if there is
+            // a client, to give direct validation feedback!
             return {
                 status: 'FAIL'
               , message: message
             };
         }
         //else
-        this.process._state.familyName = initArgs.familyName;
+        if(!isChangedUpdate)
+            this.process._state.familyName = initArgs.familyName;
         this.process._state.repoNameWithOwner = initArgs.repoNameWithOwner;
         this.process._state.genre = initArgs.genre;
         this.process._state.fontfilesPrefix = initArgs.fontfilesPrefix;
@@ -288,22 +383,99 @@ _p._editInitialState = function(requester, values) {
     });
 };
 
+_p._mdCompareSourceDetails = function() {
+    var lines = []
+      // it would be nice to compare here the state of the sourceDetails
+      // vs. the state of the request!
+      // but, therefore, we need a cache instance of sourceDetails
+      // from  where ever this UI was requested and that is centrally
+      // done from _expectSignOffSpreadsheet ...
+
+      , {found, message, data:sourceDetails} = this._getPrivateData('sourceDetails'
+                        , {found: false, message: '(not available)', data: null})
+      ;
+
+    function _makeTable(header, rows) {
+        var table = [];
+        table.push(header);
+        table.push(Array.from({length:header.length}).map(()=>'---'));
+        for(let row of rows) {
+            row = row.slice();
+            row[0] = `*${row[0]}*`;
+            row[0] = `*${row[0]}*`;
+            row.push(row[1] === row[2] ? '✔' : '✘');
+            table.push(row);
+        }
+
+        return [['', ...table.map(line=>line.join(' | ')), ''].join('\n')];
+    }
+
+    if(!found) {
+        lines.push('','Can\'t show data comparison, the data was not found in the spreadsheet.  ');
+        if(message)
+            lines.push('With the message: ' + message);
+    }
+    else {
+        lines.push(..._makeTable(
+            ['name', 'requested data', 'spreadsheet data', 'is the same']
+          , [
+                ['familyName', this.process._state.familyName, sourceDetails.name]
+              , ['repoNameWithOwner' ,this.process._state.repoNameWithOwner, _extractRepoNameWithOwner(sourceDetails.upstream)]
+              , ['fontfilesPrefix', this.process._state.fontfilesPrefix, sourceDetails.fontfilesPrefix]
+              , ['genre', this.process._state.genre, sourceDetails.genre]
+              //, ['designer', n/a , sourceDetails.designer]
+            ]
+        ));
+    }
+    lines  = lines.join('\n');
+    return lines;
+};
+
 _p.uiSignOffSpreadsheet = function() {
     return {
         roles: ['engineer']
       , ui: [
             {
                 type: 'info'
-              , content: 'Please update the spreadsheet row entry for this family if necessary.'
+              , content: [
+                    'Please update the spreadsheet row entry for this family if necessary.  '
+                  , '**Note** the spreadsheet must be updated by hand, this application'
+                        + ' does not currently handle that for you!  '
+                  , ' *From this point onward, only the spreadsheet data will be used!*'
+                  , this._mdCompareSourceDetails()
+                ].join('\n')
             }
-          , {   name: 'accept'
-              , type:'binary'
-              , label: 'Spreadsheet entry is up to date.'
-            }
+          , {   name: 'action'
+              , type:'choice'
+              , label: 'How to proceed:'
+              , options: [
+                    ['Spreadsheet entry is up to date. Load the files!', 'accept']
+                  , ['Deny the request', 'deny']
+                    // this could be interesting if the requester can
+                    // change the form before but not the spreadsheet.
+                    // Otherwise the data can be changed in the spreadsheet
+                    // directly. There will be no check to validate the
+                    // spreadsheet vs. the request, rather we will turn
+                    // the spreadsheet into a proper database and control
+                    // it from here.
+                    // If it is a rights thing, the user answering the interface
+                    // before should get a reason (use continuationArgs!)
+                    // *NOTE:* seems to only make sense for the "register"
+                    // path!
+                  , ['Go back and change the request.', 'back']
+                  , ['Reload the current spreadsheet data.', 'reload']
+                ]
+              //, default: 'accept' // 0 => the first item is the default
+          }
           , {   name: 'reason'
-              , condition: ['accept', false]
+              , condition: ['action', 'deny']
               , type: 'line' // input type:text
               , label: 'What went wrong?'
+            }
+          , {   name: 'message'
+              , condition: ['action', 'back']
+              , type: 'line' // input type:text
+              , label: 'Describe what needs to change.'
             }
         ]
     };
@@ -312,49 +484,90 @@ _p.uiSignOffSpreadsheet = function() {
 _p.callbackSignOffSpreadsheet = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.accept === true) {
-        this._setOK('**' + requester + '** confirms spreadsheet entry.');
+    if(values.action === 'accept') {
+        this._setLOG('**@' + requester + '** confirms spreadsheet entry.\n'
+                  // hmm, although the data may be outdated, we still may
+                  //  want to log it, as it's the basis for the decision
+                  +  this._mdCompareSourceDetails());
         TODO('callbackSignOffSpreadsheet: eventually we want to put this info into a database that we manage ourselves.');
         // that needs some more CRUD interfaces though.
+        this._getFilesPackage();
     }
-    else if (values.accept === false)
-        this._setFAILED('**' + requester + '** can\'t confirm the spreadheet '
-                + 'entry is good:\n' + values.reason);
+    else if(values.action === 'back') {
+        let message = values.message || '(no message)';
+        this._setLOG('Please review the requested data:\n\n' + message);
+        this._expectApproveProcess();
+    }
+    else if(values.action === 'reload') {
+        // maybe we don't need to log this at all??
+        // we will change the callback ticket though!
+        // reloading the page itself would have the same effect for the
+        // user, if the spreadsheet status is just in the ui-method.
+        // So, this is maybe a bit complicated ...
+        // this._setLOG('**@' + requester +'** accepted this process.');
+        return this._expectSignOffSpreadsheet();
+    }
+    else if (values.action === 'deny') {
+        // hmm, although the data may be outdated, we still may
+        //  want to log it, as it's the basis for the decision
+        this._setREPORT( this._mdCompareSourceDetails() );
+        this._setFAILED('**@' + requester + '** can\'t confirm the spreadheet '
+                + 'entry is good.'
+                + values.reason ? '\n\n' + values.reason : ''
+                );
+    }
 };
 
-
-return ApproveProcessTask;
-})();
-
-const ApproveProcessStep = stepFactory('ApproveProcessStep', {
-    //(engineer): Review form info is good.
-    //        -> should have a way to modify the state from init
-    //(engineer): updates spreadsheet -> just a sign off
-    //        -> may be done by the form eventually
-    ApproveProcess: ApproveProcessTask
-});
-
-
-
-// * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
-const GetFilesPackageTask = (function() {
-const GetFilesPackageTask = taskFactory('GetFilesPackageTask');
-const _p = GetFilesPackageTask.prototype;
 
 /**
  * Expected by Parent.
  */
-_p._activate = function() {
-    FIXME('This can timeout if the google/fonts repo is not fetched yet!'
-          ,'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
-          , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
-          // NOW we can respond via amqp execute from getUpstreamFamilyFiles!
-    return this.resources.getUpstreamFamilyFiles(this.process.familyName)
-    .then(familyDataMessage=>Promise.all([
+_p._getFilesPackage = function() {
+    // This used to timeout when the google/fonts repo was not fetched
+    // in the upstream mainifestSource, e.g. because of a restart of
+    // the service. That can still happen when using the `get` gRPC interface
+    // with a too small deadline. Now, this uses the processCommand path.
+    // the error with the gRPC timeout was:
+    //    'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
+    //  , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
+    //
+    // NOW we can respond via amqp execute from getUpstreamFamilyFiles!
+    // This has also the advantage, that the user interface will report
+    // what it is currently waiting for. A long unresponsive phase,
+    // because a Tasks `activate` takes long time is not optimal.
+    var [callbackName, ticket] = this._setExpectedAnswer(
+                                    'Creating files package.'
+                                  , 'callbackReceiveFiles'
+                                  , null)
+      , processCommand = new ProcessCommand()
+      ;
+    processCommand.setTargetPath(this.path.toString());
+    processCommand.setTicket(ticket);
+    processCommand.setCallbackName(callbackName);
+    processCommand.setResponseQueueName(this.resources.executeQueueName);
+    return this.resources.getUpstreamFamilyFiles(this.process.familyName
+                                                        , processCommand);
+};
+
+_p.callbackReceiveFiles = function([requester, sessionID]
+                                , familyDataMessage /* a FamilyData */
+                                , ...continuationArgs) {
+    // jshint unused:vars
+    if(familyDataMessage.getStatus() === FamilyData.Result.FAIL) {
+        // hmm, this must not fail directly, it could also suggest to
+        // change the spreadsheet and try again!
+        // FIXME: if this fails inform the user abpout steps to do and
+        // provide options.
+        this._setREPORT('**ERROR** ' + familyDataMessage.getError());
+        this._setFAILED('**' + requester + '** can\'t create files package.');
+        return;
+    }
+
+    return Promise.all([
               this.resources.persistence.put([familyDataMessage.getFiles()])
                                         .then(storageKeys=>storageKeys[0])
             , familyDataMessage
-    ]))
+    ])
     .then(([storageKey, familyDataMessage])=> {
         /*
         message FamilyData {
@@ -426,6 +639,8 @@ _p._activate = function() {
                 .map(([key, value])=>{
                     if(typeof value === 'string')
                         return '**' + key + '** ' + value;
+                    else if(key === 'sourceDetails' && typeof value === 'object')
+                        return '**' + key + '** \n\n' + _renderSourceDetails(value, 1);
                     else if( typeof value !== 'object')
                         return '**' + key + '** `' + JSON.stringify(value)+ '`';
                     else
@@ -434,7 +649,7 @@ _p._activate = function() {
                                 + '```';
                 }).join('  \n')
         );
-        this._setLOG(familyDataSummaryMarkdown.join('\n'));
+        this._setREPORT(familyDataSummaryMarkdown.join('\n'));
         this._setExpectedAnswer('Check Family Files Package'
                                   , 'callbackCheckFamilyFilesPackage'
                                   , 'uiCheckFamilyFilesPackage');
@@ -447,14 +662,27 @@ _p.uiCheckFamilyFilesPackage = function() {
       , ui: [
             {
                 type: 'info'
-              , content: 'Please check the logged family package.'
+              , content: 'Please check the logged family package.\n\n'
+                        + 'Reloading the files package may be interesting '
+                        + 'if you changed the spreadsheet entry or the '
+                        + 'repository data in the meantime.'
             }
-          , {   name: 'accept'
-              , type:'binary'
-              , label: 'Looks good, go to QA!'
+          , {   name: 'action'
+                , type:'choice'
+                , label: 'How to proceed:'
+                , options: [
+                      ['Looks good, go to QA!', 'accept']
+                    , ['Dismiss the files package and fail the task.', 'deny']
+                    // back? hmm, maybe it's nice to have this option,
+                    // although, the spreadsheet can be changed without
+                    // doing it in here.
+                    // , ['Go back and change the request.', 'back']
+                    , ['Reload the files package.', 'retry'] // e.g. because the spreadsheet entry was changed
+                  ]
+                //, default: 'accept' // 0 => the first item is the default
             }
           , {   name: 'reason'
-              , condition: ['accept', false]
+              , condition: ['action', 'deny']
               , type: 'line' // input type:text
               , label: 'What went wrong?'
             }
@@ -465,20 +693,39 @@ _p.uiCheckFamilyFilesPackage = function() {
 _p.callbackCheckFamilyFilesPackage = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.accept === true) {
-        this._setOK('**' + requester + '** confirms the family package.');
+    if(values.action === 'accept') {
+        // no values.reason here
+        this._setOK('**@' + requester + '** confirms the family package.');
     }
-    else
-        this._setFAILED('**' + requester + '** can\'t confirm the '
-                + 'family package:\n' + values.reason);
+    else if(values.action === 'retry'){
+        this._setLOG('**@' + requester + '** retries to generate the files package.');
+        // delete the storage
+        var storageKey = this.process.getFilesStorageKey();
+        this._setLOG('Cleaning up: deleting persistence files for key: '
+                    + this.process._state.filesStorageKey);
+        return this.resources.persistence.purge(storageKey)// => 'filesMessage'
+            .then(()=>{this.process._state.filesStorageKey = null;})
+            .then(()=>this._getFilesPackage());
+    }
+    else { // assert values.action === 'deny'
+        this._setFAILED('**@' + requester + '** can\'t confirm the '
+                + 'family package.'
+                + values.reason ? '\n\n' + values.reason : '');
+    }
 };
 
-return GetFilesPackageTask;
+
+return ApproveProcessTask;
 })();
 
-const GetFilesPackageStep = stepFactory('GetFilesPackageStep', {
-    GetFilesPackage: GetFilesPackageTask
+const ApproveProcessStep = stepFactory('ApproveProcessStep', {
+    //(engineer): Review form info is good.
+    //        -> should have a way to modify the state from init
+    //(engineer): updates spreadsheet -> just a sign off
+    //        -> may be done by the form eventually
+    ApproveProcess: ApproveProcessTask
 });
+
 
 function persistenceKey2cacheKey(resources, persistenceKey) {
     return resources.persistence.get(persistenceKey)
@@ -508,6 +755,13 @@ var anySetup = {
 const FontbakeryTask = taskFactory('FontbakeryTask', anySetup);
 const _p = FontbakeryTask.prototype;
 
+_p._getReportURL = function(docid, absolute=false) {
+    return (absolute
+                ? this.resources.frontendBaseURL
+                : '')
+                + '/report/' + docid;
+};
+
 _p._activate = function() {
     var persistenceKey = this.process.getFilesStorageKey();
     return persistenceKey2cacheKey(this.resources, persistenceKey)
@@ -517,7 +771,8 @@ _p._activate = function() {
                                        , 'callbackFontBakeryFinished'))
     .then(familyJob=>{
         var docid = familyJob.getDocid();
-        this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
+        // will be overridden by the finished report
+        this._setREPORT('Font Bakery Report: [' + docid + '](' + this._getReportURL(docid) + ').');
     });
 };
 
@@ -527,16 +782,16 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
     // jshint unused:vars
     // print results to users ...
     var report
-        //, docid = fontBakeryFinishedMessage.getDocid()
+      , docid = fontBakeryFinishedMessage.getDocid()
         // If the job has any exception, it means
         // the job failed to finish orderly
       , finishedOrderly = fontBakeryFinishedMessage.getFinishedOrderly()
       , resultsJson = fontBakeryFinishedMessage.getResultsJson()
       ;
-    report = '## Font Bakery Result';
+    report = '## [Font Bakery Result]('+ this._getReportURL(docid, true) +')';
 
     if(!finishedOrderly) {
-        report += [ ''
+        report += [ '', ''
                   , '### **CAUTION: Font Bakery failed to complete!**'
                   , 'See the report for details.'
                   ].join('\n');
@@ -551,7 +806,7 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
                         percent[k] = Math.round(((v/total)*10000))/100);
 
         report += [
-          ''
+          '', ''
         , '| 💔 ERROR | 🔥 FAIL | ⚠ WARN | 💤 SKIP | 🛈 INFO | 🍞 PASS |'
         , '|:-----:|:----:|:----:|:----:|:----:|:----:|'
         , `| ${results.ERROR||0} | ${results.FAIL||0} | ${results.WARN||0} | ${results.SKIP||0} | ${results.INFO||0} | ${results.PASS||0} |`
@@ -565,7 +820,7 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
               , _mdFormatTimestamp(fontBakeryFinishedMessage, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
     this._setExpectedAnswer('Confirm Fontbakery'
                                  , 'callbackConfirmFontbakery'
                                  , 'uiConfirmFontbakery');
@@ -594,13 +849,13 @@ _p.uiConfirmFontbakery = function() {
 _p.callbackConfirmFontbakery = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
+
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Font Bakery looks good.');
+        this._setOK('**@' + requester + '** Font Bakery looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Font Bakery is failing.');
+        this._setFAILED('**@' + requester + '** Font Bakery is failing.' + notes);
 };
 
 return FontbakeryTask;
@@ -807,7 +1062,7 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
               , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
 
     this._setExpectedAnswer('Confirm Diffenator'
                                  , 'callbackConfirmDiffenator'
@@ -837,13 +1092,12 @@ _p.uiConfirmDiffenator = function() {
 _p.callbackConfirmDiffenator = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Diffenator looks good.');
+        this._setOK('**@' + requester + '** Diffenator looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Diffenator is failing.');
+        this._setFAILED('**@' + requester + '** Diffenator is failing.' + notes);
 };
 
 return DiffenatorTask;
@@ -935,7 +1189,7 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
               , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
 
     this._setExpectedAnswer('Confirm Diffbrowsers'
                                  , 'callbackConfirmDiffbrowsers'
@@ -965,13 +1219,12 @@ _p.uiConfirmDiffbrowsers = function() {
 _p.callbackConfirmDiffbrowsers = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Diffbrowsers looks good.');
+        this._setOK('**@' + requester + '** Diffbrowsers looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Diffbrowsers is failing.');
+        this._setFAILED('**@' + requester + '** Diffbrowsers is failing.' + notes);
 };
 
 return DiffbrowsersTask;
@@ -1081,7 +1334,7 @@ _p.callbackPreviewsFinished = function([requester, sessionID]
               , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
 
     this._setExpectedAnswer('Confirm Previews'
                                  , 'callbackConfirmPreviews'
@@ -1111,13 +1364,12 @@ _p.uiConfirmPreviews = function() {
 _p.callbackConfirmPreviews = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Previews looks good.');
+        this._setOK('**@' + requester + '** Previews looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Previews is failing.');
+        this._setFAILED('**@' + requester + '** Previews is failing.' + notes);
 };
 
 return PreviewsTask;
@@ -1130,6 +1382,86 @@ const QAToolsStep = stepFactory('QAToolsStep', {
   , Previews: PreviewsTask
 });
 
+function getTaskReportMDBody(task) {
+     var report = `${task.taskStatus.details}`;
+
+    if(task.report) {
+        let taskReportStatus = ` Status: ${task.report.status}`;
+        report +=`
+
+Report${task.report.status !== LOG ? taskReportStatus : ""}…
+
+${task.report.details}`;
+    }
+    return report;
+}
+
+function getStepReportMDBody(step, filterFunc=null) {
+                 // only if isFinished!
+    var report = step.isFinished ? step.finishedStatus.details : '';
+    for(let [taskName, task] of step.tasks.entries()) {
+        if(filterFunc && !filterFunc(task))
+            continue;
+        report +=`
+
+### Task ${taskName} ${task.status}
+
+${getTaskReportMDBody(task)}`;
+    }
+    return report;
+}
+
+function getStepStatusIndication(step) {
+    var status;
+    if(step.isFinished)
+        status = ['finished', step.finishedStatus.status];
+    else
+        status = ['unfinished', step.isFailing ? 'FAILING' : 'PENDING'];
+    return status.join(': ');
+}
+
+function getProcessReportMDBody(process, filterFunc=null) {
+    var reportLink = `[full report](${process.resources.frontendBaseURL}/dispatcher/process/${process.id})`
+      , report = `${reportLink}`
+      , renderedOne = false
+      ;
+
+    for(let [i, step] of [
+                      ...process.steps.entries()
+                    , ['FailStep', process.failStep]
+                    , ['FinallyStep', process.finallyStep]
+                    ]) {
+        if(!step)
+            // FailStep and FinallyStep are optional
+            continue;
+        if(filterFunc && !filterFunc(step))
+            continue;
+
+        if(!step.isActivated
+                && (step === process.failStep || step === process.finallyStep))
+            // Never include Fail/Finally if there's nothing to say.
+            continue;
+
+
+        report += '\n\n';
+        if(renderedOne)
+            // separating line
+            report += '---\n\n';
+        renderedOne = true;
+        if(!step.isActivated) {
+            report += `# (not activated: **Step # ${i} ${step.label})**`;
+            continue;
+        }
+
+        report += `# Step # ${i} ${step.label}
+
+**${getStepStatusIndication(step)}**
+
+${getStepReportMDBody(step, filterFunc)}
+`;
+    }
+    return report;
+}
 
 const SignOffAndDispatchTask = (function() {
 
@@ -1188,14 +1520,15 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
       , callbackName, ticket
       ;
     if(action === 'dismiss' ) {
-        this._setFAILED('**' + requester + '** decided to FAIL this process '
-                     + 'request with reason:\n' + values.reason);
+        this._setFAILED('**@' + requester + '** decided to FAIL this process.'
+                        + values.reason ? '\n\n' + values.reason : ''
+        );
         return;
     }
     else if(action !== 'accept' )
         throw new Error('Pick one of the actions from the list.');
 
-    this._setLOG('**' + requester +'** dispatches this process.');
+    this._setLOG('**@' + requester +'** dispatches this process.');
 
     pullRequest = new PullRequest();
     pullRequest.setSessionId(sessionID);
@@ -1210,7 +1543,8 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
     // must contain the link to the process page!
     // some QA details, as much as possible probably, but the full
     // reports will be at the process page as well.
-    var prMessageBody = 'TODO! *PR message body*';
+
+    var prMessageBody = getProcessReportMDBody(this.process, (item)=>item !== this.step);
     pullRequest.setPRMessageBody(prMessageBody);
 
     pullRequest.setCommitMessage('[Font Bakery Dashboard] '
@@ -1307,12 +1641,11 @@ _p.uiFailTask = function() {
 _p.callbackFailTask = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
 
     this._setLOG('...gathering information');
     this._setLOG('...making the Issue');
-    this._setOK('issue at [upstream/font-name #123Dummy](https://github.com/google/fonts/issues)');
+    this._setOK('issue at [upstream/font-name #123Dummy](https://github.com/google/fonts/issues)' + notes);
 
 };
 
@@ -1327,10 +1660,8 @@ const FailStep = stepFactory('FailStep', {
 
 const stepCtors = [
               // * Review form info is good.
-              // * Form then updates spreadsheet (if necessary).
-              [ApproveProcessStep, {label: 'Review the Request'}]
-              // * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
-            , [GetFilesPackageStep, {label: 'Generate the Files Package'}]
+              // * From then updates spreadsheet (if necessary).
+              [ApproveProcessStep, {label: 'Review the Request and Generate the Files Package'}]
             , [QAToolsStep, {label: 'Quality Assurance'}]
             , [SignOffAndDispatchStep, {label: 'Create the Pull Request'}]
           //, DispatchStep
@@ -1512,7 +1843,7 @@ function _getInitNewUI() {
           , {   name: 'ghNameWithOwner'
               , type: 'line' // input type:text
               , label: 'GitHub Repository'
-              , placeholder: '{owner}/{repo-name}'
+              , placeholder: 'GitHub URL or {owner}/{repo-name}'
             }
           , {   name: 'fontfilesPrefix'
               , type: 'line' // input type:text
@@ -1594,7 +1925,27 @@ function uiPreInit(resources) {
     });
 }
 
-function callbackPreInit(resources, requester, values) {
+
+function _extractRepoNameWithOwner(repoNameWithOwner) {
+    // git@github.com:googlefonts/gftools.git
+    // https://github.com/googlefonts/gftools.git
+    var prefixes = ['https://github.com/', 'git@github.com:'];
+    for(let test of prefixes) {
+        let i = repoNameWithOwner.indexOf(test);
+        if(i === -1)
+            continue;
+        // got a hit, extract then break ...
+        repoNameWithOwner = repoNameWithOwner.slice(i + test.length)
+                // cleaning up
+                .split('/').slice(0, 2).filter(str=>!!str).join('/');
+        if(repoNameWithOwner.slice(-4) === '.git')
+            repoNameWithOwner = repoNameWithOwner.slice(0,-4);
+        break;
+    }
+    return repoNameWithOwner;
+}
+
+function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
 
     var initType, familyName, repoNameWithOwner
       , genre, fontfilesPrefix, note
@@ -1620,7 +1971,7 @@ function callbackPreInit(resources, requester, values) {
         // invalid. Though, if it's an empty string after the trim, I
         // expect this to be handled before the init.
         FIXME('We should check properly if this is a existing, public(!) repo.');
-        repoNameWithOwner = values.ghNameWithOwner.trim();
+        repoNameWithOwner = _extractRepoNameWithOwner(values.ghNameWithOwner.trim());
 
         // values.fontfilesPrefix => just use this, it's impossible to
         // evaluate without actually trying to get the files
@@ -1665,6 +2016,8 @@ function callbackPreInit(resources, requester, values) {
     }
     else if(values.registered === true) {
         initType = 'update';
+        if(isChangedUpdate)
+            checkNew();
         promise = checkUpdate();
     }
     else {

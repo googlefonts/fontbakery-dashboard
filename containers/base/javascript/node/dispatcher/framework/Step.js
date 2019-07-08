@@ -138,6 +138,11 @@ Object.defineProperties(_p, {
             return this._state.finishedStatus !== null;
         }
     }
+  , finishedStatus: {
+        get: function() {
+            return this._state.finishedStatus;
+        }
+    }
   , pathPart: {
         get: function() {
             return  this.process.getStepPath(this);
@@ -148,6 +153,11 @@ Object.defineProperties(_p, {
   , path: {
         get: function() {
             return new Path(...this.process.path, this.pathPart);
+        }
+    }
+  , tasks: {
+        get: function() {
+            return this._state.tasks;
         }
     }
 });
@@ -180,6 +190,7 @@ const stateDefinition = {
 stateManagerMixin(_p, stateDefinition);
 
 const _stateManagerSerialize = _p.serialize;
+
 _p.serialize = function(options) {
     var data = _stateManagerSerialize.call(this, options);
     if(options && options.augment && options.augment.has('STEP.LABEL'))
@@ -187,7 +198,7 @@ _p.serialize = function(options) {
     return data;
 };
 
-_p.uiHandleFailedStep = function(){
+_p.uiHandleFailedStep = function() {
     return {
         roles: ['input-provider', 'engineer']
       , ui: [
