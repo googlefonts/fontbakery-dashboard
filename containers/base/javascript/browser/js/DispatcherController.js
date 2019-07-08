@@ -231,6 +231,10 @@ define([
                            // for debugging `private` could be interesting.
                            // maybe in an expandable box.
               , 'private': null// data is sent for debugging but not to face the user; || this._statusMakeKeyValue
+                // the report is currently also logged to history, so displaying
+                // this is redundant. This will always be the latest report
+                // in history or null if it was reset.
+              , 'report': null
               , '@default': this._statusMakeKeyValue
             }
           , order = []
