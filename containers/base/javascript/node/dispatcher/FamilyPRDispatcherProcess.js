@@ -4,6 +4,7 @@
 const { Process:Parent } = require('./framework/Process')
     , { Step } = require('./framework/Step')
     , { Task } = require('./framework/Task')
+    , { LOG } = require('./framework/Status')
     , { PullRequest
       , ProcessCommand
       , DispatchReport
@@ -304,7 +305,7 @@ _p.callbackApproveProcess = function([requester, sessionID]
     var {action} = values;
 
     if(action === 'accept') {
-        this._setLOG('**' + requester +'** accepted this process.');
+        this._setLOG('**@' + requester +'** accepted this process.');
         return this._expectSignOffSpreadsheet();
     }
     else if(action === 'edit') {
@@ -313,7 +314,7 @@ _p.callbackApproveProcess = function([requester, sessionID]
         return this._editInitialState(requester, values);
     }
     else if(action === 'dismiss') {
-        this._setFAILED('**' + requester + '** decided to FAIL this process.'
+        this._setFAILED('**@' + requester + '** decided to FAIL this process.'
             + values.reason ? '\n\n' + values.reason : '');
     }
     else
@@ -484,7 +485,7 @@ _p.callbackSignOffSpreadsheet = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
     if(values.action === 'accept') {
-        this._setLOG('**' + requester + '** confirms spreadsheet entry.\n'
+        this._setLOG('**@' + requester + '** confirms spreadsheet entry.\n'
                   // hmm, although the data may be outdated, we still may
                   //  want to log it, as it's the basis for the decision
                   +  this._mdCompareSourceDetails());
@@ -503,14 +504,14 @@ _p.callbackSignOffSpreadsheet = function([requester, sessionID]
         // reloading the page itself would have the same effect for the
         // user, if the spreadsheet status is just in the ui-method.
         // So, this is maybe a bit complicated ...
-        // this._setLOG('**' + requester +'** accepted this process.');
+        // this._setLOG('**@' + requester +'** accepted this process.');
         return this._expectSignOffSpreadsheet();
     }
     else if (values.action === 'deny') {
         // hmm, although the data may be outdated, we still may
         //  want to log it, as it's the basis for the decision
         this._setREPORT( this._mdCompareSourceDetails() );
-        this._setFAILED('**' + requester + '** can\'t confirm the spreadheet '
+        this._setFAILED('**@' + requester + '** can\'t confirm the spreadheet '
                 + 'entry is good.'
                 + values.reason ? '\n\n' + values.reason : ''
                 );
@@ -694,10 +695,10 @@ _p.callbackCheckFamilyFilesPackage = function([requester, sessionID]
     // jshint unused:vars
     if(values.action === 'accept') {
         // no values.reason here
-        this._setOK('**' + requester + '** confirms the family package.');
+        this._setOK('**@' + requester + '** confirms the family package.');
     }
     else if(values.action === 'retry'){
-        this._setLOG('**' + requester + '** retries to generate the files package.');
+        this._setLOG('**@' + requester + '** retries to generate the files package.');
         // delete the storage
         var storageKey = this.process.getFilesStorageKey();
         this._setLOG('Cleaning up: deleting persistence files for key: '
@@ -707,7 +708,7 @@ _p.callbackCheckFamilyFilesPackage = function([requester, sessionID]
             .then(()=>this._getFilesPackage());
     }
     else { // assert values.action === 'deny'
-        this._setFAILED('**' + requester + '** can\'t confirm the '
+        this._setFAILED('**@' + requester + '** can\'t confirm the '
                 + 'family package.'
                 + values.reason ? '\n\n' + values.reason : '');
     }
@@ -754,6 +755,13 @@ var anySetup = {
 const FontbakeryTask = taskFactory('FontbakeryTask', anySetup);
 const _p = FontbakeryTask.prototype;
 
+_p._getReportURL = function(docid, absolute=false) {
+    return (absolute
+                ? this.resources.frontendBaseURL
+                : '')
+                + '/report/' + docid;
+};
+
 _p._activate = function() {
     var persistenceKey = this.process.getFilesStorageKey();
     return persistenceKey2cacheKey(this.resources, persistenceKey)
@@ -763,7 +771,8 @@ _p._activate = function() {
                                        , 'callbackFontBakeryFinished'))
     .then(familyJob=>{
         var docid = familyJob.getDocid();
-        this._setLOG('Font Bakery Document: [' + docid + '](/report/' + docid + ').');
+        // will be overridden by the finished report
+        this._setREPORT('Font Bakery Report: [' + docid + '](' + this._getReportURL(docid) + ').');
     });
 };
 
@@ -773,16 +782,16 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
     // jshint unused:vars
     // print results to users ...
     var report
-        //, docid = fontBakeryFinishedMessage.getDocid()
+      , docid = fontBakeryFinishedMessage.getDocid()
         // If the job has any exception, it means
         // the job failed to finish orderly
       , finishedOrderly = fontBakeryFinishedMessage.getFinishedOrderly()
       , resultsJson = fontBakeryFinishedMessage.getResultsJson()
       ;
-    report = '## Font Bakery Result';
+    report = '## [Font Bakery Result]('+ this._getReportURL(docid, true) +')';
 
     if(!finishedOrderly) {
-        report += [ ''
+        report += [ '', ''
                   , '### **CAUTION: Font Bakery failed to complete!**'
                   , 'See the report for details.'
                   ].join('\n');
@@ -797,7 +806,7 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
                         percent[k] = Math.round(((v/total)*10000))/100);
 
         report += [
-          ''
+          '', ''
         , '| 💔 ERROR | 🔥 FAIL | ⚠ WARN | 💤 SKIP | 🛈 INFO | 🍞 PASS |'
         , '|:-----:|:----:|:----:|:----:|:----:|:----:|'
         , `| ${results.ERROR||0} | ${results.FAIL||0} | ${results.WARN||0} | ${results.SKIP||0} | ${results.INFO||0} | ${results.PASS||0} |`
@@ -811,7 +820,7 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
               , _mdFormatTimestamp(fontBakeryFinishedMessage, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
     this._setExpectedAnswer('Confirm Fontbakery'
                                  , 'callbackConfirmFontbakery'
                                  , 'uiConfirmFontbakery');
@@ -840,13 +849,13 @@ _p.uiConfirmFontbakery = function() {
 _p.callbackConfirmFontbakery = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
+
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Font Bakery looks good.');
+        this._setOK('**@' + requester + '** Font Bakery looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Font Bakery is failing.');
+        this._setFAILED('**@' + requester + '** Font Bakery is failing.' + notes);
 };
 
 return FontbakeryTask;
@@ -1053,7 +1062,7 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
               , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
 
     this._setExpectedAnswer('Confirm Diffenator'
                                  , 'callbackConfirmDiffenator'
@@ -1083,13 +1092,12 @@ _p.uiConfirmDiffenator = function() {
 _p.callbackConfirmDiffenator = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Diffenator looks good.');
+        this._setOK('**@' + requester + '** Diffenator looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Diffenator is failing.');
+        this._setFAILED('**@' + requester + '** Diffenator is failing.' + notes);
 };
 
 return DiffenatorTask;
@@ -1181,7 +1189,7 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
               , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
 
     this._setExpectedAnswer('Confirm Diffbrowsers'
                                  , 'callbackConfirmDiffbrowsers'
@@ -1211,13 +1219,12 @@ _p.uiConfirmDiffbrowsers = function() {
 _p.callbackConfirmDiffbrowsers = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Diffbrowsers looks good.');
+        this._setOK('**@' + requester + '** Diffbrowsers looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Diffbrowsers is failing.');
+        this._setFAILED('**@' + requester + '** Diffbrowsers is failing.' + notes);
 };
 
 return DiffbrowsersTask;
@@ -1327,7 +1334,7 @@ _p.callbackPreviewsFinished = function([requester, sessionID]
               , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
               ].join('<br />\n');
 
-    this._setLOG(report);
+    this._setREPORT(report);
 
     this._setExpectedAnswer('Confirm Previews'
                                  , 'callbackConfirmPreviews'
@@ -1357,13 +1364,12 @@ _p.uiConfirmPreviews = function() {
 _p.callbackConfirmPreviews = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
     if(values.accept === true) {
-        this._setOK('**' + requester + '** Previews looks good.');
+        this._setOK('**@' + requester + '** Previews looks good.' + notes);
     }
     else
-        this._setFAILED('**' + requester + '** Previews is failing.');
+        this._setFAILED('**@' + requester + '** Previews is failing.' + notes);
 };
 
 return PreviewsTask;
@@ -1376,6 +1382,86 @@ const QAToolsStep = stepFactory('QAToolsStep', {
   , Previews: PreviewsTask
 });
 
+function getTaskReportMDBody(task) {
+     var report = `${task.taskStatus.details}`;
+
+    if(task.report) {
+        let taskReportStatus = ` Status: ${task.report.status}`;
+        report +=`
+
+Report${task.report.status !== LOG ? taskReportStatus : ""}…
+
+${task.report.details}`;
+    }
+    return report;
+}
+
+function getStepReportMDBody(step, filterFunc=null) {
+                 // only if isFinished!
+    var report = step.isFinished ? step.finishedStatus.details : '';
+    for(let [taskName, task] of step.tasks.entries()) {
+        if(filterFunc && !filterFunc(task))
+            continue;
+        report +=`
+
+### Task ${taskName} ${task.status}
+
+${getTaskReportMDBody(task)}`;
+    }
+    return report;
+}
+
+function getStepStatusIndication(step) {
+    var status;
+    if(step.isFinished)
+        status = ['finished', step.finishedStatus.status];
+    else
+        status = ['unfinished', step.isFailing ? 'FAILING' : 'PENDING'];
+    return status.join(': ');
+}
+
+function getProcessReportMDBody(process, filterFunc=null) {
+    var reportLink = `[full report](${process.resources.frontendBaseURL}/dispatcher/process/${process.id})`
+      , report = `${reportLink}`
+      , renderedOne = false
+      ;
+
+    for(let [i, step] of [
+                      ...process.steps.entries()
+                    , ['FailStep', process.failStep]
+                    , ['FinallyStep', process.finallyStep]
+                    ]) {
+        if(!step)
+            // FailStep and FinallyStep are optional
+            continue;
+        if(filterFunc && !filterFunc(step))
+            continue;
+
+        if(!step.isActivated
+                && (step === process.failStep || step === process.finallyStep))
+            // Never include Fail/Finally if there's nothing to say.
+            continue;
+
+
+        report += '\n\n';
+        if(renderedOne)
+            // separating line
+            report += '---\n\n';
+        renderedOne = true;
+        if(!step.isActivated) {
+            report += `# (not activated: **Step # ${i} ${step.label})**`;
+            continue;
+        }
+
+        report += `# Step # ${i} ${step.label}
+
+**${getStepStatusIndication(step)}**
+
+${getStepReportMDBody(step, filterFunc)}
+`;
+    }
+    return report;
+}
 
 const SignOffAndDispatchTask = (function() {
 
@@ -1434,14 +1520,15 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
       , callbackName, ticket
       ;
     if(action === 'dismiss' ) {
-        this._setFAILED('**' + requester + '** decided to FAIL this process '
-                     + 'request with reason:\n' + values.reason);
+        this._setFAILED('**@' + requester + '** decided to FAIL this process.'
+                        + values.reason ? '\n\n' + values.reason : ''
+        );
         return;
     }
     else if(action !== 'accept' )
         throw new Error('Pick one of the actions from the list.');
 
-    this._setLOG('**' + requester +'** dispatches this process.');
+    this._setLOG('**@' + requester +'** dispatches this process.');
 
     pullRequest = new PullRequest();
     pullRequest.setSessionId(sessionID);
@@ -1456,7 +1543,8 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
     // must contain the link to the process page!
     // some QA details, as much as possible probably, but the full
     // reports will be at the process page as well.
-    var prMessageBody = 'TODO! *PR message body*';
+
+    var prMessageBody = getProcessReportMDBody(this.process, (item)=>item !== this.step);
     pullRequest.setPRMessageBody(prMessageBody);
 
     pullRequest.setCommitMessage('[Font Bakery Dashboard] '
@@ -1553,12 +1641,11 @@ _p.uiFailTask = function() {
 _p.callbackFailTask = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    if(values.notes)
-        this._setLOG('## Notes\n\n' + 'by **'+requester+'**\n\n' + values.notes);
+    var notes = values.notes ? '\n\n' + values.notes : '';
 
     this._setLOG('...gathering information');
     this._setLOG('...making the Issue');
-    this._setOK('issue at [upstream/font-name #123Dummy](https://github.com/google/fonts/issues)');
+    this._setOK('issue at [upstream/font-name #123Dummy](https://github.com/google/fonts/issues)' + notes);
 
 };
 
@@ -1573,10 +1660,8 @@ const FailStep = stepFactory('FailStep', {
 
 const stepCtors = [
               // * Review form info is good.
-              // * Form then updates spreadsheet (if necessary).
-              [ApproveProcessStep, {label: 'Review the Request'}]
-              // * Generate package (using the spreadsheet info. TODO: DESCRIPTION file?, complete METADATA.pb)
-            , [GetFilesPackageStep, {label: 'Generate the Files Package'}]
+              // * From then updates spreadsheet (if necessary).
+              [ApproveProcessStep, {label: 'Review the Request and Generate the Files Package'}]
             , [QAToolsStep, {label: 'Quality Assurance'}]
             , [SignOffAndDispatchStep, {label: 'Create the Pull Request'}]
           //, DispatchStep
