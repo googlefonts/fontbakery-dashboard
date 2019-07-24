@@ -387,13 +387,13 @@ message OAuthToken {
 
 // The Pull Request Dispatcher service
 
-service PullRequestDispatcher {
+service GitHubOperations {
   // If answering directly THIS COULD TIME OUT!
   // instead, we answer with Empty and send the
   // DispatchReport message via another channel,
   // currently this is implement using an
   // AMQP queue which feeds into ProcessManager.Execute
-  rpc Dispatch (PullRequest) returns (google.protobuf.Empty) {};
+  rpc DispatchPullRequest (PullRequest) returns (google.protobuf.Empty) {};
 }
 
 message PullRequest {

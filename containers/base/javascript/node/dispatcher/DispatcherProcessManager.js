@@ -7,7 +7,7 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
   , { DispatcherProcessManagerService } = require('protocolbuffers/messages_grpc_pb')
   , { ManifestClient } = require('../util/ManifestClient')
   , { StorageClient } = require('../util/StorageClient')
-  , { PullRequestDispatcherClient } = require('../util/PullRequestDispatcherClient')
+  , { GitHubOperationsClient } = require('../util/GitHubOperationsClient')
   , { InitWorkersClient } = require('../util/InitWorkersClient')
   , {
         ProcessList
@@ -70,7 +70,7 @@ function DispatcherProcessManager(setup, ...args) {
                             , setup.initWorkers.port);
     this._asyncDependencies.push([this._initWorkers, 'waitForReady']);
 
-    this._gitHubOperationsClient = new PullRequestDispatcherClient(
+    this._gitHubOperationsClient = new GitHubOperationsClient(
                               setup.logging
                             , setup.gitHubOperations.host
                             , setup.gitHubOperations.port
@@ -137,7 +137,8 @@ function DispatcherProcessManager(setup, ...args) {
         }
       , dispatchPR: {
                    // -> Promise.resolve(new Empty())
-            value: pullRequestMessage=>this._gitHubOperationsClient.dispatch(pullRequestMessage)
+            value: pullRequestMessage=>this._gitHubOperationsClient
+                                           .dispatchPullRequest(pullRequestMessage)
         }
       , frontendBaseURL: {
             value: setup.frontendBaseURL
