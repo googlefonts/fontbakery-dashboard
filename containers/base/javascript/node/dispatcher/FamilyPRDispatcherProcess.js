@@ -1513,7 +1513,7 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
                                         , values , ...continuationArgs) {
     // jshint unused:vars
     // This must be a user interaction callback because that
-    // way we get a current sessionID, needed by GitHubPRServer
+    // way we get a current sessionID, needed by GitHubOperationsServer
     // to get the GitHub-oAuthToken of the user.
     var {action} = values
       , pullRequest, processCommand

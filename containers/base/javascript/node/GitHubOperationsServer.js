@@ -42,7 +42,7 @@ function GitHubRef(repoOwner, repoName, name) {
 /**
  *
  */
-function GitHubPRServer(logging, port, setup, repoPath
+function GitHubOperationsServer(logging, port, setup, repoPath
                     , upstreamBranch, ghPushSetup, prTarget) {
     this._log = logging;
     this._repoPath = repoPath;
@@ -78,7 +78,7 @@ function GitHubPRServer(logging, port, setup, repoPath
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 }
 
-var _p = GitHubPRServer.prototype;
+var _p = GitHubOperationsServer.prototype;
 
 function _copyKeys(target, source, skip) {
     for(let [k,v] of Object.entries(source)) {
@@ -859,12 +859,12 @@ function getCommitResources(reference) {
         ;
 }
 
-module.exports.GitHubPRServer = GitHubPRServer;
+module.exports.GitHubOperationsServer = GitHubOperationsServer;
 
 if (typeof require != 'undefined' && require.main==module) {
     var { getSetup } = require('./util/getSetup')
       , repoPath = './fontsgit'
-      , setup = getSetup(), gitHubPRServer, port=50051
+      , setup = getSetup(), gitHubOperationsServer, port=50051
         // all PRs are based on this branch
       , upstream = new GitHubRef('google', 'fonts', 'master')
         // if not defined falls back to upstream
@@ -895,9 +895,9 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
 
-    gitHubPRServer = new GitHubPRServer(setup.logging, port, setup, repoPath
+    gitHubOperationsServer = new GitHubOperationsServer(setup.logging, port, setup, repoPath
                             , upstream, ghPushSetup, prTarget);
-    gitHubPRServer.serve()
+    gitHubOperationsServer.serve()
         .then(
               ()=>setup.logging.info('Server ready!')
             , error=>{

@@ -271,7 +271,7 @@ $ kf apply -f kubernetes/minikube-fontbakery-worker.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-manifest-master.yaml
 # new stuff
 $ kf apply -f kubernetes/minikube-fontbakery-github-auth.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-github-pr.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-github-operations.yaml
 # end new stuff
 
 $ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
