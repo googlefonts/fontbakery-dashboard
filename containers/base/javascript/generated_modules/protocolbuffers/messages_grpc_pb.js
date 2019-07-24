@@ -648,14 +648,14 @@ var AuthServiceService = exports.AuthServiceService = {
 exports.AuthServiceClient = grpc.makeGenericClientConstructor(AuthServiceService);
 // The Pull Request Dispatcher service
 //
-var PullRequestDispatcherService = exports.PullRequestDispatcherService = {
+var GitHubOperationsService = exports.GitHubOperationsService = {
   // If answering directly THIS COULD TIME OUT!
   // instead, we answer with Empty and send the
   // DispatchReport message via another channel,
   // currently this is implement using an
   // AMQP queue which feeds into ProcessManager.Execute
-  dispatch: {
-    path: '/fontbakery.dashboard.PullRequestDispatcher/Dispatch',
+  dispatchPullRequest: {
+    path: '/fontbakery.dashboard.GitHubOperations/DispatchPullRequest',
     requestStream: false,
     responseStream: false,
     requestType: messages_pb.PullRequest,
@@ -667,7 +667,7 @@ var PullRequestDispatcherService = exports.PullRequestDispatcherService = {
   },
 };
 
-exports.PullRequestDispatcherClient = grpc.makeGenericClientConstructor(PullRequestDispatcherService);
+exports.GitHubOperationsClient = grpc.makeGenericClientConstructor(GitHubOperationsService);
 var InitWorkersService = exports.InitWorkersService = {
   // the message type of the answer is worker implementation dependent.
   init: {

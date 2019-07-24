@@ -8,7 +8,7 @@ const grpc = require('grpc')
   , querystring = require('querystring')
   , { AsyncQueue } = require('./util/AsyncQueue')
   , NodeGit = require('nodegit')
-  , { PullRequestDispatcherService } = require('protocolbuffers/messages_grpc_pb')
+  , { GitHubOperationsService } = require('protocolbuffers/messages_grpc_pb')
   , { StorageKey, SessionId, DispatchReport, Files} = require('protocolbuffers/messages_pb')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , { ProtobufAnyHandler } = require('./util/ProtobufAnyHandler')
@@ -74,7 +74,7 @@ function GitHubOperationsServer(logging, port, setup, repoPath
       , 'grpc.max_receive_message_length': 80 * 1024 * 1024
     });
 
-    this._server.addService(PullRequestDispatcherService, this);
+    this._server.addService(GitHubOperationsService, this);
     this._server.bind('0.0.0.0:' + port, grpc.ServerCredentials.createInsecure());
 }
 

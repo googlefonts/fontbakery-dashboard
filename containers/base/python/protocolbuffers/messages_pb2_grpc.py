@@ -605,7 +605,7 @@ def add_AuthServiceServicer_to_server(servicer, server):
   server.add_generic_rpc_handlers((generic_handler,))
 
 
-class PullRequestDispatcherStub(object):
+class GitHubOperationsStub(object):
   """The Pull Request Dispatcher service
 
   """
@@ -616,19 +616,19 @@ class PullRequestDispatcherStub(object):
     Args:
       channel: A grpc.Channel.
     """
-    self.Dispatch = channel.unary_unary(
-        '/fontbakery.dashboard.PullRequestDispatcher/Dispatch',
+    self.DispatchPullRequest = channel.unary_unary(
+        '/fontbakery.dashboard.GitHubOperations/DispatchPullRequest',
         request_serializer=messages__pb2.PullRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
 
 
-class PullRequestDispatcherServicer(object):
+class GitHubOperationsServicer(object):
   """The Pull Request Dispatcher service
 
   """
 
-  def Dispatch(self, request, context):
+  def DispatchPullRequest(self, request, context):
     """If answering directly THIS COULD TIME OUT!
     instead, we answer with Empty and send the
     DispatchReport message via another channel,
@@ -640,16 +640,16 @@ class PullRequestDispatcherServicer(object):
     raise NotImplementedError('Method not implemented!')
 
 
-def add_PullRequestDispatcherServicer_to_server(servicer, server):
+def add_GitHubOperationsServicer_to_server(servicer, server):
   rpc_method_handlers = {
-      'Dispatch': grpc.unary_unary_rpc_method_handler(
-          servicer.Dispatch,
+      'DispatchPullRequest': grpc.unary_unary_rpc_method_handler(
+          servicer.DispatchPullRequest,
           request_deserializer=messages__pb2.PullRequest.FromString,
           response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.PullRequestDispatcher', rpc_method_handlers)
+      'fontbakery.dashboard.GitHubOperations', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
 
 
