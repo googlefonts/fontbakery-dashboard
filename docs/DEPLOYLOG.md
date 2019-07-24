@@ -481,7 +481,7 @@ kubectl apply -f kubernetes/minikube-fontbakery-init-workers.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
 
 kubectl apply -f kubernetes/minikube-fontbakery-github-auth.yaml
-kubectl apply -f kubernetes/minikube-fontbakery-github-pr.yaml
+kubectl apply -f kubernetes/minikube-fontbakery-github-operations.yaml
 
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-csvupstream.yaml
 kubectl apply -f kubernetes/gcloud-fontbakery-manifest-gfapi.yaml

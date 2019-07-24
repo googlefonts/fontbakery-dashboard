@@ -1,16 +1,16 @@
 apiVersion: apps/v1beta1 # for versions before 1.6.0 use extensions/v1beta1
 kind: Deployment
 metadata:
-  name: fontbakery-github-pr
+  name: fontbakery-github-operations
 spec:
   replicas: 1
   template:
     metadata:
       labels:
-        component: fontbakery-github-pr
+        component: fontbakery-github-operations
     spec:
       containers:
-      - name: fontbakery-github-pr
+      - name: fontbakery-github-operations
         image: fontbakery/base-javascript:1
         env:
           - name: FONTBAKERY_LOG_LEVEL
@@ -23,17 +23,17 @@ spec:
         ports:
         - containerPort: 50051
         workingDir: /var/javascript
-        command: ["node", "node/GitHubPRServer.js", "-p", "50051"]
+        command: ["node", "node/GitHubOperationsServer.js", "-p", "50051"]
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: fontbakery-github-pr
+  name: fontbakery-github-operations
   labels:
-    component: fontbakery-github-pr
+    component: fontbakery-github-operations
 spec:
   ports:
     - port: 50051
       targetPort: 50051
   selector:
-    component: fontbakery-github-pr
+    component: fontbakery-github-operations

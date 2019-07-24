@@ -147,10 +147,10 @@ function getSetup() {
                 ['host', 'FONTBAKERY_DISPATCHER_SERVICE_HOST']
               , ['port', 'FONTBAKERY_DISPATCHER_SERVICE_PORT']
             ]
-          , gitHubPR: [
-                // call it: "fontbakery-github-pr" in kybernetes
-                ['host', 'FONTBAKERY_GITHUB_PR_SERVICE_HOST']
-              , ['port', 'FONTBAKERY_GITHUB_PR_SERVICE_PORT']
+          , gitHubOperations: [
+                // call it: "fontbakery-github-operations" in kybernetes
+                ['host', 'FONTBAKERY_GITHUB_OPERATIONS_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_GITHUB_OPERATIONS_SERVICE_PORT']
             ]
           , gitHubAuth: [
                 // call it: "fontbakery-github-auth" in kybernetes

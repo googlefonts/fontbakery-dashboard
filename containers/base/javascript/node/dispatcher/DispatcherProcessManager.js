@@ -70,12 +70,12 @@ function DispatcherProcessManager(setup, ...args) {
                             , setup.initWorkers.port);
     this._asyncDependencies.push([this._initWorkers, 'waitForReady']);
 
-    this._gitHubPRClient = new PullRequestDispatcherClient(
+    this._gitHubOperationsClient = new PullRequestDispatcherClient(
                               setup.logging
-                            , setup.gitHubPR.host
-                            , setup.gitHubPR.port
+                            , setup.gitHubOperations.host
+                            , setup.gitHubOperations.port
                             );
-    this._asyncDependencies.push([this._gitHubPRClient, 'waitForReady']);
+    this._asyncDependencies.push([this._gitHubOperationsClient, 'waitForReady']);
 
     Object.defineProperties(this._processResources, {
         // I prefer not to inject the this._manifestUpstreamClient
@@ -137,7 +137,7 @@ function DispatcherProcessManager(setup, ...args) {
         }
       , dispatchPR: {
                    // -> Promise.resolve(new Empty())
-            value: pullRequestMessage=>this._gitHubPRClient.dispatch(pullRequestMessage)
+            value: pullRequestMessage=>this._gitHubOperationsClient.dispatch(pullRequestMessage)
         }
       , frontendBaseURL: {
             value: setup.frontendBaseURL
