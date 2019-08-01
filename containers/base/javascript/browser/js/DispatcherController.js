@@ -489,6 +489,21 @@ define([
             this._currentProcessListener(...this._currentProcessLastData);
     };
 
+    function _parseUIFieldCondition(condition) {
+        var conditionName = condition[0]
+          , conditionValue, negated
+          ;
+            if(condition.length >= 3 && condition[1] === '!') {
+                conditionValue = condition[2];
+                negated = true;
+            }
+            else {
+                conditionValue = condition[1];
+                negated = false;
+            }
+        return [conditionName, conditionValue, negated];
+    }
+
     _p._createUserInteraction = function(processId, description, isInit) {
         // use if client is not authorized to send the form
         // FIXME: currently only checking if there's a session at all
@@ -575,15 +590,8 @@ define([
             if(!('condition' in uiField))
                 continue;
 
-            conditionName = uiField.condition[0];
-            if(uiField.condition.length >= 3 && uiField.condition[1] === '!') {
-                conditionValue = uiField.condition[2];
-                negated = true;
-            }
-            else {
-                conditionValue = uiField.condition[1];
-                negated = false;
-            }
+            [conditionName, conditionValue
+                    , negated] = _parseUIFieldCondition(uiField.condition);
 
             condition_uiField_Input = named[conditionName];
             if(!condition_uiField_Input)
@@ -796,7 +804,7 @@ define([
                 values[key] = value;
         }
 
-        var condition_name, condition_value
+        var conditionName, conditionValue, negated, skip
             // these don't have themselves conditions
           , allowedConditions = new Set(Object.keys(values))
           ;
@@ -806,14 +814,20 @@ define([
             input = inputs[i];
             if(!('condition' in uiField))
                 continue;
-            condition_name = uiField.condition[0];
-            condition_value = uiField.condition[1];
+
+            [conditionName, conditionValue
+                    , negated] = _parseUIFieldCondition(uiField.condition);
+
             // yeah this is a quick an dirty hack
             // but good enough to just evaluate a single depth of conditions
-            if(!allowedConditions.has(condition_name))
+            if(!allowedConditions.has(conditionName))
                 // condition can't have a condition itself this way ;-)
                 continue;
-            if(values[condition_name] !== condition_value)
+
+            skip = values[conditionName] !== conditionValue;
+            if(negated)
+                skip = !skip;
+            if(skip)
                 continue;
             // falling back to index as a key
             key = '' + ('name' in uiField ? uiField.name : i);

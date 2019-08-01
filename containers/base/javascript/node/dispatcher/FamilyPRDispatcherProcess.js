@@ -6,8 +6,9 @@ const { Process:Parent } = require('./framework/Process')
     , { Task } = require('./framework/Task')
     , { LOG } = require('./framework/Status')
     , { PullRequest
+      , Issue
       , ProcessCommand
-      , DispatchReport
+      , GitHubReport
       , StorageKey
       , FontBakeryFinished
       , GenericStorageWorkerResult
@@ -16,6 +17,10 @@ const { Process:Parent } = require('./framework/Process')
       , FamilyData } = require('protocolbuffers/messages_pb')
     , { mixin: stateManagerMixin } = require('./framework/stateManagerMixin')
     ;
+
+
+// Could be configurable at some point, but for now this must be good enough.
+const FBD_REPO_NAME_WITH_OWNER = 'googlefonts/fontbakery-dashboard';
 
 /**
  * constructor must do Parent.call(this, arg1, arg2,) itself if applicable.
@@ -1466,7 +1471,7 @@ ${getStepReportMDBody(step, filterFunc)}
 const SignOffAndDispatchTask = (function() {
 
 var anySetup = {
-    knownTypes: { DispatchReport }
+    knownTypes: { GitHubReport }
 };
 const SignOffAndDispatchTask = taskFactory('SignOffAndDispatchTask', anySetup);
 const _p = SignOffAndDispatchTask.prototype;
@@ -1562,7 +1567,7 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
     processCommand.setResponseQueueName(this.resources.executeQueueName);
     pullRequest.setProcessCommand(processCommand);
 
-    this.resources.dispatchPR(pullRequest)// -> Promise.resolve(new Empty())
+    this.resources.gitHub.dispatchPullRequest(pullRequest)// -> Promise.resolve(new Empty())
         .then(null, error=>{
             this.log.error('Can\'t dispatch Pull Request', error);
             // There's no return from this, maybe the user can retry the task.
@@ -1571,26 +1576,23 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
 };
 
 _p.callbackDispatched = function([requester, sessionID]
-                                , dispatchReport /* a DispatchReport */
+                                , gitHubReport /* a GitHubReport */
                                 , ...continuationArgs) {
     // jshint unused:vars
-    var status = dispatchReport.getStatus()
-      , statusOK = status === DispatchReport.Result.OK
-      , branchUrl = dispatchReport.getBranchUrl()
-      , prUrl = statusOK  ? dispatchReport.getPRUrl() : null
-      , error = !statusOK ? dispatchReport.getError() : null
+    var status = gitHubReport.getStatus()
+      , statusOK = status === GitHubReport.Result.OK
       ;
 
     if(statusOK) {
-        this._setOK(' * [GitHub PR](' + prUrl + ')\n'
-                  + ' * [GitHub branch page](' + branchUrl + ')');
-
+        this._setOK(' * [GitHub PR #' + gitHubReport.getIssueNumber() + ']'
+                  + '(' + gitHubReport.getUrl() + ')\n'
+                  + ' * [GitHub branch page](' + gitHubReport.getBranchUrl() + ')');
     }
     else
-        // assert dispatchReport.getStatus() === DispatchReport.Result.FAIL
+        // assert gitHubReport.getStatus() === GitHubReport.Result.FAIL
         this._setFAILED('**' + requester + '** can\'t dispatch Pull Request.'
-                    + '\n\n **ERROR** ' + error
-                    + '\n\n[designated GitHub branch page]('+branchUrl+')'
+                    + '\n\n **ERROR** ' + gitHubReport.getError()
+                    + '\n\n[designated GitHub branch page]('+ gitHubReport.getBranchUrl() +')'
                     );
 };
 
@@ -1611,7 +1613,6 @@ const SignOffAndDispatchStep = stepFactory('SignOffAndDispatchStep', {
  *
  * Create an issue somewhere on GitHub.
  */
-
 const FailTask = (function() {
 const FailTask = taskFactory('FailTask');
 const _p = FailTask.prototype;
@@ -1622,17 +1623,71 @@ _p._activate = function() {
                                   , 'uiFailTask');
 };
 
+
+_p._getIssueTargets = function() {
+    var targets = []
+      , repoName, repoOwner
+      ;
+
+    // maybe we failed to define this!
+    if(this.process.repoNameWithOwner) {
+        [repoOwner, repoName] = this.process.repoNameWithOwner.split('/');
+        targets.push([
+            'upstream'
+          , {
+                    label: 'family "' + this.process.familyName + '" upstream'
+                  , repoName: repoName
+                  , repoOwner: repoOwner
+            }
+        ]);
+    }
+
+    // always:
+    [repoOwner, repoName] = FBD_REPO_NAME_WITH_OWNER.split('/');
+    targets.push([
+        'fontbakery-dashboard'
+      , {
+                label: 'Font Bakery Dashboard'
+              , repoName: repoName
+              , repoOwner: repoOwner
+        }
+    ]);
+
+    return new Map(targets);
+};
+
 _p.uiFailTask = function() {
     return {
         roles: ['engineer']
       , ui: [
             {
                 type: 'info'
-              , content: 'Please explain the issue to the author.'
+              , content: 'Please explain the issue(s), if there\'s more to say.'
             }
           , {   name: 'notes'
               , type: 'text' // input type:text
               , label: 'Notes'
+            }
+          , {   name: 'verbosity'
+              , type: 'choice'
+              , label: 'What to report?'
+              , options: [
+                    ['Post only failing tasks.', 'fails']
+                  , ['Post the full report.', 'full']
+                  , ['Fail silently: Dont\'t create an issue at all.', 'quiet']
+              ]
+            }
+          , {
+                name: 'target'
+              , condition: ['verbosity','!','quiet']
+              , type: 'choice'
+              , label: 'Where to file the issue.'
+              // [
+              //      ['family upstream', 'upstream']
+              //    , ['Font Bakery Dashboard' , 'fontbakery-dashboard']
+              //  ]
+              , options: Array.from(this._getIssueTargets().entries())
+                              .map(([k,v])=>[v.label, k])
             }
         ]
     };
@@ -1641,12 +1696,107 @@ _p.uiFailTask = function() {
 _p.callbackFailTask = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
-    var notes = values.notes ? '\n\n' + values.notes : '';
 
-    this._setLOG('...gathering information');
-    this._setLOG('...making the Issue');
-    this._setOK('issue at [upstream/font-name #123Dummy](https://github.com/google/fonts/issues)' + notes);
+    // verbosity: 'fails' || 'full' || 'quiet'
+    // target: 'upstream' || 'fontbakery-dashboard'
 
+    if(values.verbosity === 'quiet') {
+        this._setOK('**@' + requester + '**: no issue filed.'
+                + values.notes ? '\n\n' + values.notes : '');
+        return;
+    }
+
+    var report = (values.notes ? values.notes + '\n\n' : '')
+      , targets = this._getIssueTargets()
+      , target
+      , filterFunc
+      , issue
+      ;
+    switch(values.verbosity) {
+        case 'fails':
+            filterFunc = (item)=>item !== this.step
+                               // State and Task have an isFailed gettet
+                               && item.isFailed;
+            break;
+        case 'full':
+            filterFunc = (item)=>item !== this.step;
+            break;
+        default:
+            throw new Error('Pick one of the actions from the list.');
+    }
+
+    report += getProcessReportMDBody(this.process, filterFunc);
+    // file issue at target
+
+    if(!targets.has(values.target))
+        throw new Error('Pick one of the target repositories from the list.');
+    target = targets.get(values.target);
+    // must feed https://developer.github.com/v3/issues/
+    /**
+     * message Issue {
+     *    // The user who will post this issue!
+     *    string session_id = 1;
+     *    // title 	string 	Required. The title of the issue.
+     *    // a simple string as a title
+     *    string title = 2;
+     *    body 	string 	The contents of the issue.
+     *    // github-markdown string
+     *    string body = 3;
+     *
+     *    // optional stuff
+     *
+     *    // milestone 	integer 	The number of the milestone to associate
+     *    // this issue with. NOTE: Only users with push access can set the
+     *    // milestone for new issues. The milestone is silently dropped otherwise.
+     *    int32 milestone = 4;
+     *    // labels   array of strings 	Labels to associate with this issue.
+     *    // NOTE: Only users with push access can set labels for new issues.
+     *    // Labels are silently dropped otherwise.
+     *    repeated string labels = 5;
+     *    // assignees 	array of strings 	Logins for Users to assign to this
+     *    // issue. NOTE: Only users with push access can set assignees for new
+     *    // issues. Assignees are silently dropped otherwise.
+     *    repeated string assignees = 6;
+     *
+     *    // To make answering easier in the PR dispatcher, this will have
+     *    // the essentials already configured, but is not needed at the moment!
+     *    // ProcessCommand process_command = 4;
+     * }
+     */
+    issue = new Issue();
+    issue.setSessionId(sessionID);
+    issue.setRepoName(target.repoName);
+    issue.setRepoOwner(target.repoOwner);
+
+    var verb;
+    if(this.process._state.isUpdate !== null)
+        verb = this.process._state.isUpdate ? 'update' : 'create';
+    else
+        // `isUpdate` is set in callbackReceiveFiles before we can
+        // only use `initType` is "register" or "update".
+        verb = this.process._state.initType;
+
+    issue.setTitle('[Font Bakery Dashboard] fail to ' + verb
+                        + ' family: ' + this.process.familyName);
+    issue.setBody(report);
+    // issue.setMilestone();
+    // issue.setLabelsList(labels) || issue.addLabels(label);
+    // issue.setAssigneesList(assignees) || issue.addAssignees(asignee);
+
+    return this.resources.gitHub.fileIssue(issue)
+    .then(gitHubReport=>{
+        var status = gitHubReport.getStatus()
+          , statusOK = status === GitHubReport.Result.OK
+          ;
+
+        if(statusOK)
+            this._setOK('[GitHub Issue #'+ gitHubReport.getIssueNumber() +']'
+                      + '(' + gitHubReport.getUrl() + ')');
+        else
+            // assert gitHubReport.getStatus() === GitHubReport.Result.FAIL
+            this._setFAILED('**' + requester + '** can\'t file issue!'
+                        + '\n\n **ERROR** ' + gitHubReport.getError());
+    });
 };
 
 return FailTask;

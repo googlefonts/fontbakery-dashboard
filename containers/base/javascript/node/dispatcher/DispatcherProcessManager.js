@@ -135,10 +135,8 @@ function DispatcherProcessManager(setup, ...args) {
       , executeQueueName: {
             value: this._executeQueueName
         }
-      , dispatchPR: {
-                   // -> Promise.resolve(new Empty())
-            value: pullRequestMessage=>this._gitHubOperationsClient
-                                           .dispatchPullRequest(pullRequestMessage)
+      , gitHub: {
+            value: this._gitHubOperationsClient
         }
       , frontendBaseURL: {
             value: setup.frontendBaseURL
