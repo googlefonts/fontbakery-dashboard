@@ -390,10 +390,13 @@ message OAuthToken {
 service GitHubOperations {
   // If answering directly THIS COULD TIME OUT!
   // instead, we answer with Empty and send the
-  // DispatchReport message via another channel,
+  // GitHubReport message via another channel,
   // currently this is implement using an
-  // AMQP queue which feeds into ProcessManager.Execute
+  // AMQP queue which feeds a ProcessCommand into ProcessManager.Execute
   rpc DispatchPullRequest (PullRequest) returns (google.protobuf.Empty) {};
+  // If needed the answering mechanism will be changed to the ProcessCommand
+  // way, but an issue should be fast to file.
+  rpc FileIssue (Issue) returns (GitHubReport) {};
 }
 
 message PullRequest {
@@ -421,20 +424,57 @@ message PullRequest {
     // string targetBranchName = 7;
 }
 
-message DispatchReport {
+// needs to feed https://developer.github.com/v3/issues/
+message Issue {
+    // The user who will post this issue!
+    string session_id = 1;
+    string repo_owner = 2;
+    string repo_name = 3;
+
+    // title 	string 	Required. The title of the issue.
+    // a simple string as a title
+    string title = 4;
+    // body 	string 	The contents of the issue.
+    // github-markdown string
+    string body = 5;
+
+    // optional stuff
+
+    // milestone 	integer 	The number of the milestone to associate
+    // this issue with. NOTE: Only users with push access can set the
+    // milestone for new issues. The milestone is silently dropped otherwise.
+    int32 milestone = 6;
+    // labels   array of strings 	Labels to associate with this issue.
+    // NOTE: Only users with push access can set labels for new issues.
+    // Labels are silently dropped otherwise.
+    repeated string labels = 7;
+    // assignees 	array of strings 	Logins for Users to assign to this
+    // issue. NOTE: Only users with push access can set assignees for new
+    // issues. Assignees are silently dropped otherwise.
+    repeated string assignees = 8;
+
+    // To make answering easier in the PR dispatcher, this will have
+    // the essentials already configured, but is not needed at the moment!
+    // ProcessCommand process_command = 4;
+}
+
+message GitHubReport {
     enum Result {
         FAIL = 0;
         OK = 1;
     };
     Result status = 1;
     oneof value {
-      // the url of the PR
-      string p_r_url = 2;
+      // the url of the PR or Issue
+      string url = 2;
       // an error message if the operation failed
       string error = 3;
     }
-    // where is (or should have been if FAILED) the new remote branch?
-    string branch_url = 4; // branch_url
+    // Only if status is OK
+    int32 issue_number = 4;
+    // Where is (or should have been if FAILED) the new remote branch?
+    // Only for PR not for an Issue I expect.
+    string branch_url = 5; // branch_url
     // more data?
 }
 

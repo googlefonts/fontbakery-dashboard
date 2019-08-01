@@ -26,8 +26,6 @@ goog.exportSymbol('proto.fontbakery.dashboard.AuthorizedRoles', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.AuthorizedRolesRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CollectionFamilyJob', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.CompletedWorker', null, global);
-goog.exportSymbol('proto.fontbakery.dashboard.DispatchReport', null, global);
-goog.exportSymbol('proto.fontbakery.dashboard.DispatchReport.Result', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.DispatcherInitProcess', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyData', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FamilyData.Result', null, global);
@@ -37,6 +35,9 @@ goog.exportSymbol('proto.fontbakery.dashboard.FamilyRequest', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.FontBakeryFinished', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.GenericStorageWorkerResult', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.GenericStorageWorkerResult.Result', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.GitHubReport', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.GitHubReport.Result', null, global);
+goog.exportSymbol('proto.fontbakery.dashboard.Issue', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ManifestSourceId', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.OAuthToken', null, global);
 goog.exportSymbol('proto.fontbakery.dashboard.ProcessCommand', null, global);
@@ -6563,12 +6564,378 @@ proto.fontbakery.dashboard.PullRequest.prototype.hasProcessCommand = function() 
  * @extends {jspb.Message}
  * @constructor
  */
-proto.fontbakery.dashboard.DispatchReport = function(opt_data) {
-  jspb.Message.initialize(this, opt_data, 0, -1, null, proto.fontbakery.dashboard.DispatchReport.oneofGroups_);
+proto.fontbakery.dashboard.Issue = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, proto.fontbakery.dashboard.Issue.repeatedFields_, null);
 };
-goog.inherits(proto.fontbakery.dashboard.DispatchReport, jspb.Message);
+goog.inherits(proto.fontbakery.dashboard.Issue, jspb.Message);
 if (goog.DEBUG && !COMPILED) {
-  proto.fontbakery.dashboard.DispatchReport.displayName = 'proto.fontbakery.dashboard.DispatchReport';
+  proto.fontbakery.dashboard.Issue.displayName = 'proto.fontbakery.dashboard.Issue';
+}
+/**
+ * List of repeated fields within this message type.
+ * @private {!Array<number>}
+ * @const
+ */
+proto.fontbakery.dashboard.Issue.repeatedFields_ = [7,8];
+
+
+
+if (jspb.Message.GENERATE_TO_OBJECT) {
+/**
+ * Creates an object representation of this proto suitable for use in Soy templates.
+ * Field names that are reserved in JavaScript and will be renamed to pb_name.
+ * To access a reserved field use, foo.pb_<name>, eg, foo.pb_default.
+ * For the list of reserved names please see:
+ *     com.google.apps.jspb.JsClassTemplate.JS_RESERVED_WORDS.
+ * @param {boolean=} opt_includeInstance Whether to include the JSPB instance
+ *     for transitional soy proto support: http://goto/soy-param-migration
+ * @return {!Object}
+ */
+proto.fontbakery.dashboard.Issue.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.Issue.toObject(opt_includeInstance, this);
+};
+
+
+/**
+ * Static version of the {@see toObject} method.
+ * @param {boolean|undefined} includeInstance Whether to include the JSPB
+ *     instance for transitional soy proto support:
+ *     http://goto/soy-param-migration
+ * @param {!proto.fontbakery.dashboard.Issue} msg The msg instance to transform.
+ * @return {!Object}
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.Issue.toObject = function(includeInstance, msg) {
+  var f, obj = {
+    sessionId: jspb.Message.getFieldWithDefault(msg, 1, ""),
+    repoOwner: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    repoName: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    title: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    body: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    milestone: jspb.Message.getFieldWithDefault(msg, 6, 0),
+    labelsList: jspb.Message.getRepeatedField(msg, 7),
+    assigneesList: jspb.Message.getRepeatedField(msg, 8)
+  };
+
+  if (includeInstance) {
+    obj.$jspbMessageInstance = msg;
+  }
+  return obj;
+};
+}
+
+
+/**
+ * Deserializes binary data (in protobuf wire format).
+ * @param {jspb.ByteSource} bytes The bytes to deserialize.
+ * @return {!proto.fontbakery.dashboard.Issue}
+ */
+proto.fontbakery.dashboard.Issue.deserializeBinary = function(bytes) {
+  var reader = new jspb.BinaryReader(bytes);
+  var msg = new proto.fontbakery.dashboard.Issue;
+  return proto.fontbakery.dashboard.Issue.deserializeBinaryFromReader(msg, reader);
+};
+
+
+/**
+ * Deserializes binary data (in protobuf wire format) from the
+ * given reader into the given message object.
+ * @param {!proto.fontbakery.dashboard.Issue} msg The message object to deserialize into.
+ * @param {!jspb.BinaryReader} reader The BinaryReader to use.
+ * @return {!proto.fontbakery.dashboard.Issue}
+ */
+proto.fontbakery.dashboard.Issue.deserializeBinaryFromReader = function(msg, reader) {
+  while (reader.nextField()) {
+    if (reader.isEndGroup()) {
+      break;
+    }
+    var field = reader.getFieldNumber();
+    switch (field) {
+    case 1:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setSessionId(value);
+      break;
+    case 2:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRepoOwner(value);
+      break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setRepoName(value);
+      break;
+    case 4:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setTitle(value);
+      break;
+    case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setBody(value);
+      break;
+    case 6:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setMilestone(value);
+      break;
+    case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addLabels(value);
+      break;
+    case 8:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addAssignees(value);
+      break;
+    default:
+      reader.skipField();
+      break;
+    }
+  }
+  return msg;
+};
+
+
+/**
+ * Serializes the message to binary data (in protobuf wire format).
+ * @return {!Uint8Array}
+ */
+proto.fontbakery.dashboard.Issue.prototype.serializeBinary = function() {
+  var writer = new jspb.BinaryWriter();
+  proto.fontbakery.dashboard.Issue.serializeBinaryToWriter(this, writer);
+  return writer.getResultBuffer();
+};
+
+
+/**
+ * Serializes the given message to binary data (in protobuf wire
+ * format), writing to the given BinaryWriter.
+ * @param {!proto.fontbakery.dashboard.Issue} message
+ * @param {!jspb.BinaryWriter} writer
+ * @suppress {unusedLocalVariables} f is only used for nested messages
+ */
+proto.fontbakery.dashboard.Issue.serializeBinaryToWriter = function(message, writer) {
+  var f = undefined;
+  f = message.getSessionId();
+  if (f.length > 0) {
+    writer.writeString(
+      1,
+      f
+    );
+  }
+  f = message.getRepoOwner();
+  if (f.length > 0) {
+    writer.writeString(
+      2,
+      f
+    );
+  }
+  f = message.getRepoName();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
+  f = message.getTitle();
+  if (f.length > 0) {
+    writer.writeString(
+      4,
+      f
+    );
+  }
+  f = message.getBody();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
+      f
+    );
+  }
+  f = message.getMilestone();
+  if (f !== 0) {
+    writer.writeInt32(
+      6,
+      f
+    );
+  }
+  f = message.getLabelsList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      7,
+      f
+    );
+  }
+  f = message.getAssigneesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      8,
+      f
+    );
+  }
+};
+
+
+/**
+ * optional string session_id = 1;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getSessionId = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 1, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.Issue.prototype.setSessionId = function(value) {
+  jspb.Message.setProto3StringField(this, 1, value);
+};
+
+
+/**
+ * optional string repo_owner = 2;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getRepoOwner = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.Issue.prototype.setRepoOwner = function(value) {
+  jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string repo_name = 3;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getRepoName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.Issue.prototype.setRepoName = function(value) {
+  jspb.Message.setProto3StringField(this, 3, value);
+};
+
+
+/**
+ * optional string title = 4;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getTitle = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.Issue.prototype.setTitle = function(value) {
+  jspb.Message.setProto3StringField(this, 4, value);
+};
+
+
+/**
+ * optional string body = 5;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getBody = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.Issue.prototype.setBody = function(value) {
+  jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional int32 milestone = 6;
+ * @return {number}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getMilestone = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 6, 0));
+};
+
+
+/** @param {number} value */
+proto.fontbakery.dashboard.Issue.prototype.setMilestone = function(value) {
+  jspb.Message.setProto3IntField(this, 6, value);
+};
+
+
+/**
+ * repeated string labels = 7;
+ * @return {!Array<string>}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getLabelsList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 7));
+};
+
+
+/** @param {!Array<string>} value */
+proto.fontbakery.dashboard.Issue.prototype.setLabelsList = function(value) {
+  jspb.Message.setField(this, 7, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ */
+proto.fontbakery.dashboard.Issue.prototype.addLabels = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 7, value, opt_index);
+};
+
+
+proto.fontbakery.dashboard.Issue.prototype.clearLabelsList = function() {
+  this.setLabelsList([]);
+};
+
+
+/**
+ * repeated string assignees = 8;
+ * @return {!Array<string>}
+ */
+proto.fontbakery.dashboard.Issue.prototype.getAssigneesList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 8));
+};
+
+
+/** @param {!Array<string>} value */
+proto.fontbakery.dashboard.Issue.prototype.setAssigneesList = function(value) {
+  jspb.Message.setField(this, 8, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ */
+proto.fontbakery.dashboard.Issue.prototype.addAssignees = function(value, opt_index) {
+  jspb.Message.addToRepeatedField(this, 8, value, opt_index);
+};
+
+
+proto.fontbakery.dashboard.Issue.prototype.clearAssigneesList = function() {
+  this.setAssigneesList([]);
+};
+
+
+
+/**
+ * Generated by JsPbCodeGenerator.
+ * @param {Array=} opt_data Optional initial data array, typically from a
+ * server response, or constructed directly in Javascript. The array is used
+ * in place and becomes part of the constructed object. It is not cloned.
+ * If no data is provided, the constructed object will be empty, but still
+ * valid.
+ * @extends {jspb.Message}
+ * @constructor
+ */
+proto.fontbakery.dashboard.GitHubReport = function(opt_data) {
+  jspb.Message.initialize(this, opt_data, 0, -1, null, proto.fontbakery.dashboard.GitHubReport.oneofGroups_);
+};
+goog.inherits(proto.fontbakery.dashboard.GitHubReport, jspb.Message);
+if (goog.DEBUG && !COMPILED) {
+  proto.fontbakery.dashboard.GitHubReport.displayName = 'proto.fontbakery.dashboard.GitHubReport';
 }
 /**
  * Oneof group definitions for this message. Each group defines the field
@@ -6578,22 +6945,22 @@ if (goog.DEBUG && !COMPILED) {
  * @private {!Array<!Array<number>>}
  * @const
  */
-proto.fontbakery.dashboard.DispatchReport.oneofGroups_ = [[2,3]];
+proto.fontbakery.dashboard.GitHubReport.oneofGroups_ = [[2,3]];
 
 /**
  * @enum {number}
  */
-proto.fontbakery.dashboard.DispatchReport.ValueCase = {
+proto.fontbakery.dashboard.GitHubReport.ValueCase = {
   VALUE_NOT_SET: 0,
-  P_R_URL: 2,
+  URL: 2,
   ERROR: 3
 };
 
 /**
- * @return {proto.fontbakery.dashboard.DispatchReport.ValueCase}
+ * @return {proto.fontbakery.dashboard.GitHubReport.ValueCase}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.getValueCase = function() {
-  return /** @type {proto.fontbakery.dashboard.DispatchReport.ValueCase} */(jspb.Message.computeOneofCase(this, proto.fontbakery.dashboard.DispatchReport.oneofGroups_[0]));
+proto.fontbakery.dashboard.GitHubReport.prototype.getValueCase = function() {
+  return /** @type {proto.fontbakery.dashboard.GitHubReport.ValueCase} */(jspb.Message.computeOneofCase(this, proto.fontbakery.dashboard.GitHubReport.oneofGroups_[0]));
 };
 
 
@@ -6609,8 +6976,8 @@ if (jspb.Message.GENERATE_TO_OBJECT) {
  *     for transitional soy proto support: http://goto/soy-param-migration
  * @return {!Object}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.toObject = function(opt_includeInstance) {
-  return proto.fontbakery.dashboard.DispatchReport.toObject(opt_includeInstance, this);
+proto.fontbakery.dashboard.GitHubReport.prototype.toObject = function(opt_includeInstance) {
+  return proto.fontbakery.dashboard.GitHubReport.toObject(opt_includeInstance, this);
 };
 
 
@@ -6619,16 +6986,17 @@ proto.fontbakery.dashboard.DispatchReport.prototype.toObject = function(opt_incl
  * @param {boolean|undefined} includeInstance Whether to include the JSPB
  *     instance for transitional soy proto support:
  *     http://goto/soy-param-migration
- * @param {!proto.fontbakery.dashboard.DispatchReport} msg The msg instance to transform.
+ * @param {!proto.fontbakery.dashboard.GitHubReport} msg The msg instance to transform.
  * @return {!Object}
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.fontbakery.dashboard.DispatchReport.toObject = function(includeInstance, msg) {
+proto.fontbakery.dashboard.GitHubReport.toObject = function(includeInstance, msg) {
   var f, obj = {
     status: jspb.Message.getFieldWithDefault(msg, 1, 0),
-    pRUrl: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    url: jspb.Message.getFieldWithDefault(msg, 2, ""),
     error: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    branchUrl: jspb.Message.getFieldWithDefault(msg, 4, "")
+    issueNumber: jspb.Message.getFieldWithDefault(msg, 4, 0),
+    branchUrl: jspb.Message.getFieldWithDefault(msg, 5, "")
   };
 
   if (includeInstance) {
@@ -6642,23 +7010,23 @@ proto.fontbakery.dashboard.DispatchReport.toObject = function(includeInstance, m
 /**
  * Deserializes binary data (in protobuf wire format).
  * @param {jspb.ByteSource} bytes The bytes to deserialize.
- * @return {!proto.fontbakery.dashboard.DispatchReport}
+ * @return {!proto.fontbakery.dashboard.GitHubReport}
  */
-proto.fontbakery.dashboard.DispatchReport.deserializeBinary = function(bytes) {
+proto.fontbakery.dashboard.GitHubReport.deserializeBinary = function(bytes) {
   var reader = new jspb.BinaryReader(bytes);
-  var msg = new proto.fontbakery.dashboard.DispatchReport;
-  return proto.fontbakery.dashboard.DispatchReport.deserializeBinaryFromReader(msg, reader);
+  var msg = new proto.fontbakery.dashboard.GitHubReport;
+  return proto.fontbakery.dashboard.GitHubReport.deserializeBinaryFromReader(msg, reader);
 };
 
 
 /**
  * Deserializes binary data (in protobuf wire format) from the
  * given reader into the given message object.
- * @param {!proto.fontbakery.dashboard.DispatchReport} msg The message object to deserialize into.
+ * @param {!proto.fontbakery.dashboard.GitHubReport} msg The message object to deserialize into.
  * @param {!jspb.BinaryReader} reader The BinaryReader to use.
- * @return {!proto.fontbakery.dashboard.DispatchReport}
+ * @return {!proto.fontbakery.dashboard.GitHubReport}
  */
-proto.fontbakery.dashboard.DispatchReport.deserializeBinaryFromReader = function(msg, reader) {
+proto.fontbakery.dashboard.GitHubReport.deserializeBinaryFromReader = function(msg, reader) {
   while (reader.nextField()) {
     if (reader.isEndGroup()) {
       break;
@@ -6666,18 +7034,22 @@ proto.fontbakery.dashboard.DispatchReport.deserializeBinaryFromReader = function
     var field = reader.getFieldNumber();
     switch (field) {
     case 1:
-      var value = /** @type {!proto.fontbakery.dashboard.DispatchReport.Result} */ (reader.readEnum());
+      var value = /** @type {!proto.fontbakery.dashboard.GitHubReport.Result} */ (reader.readEnum());
       msg.setStatus(value);
       break;
     case 2:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPRUrl(value);
+      msg.setUrl(value);
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
       msg.setError(value);
       break;
     case 4:
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setIssueNumber(value);
+      break;
+    case 5:
       var value = /** @type {string} */ (reader.readString());
       msg.setBranchUrl(value);
       break;
@@ -6694,9 +7066,9 @@ proto.fontbakery.dashboard.DispatchReport.deserializeBinaryFromReader = function
  * Serializes the message to binary data (in protobuf wire format).
  * @return {!Uint8Array}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.serializeBinary = function() {
+proto.fontbakery.dashboard.GitHubReport.prototype.serializeBinary = function() {
   var writer = new jspb.BinaryWriter();
-  proto.fontbakery.dashboard.DispatchReport.serializeBinaryToWriter(this, writer);
+  proto.fontbakery.dashboard.GitHubReport.serializeBinaryToWriter(this, writer);
   return writer.getResultBuffer();
 };
 
@@ -6704,11 +7076,11 @@ proto.fontbakery.dashboard.DispatchReport.prototype.serializeBinary = function()
 /**
  * Serializes the given message to binary data (in protobuf wire
  * format), writing to the given BinaryWriter.
- * @param {!proto.fontbakery.dashboard.DispatchReport} message
+ * @param {!proto.fontbakery.dashboard.GitHubReport} message
  * @param {!jspb.BinaryWriter} writer
  * @suppress {unusedLocalVariables} f is only used for nested messages
  */
-proto.fontbakery.dashboard.DispatchReport.serializeBinaryToWriter = function(message, writer) {
+proto.fontbakery.dashboard.GitHubReport.serializeBinaryToWriter = function(message, writer) {
   var f = undefined;
   f = message.getStatus();
   if (f !== 0.0) {
@@ -6731,10 +7103,17 @@ proto.fontbakery.dashboard.DispatchReport.serializeBinaryToWriter = function(mes
       f
     );
   }
+  f = message.getIssueNumber();
+  if (f !== 0) {
+    writer.writeInt32(
+      4,
+      f
+    );
+  }
   f = message.getBranchUrl();
   if (f.length > 0) {
     writer.writeString(
-      4,
+      5,
       f
     );
   }
@@ -6744,43 +7123,43 @@ proto.fontbakery.dashboard.DispatchReport.serializeBinaryToWriter = function(mes
 /**
  * @enum {number}
  */
-proto.fontbakery.dashboard.DispatchReport.Result = {
+proto.fontbakery.dashboard.GitHubReport.Result = {
   FAIL: 0,
   OK: 1
 };
 
 /**
  * optional Result status = 1;
- * @return {!proto.fontbakery.dashboard.DispatchReport.Result}
+ * @return {!proto.fontbakery.dashboard.GitHubReport.Result}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.getStatus = function() {
-  return /** @type {!proto.fontbakery.dashboard.DispatchReport.Result} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
+proto.fontbakery.dashboard.GitHubReport.prototype.getStatus = function() {
+  return /** @type {!proto.fontbakery.dashboard.GitHubReport.Result} */ (jspb.Message.getFieldWithDefault(this, 1, 0));
 };
 
 
-/** @param {!proto.fontbakery.dashboard.DispatchReport.Result} value */
-proto.fontbakery.dashboard.DispatchReport.prototype.setStatus = function(value) {
+/** @param {!proto.fontbakery.dashboard.GitHubReport.Result} value */
+proto.fontbakery.dashboard.GitHubReport.prototype.setStatus = function(value) {
   jspb.Message.setProto3EnumField(this, 1, value);
 };
 
 
 /**
- * optional string p_r_url = 2;
+ * optional string url = 2;
  * @return {string}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.getPRUrl = function() {
+proto.fontbakery.dashboard.GitHubReport.prototype.getUrl = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 2, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.DispatchReport.prototype.setPRUrl = function(value) {
-  jspb.Message.setOneofField(this, 2, proto.fontbakery.dashboard.DispatchReport.oneofGroups_[0], value);
+proto.fontbakery.dashboard.GitHubReport.prototype.setUrl = function(value) {
+  jspb.Message.setOneofField(this, 2, proto.fontbakery.dashboard.GitHubReport.oneofGroups_[0], value);
 };
 
 
-proto.fontbakery.dashboard.DispatchReport.prototype.clearPRUrl = function() {
-  jspb.Message.setOneofField(this, 2, proto.fontbakery.dashboard.DispatchReport.oneofGroups_[0], undefined);
+proto.fontbakery.dashboard.GitHubReport.prototype.clearUrl = function() {
+  jspb.Message.setOneofField(this, 2, proto.fontbakery.dashboard.GitHubReport.oneofGroups_[0], undefined);
 };
 
 
@@ -6788,7 +7167,7 @@ proto.fontbakery.dashboard.DispatchReport.prototype.clearPRUrl = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.hasPRUrl = function() {
+proto.fontbakery.dashboard.GitHubReport.prototype.hasUrl = function() {
   return jspb.Message.getField(this, 2) != null;
 };
 
@@ -6797,19 +7176,19 @@ proto.fontbakery.dashboard.DispatchReport.prototype.hasPRUrl = function() {
  * optional string error = 3;
  * @return {string}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.getError = function() {
+proto.fontbakery.dashboard.GitHubReport.prototype.getError = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.DispatchReport.prototype.setError = function(value) {
-  jspb.Message.setOneofField(this, 3, proto.fontbakery.dashboard.DispatchReport.oneofGroups_[0], value);
+proto.fontbakery.dashboard.GitHubReport.prototype.setError = function(value) {
+  jspb.Message.setOneofField(this, 3, proto.fontbakery.dashboard.GitHubReport.oneofGroups_[0], value);
 };
 
 
-proto.fontbakery.dashboard.DispatchReport.prototype.clearError = function() {
-  jspb.Message.setOneofField(this, 3, proto.fontbakery.dashboard.DispatchReport.oneofGroups_[0], undefined);
+proto.fontbakery.dashboard.GitHubReport.prototype.clearError = function() {
+  jspb.Message.setOneofField(this, 3, proto.fontbakery.dashboard.GitHubReport.oneofGroups_[0], undefined);
 };
 
 
@@ -6817,23 +7196,38 @@ proto.fontbakery.dashboard.DispatchReport.prototype.clearError = function() {
  * Returns whether this field is set.
  * @return {boolean}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.hasError = function() {
+proto.fontbakery.dashboard.GitHubReport.prototype.hasError = function() {
   return jspb.Message.getField(this, 3) != null;
 };
 
 
 /**
- * optional string branch_url = 4;
+ * optional int32 issue_number = 4;
+ * @return {number}
+ */
+proto.fontbakery.dashboard.GitHubReport.prototype.getIssueNumber = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 4, 0));
+};
+
+
+/** @param {number} value */
+proto.fontbakery.dashboard.GitHubReport.prototype.setIssueNumber = function(value) {
+  jspb.Message.setProto3IntField(this, 4, value);
+};
+
+
+/**
+ * optional string branch_url = 5;
  * @return {string}
  */
-proto.fontbakery.dashboard.DispatchReport.prototype.getBranchUrl = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
+proto.fontbakery.dashboard.GitHubReport.prototype.getBranchUrl = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.DispatchReport.prototype.setBranchUrl = function(value) {
-  jspb.Message.setProto3StringField(this, 4, value);
+proto.fontbakery.dashboard.GitHubReport.prototype.setBranchUrl = function(value) {
+  jspb.Message.setProto3StringField(this, 5, value);
 };
 
 

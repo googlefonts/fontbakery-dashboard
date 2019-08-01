@@ -85,6 +85,28 @@ function deserialize_fontbakery_dashboard_FamilyRequest(buffer_arg) {
   return messages_pb.FamilyRequest.deserializeBinary(new Uint8Array(buffer_arg));
 }
 
+function serialize_fontbakery_dashboard_GitHubReport(arg) {
+  if (!(arg instanceof messages_pb.GitHubReport)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.GitHubReport');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_GitHubReport(buffer_arg) {
+  return messages_pb.GitHubReport.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
+function serialize_fontbakery_dashboard_Issue(arg) {
+  if (!(arg instanceof messages_pb.Issue)) {
+    throw new Error('Expected argument of type fontbakery.dashboard.Issue');
+  }
+  return Buffer.from(arg.serializeBinary());
+}
+
+function deserialize_fontbakery_dashboard_Issue(buffer_arg) {
+  return messages_pb.Issue.deserializeBinary(new Uint8Array(buffer_arg));
+}
+
 function serialize_fontbakery_dashboard_ManifestSourceId(arg) {
   if (!(arg instanceof messages_pb.ManifestSourceId)) {
     throw new Error('Expected argument of type fontbakery.dashboard.ManifestSourceId');
@@ -651,9 +673,9 @@ exports.AuthServiceClient = grpc.makeGenericClientConstructor(AuthServiceService
 var GitHubOperationsService = exports.GitHubOperationsService = {
   // If answering directly THIS COULD TIME OUT!
   // instead, we answer with Empty and send the
-  // DispatchReport message via another channel,
+  // GitHubReport message via another channel,
   // currently this is implement using an
-  // AMQP queue which feeds into ProcessManager.Execute
+  // AMQP queue which feeds a ProcessCommand into ProcessManager.Execute
   dispatchPullRequest: {
     path: '/fontbakery.dashboard.GitHubOperations/DispatchPullRequest',
     requestStream: false,
@@ -664,6 +686,19 @@ var GitHubOperationsService = exports.GitHubOperationsService = {
     requestDeserialize: deserialize_fontbakery_dashboard_PullRequest,
     responseSerialize: serialize_google_protobuf_Empty,
     responseDeserialize: deserialize_google_protobuf_Empty,
+  },
+  // If needed the answering mechanism will be changed to the ProcessCommand
+  // way, but an issue should be fast to file.
+  fileIssue: {
+    path: '/fontbakery.dashboard.GitHubOperations/FileIssue',
+    requestStream: false,
+    responseStream: false,
+    requestType: messages_pb.Issue,
+    responseType: messages_pb.GitHubReport,
+    requestSerialize: serialize_fontbakery_dashboard_Issue,
+    requestDeserialize: deserialize_fontbakery_dashboard_Issue,
+    responseSerialize: serialize_fontbakery_dashboard_GitHubReport,
+    responseDeserialize: deserialize_fontbakery_dashboard_GitHubReport,
   },
 };
 
