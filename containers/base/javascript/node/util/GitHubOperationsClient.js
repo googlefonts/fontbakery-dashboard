@@ -55,6 +55,13 @@ _p.dispatchPullRequest = function(pullRequest) {
     .then(null, error=>this._raiseUnhandledError(error));
 };
 
+// rpc FileIssue (Issue) returns (GitHubReport) {};
+_p.fileIssue = function(issue) {
+    return nodeCallback2Promise((callback)=>
+        this._client.fileIssue(issue, {deadline: this.deadline}, callback))
+    .then(null, error=>this._raiseUnhandledError(error));
+};
+
 _p.waitForReady = function() {
     return nodeCallback2Promise((callback)=>
                     this._client.waitForReady(this.deadline, callback))

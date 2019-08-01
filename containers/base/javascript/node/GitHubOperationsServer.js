@@ -9,7 +9,7 @@ const grpc = require('grpc')
   , { AsyncQueue } = require('./util/AsyncQueue')
   , NodeGit = require('nodegit')
   , { GitHubOperationsService } = require('protocolbuffers/messages_grpc_pb')
-  , { StorageKey, SessionId, DispatchReport, Files} = require('protocolbuffers/messages_pb')
+  , { StorageKey, SessionId, GitHubReport, Files} = require('protocolbuffers/messages_pb')
   , { Empty } = require('google-protobuf/google/protobuf/empty_pb.js')
   , { ProtobufAnyHandler } = require('./util/ProtobufAnyHandler')
   , { StorageClient }  = require('./util/StorageClient')
@@ -47,7 +47,7 @@ function GitHubOperationsServer(logging, port, setup, repoPath
     this._log = logging;
     this._repoPath = repoPath;
     this._queue = new AsyncQueue();
-    this._any = new ProtobufAnyHandler(this._log, {DispatchReport:DispatchReport});
+    this._any = new ProtobufAnyHandler(this._log, {GitHubReport:GitHubReport});
 
     this._ghPushSetup = ghPushSetup;
 
@@ -344,10 +344,10 @@ _p._makeRemoteBranchName = function(targetDirectory) {
  *   - git push {remote ???}
  *   - gitHub PR remote/branchname -> upstream {commitMessage}
  */
-_p.dispatch = function(call, callback) {
+_p.dispatchPullRequest = function(call, callback) {
     // jshint unused:vars
 
-    this._log.debug('[gRPC:dispatch]');
+    this._log.debug('[gRPC:dispatchPullRequest]');
     callback(null, new Empty());
     // This branch will be overridden by each call to dispatch
     // hence, dispatch must not run async in multiple instances
@@ -380,7 +380,7 @@ _p.dispatch = function(call, callback) {
       , pushOAuthToken = this._ghPushSetup.accessToken
       , prHead = remoteRef.prHead
       , prTarget = this._prTarget
-      , report = new DispatchReport()
+      , report = new GitHubReport()
       ;
     // We know this already, even if we may fail to create it.
     report.setBranchUrl(remoteRef.branchUrl);
@@ -415,14 +415,15 @@ _p.dispatch = function(call, callback) {
     .then(result=>{
         // PR URL
         // console.log('PR result:', result) <- has lots! of info
-        report.setStatus(DispatchReport.Result.OK);
-        report.setPRUrl(result.html_url);
+        report.setStatus(GitHubReport.Result.OK);
+        report.setUrl(result.html_url);
+        report.setIssueNumber(result.number);
         return report;
     }, error=>{
         this._log.error('In dispatch to:', targetDirectory
                       , 'branch:', targetBranchName
                       , error);
-        report.setStatus(DispatchReport.Result.FAIL);
+        report.setStatus(GitHubReport.Result.FAIL);
         report.setError('' + error);
         return report;
     })
@@ -431,7 +432,7 @@ _p.dispatch = function(call, callback) {
 
 
 _p._sendDispatchResult = function(preparedProcessCommand
-                                        , report /* a DispatchReport */) {
+                                        , report /* a GitHubReport */) {
     var processCommand = preparedProcessCommand.cloneMessage()
       , anyPayload = this._any.pack(report)
       , buffer
@@ -465,6 +466,94 @@ _p._dispatch = function(authorSignature, localBranchName, targetDirectory
     .then(()=>this._gitHubPR(prMessageTitle, prMessageBody, prHead
                                             , prTarget, prOAuthToken));
 };
+
+_p._getIssueRequestBodyData = function(issueMessage) {
+    var bodyData = {
+            title: issueMessage.getTitle()
+          , body: issueMessage.getBody()
+        }
+      , assignees = issueMessage.getAssigneesList()
+      , milestone = issueMessage.getMilestone()
+      , labels = issueMessage.getLabelsList()
+      ;
+    if(assignees.length)
+        bodyData.assignees = assignees;
+    if(milestone)
+        bodyData.milestone = milestone;
+    if(labels.length)
+        bodyData.labels = labels;
+    return bodyData;
+};
+
+/**
+ * https://developer.github.com/v3/issues/#create-an-issue
+ * POST /repos/:owner/:repo/issues
+ */
+_p._gitHubIssue = function(OAuthAccessToken, repoOwner, repoName, bodyData) {
+    this._log.debug('_gitHubIssue at:', repoOwner + '/' + repoName);
+    var url = [
+                'https://'
+              , GITHUB_API_HOST
+              , '/repos'
+              , '/' + repoOwner
+              , '/' + repoName
+              , '/issues'
+              ].join('')
+      ;
+    return this._sendRequest(
+        url
+      , {
+            method: 'POST' // implied by adding body data ...
+          , headers: {
+                'Content-Type': 'application/json'
+                // wondering when to use "bearer" vs. "token"
+                // but it seems like "bearer" is the standard and
+                // "token" is either github specific or an error in the docs
+                // both "bearer" and "token" seem to work!
+              , Authorization: 'bearer ' + OAuthAccessToken
+            }
+        }
+      , bodyData
+    );
+};
+
+_p.fileIssue = function(call, callback) {
+    // jshint unused:vars
+    this._log.debug('[gRPC:fileIssue]');
+    var issueMessage = call.request
+      , sessionId = issueMessage.getSessionId() // string
+      , repoOwner = issueMessage.getRepoOwner()
+      , repoName = issueMessage.getRepoName()
+      , bodyData =  this._getIssueRequestBodyData(issueMessage)
+      , sessionIdMessage = new SessionId()
+      , report = new GitHubReport()
+      ;
+    sessionIdMessage.setSessionId(sessionId);
+    this._auth.getOAuthToken(sessionIdMessage)
+    .then(oAuthToken=>{
+        // the user will make the issue
+        var userOAuthToken = oAuthToken.getAccessToken();
+        // , userName = oAuthToken.getUserName()
+        return this._gitHubIssue(userOAuthToken, repoOwner, repoName, bodyData);
+    })
+    .then(result=>{
+        // result is documented in https://developer.github.com/v3/issues/#create-an-issue
+        report.setStatus(GitHubReport.Result.OK);
+        report.setUrl(result.html_url);
+        report.setIssueNumber(result.number);
+        return report;
+    }, error=> {
+        this._log.error('In fileIssue to:'
+                      , repoName + '/' + repoOwner
+                      , error);
+        report.setStatus(GitHubReport.Result.FAIL);
+        report.setError('' + error);
+        return report;
+    })
+    .then(report=>callback(null, report));
+};
+
+
 
 _p.serve = function() {
     // Start serving when the database is ready
@@ -660,6 +749,8 @@ _p._push = function(localBranchName, remoteRef, oAuthToken, force) {
  *   "url": "https://api.github.com/repos/octocat/Hello-World/pulls/1347",
  *   "id": 1,
  *   "node_id": "MDExOlB1bGxSZXF1ZXN0MQ==",
+ *   ...
+ *   "number": 1347,
  *   ...
  *
  * CAUTION: Rate limits could become an issue for PRs:
