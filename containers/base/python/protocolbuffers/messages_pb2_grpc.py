@@ -621,6 +621,11 @@ class GitHubOperationsStub(object):
         request_serializer=messages__pb2.PullRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
+    self.FileIssue = channel.unary_unary(
+        '/fontbakery.dashboard.GitHubOperations/FileIssue',
+        request_serializer=messages__pb2.Issue.SerializeToString,
+        response_deserializer=messages__pb2.GitHubReport.FromString,
+        )
 
 
 class GitHubOperationsServicer(object):
@@ -631,9 +636,17 @@ class GitHubOperationsServicer(object):
   def DispatchPullRequest(self, request, context):
     """If answering directly THIS COULD TIME OUT!
     instead, we answer with Empty and send the
-    DispatchReport message via another channel,
+    GitHubReport message via another channel,
     currently this is implement using an
-    AMQP queue which feeds into ProcessManager.Execute
+    AMQP queue which feeds a ProcessCommand into ProcessManager.Execute
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def FileIssue(self, request, context):
+    """If needed the answering mechanism will be changed to the ProcessCommand
+    way, but an issue should be fast to file.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -646,6 +659,11 @@ def add_GitHubOperationsServicer_to_server(servicer, server):
           servicer.DispatchPullRequest,
           request_deserializer=messages__pb2.PullRequest.FromString,
           response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'FileIssue': grpc.unary_unary_rpc_method_handler(
+          servicer.FileIssue,
+          request_deserializer=messages__pb2.Issue.FromString,
+          response_serializer=messages__pb2.GitHubReport.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
