@@ -2,7 +2,7 @@
 
 Font Bakery-Dashboard is a web application to make [Font Bakery](https://github.com/googlefonts/fontbakery) (a command-line font project checker) available easily to everyone.
 
-Live Demo: [fontbakery.com/dashboard](https://fontbakery.com/dashboard)
+Live Demo: [https://fontbakery.graphicore.de](https://fontbakery.graphicore.de)
 
 #### Your Cloud of Choice
 
