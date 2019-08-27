@@ -113,6 +113,7 @@ var CSVFamily = (function() {
 
     Object.defineProperties(_p, {
         upstream: notImplementedGetter('upstream')
+      , branch: notImplementedGetter('branch')
       , name: notImplementedGetter('name')
       , nameConfirmed: notImplementedGetter('nameConfirmed')
       , fontfilesPrefix: notImplementedGetter('fontfilesPrefix')
@@ -167,10 +168,11 @@ var CSVFamily = (function() {
             }
           , enumerable: true
         }
+
       , referenceName: {
             get: function() {
                 if(this.repoType === 'git')
-                    return 'master';
+                    return this.branch || 'master'; // default to master
                 // make this explicit if usable for other repo types
                 throw new Error('"referenceName" not implemented for repoType: ' + this.repoType);
             }
@@ -207,6 +209,7 @@ var CSVData = (function() {
           , 'family': 'name' // A family name "with spaces"
           , 'family name is confirmed as good?': 'nameConfirmed' // "Passed" is true everything else is false
           , 'upstream': 'upstream' // starts with 'http://' or 'https://' (or 'git://'?)
+          , 'branch': 'branch' // used only via referenceName
           , 'fontfiles prefix': 'fontfilesPrefix' // seems like problematic data in the sheet
           , 'genre': 'genre'
           , 'designer': 'designer'
