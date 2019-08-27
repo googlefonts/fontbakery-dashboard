@@ -723,12 +723,12 @@ _p._insertMetadataPB = function (filesData, metadata) {
     // self-referential when checking metadata vs. font data and may yield
     // in false positives. Another good reason is to have a way to control
     // parts of the contents of METADATA.pb via the CSV row.
-    this._log.debug('createMetadata ...')
+    this._log.debug('createMetadata ...');
     return createMetadata(filesData, metadata.licenseDir)// -> fileData <Uint8Array>
     // START manipulating METADATA.pb
     .then(fileData=>{
-        this._log.debug('parseMetadata ...')
-        return parseMetadata(Buffer.from(fileData))
+        this._log.debug('parseMetadata ...');
+        return parseMetadata(Buffer.from(fileData));
     }) // -> familyProtoMessage <FamilyProto>
     .then(familyProtoMessage=>{
         // e.g. sourceDetails = {
@@ -739,7 +739,7 @@ _p._insertMetadataPB = function (filesData, metadata) {
         //    , "fontfilesPrefix": "fonts/Baskervville_TTF/Baskervville-"
         // }
         // default: python: _FileFamilyStyleWeights(fontdir)[0].family
-        this._log.debug('changing familyProtoMessage ...')
+        this._log.debug('changing familyProtoMessage ...');
         familyProtoMessage.setName(metadata.sourceDetails.name);
         let category = _fontFamilyGenre2Category(metadata.sourceDetails.genre);
         familyProtoMessage.setCategory(category); // default: "SANS_SERIF"
@@ -755,7 +755,7 @@ _p._insertMetadataPB = function (filesData, metadata) {
         return familyProtoMessage;
     })
     .then(familyProtoMessage=>{
-        this._log.debug('serializeMetadata ...')
+        this._log.debug('serializeMetadata ...');
         return serializeMetadata(familyProtoMessage);
     }) // -> fileData <Uint8Array>
     // DONE manipulating METADATA.pb
