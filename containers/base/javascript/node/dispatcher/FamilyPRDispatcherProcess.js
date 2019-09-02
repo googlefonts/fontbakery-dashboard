@@ -168,6 +168,8 @@ _p._activate = function() {
         .then(sourceDetails =>{
             // upstream = `https://github.com/${repoNameWithOwner}.git`
             this.process._state.repoNameWithOwner = _extractRepoNameWithOwner(sourceDetails.upstream);
+            if(sourceDetails.branch)
+                this.process._state.branch = sourceDetails.branch;
             this.process._state.genre = sourceDetails.genre;
             this.process._state.fontfilesPrefix = sourceDetails.fontfilesPrefix;
         });
@@ -254,6 +256,7 @@ _p.uiApproveProcess = function() {
                    , content: `
 **Family Name** \`${this.process.familyName || '—'}\`<br />
 **GitHub Repository** \`${this.process.repoNameWithOwner || '—'}\`<br />
+**git branch** \`${this.process.branch || '(default: master)'}\`<br />
 **Where are the TTF-files in your repo (folder and file-prefix)** \`${this.process._state.fontfilesPrefix || '—'}\`<br />
 **Genre** \`${this.process._state.genre || '—'}\`
 `
@@ -272,6 +275,8 @@ _p.uiApproveProcess = function() {
                     item.default = this.process._state.fontfilesPrefix;
                 if(item.name === 'ghNameWithOwner')
                     item.default = this.process.repoNameWithOwner;
+                if(item.name === 'branch' && this.process.branch)
+                    item.default = this.process.branch;
                 if(item.name === 'familyName') {
                     // can't change the name if this is a update request
                     if(this.process.initType === 'update')
@@ -381,6 +386,7 @@ _p._editInitialState = function(requester, values) {
         if(!isChangedUpdate)
             this.process._state.familyName = initArgs.familyName;
         this.process._state.repoNameWithOwner = initArgs.repoNameWithOwner;
+        this.process._state.branch = initArgs.branch || null;
         this.process._state.genre = initArgs.genre;
         this.process._state.fontfilesPrefix = initArgs.fontfilesPrefix;
         // return to the activate form
@@ -426,6 +432,7 @@ _p._mdCompareSourceDetails = function() {
           , [
                 ['familyName', this.process._state.familyName, sourceDetails.name]
               , ['repoNameWithOwner' ,this.process._state.repoNameWithOwner, _extractRepoNameWithOwner(sourceDetails.upstream)]
+              , ['branch' ,this.process._state.branch, sourceDetails.branch || null]
               , ['fontfilesPrefix', this.process._state.fontfilesPrefix, sourceDetails.fontfilesPrefix]
               , ['genre', this.process._state.genre, sourceDetails.genre]
               //, ['designer', n/a , sourceDetails.designer]
@@ -1835,14 +1842,15 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
     // else if(initArgs) … !
     this.log.debug('new FamilyPRDispatcherProcess initArgs:', initArgs, 'state:', state);
 
-    var {  initType, familyName, requester, repoNameWithOwner, genre
-         , fontfilesPrefix, note
+    var {  initType, familyName, requester, repoNameWithOwner, branch
+         , genre, fontfilesPrefix, note
         } = initArgs;
 
     this._state.initType = initType;
     this._state.familyName = familyName;
     this._state.requester = requester;
     this._state.repoNameWithOwner = repoNameWithOwner || null;
+    this._state.branch = branch || null;
     this._state.genre = genre;
     this._state.fontfilesPrefix = fontfilesPrefix;
     this._state.note = note;
@@ -1995,6 +2003,11 @@ function _getInitNewUI() {
               , label: 'GitHub Repository'
               , placeholder: 'GitHub URL or {owner}/{repo-name}'
             }
+          , {   name: 'branch'
+              , type: 'line' // input type:text
+              , label: 'git branch name (default: master)'
+              , placeholder: 'master'
+            }
           , {   name: 'fontfilesPrefix'
               , type: 'line' // input type:text
               , label: 'Where are the TTF-files in your repo (folder and file-prefix):'
@@ -2097,7 +2110,7 @@ function _extractRepoNameWithOwner(repoNameWithOwner) {
 
 function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
 
-    var initType, familyName, repoNameWithOwner
+    var initType, familyName, repoNameWithOwner, branch
       , genre, fontfilesPrefix, note
       , message, messages = []
       , initArgs = null
@@ -2122,7 +2135,9 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
         // expect this to be handled before the init.
         FIXME('We should check properly if this is a existing, public(!) repo.');
         repoNameWithOwner = _extractRepoNameWithOwner(values.ghNameWithOwner.trim());
-
+        branch = values.branch.trim() || null;
+        if(branch === 'master')
+            branch = null;
         // values.fontfilesPrefix => just use this, it's impossible to
         // evaluate without actually trying to get the files
         fontfilesPrefix = values.fontfilesPrefix;
@@ -2186,6 +2201,7 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
         else
             //
             initArgs = {initType, familyName, requester, repoNameWithOwner
+                      , branch
                       , genre
                       , fontfilesPrefix
                       , note
@@ -2245,6 +2261,7 @@ stateManagerMixin(_p, {
      * the role "input-provider".
      */
   , repoNameWithOwner: _genericStateItem
+  , branch: _genericStateItem
   , initType: _genericStateItem
   , genre: _genericStateItem
   , fontfilesPrefix: _genericStateItem
@@ -2269,6 +2286,11 @@ Object.defineProperties(_p, {
   , repoNameWithOwner: {
        get: function() {
             return this._state.repoNameWithOwner;
+        }
+    }
+  , branch: {
+       get: function() {
+            return this._state.branch;
         }
     }
   , initType: {
