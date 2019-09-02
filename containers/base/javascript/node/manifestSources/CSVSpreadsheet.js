@@ -341,6 +341,7 @@ var CSVData = (function() {
                 return defaultVal;
             var error = new Error('No family found for "' + familyName + '".');
             error.code = grpcStatus.NOT_FOUND;
+            error.name = 'NOT_FOUND';
             throw error;
         }
         return this._data.get(familyName);

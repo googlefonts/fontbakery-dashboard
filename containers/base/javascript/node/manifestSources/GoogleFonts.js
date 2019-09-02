@@ -11,6 +11,7 @@ const { _Source: Parent } = require('./_Source')
   , http = require('http')
   , fs = require('fs')
   , url = require('url')
+  , { status: grpcStatus } = require('grpc')
   ;
 
 function GoogleFonts(logging, id, apiDataUrl, familyWhitelist, reportsSetup) {
@@ -185,8 +186,12 @@ _p.get = function(familyName) {
     return downloadAPIData(this._apiAPIDataUrl)
     .then(apiData=>{
         var familyData = apiData.get(familyName);
-        if(!familyData)
-            throw new Error('Not found family by name "'+familyName+'"');
+        if(!familyData) {
+            var error = new Error('No family found for "' + familyName + '".');
+            error.code = grpcStatus.NOT_FOUND;
+            error.name = 'NOT_FOUND';
+            throw error;
+        }
         return familyData;
     })
     .then(familyData=>Promise.all([
