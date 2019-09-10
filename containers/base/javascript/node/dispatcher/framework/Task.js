@@ -397,6 +397,10 @@ _p._setPENDING = function(markdown, data) {
     return this._setStatus(PENDING, markdown, data);
 };
 
+/**
+ * The latest report will be used to describe the task result, and it will
+ * also be logged to history.
+ */
 _p._setREPORT = function(markdown, data, statusCode=LOG) {
     var status = new Status(statusCode, markdown, null, data);
     this._state.report = status;
