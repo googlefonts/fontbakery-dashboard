@@ -5,7 +5,7 @@ import os
 import pytz
 from datetime import datetime
 import traceback
-from functools import wraps
+from functools import wraps, partial
 
 from .worker_base import(
                         WorkerBase
@@ -50,28 +50,53 @@ def font_instances(ttfonts):
             styles[style] = ttfont.reader.file.name
     return styles
 
-def get_matching_fonts(logger, fonts_before, fonts_after):
+def _get_matching_fonts(logger, fonts_before, fonts_after
+                                    , include_new_fonts_in_after=False):
     fonts_before_ttfonts = [TTFont(f) for f in fonts_before]
     fonts_after_ttfonts = [TTFont(f) for f in fonts_after]
     fonts_before_h = font_instances(fonts_before_ttfonts)
     fonts_after_h = font_instances(fonts_after_ttfonts)
-    shared = set(fonts_before_h.keys()) & set(fonts_after_h.keys())
-    if not shared:
-        raise PreparationError(("Cannot find matching fonts. "
+    set_before = set(fonts_before_h.keys())
+    set_after = set(fonts_after_h.keys())
+    shared = set_before & set_after
+    not_shared_in_after = set_after - set_before
+    # skipping these as they are not currently interesting to us
+    # these are fonts that are removed by the update.
+    # not_shared_in_before = set_before - set_after
+    styles = shared
+    if include_new_fonts_in_after:
+        styles = styles.union(not_shared_in_after)
+
+    if not styles:
+        # FIXME: pretty sure filenames could mismatch and we'd still
+        # get results here, as we only compare "style" names, e.g.
+        # we would compare Helvetiva-Bold.ttf with Arial-Bold.ttf.
+        # On the other hand, it may be beneficial to do this here
+        # laxly, e.g. when for any reasons file names change this
+        # could also help to create more successful runs. I don't
+        # like laxly so much though.
+        raise PreparationError(("Cannot find fonts for this worker. "
                          "Are font filenames the same?"))
     logger.info('Found %s comparable font instances.',  len(shared))
-    for style in shared:
-        yield (style,  fonts_before_h[style], fonts_after_h[style])
+    for style in styles:
+        before = fonts_before_h[style] if style in shared else None
+        yield (style,  before, fonts_after_h[style])
 
-def on_each_matching_font(func):
+def _map_fonts_to_func(func, *, include_new_fonts_in_after):
     @wraps(func)
     def func_wrapper(logger, fonts_before, fonts_after, out, *args, **kwargs):
         for (style, font_before, font_after) in\
-                            get_matching_fonts(logger, fonts_before, fonts_after):
+                    _get_matching_fonts(logger, fonts_before, fonts_after
+                        , include_new_fonts_in_after=include_new_fonts_in_after):
             out_for_font = os.path.join(out, style)
             func(logger, font_before, font_after, out_for_font, *args, **kwargs)
 
     return func_wrapper
+
+on_each_matching_font = partial(_map_fonts_to_func, include_new_fonts_in_after=False)
+on_each_matching_or_new_font = partial(_map_fonts_to_func, include_new_fonts_in_after=True)
+
+
 #################
 # /END taken from gftools-qa
 #################
