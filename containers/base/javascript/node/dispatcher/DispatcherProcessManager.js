@@ -50,6 +50,12 @@ function DispatcherProcessManager(setup, ...args) {
                           , setup.manifestGoogleFontsAPI.port);
     this._asyncDependencies.push([this._manifestGoogleFontsAPIClient, 'waitForReady']);
 
+    this._manifestGitHubGFClient = new ManifestClient(
+                            setup.logging
+                          , setup.manifestGitHubGF.host
+                          , setup.manifestGitHubGF.port);
+    this._asyncDependencies.push([this._manifestGitHubGFClient, 'waitForReady']);
+
     this._persistenceClient = new StorageClient(
                               setup.logging
                             , setup.persistence.host
@@ -96,15 +102,17 @@ function DispatcherProcessManager(setup, ...args) {
                     case ('upstream'):
                         sourceClient = this._manifestUpstreamClient;
                         break;
+                    // TODO: not implemented GF sandbox
+                    // case ('sandbox'):
+                    //    // falls through
                     case ('production'):
                         sourceClient = this._manifestGoogleFontsAPIClient;
                         break;
-                    case ('master'):
+                    case ('pulls'):
                         // falls through
-                        this._log.warning('TODO this._manifestGitHubClient '
-                                        + 'is not implemented');
-                        //sourceClient = this._manifestGitHubClient;
-                        //break;
+                    case ('master'):
+                        sourceClient = this._manifestGitHubGFClient;
+                        break;
                     default:
                         // this is a programming error
                         throw new Error(`Family source "${sourceID}" is not known.`);

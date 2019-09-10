@@ -167,6 +167,11 @@ function getSetup() {
                 ['host', 'FONTBAKERY_MANIFEST_GFAPI_SERVICE_HOST']
               , ['port', 'FONTBAKERY_MANIFEST_GFAPI_SERVICE_PORT']
             ]
+          , manifestGitHubGF: [
+                // call it: "fontbakery-manifest-githubgf" in kybernetes
+                ['host', 'FONTBAKERY_MANIFEST_GITHUBGF_SERVICE_HOST']
+              , ['port', 'FONTBAKERY_MANIFEST_GITHUBGF_SERVICE_PORT']
+            ]
           , initWorkers: [
                 // call it: "fontbakery-init-workers" in kybernetes
                 ['host', 'FONTBAKERY_INIT_WORKERS_SERVICE_HOST']
