@@ -16,11 +16,19 @@ const { Process:Parent } = require('./framework/Process')
       , Files
       , FamilyData } = require('protocolbuffers/messages_pb')
     , { mixin: stateManagerMixin } = require('./framework/stateManagerMixin')
+    , { status: grpcStatus } = require('grpc')
     ;
 
 
 // Could be configurable at some point, but for now this must be good enough.
 const FBD_REPO_NAME_WITH_OWNER = 'googlefonts/fontbakery-dashboard';
+
+
+const PROCESS_MODE_PRODUCTION = 'production'
+    , PROCESS_MODE_SANDBOX = 'sandbox'
+    ;
+
+
 
 /**
  * constructor must do Parent.call(this, arg1, arg2,) itself if applicable.
@@ -126,6 +134,41 @@ function _renderSourceDetails(sourceDetails, indentationDepth) {
         entries.push(indentation + '**' + key + '** `' + JSON.stringify(value)+ '`');
 
     return entries.join('  \n');
+}
+
+/**
+ * callback has this signature:
+ *       function([requester, sessionID]
+ *              , familyDataMessage // a FamilyData message
+ *              , ...continuationArgs)
+ */
+function _taskGetFilesPackage(source, callbackName, ...continuationArgs) {
+    // jshint validthis:true
+    // This used to timeout when the google/fonts repo was not fetched
+    // in the upstream mainifestSource, e.g. because of a restart of
+    // the service. That can still happen when using the `get` gRPC interface
+    // with a too small deadline. Now, this uses the processCommand path.
+    // the error with the gRPC timeout was:
+    //    'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
+    //  , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
+    //
+    // NOW we can respond via amqp execute from getFamilyDataDelayed!
+    // This has also the advantage, that the user interface will report
+    // what it is currently waiting for. A long unresponsive phase,
+    // because a Tasks `activate` takes long time is not optimal.
+    var [callbackName_, ticket] = this._setExpectedAnswer(
+                                    'Creating files package.'
+                                  , callbackName
+                                  , null
+                                  , ...continuationArgs)
+      , processCommand = new ProcessCommand()
+      ;
+    processCommand.setTargetPath(this.path.toString());
+    processCommand.setTicket(ticket);
+    processCommand.setCallbackName(callbackName_);
+    processCommand.setResponseQueueName(this.resources.executeQueueName);
+    return this.resources.getFamilyDataDelayed(
+                            source, this.process.familyName, processCommand);
 }
 
 
@@ -245,7 +288,7 @@ _p.uiApproveProcess = function() {
             }
 
           , {   name: 'action'
-              , type:'choice'
+              , type: 'choice'
               , label: 'Pick one:'
               , options: actionOptions
               //, default: 'accepted' // 0 => the first item is the default
@@ -287,6 +330,8 @@ _p.uiApproveProcess = function() {
                     // always true at this point
                     // and we can't go on otherwise (we don't even store that state).
                     // the task can be dismissed in uiApproveProcess though.
+
+
                     //item.default = true;
                     return null;
                 item.condition = ['action', 'edit'];
@@ -300,7 +345,7 @@ _p.uiApproveProcess = function() {
 
           , {   name: 'genre'
               , condition: ['action', 'register']
-              , type:'choice' // => could be a select or a radio
+              , type: 'choice' // => could be a select or a radio
               , label: 'Genre:'
               , options: fontFamilyGenres
             }
@@ -362,6 +407,7 @@ _p.callbackApproveProcess = function([requester, sessionID]
 
 _p._editInitialState = function(requester, values) {
     // jshint unused:vars
+    values.mode = this.process.mode;
     values.registered = false;
     values.note = this.process._state.note;
     // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
@@ -458,7 +504,7 @@ _p.uiSignOffSpreadsheet = function() {
                 ].join('\n')
             }
           , {   name: 'action'
-              , type:'choice'
+              , type: 'choice'
               , label: 'How to proceed:'
               , options: [
                     ['Spreadsheet entry is up to date. Load the files!', 'accept']
@@ -491,6 +537,10 @@ _p.uiSignOffSpreadsheet = function() {
             }
         ]
     };
+};
+
+_p._getFilesPackage = function() {
+    return _taskGetFilesPackage.call(this, 'upstream', 'callbackReceiveFiles');
 };
 
 _p.callbackSignOffSpreadsheet = function([requester, sessionID]
@@ -530,37 +580,6 @@ _p.callbackSignOffSpreadsheet = function([requester, sessionID]
     }
 };
 
-
-/**
- * Expected by Parent.
- */
-_p._getFilesPackage = function() {
-    // This used to timeout when the google/fonts repo was not fetched
-    // in the upstream mainifestSource, e.g. because of a restart of
-    // the service. That can still happen when using the `get` gRPC interface
-    // with a too small deadline. Now, this uses the processCommand path.
-    // the error with the gRPC timeout was:
-    //    'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
-    //  , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
-    //
-    // NOW we can respond via amqp execute from getUpstreamFamilyFiles!
-    // This has also the advantage, that the user interface will report
-    // what it is currently waiting for. A long unresponsive phase,
-    // because a Tasks `activate` takes long time is not optimal.
-    var [callbackName, ticket] = this._setExpectedAnswer(
-                                    'Creating files package.'
-                                  , 'callbackReceiveFiles'
-                                  , null)
-      , processCommand = new ProcessCommand()
-      ;
-    processCommand.setTargetPath(this.path.toString());
-    processCommand.setTicket(ticket);
-    processCommand.setCallbackName(callbackName);
-    processCommand.setResponseQueueName(this.resources.executeQueueName);
-    return this.resources.getUpstreamFamilyFiles(this.process.familyName
-                                                        , processCommand);
-};
-
 _p.callbackReceiveFiles = function([requester, sessionID]
                                 , familyDataMessage /* a FamilyData */
                                 , ...continuationArgs) {
@@ -568,7 +587,7 @@ _p.callbackReceiveFiles = function([requester, sessionID]
     if(familyDataMessage.getStatus() === FamilyData.Result.FAIL) {
         // hmm, this must not fail directly, it could also suggest to
         // change the spreadsheet and try again!
-        // FIXME: if this fails inform the user abpout steps to do and
+        // FIXME: if this fails to inform the user about steps to do and
         // provide options.
         this._setREPORT('**ERROR** ' + familyDataMessage.getError());
         this._setFAILED('**' + requester + '** can\'t create files package.');
@@ -628,10 +647,19 @@ _p.callbackReceiveFiles = function([requester, sessionID]
 
         // this are the most important lines here.
         this.process._state.filesStorageKey = filesStorageKey;
+        // Ideally the two cases yield the same result! However, existing
+        // families may have directories violating the
+        // {licenseDir}/{familyDirName} rule
         this.process._state.targetDirectory = metadata.isUpdate
                             ? metadata.googleMasterDir
-                            : metadata.licenseDir + '/' + familyDirName
+                            : `${metadata.licenseDir}/${familyDirName}`
                             ;
+        // isUpdate is only telling us if the family is in Github/google/fonts:master
+        // the family may not be (yet?) in the production API! This is
+        // semantically important, as we already expected wrongly availability
+        // in the production API at a different position in the code, when
+        // the family was just in master.
+        // TODO: rename this to "isUpdateInMaster" maybe?
         this.process._state.isUpdate = metadata.isUpdate;
 
         familyDataSummaryMarkdown.push(
@@ -680,7 +708,7 @@ _p.uiCheckFamilyFilesPackage = function() {
                         + 'repository data in the meantime.'
             }
           , {   name: 'action'
-                , type:'choice'
+                , type: 'choice'
                 , label: 'How to proceed:'
                 , options: [
                       ['Looks good, go to QA!', 'accept']
@@ -709,7 +737,7 @@ _p.callbackCheckFamilyFilesPackage = function([requester, sessionID]
         // no values.reason here
         this._setOK('**@' + requester + '** confirms the family package.');
     }
-    else if(values.action === 'retry'){
+    else if(values.action === 'retry') {
         this._setLOG('**@' + requester + '** retries to generate the files package.');
         // delete the storage
         var storageKey = this.process.getFilesStorageKey();
@@ -893,50 +921,34 @@ function _copyFilesMessage(fromFiles, toFiles, prefix, log) {
     }
 }
 
-function _taskPreparePreviewFiles() { // => filesMessage
+function _taskPrepareDiffFiles(beforeFamilyDataMessageOrNull) { // => familyMessage
     //jshint validthis:true
-    // FIXME: make the copy to 'files/{filename}' uneccessary
-    // the storageKey of the files of this process should be just
-    // fine for the worker, eventually. Right know, however, the
-    // worker expects the files in a sub-directory, hence this effort.
-    var storageKey = this.process.getFilesStorageKey();
-    this.log.debug(this.constructor.name, '_taskPreparePreviewFiles getting files:', storageKey.getKey());
-    return this.resources.persistence.get(storageKey)// => 'filesMessage'
-    // copy to 'files/{filename}'
-    .then(jobFilesMessage=>{
-        this.log.debug(this.constructor.name, '_taskPreparePreviewFiles got files.');
+    return Promise.resolve(beforeFamilyDataMessageOrNull !== null
+                ? beforeFamilyDataMessageOrNull.getFiles() // => 'filesMessage'
+                // no "before files"
+                : null
+    )
+    // copy to 'before/{filename}'
+    .then(beforeFilesMessageOrNull=>{
         var filesMessage = new Files();
-        this.log.debug(this.constructor.name, '_taskPreparePreviewFiles start copy files ...');
-        _copyFilesMessage(jobFilesMessage, filesMessage, 'files/', this.log);
-        this.log.debug(this.constructor.name, '_taskPreparePreviewFiles DONE! copy files ...');
-        return filesMessage;
-    });
-}
-
-function _taskPrepareDiffFiles() { // => filesMessage
-    //jshint validthis:true
-    return this.resources.getGoogleFontsAPIFamilyFiles(this.process.familyName)
-    .then(familyDataMessage=>familyDataMessage.getFiles())// => 'filesMessage'
-        // copy to 'before/{filename}'
-    .then(beforeFilesMessage=>{
-        this.log.debug(this.constructor.name, '_taskPrepareDiffFiles got "before" files.');
-        var filesMessage = new Files();
-        this.log.debug(this.constructor.name, '_taskPrepareDiffFiles start copy before files ...');
-        _copyFilesMessage(beforeFilesMessage, filesMessage, 'before/', this.log);
-        this.log.debug(this.constructor.name, '_taskPrepareDiffFiles DONE! copy before files ...');
+        if(beforeFilesMessageOrNull !== null) {
+            this.log.debug(this.constructor.name, '_taskPrepareDiffFiles got '
+                                            + '"before" files.');
+            _copyFilesMessage(beforeFilesMessageOrNull, filesMessage
+                                                    , 'before/', this.log);
+        }
+        else
+            this.log.debug(this.constructor.name, '_taskPrepareDiffFiles got'
+                                            + ' **no** "before" files.');
         return filesMessage;
     })
     .then(filesMessage=>{
-
-    var storageKey = this.process.getFilesStorageKey();
-    this.log.debug(this.constructor.name, '_taskPrepareDiffFiles getting "after" files:', storageKey.getKey());
-    return this.resources.persistence.get(storageKey)// => 'filesMessage'
+        var storageKey = this.process.getFilesStorageKey();
+        return this.resources.persistence.get(storageKey)// => 'filesMessage'
         // copy to 'after/{filename}'
         .then(afterFilesMessage=>{
             this.log.debug(this.constructor.name, '_taskPrepareDiffFiles got "after" files.');
-            this.log.debug(this.constructor.name, '_taskPrepareDiffFiles start copy after files ...');
             _copyFilesMessage(afterFilesMessage, filesMessage, 'after/', this.log);
-            this.log.debug(this.constructor.name, '_taskPrepareDiffFiles DONE! copy after files ...');
             return filesMessage;
         });
     });
@@ -969,16 +981,9 @@ function _taskInitWorker(workerName
     return this.resources.initWorker(workerName, initMessage, processCommand);
 }
 
-function _taskActivateDiffWorker(workerName, callbackName) {
+function _taskCallDiffWorker(beforeFamilyDataMessageOrNull, workerName, callbackName) {
     // jshint validthis:true
-    // may fail if not found in google api
-
-    if(!this.process._state.isUpdate) {
-        this._setOK('Skipping ' + workerName + ': there\'s no existing data to diff.');
-        return;
-    }
-
-    return _taskPrepareDiffFiles.call(this) // => filesMessage
+    return _taskPrepareDiffFiles.call(this, beforeFamilyDataMessageOrNull) // => filesMessage
     .then(filesMessage=>this.resources.cache.put([filesMessage])
                            .then(cacheKeys=>cacheKeys[0]))
     .then(cacheKey=>_taskInitWorker.call(this
@@ -991,16 +996,147 @@ function _taskActivateDiffWorker(workerName, callbackName) {
     ;
 }
 
+const _diffComparisonSources = new Map([
+   ['upstream', 'Registered upstream of this family']
+ , ['production', 'Google Fonts Production API']
+ //, ['sandbox', 'Google Fonts Sandbox API']
+   // [pulls, 'latest Pull Request to master'// (just because we can?)
+ , ['master', 'GitHub google/fonts master']
+   // similar to the custom sandboxed sources feature once it exists,
+   // so we can e.g.compare to just another branch or a random forked
+   // repo or even any repo. Don't know how this would work!
+ //, ['custom', '']
+   // null is not a key! (but could be in a Map).
+ , [null, 'None: don\'t compare, create only preview renderings.']
+]);
+
+function _getDiffComparisonSourcesOptions(...sourceIDs) {
+    var options = [];
+    // like this: options = sources.map(([k,v])=>[v,k])
+    // but filtered and with a quick self check
+    for(let sourceID of sourceIDs) {
+        let label = _diffComparisonSources.get(sourceID);
+        if(!label)
+            // detect removed sourceIDs and typos
+            throw new Error(`KeyError for sourceID: ${sourceID}`);
+        options.push([label, sourceID]);
+    }
+    return options;
+}
 
 const DiffenatorTask = (function() {
 var anySetup = {
-    knownTypes: { GenericStorageWorkerResult }
+    knownTypes: {
+          GenericStorageWorkerResult
+        , FamilyData
+    }
 };
 const DiffenatorTask = taskFactory('DiffenatorTask', anySetup);
 const _p = DiffenatorTask.prototype;
 
+// make a shortcut, no filtering needed
+const source2label = sourceID=>_diffComparisonSources.get(sourceID);
+
+_p.uiChooseAction = function() {
+    return {
+        // TODO: in general in process sandbox mode, roles can be very relaxed
+        //       especially "engineer" can be ["input-provider", "engineer"]
+        //       so, input provider can run the whole process in sandbox mode.
+        roles: ['engineer']
+      , ui: [
+            {
+                type: 'info'
+              , content: 'How to proceed with Diffenator?'
+            }
+          , {   name: 'finish'
+              , type:'binary'
+              , label: 'Finish this process.'
+            }
+          , {   name: 'source'
+              , condition: ['finish', false]
+              , type: 'choice'
+              , label: 'Select the version of the family to compare against.'
+              , options: this.process.mode === PROCESS_MODE_PRODUCTION
+                        ? _getDiffComparisonSourcesOptions('production', 'master')
+                        // is sandbox mode
+                        : _getDiffComparisonSourcesOptions('production', 'master', 'upstream')
+            //, default: 'production' // 0 => the first item is the default
+            }
+          , {   name: 'accept'
+              , condition: ['finish', true]
+              , type:'binary'
+              , label: 'Diffenator looks good!'
+            }
+          , {   name: 'notes'
+              , type: 'text' // input type:text
+              , label: 'Notes'
+            }
+        ]
+    };
+};
+
+_p._expectChooseAction = function() {
+    this._setExpectedAnswer('Choose Action'
+                                 , 'callbackChooseAction'
+                                 , 'uiChooseAction');
+};
+
+_p.callbackChooseAction = function([requester, sessionID]
+                                        , values, ...continuationArgs) {
+    // jshint unused:vars
+    var notes = values.notes ? '\n\n' + values.notes : '';
+    if(!values.finish) {
+        var sourceLabel = source2label(values.source);
+        this._setLOG('**@' + requester + '** compares with "' + sourceLabel + '":' + notes);
+        return _taskGetFilesPackage.call(this, values.source
+                                        , 'callbackReceiveFamilyData'
+                                        , values.source);
+    }
+    if(values.accept === true)
+        this._setOK('**@' + requester + '** Diffenator is looking  good.' + notes);
+    else
+        this._setFAILED('**@' + requester + '** Diffenator is failing.' + notes);
+};
+
+_p.callbackReceiveFamilyData = function([requester, sessionID]
+                                , familyDataMessage // a FamilyData message
+                                , source, ...continuationArgs) {
+    // jshint unused:vars
+    var sourceLabel = source2label(source);
+
+    if(familyDataMessage.getStatus() === FamilyData.Result.FAIL) {
+        if(familyDataMessage.getErrorCode === grpcStatus.NOT_FOUND) {
+            // Not setting FAILED here as I expect this will happen
+            // sometimes!
+            this._setREPORT('Comparison family data **not found** in '
+                            + `"${sourceLabel}". Try another source?`);
+            this._expectChooseAction();
+        }
+        else {
+            this._setREPORT('**ERROR** ' + familyDataMessage.getError());
+            this._setFAILED('Can\'t create comparison family data.');
+        }
+        return;
+    }
+    return _taskCallDiffWorker.call(this, familyDataMessage
+                        , 'diffenator', 'callbackDiffenatorFinished');
+};
+
 _p._activate = function() {
-    return _taskActivateDiffWorker.call(this, 'diffenator', 'callbackDiffenatorFinished');
+    // Choose the before diff files source:
+    //      Depending on the mode of the process "sandbox" or "production"
+    //      the possible choices in here will differ, but even for production
+    //      it's hard to make a good guess: the gf production API may not
+    //      be up to date and it may be more interesting to create a diff
+    //      against github/google/fonts master, which has the latest update.
+    //      Or the font may not yet be in github/google/fonts master (true
+    //      for some) at which point diffing against the production api
+    //      must be done. Only if the font is truly a new onboarding,
+    //      we can skip this task, but for that to determine, neither
+    //      the gf-api nor the github repo should have the font and we
+    //      probably also could have figured that much earlier, so at this
+    //      point we just ask the user.
+    this._expectChooseAction();
 };
 
 _p.callbackDiffenatorFinished = function([requester, sessionID]
@@ -1075,23 +1211,57 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
               ].join('<br />\n');
 
     this._setREPORT(report);
-
-    this._setExpectedAnswer('Confirm Diffenator'
-                                 , 'callbackConfirmDiffenator'
-                                 , 'uiConfirmDiffenator');
+    this._expectChooseAction();
 };
 
-_p.uiConfirmDiffenator = function() {
+return DiffenatorTask;
+})();
+
+
+const BrowsersDiffsAndPreviewsTask = (function() {
+var anySetup = {
+    knownTypes: {
+          GenericStorageWorkerResult
+        , FamilyData
+    }
+};
+const BrowsersDiffsAndPreviewsTask = taskFactory('BrowsersDiffsAndPreviewsTask', anySetup);
+const _p = BrowsersDiffsAndPreviewsTask.prototype;
+
+// make a shortcut, no filtering needed
+const source2label = sourceID=>_diffComparisonSources.get(sourceID);
+
+
+_p.uiChooseAction = function() {
     return {
+        // TODO: in general in process sandbox mode, roles can be very relaxed
+        //       especially "engineer" can be ["input-provider", "engineer"]
+        //       so, input provider can run the whole process in sandbox mode.
         roles: ['engineer']
       , ui: [
             {
                 type: 'info'
-              , content: 'Please review the Diffenator result:'
+              , content: 'How to proceed with browser diffs and previews?'
+            }
+          , {   name: 'finish'
+              , type:'binary'
+              , label: 'Finish this process.'
+            }
+          , {   name: 'source'
+              , condition: ['finish', false]
+              , type: 'choice'
+              , label: 'Select the version of the family to compare against.'
+              , options: this.process.mode === PROCESS_MODE_PRODUCTION
+                        ? _getDiffComparisonSourcesOptions('production', 'master', null)
+                        // is sandbox mode
+                        : _getDiffComparisonSourcesOptions('production', 'master', 'upstream', null)
+
+            //, default: 'production' // 0 => the first item is the default
             }
           , {   name: 'accept'
+              , condition: ['finish', true]
               , type:'binary'
-              , label: 'Diffenator looks good!'
+              , label: 'Diffs and previews look good!'
             }
           , {   name: 'notes'
               , type: 'text' // input type:text
@@ -1101,31 +1271,65 @@ _p.uiConfirmDiffenator = function() {
     };
 };
 
-_p.callbackConfirmDiffenator = function([requester, sessionID]
+_p.callbackChooseAction = function([requester, sessionID]
                                         , values, ...continuationArgs) {
     // jshint unused:vars
     var notes = values.notes ? '\n\n' + values.notes : '';
-    if(values.accept === true) {
-        this._setOK('**@' + requester + '** Diffenator looks good.' + notes);
+    if(!values.finish) {
+        var sourceLabel = source2label(values.source);
+        this._setLOG('**@' + requester + '** compares with "'
+                           + (sourceLabel || 'None') + '":' + notes);
+        if(!values.source) {
+            this._setLOG('No family version for comparison was selected: '
+                        + '**creating only previews**.');
+            return _taskCallDiffWorker.call(this, null
+                        , 'diffbrowsers', 'callbackDiffbrowsersFinished');
+        }
+        else
+            return _taskGetFilesPackage.call(this, values.source, 'callbackReceiveFamilyData'
+                                           , values.source);
     }
+    if(values.accept === true)
+        this._setOK('**@' + requester + '** Browsers diffs and previews are '
+                                                + 'looking  good.' + notes);
     else
-        this._setFAILED('**@' + requester + '** Diffenator is failing.' + notes);
+        this._setFAILED('**@' + requester + '** Browsers diffs and previews '
+                                                + 'are failing.' + notes);
+
 };
 
-return DiffenatorTask;
-})();
+_p.callbackReceiveFamilyData = function([requester, sessionID]
+                                , familyDataMessage // a FamilyData message
+                                , source, ...continuationArgs) {
+    // jshint unused:vars
+    var sourceLabel = source2label(source);
 
-
-// FIXME: this is basically copypasta from DiffenatorTask!
-const DiffbrowsersTask = (function() {
-var anySetup = {
-    knownTypes: { GenericStorageWorkerResult }
+    if(familyDataMessage.getStatus() === FamilyData.Result.FAIL) {
+        if(familyDataMessage.getErrorCode === grpcStatus.NOT_FOUND) {
+            // Not setting FAILED here as I expect this will happen
+            // sometimes!
+            this._setREPORT('Comparison family data **not found** in: '
+                            + `"${sourceLabel}". Try another source?`);
+            this._expectChooseAction();
+        }
+        else {
+            this._setREPORT('**ERROR** ' + familyDataMessage.getError());
+            this._setFAILED('Can\'t create comparison family data.');
+        }
+        return;
+    }
+    return _taskCallDiffWorker.call(this, familyDataMessage
+                        , 'diffbrowsers', 'callbackDiffbrowsersFinished');
 };
-const DiffbrowsersTask = taskFactory('DiffbrowsersTask', anySetup);
-const _p = DiffbrowsersTask.prototype;
+
+_p._expectChooseAction = function() {
+    this._setExpectedAnswer('Choose Action'
+                                 , 'callbackChooseAction'
+                                 , 'uiChooseAction');
+};
 
 _p._activate = function() {
-    return _taskActivateDiffWorker.call(this, 'diffbrowsers', 'callbackDiffbrowsersFinished');
+    this._expectChooseAction();
 };
 
 _p.callbackDiffbrowsersFinished = function([requester, sessionID]
@@ -1152,7 +1356,7 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
     //     repeated Result results = 7;
     // }
     var exception = genericStorageWorkerResult.getException()
-     , report = '## Diffbrowsers Result'
+     , report = '## Browser diffs and previews Result'
      ;
 
     if(exception) {
@@ -1202,196 +1406,17 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
               ].join('<br />\n');
 
     this._setREPORT(report);
-
-    this._setExpectedAnswer('Confirm Diffbrowsers'
-                                 , 'callbackConfirmDiffbrowsers'
-                                 , 'uiConfirmDiffbrowsers');
+    this._expectChooseAction();
 };
 
-_p.uiConfirmDiffbrowsers = function() {
-    return {
-        roles: ['engineer']
-      , ui: [
-            {
-                type: 'info'
-              , content: 'Please review the Diffbrowsers result:'
-            }
-          , {   name: 'accept'
-              , type:'binary'
-              , label: 'Diffbrowsers looks good!'
-            }
-          , {   name: 'notes'
-              , type: 'text' // input type:text
-              , label: 'Notes'
-            }
-        ]
-    };
-};
-
-_p.callbackConfirmDiffbrowsers = function([requester, sessionID]
-                                        , values, ...continuationArgs) {
-    // jshint unused:vars
-    var notes = values.notes ? '\n\n' + values.notes : '';
-    if(values.accept === true) {
-        this._setOK('**@' + requester + '** Diffbrowsers looks good.' + notes);
-    }
-    else
-        this._setFAILED('**@' + requester + '** Diffbrowsers is failing.' + notes);
-};
-
-return DiffbrowsersTask;
+return BrowsersDiffsAndPreviewsTask;
 })();
 
-// FIXME: this is basically copypasta from, or at least *very similar* to
-// DiffenatorTask and DiffbrowsersTask!
-const PreviewsTask = (function() {
-var anySetup = {
-    knownTypes: { GenericStorageWorkerResult }
-};
-const PreviewsTask = taskFactory('PreviewsTask', anySetup);
-const _p = PreviewsTask.prototype;
-
-_p._activate = function() {
-    var workerName = 'previews'
-      , callbackName = 'callbackPreviewsFinished'
-      ;
-
-    if(this.process._state.isUpdate) {
-        this._setOK('Skipping ' + workerName + ': using diff workers instead.');
-        return;
-    }
-
-    return _taskPreparePreviewFiles.call(this) // => filesMessage
-    .then(filesMessage=>this.resources.cache.put([filesMessage])
-                           .then(cacheKeys=>cacheKeys[0]))
-    .then(cacheKey=>_taskInitWorker.call(this
-                                      , workerName
-                                      , cacheKey
-                                      , callbackName))
-    //.then((message)=>{
-    //    this._setLOG(workerName + ' worker initialized …');
-    //})
-    ;
-};
-
-_p.callbackPreviewsFinished = function([requester, sessionID]
-                                        , genericStorageWorkerResult
-                                        , ...continuationArgs) {
-    // jshint unused:vars
-
-    // message GenericStorageWorkerResult {
-    //     message Result {
-    //         string name = 1;
-    //         StorageKey storage_key = 2;
-    //     };
-    //     string job_id = 1;
-    //     // currently unused but generally interesting to track the
-    //     // time from queuing to job start, or overall waiting time
-    //     // finished - start is the time the worker took
-    //     // started - finished is the time the job was in the queue
-    //     google.protobuf.Timestamp created = 2;
-    //     google.protobuf.Timestamp started = 3;
-    //     google.protobuf.Timestamp finished = 4;
-    //     // If set the job failed somehow, print pre-formated
-    //     string exception = 5;
-    //     repeated string preparation_logs = 6;
-    //     repeated Result results = 7;
-    // }
-    var exception = genericStorageWorkerResult.getException()
-     , report = '## Previews Result'
-     ;
-
-    if(exception) {
-        report += [
-            '\n'
-            , '### EXCEPTION'
-            , '```'
-            , exception
-            , '```\n'
-        ].join('\n');
-    }
-
-    var preparationLogs = genericStorageWorkerResult.getPreparationLogsList();
-    if(preparationLogs.length) {
-        report += '\n### Preparation Logs\n';
-        for(let preparationLog of preparationLogs)
-            report += ` * \`${preparationLog}\`\n`;
-    }
-
-    // For now, just log the zip download url:
-    // message GenericStorageWorkerResult.Result {
-    //     string name = 1;
-    //     StorageKey storage_key = 2;
-    // }
-    var results = genericStorageWorkerResult.getResultsList();
-    if(results.length) {
-        report += '\n### Results\n';
-        for(let result of results) {
-            let name = result.getName()
-              , storageKey = result.getStorageKey()
-              ;
-            // FIXME: a hard coded url is bad :-/
-            report += ` * browse report: [**${name}**]`
-                    // uses index.html or autoindex
-                    + `(/browse/persistence/${storageKey.getKey()}/)`
-                    + ` or download: [zip file]`
-                    + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
-        }
-    }
-    report += '\n';
-    report += [
-             // created is not used currently
-             // _mdFormatTimestamp(genericStorageWorkerResult, 'created')
-                _mdFormatTimestamp(genericStorageWorkerResult, 'started')
-              , _mdFormatTimestamp(genericStorageWorkerResult, 'finished')
-              ].join('<br />\n');
-
-    this._setREPORT(report);
-
-    this._setExpectedAnswer('Confirm Previews'
-                                 , 'callbackConfirmPreviews'
-                                 , 'uiConfirmPreviews');
-};
-
-_p.uiConfirmPreviews = function() {
-    return {
-        roles: ['engineer']
-      , ui: [
-            {
-                type: 'info'
-              , content: 'Please review the Previews result:'
-            }
-          , {   name: 'accept'
-              , type:'binary'
-              , label: 'Previews looks good!'
-            }
-          , {   name: 'notes'
-              , type: 'text' // input type:text
-              , label: 'Notes'
-            }
-        ]
-    };
-};
-
-_p.callbackConfirmPreviews = function([requester, sessionID]
-                                        , values, ...continuationArgs) {
-    // jshint unused:vars
-    var notes = values.notes ? '\n\n' + values.notes : '';
-    if(values.accept === true) {
-        this._setOK('**@' + requester + '** Previews looks good.' + notes);
-    }
-    else
-        this._setFAILED('**@' + requester + '** Previews is failing.' + notes);
-};
-
-return PreviewsTask;
-})();
 
 const QAToolsStep = stepFactory('QAToolsStep', {
     Fontbakery: FontbakeryTask
   , Diffenator: DiffenatorTask
-  , Diffbrowsers: DiffbrowsersTask
-  , Previews: PreviewsTask
+  , BrowsersDiffsAndPreviews: BrowsersDiffsAndPreviewsTask
 });
 
 function getTaskReportMDBody(task) {
@@ -1495,7 +1520,7 @@ _p.uiConfirmDispatch = function() {
         roles: ['engineer']
       , ui: [
             {   name: 'action'
-              , type:'choice'
+              , type: 'choice'
               , label: 'Pick one:'
               , options: [
                     ['Create Pull Request now.', 'accept']
@@ -1842,10 +1867,11 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
     // else if(initArgs) … !
     this.log.debug('new FamilyPRDispatcherProcess initArgs:', initArgs, 'state:', state);
 
-    var {  initType, familyName, requester, repoNameWithOwner, branch
+    var {  mode, initType, familyName, requester, repoNameWithOwner, branch
          , genre, fontfilesPrefix, note
         } = initArgs;
 
+    this._state.mode = mode;
     this._state.initType = initType;
     this._state.familyName = familyName;
     this._state.requester = requester;
@@ -2014,7 +2040,7 @@ function _getInitNewUI() {
               , placeholder: 'fonts/GenericSansCondensed-'
             }
           , {   name: 'genre'
-              , type:'choice' // => could be a select or a radio
+              , type: 'choice' // => could be a select or a radio
               , label: 'Genre:'
                 // TODO: get a list of available families from the CSV Source
               , options: fontFamilyGenres
@@ -2045,15 +2071,24 @@ function uiPreInit(resources) {
         // don't have a repoNameWithOwner to check against ;-)
         roles: null
       , ui: [
+            {   name: 'mode'
+              , type: 'choice' // => could be a select or a radio
+              , label: 'How do you want to assess your family:'
+                // TODO: get a list of available families from the CSV Source
+              , options: [
+                  ['Sandbox mode: test while in development.', PROCESS_MODE_SANDBOX]
+                , ['Production mode: requests onboarding or updating.', PROCESS_MODE_PRODUCTION]
+              ]
+            }
             // condition:update is ~ update an existing family, hence just a select input
-            {   // don't want to create something overly complicated here,
+          , {   // don't want to create something overly complicated here,
                 // otherwise we'd need a dependency tree i.e. to figure if
                 // a condition element is visible or not. But, what we
                 // can do is always make a condition false when it's dependency
                 // is not available or defined.
                 name: 'family'
               , condition: ['registered', true] // show only when "registered" has the value `true`
-              , type:'choice' // => could be a select or a radio
+              , type: 'choice' // => could be a select or a radio
               , label: 'Pick the family to request an update:'
               , options: familyList
               //, default: 'Family Name' // 0 => the first item is the default
@@ -2108,9 +2143,19 @@ function _extractRepoNameWithOwner(repoNameWithOwner) {
     return repoNameWithOwner;
 }
 
+function _validateProcessMode(value) {
+    var modes = new Set([PROCESS_MODE_PRODUCTION, PROCESS_MODE_SANDBOX]);
+    if(!modes.has(value))
+        return [false, `Invalid process mode "${value} must be one of"`
+                        + `PROCESS_MODE_PRODUCTION "${PROCESS_MODE_PRODUCTION}"`
+                        + `or PROCESS_MODE_SANDBOX "${PROCESS_MODE_SANDBOX}"`
+        ];
+    return [true, null];
+}
+
 function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
 
-    var initType, familyName, repoNameWithOwner, branch
+    var mode, initType, familyName, repoNameWithOwner, branch
       , genre, fontfilesPrefix, note
       , message, messages = []
       , initArgs = null
@@ -2122,6 +2167,10 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
 
     var checkNew=()=>{
         // just some sanitation, remove multiple subsequent spaces
+        mode = values.mode;
+        var result, message = _validateProcessMode(mode);
+        if(!result)
+            messages.push(message);
         familyName = values.familyName.trim().split(' ').filter(chunk=>!!chunk).join(' ');
         var regexFamilyName = /^[a-z0-9 ]+$/i;
         // this check is also rather weak, but, eventually we'll use font bakery!
@@ -2205,6 +2254,7 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
                       , genre
                       , fontfilesPrefix
                       , note
+                      , mode
             };
         return [message, initArgs];
     });
@@ -2270,6 +2320,12 @@ stateManagerMixin(_p, {
   , targetDirectory: _genericStateItem
   // if the familydir (targetDirectory) was found in google/fonts:master
   , isUpdate: _genericStateItem
+  , mode: {
+        init: ()=>null
+      , load: val=>val
+      , serialize: val=>val
+      , validate: _validateProcessMode
+    }
 });
 
 Object.defineProperties(_p, {
@@ -2296,6 +2352,11 @@ Object.defineProperties(_p, {
   , initType: {
        get: function() {
             return this._state.initType;
+        }
+    }
+  , processMode: {
+       get: function() {
+            return this._state.mode;
         }
     }
 });

@@ -723,10 +723,6 @@ function DiffbrowsersWorker(...args) {
 }
 DiffbrowsersWorker.prototype = Object.create(GenericStorageWorker.prototype);
 
-function PreviewsWorker(...args) {
-    GenericStorageWorker.call(this, 'previews', ...args);
-}
-PreviewsWorker.prototype = Object.create(GenericStorageWorker.prototype);
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup()
@@ -748,7 +744,6 @@ if (typeof require != 'undefined' && require.main==module) {
             fontbakery: [FontBakeryWorker, 'logging', 'io', 'cache']
           , diffenator: [DiffenatorWorker, 'logging', 'io'/*, 'cache'*/]
           , diffbrowsers: [DiffbrowsersWorker, 'logging', 'io'/*, 'cache'*/]
-          , previews: [PreviewsWorker, 'logging', 'io'/*, 'cache'*/]
         }
       , resources = {
             logging: setup.logging
