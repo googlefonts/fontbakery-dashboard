@@ -1980,11 +1980,12 @@ proto.fontbakery.dashboard.FamilyData.toObject = function(includeInstance, msg) 
   var f, obj = {
     status: jspb.Message.getFieldWithDefault(msg, 1, 0),
     error: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    collectionid: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    familyName: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    errorCode: jspb.Message.getFieldWithDefault(msg, 3, 0),
+    collectionid: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    familyName: jspb.Message.getFieldWithDefault(msg, 5, ""),
     files: (f = msg.getFiles()) && shared_pb.Files.toObject(includeInstance, f),
     date: (f = msg.getDate()) && google_protobuf_timestamp_pb.Timestamp.toObject(includeInstance, f),
-    metadata: jspb.Message.getFieldWithDefault(msg, 7, "")
+    metadata: jspb.Message.getFieldWithDefault(msg, 8, "")
   };
 
   if (includeInstance) {
@@ -2030,24 +2031,28 @@ proto.fontbakery.dashboard.FamilyData.deserializeBinaryFromReader = function(msg
       msg.setError(value);
       break;
     case 3:
-      var value = /** @type {string} */ (reader.readString());
-      msg.setCollectionid(value);
+      var value = /** @type {number} */ (reader.readInt32());
+      msg.setErrorCode(value);
       break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
-      msg.setFamilyName(value);
+      msg.setCollectionid(value);
       break;
     case 5:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setFamilyName(value);
+      break;
+    case 6:
       var value = new shared_pb.Files;
       reader.readMessage(value,shared_pb.Files.deserializeBinaryFromReader);
       msg.setFiles(value);
       break;
-    case 6:
+    case 7:
       var value = new google_protobuf_timestamp_pb.Timestamp;
       reader.readMessage(value,google_protobuf_timestamp_pb.Timestamp.deserializeBinaryFromReader);
       msg.setDate(value);
       break;
-    case 7:
+    case 8:
       var value = /** @type {string} */ (reader.readString());
       msg.setMetadata(value);
       break;
@@ -2094,24 +2099,31 @@ proto.fontbakery.dashboard.FamilyData.serializeBinaryToWriter = function(message
       f
     );
   }
-  f = message.getCollectionid();
-  if (f.length > 0) {
-    writer.writeString(
+  f = message.getErrorCode();
+  if (f !== 0) {
+    writer.writeInt32(
       3,
       f
     );
   }
-  f = message.getFamilyName();
+  f = message.getCollectionid();
   if (f.length > 0) {
     writer.writeString(
       4,
       f
     );
   }
+  f = message.getFamilyName();
+  if (f.length > 0) {
+    writer.writeString(
+      5,
+      f
+    );
+  }
   f = message.getFiles();
   if (f != null) {
     writer.writeMessage(
-      5,
+      6,
       f,
       shared_pb.Files.serializeBinaryToWriter
     );
@@ -2119,7 +2131,7 @@ proto.fontbakery.dashboard.FamilyData.serializeBinaryToWriter = function(message
   f = message.getDate();
   if (f != null) {
     writer.writeMessage(
-      6,
+      7,
       f,
       google_protobuf_timestamp_pb.Timestamp.serializeBinaryToWriter
     );
@@ -2127,7 +2139,7 @@ proto.fontbakery.dashboard.FamilyData.serializeBinaryToWriter = function(message
   f = message.getMetadata();
   if (f.length > 0) {
     writer.writeString(
-      7,
+      8,
       f
     );
   }
@@ -2173,48 +2185,63 @@ proto.fontbakery.dashboard.FamilyData.prototype.setError = function(value) {
 
 
 /**
- * optional string collectionid = 3;
- * @return {string}
+ * optional int32 error_code = 3;
+ * @return {number}
  */
-proto.fontbakery.dashboard.FamilyData.prototype.getCollectionid = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+proto.fontbakery.dashboard.FamilyData.prototype.getErrorCode = function() {
+  return /** @type {number} */ (jspb.Message.getFieldWithDefault(this, 3, 0));
 };
 
 
-/** @param {string} value */
-proto.fontbakery.dashboard.FamilyData.prototype.setCollectionid = function(value) {
-  jspb.Message.setProto3StringField(this, 3, value);
+/** @param {number} value */
+proto.fontbakery.dashboard.FamilyData.prototype.setErrorCode = function(value) {
+  jspb.Message.setProto3IntField(this, 3, value);
 };
 
 
 /**
- * optional string family_name = 4;
+ * optional string collectionid = 4;
  * @return {string}
  */
-proto.fontbakery.dashboard.FamilyData.prototype.getFamilyName = function() {
+proto.fontbakery.dashboard.FamilyData.prototype.getCollectionid = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.FamilyData.prototype.setFamilyName = function(value) {
+proto.fontbakery.dashboard.FamilyData.prototype.setCollectionid = function(value) {
   jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
 /**
- * optional Files files = 5;
+ * optional string family_name = 5;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.FamilyData.prototype.getFamilyName = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.FamilyData.prototype.setFamilyName = function(value) {
+  jspb.Message.setProto3StringField(this, 5, value);
+};
+
+
+/**
+ * optional Files files = 6;
  * @return {?proto.fontbakery.dashboard.Files}
  */
 proto.fontbakery.dashboard.FamilyData.prototype.getFiles = function() {
   return /** @type{?proto.fontbakery.dashboard.Files} */ (
-    jspb.Message.getWrapperField(this, shared_pb.Files, 5));
+    jspb.Message.getWrapperField(this, shared_pb.Files, 6));
 };
 
 
 /** @param {?proto.fontbakery.dashboard.Files|undefined} value */
 proto.fontbakery.dashboard.FamilyData.prototype.setFiles = function(value) {
-  jspb.Message.setWrapperField(this, 5, value);
+  jspb.Message.setWrapperField(this, 6, value);
 };
 
 
@@ -2228,23 +2255,23 @@ proto.fontbakery.dashboard.FamilyData.prototype.clearFiles = function() {
  * @return {boolean}
  */
 proto.fontbakery.dashboard.FamilyData.prototype.hasFiles = function() {
-  return jspb.Message.getField(this, 5) != null;
+  return jspb.Message.getField(this, 6) != null;
 };
 
 
 /**
- * optional google.protobuf.Timestamp date = 6;
+ * optional google.protobuf.Timestamp date = 7;
  * @return {?proto.google.protobuf.Timestamp}
  */
 proto.fontbakery.dashboard.FamilyData.prototype.getDate = function() {
   return /** @type{?proto.google.protobuf.Timestamp} */ (
-    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 6));
+    jspb.Message.getWrapperField(this, google_protobuf_timestamp_pb.Timestamp, 7));
 };
 
 
 /** @param {?proto.google.protobuf.Timestamp|undefined} value */
 proto.fontbakery.dashboard.FamilyData.prototype.setDate = function(value) {
-  jspb.Message.setWrapperField(this, 6, value);
+  jspb.Message.setWrapperField(this, 7, value);
 };
 
 
@@ -2258,22 +2285,22 @@ proto.fontbakery.dashboard.FamilyData.prototype.clearDate = function() {
  * @return {boolean}
  */
 proto.fontbakery.dashboard.FamilyData.prototype.hasDate = function() {
-  return jspb.Message.getField(this, 6) != null;
+  return jspb.Message.getField(this, 7) != null;
 };
 
 
 /**
- * optional string metadata = 7;
+ * optional string metadata = 8;
  * @return {string}
  */
 proto.fontbakery.dashboard.FamilyData.prototype.getMetadata = function() {
-  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 8, ""));
 };
 
 
 /** @param {string} value */
 proto.fontbakery.dashboard.FamilyData.prototype.setMetadata = function(value) {
-  jspb.Message.setProto3StringField(this, 7, value);
+  jspb.Message.setProto3StringField(this, 8, value);
 };
 
 
