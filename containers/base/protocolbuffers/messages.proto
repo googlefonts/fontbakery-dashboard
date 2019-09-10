@@ -144,12 +144,22 @@ message FamilyData {
     Result status = 1;
     // if status is FAIL
     string error = 2;
+    // What this error codes means depends on the context currently
+    // generally I suggest 0, the default means OK, which is
+    // the same as in grpc status codes. This was introduced to
+    // propagate the same status codes as grpc i.e. NOT_FOUND = 5
+    // https://github.com/grpc/grpc/blob/master/doc/statuscodes.md
+    // in ManifesServer.getDelayed but it seems too specific for this
+    // rather generic message. Probably its a bad place for it and this
+    // choice should be changed at some point or we should just use our
+    // own enum definition.
+    int32 error_code = 3;
     // if status is OK
-    string collectionid = 3; // the name that identifies the collection
-    string family_name = 4; // the name that identifies the family
-    Files files = 5;
-    google.protobuf.Timestamp date = 6; // when the data was created
-    string metadata = 7;//json?
+    string collectionid = 4; // the name that identifies the collection
+    string family_name = 5; // the name that identifies the family
+    Files files = 6;
+    google.protobuf.Timestamp date = 7; // when the data was created
+    string metadata = 8;//json?
 }
 
 // The Reports service
