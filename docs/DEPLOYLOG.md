@@ -586,3 +586,17 @@ $ gcloud docker -- push gcr.io/fontbakery-168509/base-javascript:3
 $ docker push gcr.io/fontbakery-168509/base-javascript:3
 # that's all
 ```
+
+
+## just update all deployments of our own services:
+
+````
+# note the deployment: fontbakery-storage-persistence
+# has trouble updating this way, I think the single disk dependency is blocking
+# this. The brutal way is to delete the deployment first, yeah that's some
+# downtime then ...
+$ ~/fontbakery-dashboard> kubectl delete deployment fontbakery-storage-persistence
+# this excludes rabbitmq and rethinkdb
+$ ~/fontbakery-dashboard> find ./kubernetes -type f -name 'gcloud-fontbakery-*' -exec kubectl apply -f {} ';'
+
+```
