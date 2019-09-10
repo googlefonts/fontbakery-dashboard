@@ -89,14 +89,32 @@ function DispatcherProcessManager(setup, ...args) {
                     .then(familyNamesList=>familyNamesList.getFamilyNamesList());
             }
         }
-      , getUpstreamFamilyFiles: {
-            value: (familyName, processCommand)=>{
-                // rpc Get (FamilyRequest) returns (FamilyData){}
-                // returns a promise for FamilyData
-                var familyRequestMessage = _makeFamilyRequest('upstream', familyName, processCommand);
-                return this._manifestUpstreamClient.getDelayed(familyRequestMessage)
+      , getFamilyDataDelayed: {
+            value: (sourceID, familyName, processCommand)=>{
+               var sourceClient, familyRequestMessage;
+               switch(sourceID){
+                    case ('upstream'):
+                        sourceClient = this._manifestUpstreamClient;
+                        break;
+                    case ('production'):
+                        sourceClient = this._manifestGoogleFontsAPIClient;
+                        break;
+                    case ('master'):
+                        // falls through
+                        this._log.warning('TODO this._manifestGitHubClient '
+                                        + 'is not implemented');
+                        //sourceClient = this._manifestGitHubClient;
+                        //break;
+                    default:
+                        // this is a programming error
+                        throw new Error(`Family source "${sourceID}" is not known.`);
+                }
+                familyRequestMessage = _makeFamilyRequest(
+                                    sourceID, familyName, processCommand);
+                return sourceClient.getDelayed(familyRequestMessage)
                     .then(null, error=>{
-                        this._log.error(`Error getUpstreamFamilyFiles(${familyName})`, error);
+                        this._log.error('Error getFamilyDataDelayed('
+                                   + `${sourceID}, ${familyName})`, error);
                         // re-raise
                         throw error;
                     });
@@ -113,14 +131,6 @@ function DispatcherProcessManager(setup, ...args) {
                         // re-raise
                         throw error;
                     });
-            }
-        }
-      , getGoogleFontsAPIFamilyFiles: {
-            value: familyName=>{
-                // rpc Get (FamilyRequest) returns (FamilyData){}
-                // returns a promise for FamilyData
-                var familyRequestMessage = _makeFamilyRequest('production', familyName);
-                return this._manifestGoogleFontsAPIClient.get(familyRequestMessage);
             }
         }
       , persistence: {

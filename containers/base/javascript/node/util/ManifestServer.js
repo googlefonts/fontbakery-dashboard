@@ -372,6 +372,11 @@ _p.getDelayed = function(call, callback) {
               ;
             familyData.setStatus(FamilyData.Result.FAIL);
             familyData.setError('' + err);
+            // grpc status OK is 0 and that makes sense for a default.
+            // But since we know that there's an error and this is
+            // expected to report similar to the `get` interface,
+            // with grpc codes, UNKOWN (6) seem appropriate.
+            familyData.setErrorCode(err.code || grpc.StatusCode.UNKNOWN);
             familyData.setCollectionid(collectionId);
             familyData.setFamilyName(familyName);
             return familyData;
