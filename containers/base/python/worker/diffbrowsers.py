@@ -6,7 +6,7 @@ import os
 from .worker_base import WorkerError
 from .diff_tools_shared import (
                                  DiffWorkerBase
-                               , on_each_matching_font
+                               , on_each_matching_or_new_font
                                )
 
 from collections import namedtuple
@@ -17,16 +17,48 @@ import json
 from diffbrowsers.diffbrowsers import DiffBrowsers
 from diffbrowsers.browsers import test_browsers
 
+from diffenator.font import DFont
+
+
+def _repeated_mkdir(directory_path):
+  try:
+    os.mkdir(directory_path)
+  except FileExistsError:
+    pass
 
 #################
-# START taken from gftools-qa
+# START taken from gftools-qa (and now modified!)
 # https://github.com/googlefonts/gftools/blob/master/bin/gftools-qa.py
 #################
 
-@on_each_matching_font
-def run_diffbrowsers(logger, font_before, font_after, out, auth, gfr_url):
-    logger.debug('run_diffbrowsers with fonts before: %s after: %s'
-                                              , font_before, font_after)
+def run_plot_glyphs(font_path, out):
+    font_filename = os.path.basename(font_path)[:-4]
+    dfont = DFont(font_path)
+    if dfont.is_variable:
+        for coords in dfont.instances_coordinates:
+            dfont.set_variations(coords)
+            img_out = os.path.join(out, "%s_%s.png" % (
+                font_filename, _instance_coords_to_filename(coords)
+                ))
+            dfont.glyphs.to_png(img_out, limit=100000)
+    else:
+        img_out = os.path.join(out, font_filename + ".png")
+        dfont.glyphs.to_png(dst=img_out)
+
+def run_browser_previews(font_path, out, auth, gfr_url):
+    browsers_to_test = test_browsers["vf_browsers"]
+    font_name = os.path.basename(font_path)[:-4]
+    diff_browsers = DiffBrowsers(
+            auth=auth,
+            gfr_instance_url=gfr_url,
+            dst_dir=os.path.join(out, font_name),
+            browsers=browsers_to_test,
+            gfr_is_local=False)
+    diff_browsers.new_session([font_path], [font_path])
+    diff_browsers.diff_view("waterfall")
+    diff_browsers.diff_view("glyphs_all", pt=15)
+
+def run_browser_diffs(font_before, font_after, out, auth, gfr_url):
     browsers_to_test = test_browsers["vf_browsers"]
     diff_browsers = DiffBrowsers(
         auth=auth,
@@ -46,6 +78,34 @@ def run_diffbrowsers(logger, font_before, font_after, out, auth, gfr_url):
     if has_vfs:
         for i in range(15, 17):
             diff_browsers.diff_view("glyphs_all", pt=i)
+
+@on_each_matching_or_new_font
+def run_renderers(logger, font_before, font_after, out, auth, gfr_url):
+    # CAUTION: font_before MAY be None if font_after is new and not an
+    # update. Happens e.g. if a family is updated with new styles!
+    if font_before is not None:
+        # this is a "matching" font, an update (font_after) of an existing
+        # font (font_before)
+        logger.debug('run_browser_diffs with fonts before: %s after: %s'
+                                                  , font_before, font_after)
+        browser_diffs_out = os.path.join(out, "Browser_Diffs")
+        _repeated_mkdir(out)
+        _repeated_mkdir(browser_diffs_out)
+        run_browser_diffs(font_before, font_after, browser_diffs_out, auth, gfr_url)
+
+    else:
+        # this is a new font, hence there's no font_before
+        # but we can render previews for the font
+        logger.debug('run_plot_glyphs with fonts: %s', font_after)
+        plot_glyphs_out = os.path.join(out, "Plot_Glyphs")
+        _repeated_mkdir(out)
+        _repeated_mkdir(plot_glyphs_out)
+        run_plot_glyphs(font_after, plot_glyphs_out)
+
+        logger.debug('run_browser_previews with fonts: %s', font_after)
+        browser_previews_out = os.path.join(out, "Browser_Previews")
+        _repeated_mkdir(browser_previews_out)
+        run_browser_previews(font_after, browser_previews_out, auth, gfr_url)
 
 #################
 # /END taken from gftools-qa
@@ -90,8 +150,8 @@ class DiffbrowsersWorker(DiffWorkerBase):
     gfr_url = SETUP.gfr_url
     bstack_credentials = SETUP.bstack_credentials
 
-    self._log.info('entering run_diffbrowsers …')
+    self._log.info('entering run_renderers …')
     # FIXME: should we collect stdout/stderr here???
-    run_diffbrowsers(self._log, fonts['before'], fonts['after']
+    run_renderers(self._log, fonts['before'], fonts['after']
                             , self._out_dir, bstack_credentials, gfr_url)
     self._log.info('DONE! docid: %s', self._job.docid)
