@@ -1053,11 +1053,12 @@ if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
       , familyWhitelist = setup.develFamilyWhitelist
       , repoPath = './git-repositories'
-      // TODO: should be configured via setup
-      // This is the production data
-      //, sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ampzD9veEdrwUMkOAJkMNkftqtv1jEygiPR0wZ6eNl8/pub?gid=0&single=true&output=csv'
-      // this is the development version
-      , sheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ODnp-yRYw1LrI3RTX-VZZsigPPieviE954sOsrlcx5o/pub?gid=0&single=true&output=csv'
+      // TODO: could be configured via setup, however, not doing this
+      // now, because the current situation doesn't require this.
+      // This is the production data:
+      , upstreamSheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ampzD9veEdrwUMkOAJkMNkftqtv1jEygiPR0wZ6eNl8/pub?gid=0&single=true&output=csv'
+      // This is the sandbox version:
+      , sanboxSheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ODnp-yRYw1LrI3RTX-VZZsigPPieviE954sOsrlcx5o/pub?gid=0&single=true&output=csv'
       // NOTE: temporary local copy for development can be specified like.
       //, sheetCSVUrl = 'file://upstream-sources.csv'
       , grpcPort=50051
@@ -1081,8 +1082,16 @@ if (typeof require != 'undefined' && require.main==module) {
     // setup.reports = null;
     // setup.cache = null;
 
+    // TODO: rename to production-upstream, but there are many places to
+    // do so!
     sources.push(new CSVSpreadsheet(setup.logging, 'upstream', repoPath
-                            , sheetCSVUrl, familyWhitelist, setup.reports));
+                            , upstreamSheetCSVUrl, familyWhitelist, setup.reports));
+    // In sandbox mode, we allow feature branches as upstream sources
+    // I had the worry that there may be race conditions between the
+    // two sources, but it seems like this is solved via the queue which
+    // is shared by ManifestServer via the setQueue interface.
+    sources.push(new CSVSpreadsheet(setup.logging, 'sandbox-upstream', repoPath
+                            , sanboxSheetCSVUrl, familyWhitelist, setup.reports));
 
     // NOTE: this was used for development.
     // let _queues = new Map()

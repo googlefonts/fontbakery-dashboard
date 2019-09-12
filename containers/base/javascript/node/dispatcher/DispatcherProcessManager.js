@@ -86,10 +86,10 @@ function DispatcherProcessManager(setup, ...args) {
     Object.defineProperties(this._processResources, {
         // I prefer not to inject the this._manifestUpstreamClient
         // directly, but instead provide simplified interfaces.
-        getUpstreamFamilyList: {
-            value: ()=>{
+        getFamilyList: {
+            value: (sourceID)=>{
                 var sourceIdMessage = new ManifestSourceId();
-                sourceIdMessage.setSourceId('upstream');
+                sourceIdMessage.setSourceId(sourceID);
                 return this._manifestUpstreamClient
                     .list(sourceIdMessage)
                     .then(familyNamesList=>familyNamesList.getFamilyNamesList());
@@ -99,6 +99,8 @@ function DispatcherProcessManager(setup, ...args) {
             value: (sourceID, familyName, processCommand)=>{
                var sourceClient, familyRequestMessage;
                switch(sourceID){
+                    case ('sandbox-upstream'):
+                        // falls through
                     case ('upstream'):
                         sourceClient = this._manifestUpstreamClient;
                         break;
