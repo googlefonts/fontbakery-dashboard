@@ -504,16 +504,35 @@ define([
         return [conditionName, conditionValue, negated];
     }
 
+    /**
+     * If conditions is empty, the target will always be visible.
+     */
+    function _changeVisibilityHandler(conditions, target
+                                            /*, event (not always!)*/) {
+        // jshint validthis:true, unused:vars
+        var visible = true;
+        for(let [uiField, input, value, negated] of conditions) {
+            visible =  this._getValue(uiField, input) === value;
+            if(negated)
+                visible = !visible;
+            if(!visible)
+                // All conditions must be true, it's like a logical AND.
+                break;
+        }
+        target.style.display = visible
+                                ? null // visible
+                                : 'none' // invisible
+                                ;
+    }
+
     _p._createUserInteraction = function(processId, description, isInit) {
         // use if client is not authorized to send the form
         // FIXME: currently only checking if there's a session at all
         var disabled = !this._session || this._session.status !== 'OK'
           , form = dom.createElement('form')
           , uiElements = [], inputs = []
-          , label, input, label_input
           , hasSend = false
-          , i, l, uiField
-          , named = {}, key
+          , named = {}
           ;
 
         // If any uiField has a key 'condition'
@@ -533,106 +552,105 @@ define([
         // the easiest right now is:
         // a field can't dependency on a field that has a condition itself.
         // thus, there's only one level dependencies possible.
-        for (i=0,l=description.ui.length;i<l;i++) {
-            uiField = description.ui[i];
-            key = '' + ('name' in uiField ? uiField.name : i);
+        for (let i=0,l=description.ui.length;i<l;i++) {
+            let uiField = description.ui[i]
+              , key = '' + ('name' in uiField ? uiField.name : i)
+              , label, input
+              ;
             switch(uiField.type) {
                 case('choice'):
-                    label_input = this._uiMakeChoice(uiField, disabled);
+                    [label, input] = this._uiMakeChoice(uiField, disabled);
                     break;
                 case('line'):
-                    label_input = this._uiMakeLine(uiField, disabled);
+                    [label, input] = this._uiMakeLine(uiField, disabled);
                     break;
                 case('text'):
-                    label_input = this._uiMakeText(uiField, disabled);
+                    [label, input] = this._uiMakeText(uiField, disabled);
                     break;
                 case('info'):
-                    label_input = this._uiMakeInfo(uiField, disabled);
+                    [label, input] = this._uiMakeInfo(uiField, disabled);
                     break;
                 case('binary'):
-                    label_input = this._uiMakeBinary(uiField, disabled);
+                    [label, input] = this._uiMakeBinary(uiField, disabled);
                     break;
                 case('send'):
                     hasSend = true;
-                    label_input = this._uiMakeSend(uiField, disabled);
+                    [label, input] = this._uiMakeSend(uiField, disabled);
                     break;
                 default:
                     throw new Error('Not implemnted: this._uiMake{"'+uiField.type+'"}');
             }
-            label = label_input[0];
-            input = label_input[1];
             uiElements.push(label);
             inputs.push(input);
             named[key] = [uiField, label, input];
         }
 
-        function change(uiField, input, value, negated, target/*, event (not always!)*/) {
-            // jshint validthis:true, unused:vars
-
-            var visible =  this._getValue(uiField, input) === value;
-            if(negated)
-                visible = !visible;
-            target.style.display = visible
-                                        // visible
-                                        ? null
-                                        // invisible
-                                        : 'none'
-                                        ;
-        }
-        var conditionName, conditionValue, condition_uiField_Input
-          , conditionUiField, conditionInput
-          , negated
-          ;
-        for(key in named) {
-            uiField = named[key][0];
-            label = named[key][1];
+        for(let key in named) {
+            let uiField = named[key][0]
+              , label = named[key][1]
+              ;
             // input = named[key][2];
             if(!('condition' in uiField))
                 continue;
+            // initially condition was just one condition definition
+            // of the form:
+            // conditionDefinition = [name, maybe negated, value]
+            // but we now allow optionally multiple condition definitions:
+            // [conditionDefinition, conditionDefinition]
+            let conditionDefinitions = !Array.isArray(uiField.condition[0])
+                    ? [uiField.condition]
+                    : uiField.condition
+              , conditions = []
+              // We're using the conditions array here, although it is not
+              // filled yet! The changeFunc function however is complete
+              // when the array contains all conditions. We do this now
+              // so we can use it as a event handler in the loop already.
+              , changeFunc = _changeVisibilityHandler.bind(this, conditions, label)
+              ;
+            for(let conditionDefinition of conditionDefinitions) {
+                let [conditionName, conditionValue, negated
+                    ] = _parseUIFieldCondition(conditionDefinition)
+                  , condition_uiField_Input = named[conditionName]
+                  ;
+                if(!condition_uiField_Input)
+                    // not found
+                    // TODO: we could log a warning here maybe.
+                    continue;
+                let conditionUiField = condition_uiField_Input[0]
+                  , conditionInput = condition_uiField_Input[2]
+                ;
+                if('condition' in conditionUiField)
+                    // prevents deep and circular dependencies
+                    // i.e. a field that is used as condition can't define
+                    // a condition itself. To keep it simple.
+                    // TODO: we should log a warning here or even fail.
+                    // The changeFunc is not as specified and hence invalid.
+                    continue;
+                conditions.push([
+                    conditionUiField
+                  , conditionInput
+                  , conditionValue
+                  , negated
+                ]);
 
-            [conditionName, conditionValue
-                    , negated] = _parseUIFieldCondition(uiField.condition);
-
-            condition_uiField_Input = named[conditionName];
-            if(!condition_uiField_Input)
-                // not found
+                // => add event listener
+                // when value changes
+                // show label if value matches
+                // hide input if value mis-matches
+                // also, run this right now as init
+                conditionInput.addEventListener('change', changeFunc, false);
+            }
+            if(!conditions.length)
+                // no conditions
                 continue;
-            conditionUiField = condition_uiField_Input[0];
-            if('condition' in conditionUiField)
-                // prevents deep and circular dependencies
-                // i.e. a field that is used as condition can't define
-                // a condition itself. To keep it simple.
-                continue;
-
-            conditionInput = condition_uiField_Input[2];
-            // => add event listener
-            // when value changes
-            // show label if value matches
-            // hide input if value mis-matches
-            // also, run this right now as init
-            conditionInput.addEventListener('change'
-                    , change.bind(
-                        this
-                        , conditionUiField
-                        , conditionInput
-                        , conditionValue
-                        , negated
-                        , label)
-                    , false);
             // aaand init
-            change.call(this
-                      , conditionUiField
-                      , conditionInput
-                      , conditionValue
-                      , negated
-                      , label);
+            changeFunc();
         }
 
         if(!hasSend) {
-            label_input = this._uiMakeSend({
+            let [label, ] = this._uiMakeSend({
                     type: 'send'
             });
-            label = label_input[0];
             uiElements.push(label);
         }
 
@@ -789,49 +807,71 @@ define([
     };
 
     _p._collectUiValues = function(description, inputs) {
-        var values = {}
-          , uiField, input, key, value
-          ;
+        var values = {};
+
+        // These don't have a condition, hence they can act as
+        // a condition themselves. This is to avoid recursive conditions
+        // and the need for a proper dependency tree.
+        // ALSO: since they have no conditions themselves, they are
+        // part of the resulting values
         for (let i=0,l=description.ui.length;i<l;i++) {
-            uiField = description.ui[i];
-            input = inputs[i];
+            let uiField = description.ui[i]
+              , input = inputs[i]
+              ;
             if('condition' in uiField)
                 continue;
             // falling back to index as a key
-            key = '' + ('name' in uiField ? uiField.name : i);
-            value = this._getValue(uiField, input);
+            let key = '' + ('name' in uiField ? uiField.name : i)
+              , value = this._getValue(uiField, input)
+              ;
             if(value !== null)
                 values[key] = value;
         }
 
-        var conditionName, conditionValue, negated, skip
-            // these don't have themselves conditions
-          , allowedConditions = new Set(Object.keys(values))
-          ;
+        // these don't have themselves conditions
+        var allowedConditions = new Set(Object.keys(values));
         // second pass, not pretty but works, quick and dirty
+        fieldToValue:
         for (let i=0,l=description.ui.length;i<l;i++) {
-            uiField = description.ui[i];
-            input = inputs[i];
+            let uiField = description.ui[i]
+              , input = inputs[i]
+              ;
             if(!('condition' in uiField))
                 continue;
 
-            [conditionName, conditionValue
-                    , negated] = _parseUIFieldCondition(uiField.condition);
+            let conditionDefinitions = !Array.isArray(uiField.condition[0])
+                    ? [uiField.condition]
+                    : uiField.condition
+                    ;
+            for(let conditionDefinition of conditionDefinitions) {
+                let skip = false
+                  , [conditionName, conditionValue, negated
+                    ] = _parseUIFieldCondition(conditionDefinition)
+                  ;
+                // yeah this is a quick an dirty hack
+                // but good enough to just evaluate a single depth of conditions
+                if(!allowedConditions.has(conditionName))
+                    // condition can't have a condition itself this way ;-)
+                    // TODO: should log a warning or even rather fail.
+                    // the `break` here means we'll send the value.
+                    // It breaks the inner loop but not the
+                    // fieldToValue loop.
+                    break;
+                skip = values[conditionName] !== conditionValue;
+                if(negated)
+                    skip = !skip;
 
-            // yeah this is a quick an dirty hack
-            // but good enough to just evaluate a single depth of conditions
-            if(!allowedConditions.has(conditionName))
-                // condition can't have a condition itself this way ;-)
-                continue;
+                // one unmet condition is enough, like a loogical AND
+                if(skip)
+                    // Don't end thid fieldToValue iteration and hence
+                    // skip adding the field value to the result
+                    continue fieldToValue;
+            }
 
-            skip = values[conditionName] !== conditionValue;
-            if(negated)
-                skip = !skip;
-            if(skip)
-                continue;
             // falling back to index as a key
-            key = '' + ('name' in uiField ? uiField.name : i);
-            value = this._getValue(uiField, input);
+            let key = '' + ('name' in uiField ? uiField.name : i)
+              , value = this._getValue(uiField, input)
+              ;
             if(value !== null)
                 values[key] = value;
         }
