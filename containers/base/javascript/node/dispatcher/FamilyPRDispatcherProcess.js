@@ -26,6 +26,10 @@ const FBD_REPO_NAME_WITH_OWNER = 'googlefonts/fontbakery-dashboard';
 
 const PROCESS_MODE_PRODUCTION = 'production'
     , PROCESS_MODE_SANDBOX = 'sandbox'
+    , PROXESS_MODE_TO_SOURCE_ID = new Map([
+          [PROCESS_MODE_PRODUCTION, 'upstream']
+        , [PROCESS_MODE_SANDBOX, 'sandbox-upstream']
+      ])
     ;
 
 
@@ -293,10 +297,9 @@ _p.uiApproveProcess = function() {
               , options: actionOptions
               //, default: 'accepted' // 0 => the first item is the default
             }
-          , {
-                     type: 'info'
-                   , condition: ['action', '!', 'edit']
-                   , content: `
+          , {   type: 'info'
+              , condition: ['action', '!', 'edit']
+              , content: `
 **Family Name** \`${this.process.familyName || '—'}\`<br />
 **GitHub Repository** \`${this.process.repoNameWithOwner || '—'}\`<br />
 **git branch** \`${this.process.branch || '(default: master)'}\`<br />
@@ -540,7 +543,8 @@ _p.uiSignOffSpreadsheet = function() {
 };
 
 _p._getFilesPackage = function() {
-    return _taskGetFilesPackage.call(this, 'upstream', 'callbackReceiveFiles');
+    var sourceID = PROXESS_MODE_TO_SOURCE_ID.get(this.process.mode);
+    return _taskGetFilesPackage.call(this, sourceID, 'callbackReceiveFiles');
 };
 
 _p.callbackSignOffSpreadsheet = function([requester, sessionID]
@@ -2058,7 +2062,24 @@ function _getInitNewUI() {
 // function _getInitUpdateUI(){}
 
 function uiPreInit(resources) {
-    return resources.getUpstreamFamilyList().then(familyList=>{
+    // In sandbox mode we want to get the list of the sourceID
+    // 'sandbox-upstream'! Which is not super easy because at this point,
+    // we don't know which mode will be chosen.
+    // Easiest: just get and send both lists to the client.
+    // Harder: load the list depending on the selection in the client,
+    // lazily, if not cached.
+    // TODO: Implement maybe, if there's a way to reasonably allow the
+    // client to lazy load this information and if it could be
+    // useful for other cases as well. Seems like a big amount of
+    // work for a small feature though.
+    return Promise.all([
+        resources.getFamilyList(
+            // fancy way to say "upstream"
+            PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_PRODUCTION))
+      , resources.getFamilyList(
+            // fancy way to say "sandbox-upstream"
+            PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_SANDBOX))
+    ]).then(([productionFamilyList, sandboxFamilyList])=>{
 
     // it's probably neeed, that we take a state argument and return
     // different uis for this, so we can create a kind of a dialogue
@@ -2086,11 +2107,25 @@ function uiPreInit(resources) {
                 // a condition element is visible or not. But, what we
                 // can do is always make a condition false when it's dependency
                 // is not available or defined.
-                name: 'family'
-              , condition: ['registered', true] // show only when "registered" has the value `true`
+                name: 'familyProduction'
+                // Show only when "registered" has the value `true`
+                // and production mode is selected.
+              , condition: [['registered', true]
+                          , ['mode', PROCESS_MODE_PRODUCTION]]
               , type: 'choice' // => could be a select or a radio
               , label: 'Pick the family to request an update:'
-              , options: familyList
+              , options: productionFamilyList
+              //, default: 'Family Name' // 0 => the first item is the default
+            }
+
+          , {   name: 'familySandbox'
+                // Show only when "registered" has the value `true`
+                // and sandbox mode is selected.
+              , condition: [['registered', true]
+                          , ['mode', PROCESS_MODE_SANDBOX]]
+              , type: 'choice' // => could be a select or a radio
+              , label: 'Pick the family to request an update:'
+              , options: sandboxFamilyList
               //, default: 'Family Name' // 0 => the first item is the default
             }
           , {   name: 'registered'
@@ -2203,12 +2238,15 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
     };
 
     var checkUpdate =()=>{
-        TODO('callbackPreInit: checkUpdate seems incomplete');
-        return resources.getUpstreamFamilyList().then(familyList=>{
-            if(familyList.indexOf(values.family) === -1)
+        TODO('callbackPreInit: checkUpdate seems incomplete'); // how so?
+        var [sourceId, familyNameKey] = values.mode === PROCESS_MODE_PRODUCTION
+                ? [PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_PRODUCTION), 'familyProduction']
+                : [PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_SANDBOX), 'familySandbox']
+                ;
+        return resources.getFamilyList(sourceId).then(familyList=>{
+            if(familyList.indexOf(values[familyNameKey]) === -1)
                 messages.push('You must pick a family from the list to update.');
-            familyName = values.family;
-
+            familyName = values[familyNameKey];
             // that info is in the CSV already, we need it to put it into
             // the CSV eventually.
             // Also, to check roles! but we don't really need it as a
