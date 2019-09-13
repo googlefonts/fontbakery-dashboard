@@ -1091,7 +1091,7 @@ _p.callbackChooseAction = function([requester, sessionID]
     var notes = values.notes ? '\n\n' + values.notes : '';
     if(!values.finish) {
         var sourceLabel = source2label(values.source);
-        this._setLOG('**@' + requester + '** compares with "' + sourceLabel + '":' + notes);
+        this._setLOG('**@' + requester + '** compares with "' + sourceLabel + notes);
         return _taskGetFilesPackage.call(this, values.source
                                         , 'callbackReceiveFamilyData'
                                         , values.source);
@@ -1282,7 +1282,7 @@ _p.callbackChooseAction = function([requester, sessionID]
     if(!values.finish) {
         var sourceLabel = source2label(values.source);
         this._setLOG('**@' + requester + '** compares with "'
-                           + (sourceLabel || 'None') + '":' + notes);
+                           + (sourceLabel || 'None') + notes);
         if(!values.source) {
             this._setLOG('No family version for comparison was selected: '
                         + '**creating only previews**.');
@@ -1290,7 +1290,8 @@ _p.callbackChooseAction = function([requester, sessionID]
                         , 'diffbrowsers', 'callbackDiffbrowsersFinished');
         }
         else
-            return _taskGetFilesPackage.call(this, values.source, 'callbackReceiveFamilyData'
+            return _taskGetFilesPackage.call(this, values.source
+                                           , 'callbackReceiveFamilyData'
                                            , values.source);
     }
     if(values.accept === true)
@@ -2178,9 +2179,9 @@ function _extractRepoNameWithOwner(repoNameWithOwner) {
     return repoNameWithOwner;
 }
 
+const PROCESS_MODES = new Set([PROCESS_MODE_PRODUCTION, PROCESS_MODE_SANDBOX]);
 function _validateProcessMode(value) {
-    var modes = new Set([PROCESS_MODE_PRODUCTION, PROCESS_MODE_SANDBOX]);
-    if(!modes.has(value))
+    if(!PROCESS_MODES.has(value))
         return [false, `Invalid process mode "${value} must be one of"`
                         + `PROCESS_MODE_PRODUCTION "${PROCESS_MODE_PRODUCTION}"`
                         + `or PROCESS_MODE_SANDBOX "${PROCESS_MODE_SANDBOX}"`
@@ -2392,7 +2393,7 @@ Object.defineProperties(_p, {
             return this._state.initType;
         }
     }
-  , processMode: {
+  , mode: {
        get: function() {
             return this._state.mode;
         }

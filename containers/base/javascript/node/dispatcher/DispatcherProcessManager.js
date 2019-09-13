@@ -110,6 +110,8 @@ function DispatcherProcessManager(setup, ...args) {
                     case ('production'):
                         sourceClient = this._manifestGoogleFontsAPIClient;
                         break;
+                    // NOTE: pulls has `get` NOT IMPLEMENTED! it's just here
+                    // for completeness, but unusable in this context.
                     case ('pulls'):
                         // falls through
                     case ('master'):
