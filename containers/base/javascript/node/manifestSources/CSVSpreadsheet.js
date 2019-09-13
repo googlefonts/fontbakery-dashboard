@@ -214,6 +214,8 @@ var CSVData = (function() {
           , 'genre': 'genre'
           , 'designer': 'designer'
         }
+        // Use the "mapped name" here, i.e. the right side of `expectedColumns`.
+      , optionalColumns = new Set(['branch', 'designer'])
       ;
 
     function makeCSVFamily(names) {
@@ -269,6 +271,15 @@ var CSVData = (function() {
                             + 'From column i:' + i + ', val:"' + name + '".');
             // map to internal name!
             this._names[mappedName] = i;
+        }
+        // quick and dirty hack, these will return undefined if the
+        // column is not present.
+        // The "branch" column at the moment is considered optional
+        // because it's in the sandbox data, but not in the production
+        // data.
+        for(let name of optionalColumns){
+            if(!(name in this._names))
+                this._names[name] = -1;
         }
         for(let name in expectedColumns)
             if(!(expectedColumns[name] in this._names))
