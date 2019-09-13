@@ -451,8 +451,9 @@ define([
             }
                 // only, in order, elements that must be inserted before
                 // everything else.
-          , order = ['id', 'created', 'initType', 'requester', 'genre'
-                        , 'repoNameWithOwner', 'fontfilesPrefix', 'note']
+          , order = ['mode', 'id', 'created', 'initType', 'requester'
+                   , 'genre', 'repoNameWithOwner', 'branch'
+                   ,  'fontfilesPrefix', 'note']
           , target = this._getElementFromTemplate(isInit
                                                 ? 'dispatcher-process-init'
                                                 : 'dispatcher-process')
