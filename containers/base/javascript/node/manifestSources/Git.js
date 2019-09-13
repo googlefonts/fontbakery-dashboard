@@ -10,6 +10,7 @@ const { _Source: Parent } = require('./_Source')
     , { parseMetadata } = require('../util/getMetadataPb')
     , NodeGit = require('nodegit')
     , https = require('https')
+    , { status: grpcStatus } = require('grpc')
     ;
 
 const GITHUB_HTTPS_GIT_URL = 'https://github.com/{remoteName}.git'
@@ -477,9 +478,22 @@ function GitBranch(logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup) {
     GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup);
+    this._familiesMapCache = null;
 }
 
 var _p = GitBranch.prototype = Object.create(GitBase.prototype);
+
+
+_p._treeEntryToMetadata = function(currentCommit, treeEntry) {
+    return {
+        commit: currentCommit.sha()
+      , commitDate: currentCommit.date()
+      , familyTree: treeEntry.sha()
+      , familyPath: treeEntry.path()
+      , repository: this._baseRef.remoteName
+      , branch: this._baseRef.name
+    };
+};
 
 /**
  * don't fetch files in subdirectories, we want a flat dir here
@@ -501,28 +515,113 @@ _p._update = function(currentCommit) {
         // do.
 
         return this._waitForAll(treeEntries.map(treeEntry => {
-            let metadata = {
-                commit: currentCommit.sha()
-              , commitDate: currentCommit.date()
-              , familyTree: treeEntry.sha()
-              , familyPath: treeEntry.path()
-              , repository: this._baseRef.remoteName
-              , branch: this._baseRef.name
-            };
+            let metadata = this._treeEntryToMetadata(currentCommit, treeEntry);
             return treeEntry.getTree()
                             .then(tree=>this._dispatchTree(tree, metadata));
         }));
     });
 };
 
+
+_p._getFamiliesMap = function(currentCommit) {
+    // This must be within the async queue! otherwise, the cache
+    // is a race condition.
+    if(this._familiesMapCache) {
+        let [hash, familiesMap] = this._familiesMapCache;
+        if(hash === currentCommit.sha())
+            // cache is still valid
+            return Promise.resolve(familiesMap);
+        // invalidate and rebuild
+        this._familiesMapCache = null;
+    }
+
+    // not cached
+    // this part is expensive, that's why we cache it
+    let currentCommitTreePromise = currentCommit.getTree()
+        // all families
+      , dirsPromise = currentCommitTreePromise.then(tree => this._getRootTreeFamilies(tree))
+      ;
+
+    return Promise.all([currentCommitTreePromise, dirsPromise])
+    .then(([currentCommitTree, dirs]) => {
+        return Promise.all(dirs.map(dir=>currentCommitTree.getEntry(dir)));
+    })
+    .then(treeEntries => {
+        // some will resolve to null if there's a hit in this._familyWhitelist
+        // though, at this point, error reporting may be the only thing left to
+        // do.
+        return this._waitForAll(treeEntries.map(treeEntry => {
+            return treeEntry.getTree()
+                .then(tree=>Promise.all([tree, this._treeToFilesData(tree)]))
+                .then(([tree, filesData])=>Promise.all([
+                    this._familyNameFromFilesData(tree.path(), filesData)
+                  , treeEntry.path()
+                ])); // -> [familyName, path]
+        }))
+        .then(entries=>{
+            var familiesMap = new Map(entries);
+            this._familiesMapCache = [currentCommit.sha(), familiesMap];
+            return familiesMap;
+        });
+    });
+};
+
+_p.list = function() {
+    return this._getCurrentCommit()
+        .then(currentCommit=>this._getFamiliesMap(currentCommit))
+        .then(familiesMap=>Array.from(familiesMap.keys()));
+};
+
+_p._getCurrentCommit = function(){
+    return this.fetchBaseRef()
+        .then(reference => this._getCommit(reference.owner(), reference.target()));
+};
+
 // Runs immediately on init. Then it's called via the poke interface.
 // There's no scheduling in the ManifestSource itself.
 _p.update = function() {
     // update the baseRef => can take really long the first time
-    return this.fetchBaseRef()
-        .then(reference => this._getCommit(reference.owner(), reference.target()))
-        .then(currentCommit => this._update(currentCommit))
-        ;
+    return this._getCurrentCommit()
+        .then(currentCommit => this._update(currentCommit));
+};
+
+
+function getTreeEntryByPath(tree, path) {
+    var [dirName, ...pathparts] = typeof path === 'string'
+                        ? path.split('/')
+                        : path
+
+        // raises if not found!
+      , treeEntry = tree.entryByName(dirName)
+      ;
+    if(!pathparts.length)
+        return Promise.resolve(treeEntry);
+    return treeEntry.getTree()
+        .then(tree=>getTreeEntryByPath(tree, pathparts));
+}
+
+_p.get = function(familyName) {
+    // familyName is with spaces i.e. "Aguafina Script"
+    return this._getCurrentCommit()
+    .then(currentCommit=>Promise.all([currentCommit, this._getFamiliesMap(currentCommit)]))
+    .then(([currentCommit, familiesMap])=>{
+        if(!familiesMap.has(familyName)) {
+            var error = new Error('No family found for "' + familyName + '".');
+            error.code = grpcStatus.NOT_FOUND;
+            error.name = 'NOT_FOUND';
+            throw error;
+        }
+        var path = familiesMap.get(familyName);
+
+        return currentCommit.getTree()
+        .then(tree=>getTreeEntryByPath(tree, path))
+        .then(treeEntry=>Promise.all([
+            familyName
+          , treeEntry.getTree().then(tree=>this._treeToFilesData(tree))
+          , this._treeEntryToMetadata(currentCommit, treeEntry)
+        ]));
+    });
+    // -> [familyName, filesData, metadata]
 };
 
 return GitBranch;
