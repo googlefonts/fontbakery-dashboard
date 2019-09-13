@@ -26,7 +26,7 @@ const FBD_REPO_NAME_WITH_OWNER = 'googlefonts/fontbakery-dashboard';
 
 const PROCESS_MODE_PRODUCTION = 'production'
     , PROCESS_MODE_SANDBOX = 'sandbox'
-    , PROXESS_MODE_TO_SOURCE_ID = new Map([
+    , PROCESS_MODE_TO_SOURCE_ID = new Map([
           [PROCESS_MODE_PRODUCTION, 'upstream']
         , [PROCESS_MODE_SANDBOX, 'sandbox-upstream']
       ])
@@ -186,7 +186,8 @@ const ApproveProcessTask = taskFactory('ApproveProcessTask', anySetup);
 const _p = ApproveProcessTask.prototype;
 
 _p._getSourceDetails = function() {
-    return this.resources.getUpstreamFamilySourceDetails(this.process.familyName)
+    var sourceID = PROCESS_MODE_TO_SOURCE_ID.get(this.process.mode);
+    return this.resources.getFamilySourceDetails(sourceID, this.process.familyName)
     .then(sourceDetails=>{
         var payload;
         if(sourceDetails.hasJsonPayload())
@@ -326,6 +327,7 @@ _p.uiApproveProcess = function() {
                 if(item.name === 'familyName') {
                     // can't change the name if this is a update request
                     if(this.process.initType === 'update')
+                        // TODO: would be nice to show this as an `info` type then
                         return null;
                     item.default = this.process.familyName;
                 }
@@ -410,7 +412,9 @@ _p.callbackApproveProcess = function([requester, sessionID]
 
 _p._editInitialState = function(requester, values) {
     // jshint unused:vars
+    // mode must stay the same!
     values.mode = this.process.mode;
+    // will always use checkNew path
     values.registered = false;
     values.note = this.process._state.note;
     // isOFL stays true at this point, otherwise dismiss in uiApproveProcess
@@ -418,7 +422,7 @@ _p._editInitialState = function(requester, values) {
     var isChangedUpdate = this.process.initType === 'update';
     if(isChangedUpdate)
         values.familyName = this.process._state.familyName;
-    return callbackPreInit(this.resources, requester, values, isChangedUpdate)
+    return callbackPreInit(this.resources, requester, values)
     .then(([message, initArgs])=>{
         if(message) {
             // Should just stay in the expectApproveProcess realm until it's good.
@@ -543,7 +547,7 @@ _p.uiSignOffSpreadsheet = function() {
 };
 
 _p._getFilesPackage = function() {
-    var sourceID = PROXESS_MODE_TO_SOURCE_ID.get(this.process.mode);
+    var sourceID = PROCESS_MODE_TO_SOURCE_ID.get(this.process.mode);
     return _taskGetFilesPackage.call(this, sourceID, 'callbackReceiveFiles');
 };
 
@@ -2076,10 +2080,10 @@ function uiPreInit(resources) {
     return Promise.all([
         resources.getFamilyList(
             // fancy way to say "upstream"
-            PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_PRODUCTION))
+            PROCESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_PRODUCTION))
       , resources.getFamilyList(
             // fancy way to say "sandbox-upstream"
-            PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_SANDBOX))
+            PROCESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_SANDBOX))
     ]).then(([productionFamilyList, sandboxFamilyList])=>{
 
     // it's probably neeed, that we take a state argument and return
@@ -2189,7 +2193,7 @@ function _validateProcessMode(value) {
     return [true, null];
 }
 
-function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
+function callbackPreInit(resources, requester, values) {
 
     var mode, initType, familyName, repoNameWithOwner, branch
       , genre, fontfilesPrefix, note
@@ -2201,12 +2205,15 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
     genre = fontfilesPrefix = '';
     note = values.note || '';
 
-    var checkNew=()=>{
-        // just some sanitation, remove multiple subsequent spaces
+    var checkAlways=()=>{
         mode = values.mode;
-        var result, message = _validateProcessMode(mode);
+        var [result, message] = _validateProcessMode(mode);
         if(!result)
             messages.push(message);
+    };
+
+    var checkNew=()=>{
+        // just some sanitation, remove multiple subsequent spaces
         familyName = values.familyName.trim().split(' ').filter(chunk=>!!chunk).join(' ');
         var regexFamilyName = /^[a-z0-9 ]+$/i;
         // this check is also rather weak, but, eventually we'll use font bakery!
@@ -2240,9 +2247,9 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
 
     var checkUpdate =()=>{
         TODO('callbackPreInit: checkUpdate seems incomplete'); // how so?
-        var [sourceId, familyNameKey] = values.mode === PROCESS_MODE_PRODUCTION
-                ? [PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_PRODUCTION), 'familyProduction']
-                : [PROXESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_SANDBOX), 'familySandbox']
+        let [sourceId, familyNameKey] = values.mode === PROCESS_MODE_PRODUCTION
+                ? [PROCESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_PRODUCTION), 'familyProduction']
+                : [PROCESS_MODE_TO_SOURCE_ID.get(PROCESS_MODE_SANDBOX), 'familySandbox']
                 ;
         return resources.getFamilyList(sourceId).then(familyList=>{
             if(familyList.indexOf(values[familyNameKey]) === -1)
@@ -2259,6 +2266,12 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
         });
     };
 
+    // FIXME: things like `registered` and `mode` should not be changeable
+    // when updating the process. I believe, esp. for `mode` it would be
+    // important! At the moment this is done rather implicitly, in
+    // ApproveProcessTask._editInitialState, I don't like that so much.
+    checkAlways();
+
     if(values.registered === false) {
         initType = 'register';
         // either, we could change the init type transparently OR we could
@@ -2267,10 +2280,9 @@ function callbackPreInit(resources, requester, values, isChangedUpdate=false) {
         checkNew();
         promise = Promise.resolve();
     }
+
     else if(values.registered === true) {
         initType = 'update';
-        if(isChangedUpdate)
-            checkNew();
         promise = checkUpdate();
     }
     else {
