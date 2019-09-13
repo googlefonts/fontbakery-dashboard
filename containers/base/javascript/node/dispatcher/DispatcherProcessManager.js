@@ -132,14 +132,14 @@ function DispatcherProcessManager(setup, ...args) {
                     });
             }
         }
-      , getUpstreamFamilySourceDetails: {
-            value: familyName=>{
+      , getFamilySourceDetails: {
+            value: (sourceID, familyName)=>{
                 // rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){}
                 // returns a promise for SourceDetails
-                var familyRequestMessage = _makeFamilyRequest('upstream', familyName);
+                var familyRequestMessage = _makeFamilyRequest(sourceID, familyName);
                 return this._manifestUpstreamClient.getSourceDetails(familyRequestMessage)
                     .then(null, error=>{
-                        this._log.error(`Error getUpstreamFamilySourceDetails(${familyName})`, error);
+                        this._log.error(`Error getFamilySourceDetails(${sourceID}, ${familyName})`, error);
                         // re-raise
                         throw error;
                     });
