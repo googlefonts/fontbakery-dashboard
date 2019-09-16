@@ -412,6 +412,7 @@ define([
 
     _p._renderProcess = function(processElem, processId, processState, uiDescriptions, isInit) {
         // "familyName": "ABeeZee",
+        // "familyKey": "ABeeZee:feature branch identifier",
         // "requester": "graphicore",
         // "initType": "update",
         // "genre": "",
@@ -440,6 +441,7 @@ define([
               , 'finallyStep': this._statusMakeStep.bind(this, _uiDescriptionsMap, isInit, processId)
                 // specific/data elements
               , 'familyName': this._statusMakeTextNode
+              , 'familyKey': this._statusMakeTextNode
             //, 'requester':
               , 'note': this._statusMakeMarkdown
             //, 'initType':
@@ -451,7 +453,8 @@ define([
             }
                 // only, in order, elements that must be inserted before
                 // everything else.
-          , order = ['mode', 'id', 'created', 'initType', 'requester'
+          , order = ['mode', 'id', 'familyKey', 'created', 'initType'
+                   , 'requester'
                    , 'genre', 'repoNameWithOwner', 'branch'
                    ,  'fontfilesPrefix', 'note']
           , target = this._getElementFromTemplate(isInit

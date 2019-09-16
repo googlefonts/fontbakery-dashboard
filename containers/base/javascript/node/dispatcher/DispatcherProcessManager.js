@@ -20,10 +20,10 @@ const { ProcessManager:Parent } = require('./framework/ProcessManager')
     } = require('protocolbuffers/messages_pb')
   ;
 
-function _makeFamilyRequest(sourceId, familyName, processCommand=null) {
+function _makeFamilyRequest(sourceId, familyKey, processCommand=null) {
     var familyRequestMessage = new FamilyRequest();
     familyRequestMessage.setSourceId(sourceId);
-    familyRequestMessage.setFamilyName(familyName);
+    familyRequestMessage.setFamilyName(familyKey);
     if(processCommand)
         familyRequestMessage.setProcessCommand(processCommand);
     return familyRequestMessage;
@@ -92,11 +92,11 @@ function DispatcherProcessManager(setup, ...args) {
                 sourceIdMessage.setSourceId(sourceID);
                 return this._manifestUpstreamClient
                     .list(sourceIdMessage)
-                    .then(familyNamesList=>familyNamesList.getFamilyNamesList());
+                    .then(familyKeysList=>familyKeysList.getFamilyNamesList());
             }
         }
       , getFamilyDataDelayed: {
-            value: (sourceID, familyName, processCommand)=>{
+            value: (sourceID, familyKey, processCommand)=>{
                var sourceClient, familyRequestMessage;
                switch(sourceID){
                     case ('sandbox-upstream'):
@@ -122,24 +122,24 @@ function DispatcherProcessManager(setup, ...args) {
                         throw new Error(`Family source "${sourceID}" is not known.`);
                 }
                 familyRequestMessage = _makeFamilyRequest(
-                                    sourceID, familyName, processCommand);
+                                    sourceID, familyKey, processCommand);
                 return sourceClient.getDelayed(familyRequestMessage)
                     .then(null, error=>{
                         this._log.error('Error getFamilyDataDelayed('
-                                   + `${sourceID}, ${familyName})`, error);
+                                   + `${sourceID}, ${familyKey})`, error);
                         // re-raise
                         throw error;
                     });
             }
         }
       , getFamilySourceDetails: {
-            value: (sourceID, familyName)=>{
+            value: (sourceID, familyKey)=>{
                 // rpc GetSourceDetails (FamilyRequest) returns (SourceDetails){}
                 // returns a promise for SourceDetails
-                var familyRequestMessage = _makeFamilyRequest(sourceID, familyName);
+                var familyRequestMessage = _makeFamilyRequest(sourceID, familyKey);
                 return this._manifestUpstreamClient.getSourceDetails(familyRequestMessage)
                     .then(null, error=>{
-                        this._log.error(`Error getFamilySourceDetails(${sourceID}, ${familyName})`, error);
+                        this._log.error(`Error getFamilySourceDetails(${sourceID}, ${familyKey})`, error);
                         // re-raise
                         throw error;
                     });
@@ -179,13 +179,13 @@ _p._examineProcessInitMessage = function(initMessage) {
                         + 'DispatcherInitProcess, which it isn\'t.');
     var payload = JSON.parse(initMessage.getJsonPayload())
       , requester = initMessage.getRequester()
-        // initArgs = {familyName, requester, repoNameWithOwner /*, ... ? */}
+        // initArgs = {familyKey, requester, repoNameWithOwner /*, ... ? */}
       ;
 
     return this.ProcessConstructor.callbackPreInit(this._processResources, requester, payload)
     .then(([errorMessage, initArgs])=>{
         // TODO;
-        // Does the familyName exist?
+        // Does the familyKey exist?
         // Is the requester authorized to do this?
         // Is it OK to init the process now or are there any rules why not?
         // => [ errorMessage, initArgs]
