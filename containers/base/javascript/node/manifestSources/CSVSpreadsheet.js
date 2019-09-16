@@ -115,9 +115,24 @@ var CSVFamily = (function() {
         upstream: notImplementedGetter('upstream')
       , branch: notImplementedGetter('branch')
       , name: notImplementedGetter('name')
+      , keySuffix: notImplementedGetter('keySuffix')
       , nameConfirmed: notImplementedGetter('nameConfirmed')
       , fontfilesPrefix: notImplementedGetter('fontfilesPrefix')
       , status: notImplementedGetter('status')
+      , key: {
+            get: function() {
+                // This is meant to help with a classical feature branch
+                // workflow in sandbox mode. the production source
+                // SHOULD NOT define a keySuffix, but that's just
+                // convention at this point!
+                // This way, we can have multiple sources in sandbox
+                // pointing to the same family (a composite key).
+                if(this.keySuffix)
+                    return `${this.name}:${this.keySuffix}`;
+                return this.name;
+            }
+          , enumerable: true
+        }
       , upstreamType: {
             get: function() {
                 if(this.upstream.indexOf('://github.com') !== -1)
@@ -207,6 +222,7 @@ var CSVData = (function() {
       , expectedColumns = {
             'Status': 'status' // We are only interested in "OK" and "NOTE"
           , 'family': 'name' // A family name "with spaces"
+          , 'feature branch key': 'keySuffix'
           , 'family name is confirmed as good?': 'nameConfirmed' // "Passed" is true everything else is false
           , 'upstream': 'upstream' // starts with 'http://' or 'https://' (or 'git://'?)
           , 'branch': 'branch' // used only via referenceName
@@ -215,7 +231,7 @@ var CSVData = (function() {
           , 'designer': 'designer'
         }
         // Use the "mapped name" here, i.e. the right side of `expectedColumns`.
-      , optionalColumns = new Set(['branch', 'designer'])
+      , optionalColumns = new Set(['keySuffix', 'branch', 'designer'])
       ;
 
     function makeCSVFamily(names) {
@@ -303,13 +319,14 @@ var CSVData = (function() {
         return row[this._names[name]];
     };
 
-    _p.addFamily = function(familyRow) {
+    _p.addFamily = function(familyRow, lineNo) {
         // these column headers (first row contents) are expected
         // assert 'Status' in names ...
         // each row must define these indexes
         // extra points if we add simple validators to each entry
             // below is some check for this.
         var rawStatus = this._getEntry(familyRow, 'status')
+          , rowNumber = `row # ${lineNo}`
           , familyName = this._getEntry(familyRow, 'name')
           , familyItem
           ;
@@ -318,28 +335,29 @@ var CSVData = (function() {
         if(!acceptedStatuses.has(status)) {
             if(!knownSkippedStatuses.has(status))
                 this._pushReport(familyName, 'warning',
-                                'unrecognized status (skipped): ' + rawStatus);
+                                `${rowNumber} unrecognized status (skipped): ${rawStatus}`);
             else
                 this._pushReport(familyName, 'skipped',
-                                'ignored status: ' + rawStatus);
+                                `${rowNumber} ignored status: ${rawStatus}`);
             return; // skip
         }
         if(status !== rawStatus) {
             // e.g. 'Note' instead of 'NOTE'
             // should be fixed in the CSV
-            this._pushReport(familyName, 'warning', ['Bad status style: '
-                                , rawStatus, familyName, 'should be:'
-                                , status].join(' '));
+            this._pushReport(familyName, 'warning',
+                                `${rowNumber} bad status style: ${rawStatus} `
+                              + ` should be: ${status}`);
         }
         // Todo: sanity check all row data in the CTOR.
         familyItem = new this.CSVFamily(familyRow);
-        if(this._data.has(familyItem.name)) {
-            this._data.get(familyItem.name).addDuplicate(familyItem);
-            this._pushReport(familyName, 'warning', 'Skipped duplicate '
-                             + 'family row: ' + familyItem.name);
+        if(this._data.has(familyItem.key)) {
+            this._data.get(familyItem.key).addDuplicate(familyItem);
+            this._pushReport(familyName, 'warning',
+                               `${rowNumber} skipped duplicate `
+                             + `family: ${familyItem.key}`);
         }
         else
-            this._data.set(familyItem.name, familyItem);
+            this._data.set(familyItem.key, familyItem);
     };
 
     _p.values = function() {
@@ -374,16 +392,18 @@ function downloadCSVData(fileUrl) {
               , auto_parse: true
             })
           , result = null
+          , lineNo = 0
           ;
         // res.pipe(process.stdout);// => for debugging
         res.pipe(csvReader) // ->  <stream.Writable>
             .on('data', function (row) {
+                lineNo += 1;
                 if(!result) {
                     // FIRST row arrived "namesRow"
                     result = new CSVData(row);
                     return;
                 }
-                result.addFamily(row);
+                result.addFamily(row, lineNo);
             })
             .on('end', function (...args) {
                 //jshint unused:vars
@@ -947,6 +967,16 @@ _p._update = function(csvData) {
             this._reportFamily(familyName,'skipped', 'Not whitelisted.');
             continue;
         }
+        if(familyData.keySuffix){
+            // in a feature branch workflow, familyData.keySuffix can be
+            // set, but these items appear as duplicates of the upstream
+            // version, we skip "feature branch" items to avoid these
+            // collisions. This means practically, at this point, that
+            // feature entries don't show in the big status table.
+            this._reportFamily(familyName, 'skipped', `feature branch entry ${familyData.keySuffix}`);
+            continue;
+        }
+
         // FIXME: Take care of cleaning up!
         //        repoType could have changed between updates, is that a
         //        problem we need to take care of?
@@ -1020,9 +1050,10 @@ _p.list = function() {
     // to decide whether to get a brand new list or maybe one that is
     // maybe a bit outdated. However, the use case here is currently
     // to show the list in a web facing user interface, where using
-    // the cached version is suitable.
-    var force = false;
-    return this._downloadCSVData(force).then(csvData=>csvData.list());
+    // the cached version is not suitable because users will have to
+    // reload often and wait until their changes in the CSV get updated
+    // and don't even know why the changes don't propagate.
+    return this._downloadCSVData(true).then(csvData=>csvData.list());
 };
 
 
@@ -1031,12 +1062,12 @@ _p.list = function() {
  * The data is the same as the update function dispatches, in this case
  * intended for the release pipeline.
  */
-_p.get = function(familyName) {
+_p.get = function(familyKey) {
     // update the csv
     return this._downloadCSVData(true)// -> instance of CSVData
         // get the row of the requested family
         // raises if familyName is not found
-        .then(csvData=>csvData.get(familyName)) // -> instance of CSVFamily; raises if familyName doesn't exist
+        .then(csvData=>csvData.get(familyKey)) // -> instance of CSVFamily; raises if familyKey doesn't exist
         // get the files
         .then(familyData=>{
             if(familyData.repoType !== 'git')

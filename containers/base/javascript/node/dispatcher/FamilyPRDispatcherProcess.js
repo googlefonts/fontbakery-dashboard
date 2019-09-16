@@ -146,7 +146,7 @@ function _renderSourceDetails(sourceDetails, indentationDepth) {
  *              , familyDataMessage // a FamilyData message
  *              , ...continuationArgs)
  */
-function _taskGetFilesPackage(source, callbackName, ...continuationArgs) {
+function _taskGetFilesPackage(source, familyKey, callbackName, ...continuationArgs) {
     // jshint validthis:true
     // This used to timeout when the google/fonts repo was not fetched
     // in the upstream mainifestSource, e.g. because of a restart of
@@ -172,7 +172,7 @@ function _taskGetFilesPackage(source, callbackName, ...continuationArgs) {
     processCommand.setCallbackName(callbackName_);
     processCommand.setResponseQueueName(this.resources.executeQueueName);
     return this.resources.getFamilyDataDelayed(
-                            source, this.process.familyName, processCommand);
+                                    source, familyKey, processCommand);
 }
 
 
@@ -187,7 +187,7 @@ const _p = ApproveProcessTask.prototype;
 
 _p._getSourceDetails = function() {
     var sourceID = PROCESS_MODE_TO_SOURCE_ID.get(this.process.mode);
-    return this.resources.getFamilySourceDetails(sourceID, this.process.familyName)
+    return this.resources.getFamilySourceDetails(sourceID, this.process.familyKey)
     .then(sourceDetails=>{
         var payload;
         if(sourceDetails.hasJsonPayload())
@@ -271,7 +271,7 @@ _p.uiApproveProcess = function() {
     this.log.debug("this.process.initType === 'register'"
                     , this.process.initType === 'register'
                     , this.process.initType
-                    , this.process._state.initType
+                    , this.process.initType
                     , this.constructor.name);
 
     if(this.process.initType === 'register') {
@@ -302,10 +302,11 @@ _p.uiApproveProcess = function() {
               , condition: ['action', '!', 'edit']
               , content: `
 **Family Name** \`${this.process.familyName || '—'}\`<br />
+**Family Key Suffix** \`${this.process.familyKeySuffix || '—'}\`<br />
 **GitHub Repository** \`${this.process.repoNameWithOwner || '—'}\`<br />
 **git branch** \`${this.process.branch || '(default: master)'}\`<br />
-**Where are the TTF-files in your repo (folder and file-prefix)** \`${this.process._state.fontfilesPrefix || '—'}\`<br />
-**Genre** \`${this.process._state.genre || '—'}\`
+**Where are the TTF-files in your repo (folder and file-prefix)** \`${this.process.fontfilesPrefix || '—'}\`<br />
+**Genre** \`${this.process.genre || '—'}\`
 `
             }
           , {   name: 'reason'
@@ -316,14 +317,16 @@ _p.uiApproveProcess = function() {
             // spread! :-)
             , ..._getInitNewUI().map(item=>{
                 // show only when "action" has the value "register"
-                if(item.name === 'genre' && this.process._state.genre)
-                    item.default = this.process._state.genre;
+                if(item.name === 'genre' && this.process.genre)
+                    item.default = this.process.genre;
                 if(item.name === 'fontfilesPrefix')
-                    item.default = this.process._state.fontfilesPrefix;
+                    item.default = this.process.fontfilesPrefix;
                 if(item.name === 'ghNameWithOwner')
                     item.default = this.process.repoNameWithOwner;
                 if(item.name === 'branch' && this.process.branch)
                     item.default = this.process.branch;
+                if(item.name === 'familyKeySuffix' && this.process.familyKeySuffix)
+                    item.default = this.process.familyKeySuffix;
                 if(item.name === 'familyName') {
                     // can't change the name if this is a update request
                     if(this.process.initType === 'update')
@@ -421,7 +424,9 @@ _p._editInitialState = function(requester, values) {
     values.isOFL = true;
     var isChangedUpdate = this.process.initType === 'update';
     if(isChangedUpdate)
-        values.familyName = this.process._state.familyName;
+        // the family name can't be changed in an "update" workflow
+        values.familyName = this.process.familyName;
+
     return callbackPreInit(this.resources, requester, values)
     .then(([message, initArgs])=>{
         if(message) {
@@ -437,7 +442,9 @@ _p._editInitialState = function(requester, values) {
         }
         //else
         if(!isChangedUpdate)
+            // family name can't be changed by an update
             this.process._state.familyName = initArgs.familyName;
+        this.process._state.familyKeySuffix = initArgs.familyKeySuffix || null;
         this.process._state.repoNameWithOwner = initArgs.repoNameWithOwner;
         this.process._state.branch = initArgs.branch || null;
         this.process._state.genre = initArgs.genre;
@@ -483,11 +490,12 @@ _p._mdCompareSourceDetails = function() {
         lines.push(..._makeTable(
             ['name', 'requested data', 'spreadsheet data', 'is the same']
           , [
-                ['familyName', this.process._state.familyName, sourceDetails.name]
-              , ['repoNameWithOwner' ,this.process._state.repoNameWithOwner, _extractRepoNameWithOwner(sourceDetails.upstream)]
-              , ['branch' ,this.process._state.branch, sourceDetails.branch || null]
-              , ['fontfilesPrefix', this.process._state.fontfilesPrefix, sourceDetails.fontfilesPrefix]
-              , ['genre', this.process._state.genre, sourceDetails.genre]
+                ['familyName', this.process.familyName, sourceDetails.name]
+              , ['familyKeySuffix', this.process.familyKeySuffix, sourceDetails.keySuffix]
+              , ['repoNameWithOwner' ,this.process.repoNameWithOwner, _extractRepoNameWithOwner(sourceDetails.upstream)]
+              , ['branch' ,this.process.branch, sourceDetails.branch || null]
+              , ['fontfilesPrefix', this.process.fontfilesPrefix, sourceDetails.fontfilesPrefix]
+              , ['genre', this.process.genre, sourceDetails.genre]
               //, ['designer', n/a , sourceDetails.designer]
             ]
         ));
@@ -548,7 +556,8 @@ _p.uiSignOffSpreadsheet = function() {
 
 _p._getFilesPackage = function() {
     var sourceID = PROCESS_MODE_TO_SOURCE_ID.get(this.process.mode);
-    return _taskGetFilesPackage.call(this, sourceID, 'callbackReceiveFiles');
+    return _taskGetFilesPackage.call(this, sourceID
+                        , this.process.familyKey, 'callbackReceiveFiles');
 };
 
 _p.callbackSignOffSpreadsheet = function([requester, sessionID]
@@ -635,7 +644,7 @@ _p.callbackReceiveFiles = function([requester, sessionID]
 
         var filteredMetadataKeys = new Set(['familyTree'])
           , familyDataSummaryMarkdown = ['## Files Package for *'
-                                      + this.process.familyName+'*']
+                                      + this.process.familyKey+'*']
           , metadata = JSON.parse(familyDataMessage.getMetadata())
           , filesStorageKey = storageKey.getKey()
             // uiServer provides a get endpoint for this
@@ -1097,6 +1106,7 @@ _p.callbackChooseAction = function([requester, sessionID]
         var sourceLabel = source2label(values.source);
         this._setLOG('**@' + requester + '** compares with "' + sourceLabel + notes);
         return _taskGetFilesPackage.call(this, values.source
+                                        , this.process.familyName
                                         , 'callbackReceiveFamilyData'
                                         , values.source);
     }
@@ -1295,6 +1305,7 @@ _p.callbackChooseAction = function([requester, sessionID]
         }
         else
             return _taskGetFilesPackage.call(this, values.source
+                                           , this.process.familyName
                                            , 'callbackReceiveFamilyData'
                                            , values.source);
     }
@@ -1584,7 +1595,7 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
     // something standard
     pullRequest.setPRMessageTitle('[Font Bakery Dashboard] '
                         + (this.process._state.isUpdate ? 'update' : 'create')
-                        + ' family: ' + this.process.familyName);
+                        + ' family: ' + this.process.familyKey);
     // full of information stored in state!
     // must contain the link to the process page!
     // some QA details, as much as possible probably, but the full
@@ -1676,7 +1687,7 @@ _p._getIssueTargets = function() {
         targets.push([
             'upstream'
           , {
-                    label: 'family "' + this.process.familyName + '" upstream'
+                    label: 'family "' + this.process.familyKey + '" upstream'
                   , repoName: repoName
                   , repoOwner: repoOwner
             }
@@ -1815,10 +1826,10 @@ _p.callbackFailTask = function([requester, sessionID]
     else
         // `isUpdate` is set in callbackReceiveFiles before we can
         // only use `initType` is "register" or "update".
-        verb = this.process._state.initType;
+        verb = this.process.initType;
 
     issue.setTitle('[Font Bakery Dashboard] fail to ' + verb
-                        + ' family: ' + this.process.familyName);
+                        + ' family: ' + this.process.familyKey);
     issue.setBody(report);
     // issue.setMilestone();
     // issue.setLabelsList(labels) || issue.addLabels(label);
@@ -1876,13 +1887,15 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
     // else if(initArgs) … !
     this.log.debug('new FamilyPRDispatcherProcess initArgs:', initArgs, 'state:', state);
 
-    var {  mode, initType, familyName, requester, repoNameWithOwner, branch
+    var {  mode, initType, familyName, familyKeySuffix
+         , requester, repoNameWithOwner, branch
          , genre, fontfilesPrefix, note
         } = initArgs;
 
     this._state.mode = mode;
     this._state.initType = initType;
     this._state.familyName = familyName;
+    this._state.familyKeySuffix = familyKeySuffix;
     this._state.requester = requester;
     this._state.repoNameWithOwner = repoNameWithOwner || null;
     this._state.branch = branch || null;
@@ -2032,6 +2045,12 @@ function _getInitNewUI() {
               , type: 'line' // input type:text
               , label: 'Family Name:'
               , placeholder: 'Generic Sans Condensed'
+            }
+            // maybe only in sandbox mode!
+          , {   name: 'familyKeySuffix'
+              , type: 'line' // input type:text
+              , label: 'Family Key Suffix:'
+              , placeholder: 'Feature Branch Identifier'
             }
           , {   name: 'ghNameWithOwner'
               , type: 'line' // input type:text
@@ -2195,7 +2214,9 @@ function _validateProcessMode(value) {
 
 function callbackPreInit(resources, requester, values) {
 
-    var mode, initType, familyName, repoNameWithOwner, branch
+    var mode, initType, familyName
+      , familyKeySuffix = null
+      , repoNameWithOwner, branch
       , genre, fontfilesPrefix, note
       , message, messages = []
       , initArgs = null
@@ -2215,13 +2236,23 @@ function callbackPreInit(resources, requester, values) {
     var checkNew=()=>{
         // just some sanitation, remove multiple subsequent spaces
         familyName = values.familyName.trim().split(' ').filter(chunk=>!!chunk).join(' ');
-        var regexFamilyName = /^[a-z0-9 ]+$/i;
-        // this check is also rather weak, but, eventually we'll use font bakery!
-        if(!regexFamilyName.test(familyName))
-            messages.push('The family name must consist only of characters '
+        var regexFamilyName = /^[a-z0-9 ]+$/i
+          , familyNameErrorMessage = 'The ${familyName} must consist only of characters '
                         + 'from A to Z and a to z, numbers from 0 to 9 and '
                         + 'spaces between the words. The first character '
-                        + 'of each word should be a capital.');
+                        + 'of each word should be a capital.'
+          ;
+        // this check is also rather weak, but, eventually we'll use font bakery!
+        if(!regexFamilyName.test(familyName))
+            messages.push(familyNameErrorMessage
+                                .replace('${familyName}', 'family name'));
+
+        familyKeySuffix = values.familyKeySuffix.trim();
+        if(familyKeySuffix && !regexFamilyName.test(familyKeySuffix))
+            messages.push(familyNameErrorMessage
+                            .replace('${familyName}', 'family Key Suffix'));
+        else if(!familyKeySuffix)
+            familyKeySuffix = null;
         // No further format checks here. GitHub will complain if this is
         // invalid. Though, if it's an empty string after the trim, I
         // expect this to be handled before the init.
@@ -2255,6 +2286,10 @@ function callbackPreInit(resources, requester, values) {
             if(familyList.indexOf(values[familyNameKey]) === -1)
                 messages.push('You must pick a family from the list to update.');
             familyName = values[familyNameKey];
+            if(familyName.indexOf(':') !== -1)
+                [familyName, familyKeySuffix] = familyName.split(':');
+            if(!familyKeySuffix)
+                familyKeySuffix = null;
             // that info is in the CSV already, we need it to put it into
             // the CSV eventually.
             // Also, to check roles! but we don't really need it as a
@@ -2300,7 +2335,11 @@ function callbackPreInit(resources, requester, values) {
             message = ' * '+ messages.join('\n * ');
         else
             //
-            initArgs = {initType, familyName, requester, repoNameWithOwner
+            initArgs = {initType
+                      , familyName
+                      , familyKeySuffix
+                      , requester
+                      , repoNameWithOwner
                       , branch
                       , genre
                       , fontfilesPrefix
@@ -2350,6 +2389,7 @@ stateManagerMixin(_p, {
      * straight forward.
      */
     familyName: _genericStateItem
+  , familyKeySuffix: _genericStateItem
     /**
      * For authorization purposes, maybe just the requester ID/handle,
      * (a string) so that we can get the roles of the requester
@@ -2385,6 +2425,19 @@ Object.defineProperties(_p, {
             return this._state.familyName;
         }
     }
+  , familyKeySuffix: {
+        get: function() {
+            return this._state.familyKeySuffix;
+        }
+    }
+  , familyKey: {
+        get: function() {
+            if(this.familyKeySuffix)
+                return `${this.familyName}:${this.familyKeySuffix}`;
+            return this.familyName;
+        }
+      , enumerable: true
+     }
    , requester: {
         get: function() {
             return this._state.requester;
@@ -2398,6 +2451,16 @@ Object.defineProperties(_p, {
   , branch: {
        get: function() {
             return this._state.branch;
+        }
+    }
+  , genre: {
+       get: function() {
+            return this.genre.branch;
+        }
+    }
+  , fontfilesPrefix: {
+       get: function() {
+            return this.genre.fontfilesPrefix;
         }
     }
   , initType: {
