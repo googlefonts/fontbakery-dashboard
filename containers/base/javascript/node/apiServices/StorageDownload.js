@@ -1,6 +1,7 @@
 #! /usr/bin/env node
 "use strict";
 /* jshint esnext:true, node:true */
+/* globals escape,unescape */
 
 const yazl = require('yazl')
   , messages_pb = require('protocolbuffers/messages_pb')
@@ -48,21 +49,22 @@ function StorageDownload(server, app, logging, storages /* { e.g.: cache, persis
     this._storages = storages;
     this._knownTypes = messages_pb;
     this._app.get('/:storage/:key_extension', this._download.bind(this));
+    this._app.get('/:storage/:key/:filename_extension', this._download.bind(this));
 }
 
 const _p = StorageDownload.prototype;
 _p.constructor = StorageDownload;
 
-function _parseKeyExt(keyExt){
+function _parseBaseExt(keyExt) {
     var dotPos = keyExt.indexOf('.')
-      , key, ext
+      , base, ext
       ;
     if(dotPos === -1)
         return [null, null, 'Extension not found'];
-    key = keyExt.slice(0, dotPos);
+    base= keyExt.slice(0, dotPos);
     ext = keyExt.slice(dotPos+1);
     // more checks?
-    return [key, ext, null];
+    return [base, ext, null];
 }
 
 
@@ -79,11 +81,31 @@ function getTypeName(knownTypes, message) {
     return null;
 }
 
+
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
+function makeContentDispositionHeader(fileName) {
+    return [
+          'Content-Disposition'
+        , `attachment; filename*=UTF-8''${encodeRFC5987ValueChars(fileName)}`
+    ];
+}
+
+function encodeRFC5987ValueChars(str) {
+    return encodeURIComponent(str).
+        // Note that although RFC3986 reserves "!", RFC5987 does not,
+        // so we do not need to escape it
+        replace(/['()]/g, escape). // i.e., %27 %28 %29
+        replace(/\*/g, '%2A').
+            // The following are not required for percent-encoding per RFC5987,
+            // so we can allow for a little better readability over the wire: |`^
+            replace(/%(?:7C|60|5E)/g, unescape);
+}
+
 function _zipAndSendMessage(res, message, filename) {
     res.setHeader('Content-Type', 'application/zip');
     // mark as downloadable file
-    res.setHeader('Content-Disposition'
-                            , 'attachment; filename=' + filename);
+    res.setHeader(...makeContentDispositionHeader(filename));
     var zipfile = new yazl.ZipFile()
       , files
       ;
@@ -105,6 +127,12 @@ function _zipAndSendMessage(res, message, filename) {
 
 /**
  * GET
+ *
+ * There are two routes for this, one lets choose a filename for the
+ * download, the other one is more straight forward, but defines no proper
+ * filename:
+ *          '/:storage/:key_extension'
+ *          '/:storage/:key/:filename_extension'
  */
 _p._download = function(req, res, next) {
     // jshint unused:vars
@@ -117,14 +145,21 @@ _p._download = function(req, res, next) {
         return;
     }
     storage = this._storages[req.params.storage];
-
-    [key, extension, errorMessage] = _parseKeyExt(req.params.key_extension);
+    if('filename_extension' in req.params) {
+        let base;
+        [base, extension, errorMessage] = _parseBaseExt(req.params.filename_extension);
+        key = req.params.key;
+        filename = `${base}.${extension}`;
+    }
+    else {
+        [key, extension, errorMessage] = _parseBaseExt(req.params.key_extension);
+        filename = `${key}.${extension}`;
+    }
     if(errorMessage) {
         res.status(404)
            .send('Not Found: -> ' + errorMessage);
         return;
     }
-    filename = key + '.' + extension;
 
     storageKey = new StorageKey();
     storageKey.setKey(key);
@@ -191,8 +226,7 @@ _p._download = function(req, res, next) {
 
             res.setHeader('Content-Type', contentType);
             // mark as downloadable file
-            res.setHeader('Content-Disposition'
-                            , 'attachment; filename=' + filename);
+            res.setHeader(...makeContentDispositionHeader(filename));
             res.send(data);
         }
       , err=> {

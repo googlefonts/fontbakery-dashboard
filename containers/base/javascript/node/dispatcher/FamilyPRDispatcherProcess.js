@@ -271,7 +271,6 @@ _p.uiApproveProcess = function() {
     this.log.debug("this.process.initType === 'register'"
                     , this.process.initType === 'register'
                     , this.process.initType
-                    , this.process.initType
                     , this.constructor.name);
 
     if(this.process.initType === 'register') {
@@ -491,7 +490,7 @@ _p._mdCompareSourceDetails = function() {
             ['name', 'requested data', 'spreadsheet data', 'is the same']
           , [
                 ['familyName', this.process.familyName, sourceDetails.name]
-              , ['familyKeySuffix', this.process.familyKeySuffix, sourceDetails.keySuffix]
+              , ['familyKeySuffix', this.process.familyKeySuffix, sourceDetails.keySuffix || null]
               , ['repoNameWithOwner' ,this.process.repoNameWithOwner, _extractRepoNameWithOwner(sourceDetails.upstream)]
               , ['branch' ,this.process.branch, sourceDetails.branch || null]
               , ['fontfilesPrefix', this.process.fontfilesPrefix, sourceDetails.fontfilesPrefix]
@@ -657,7 +656,8 @@ _p.callbackReceiveFiles = function([requester, sessionID]
             //       link. Since no solution is realy good, hardcoded will
             //       have to do for now, it's quick and dirty,
             //       the quickest way in fact ...
-          , zipDownloadLink = '/download/persistence/'+filesStorageKey+'.zip'
+          , zipDownloadLink = `/download/persistence/${filesStorageKey}/`
+                            + `${encodeURIComponent(this.process.familyName)}.zip`
           , familyDirName = this.process.familyName.toLowerCase().replace(/ /g, '')
           ;
 
@@ -1217,7 +1217,8 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
             report += ` * browse report: [**${name}**]`
                     + `(/browse/persistence/${storageKey.getKey()}/report.html)`
                     + ` or download: [zip file]`
-                    + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
+                    + `(/download/persistence/${storageKey.getKey()}/`
+                            + `Diffenator_${encodeURIComponent(this.process.familyName)}.zip)\n`;
         }
     }
     report += '\n';
@@ -1413,8 +1414,9 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
                       // uses index.html or autoindex
                     + `(/browse/persistence/${storageKey.getKey()}/)`
                     + ` or download: [zip file]`
-                    + `(/download/persistence/${storageKey.getKey()}.zip)\n`;
-
+                    + `(/download/persistence/${storageKey.getKey()}/`
+                            + `${encodeURIComponent('Browser Diffs_')}`
+                            + `${encodeURIComponent(this.process.familyName)}.zip)\n`;
         }
     }
     report += '\n';
@@ -2455,12 +2457,12 @@ Object.defineProperties(_p, {
     }
   , genre: {
        get: function() {
-            return this.genre.branch;
+            return this._state.genre;
         }
     }
   , fontfilesPrefix: {
        get: function() {
-            return this.genre.fontfilesPrefix;
+            return this._state.fontfilesPrefix;
         }
     }
   , initType: {
