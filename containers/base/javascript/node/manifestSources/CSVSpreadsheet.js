@@ -813,8 +813,40 @@ _p._insertMetadataPB = function (filesData, metadata) {
     });
 };
 
+
+function _treeToFileEntries(tree, filterFunction/*optional: filterFunction(string:filename)*/) {
+    return tree.entries()// -> [treeEntry]
+                          .filter(te=>te.isFile())
+                          .filter(te=>filterFunction
+                                            ? filterFunction(te.name())
+                                            // if there's no filterFunction
+                                            // this doesn't filter at all
+                                            : true);
+}
+
+function findAllFilesEntriesInPath(rootTree, path, filterFunction) {
+    var treePromise = path.length
+                ? rootTree.getEntry(path)
+                          .then(treeEntry=>treeEntry.getTree())
+                : Promise.resolve(rootTree)
+                ;
+    return treePromise.then(tree=>_treeToFileEntries(tree, filterFunction))
+        .then(entries=>{
+            return path.length
+                ? findAllFilesEntriesInPath(rootTree
+                            , path.split('/').slice(0, -1).join('/')
+                            , filterFunction)
+                        .then(higherEntries=>{
+                                entries.push(...higherEntries);
+                                return entries;
+                        })
+                : entries
+                ;
+        });
+}
+
 _p._collectDataGit = function(familyData, commit, tree, rootTree
-            , masterFamilyTree, filesPrefix) {
+                                        , masterFamilyTree, filesPrefix) {
     var files = new Map()
       , treeToFiles = (tree, filterFunc) => {
             return this._treeToFilesData(tree, filterFunc)
@@ -822,8 +854,12 @@ _p._collectDataGit = function(familyData, commit, tree, rootTree
                         // This will override entries that are already
                         // in files, which is expected.
                         fileData/*[name, data]*/=>files.set(...fileData)));
-        };
+        }
+      ;
+
     // From masterFamilyTree: get all files, except the .ttf ones
+    // that's e.g. OFL.txt and DESCRIPTION.en_us.html from the
+    // google/fonts master.
     return (masterFamilyTree
                 // this may be null, e.g. if the family is a new addition
                 ? treeToFiles(masterFamilyTree, filename=>!filename.endsWith('.ttf'))
@@ -841,10 +877,31 @@ _p._collectDataGit = function(familyData, commit, tree, rootTree
     // be only one, but this is the wrong place to detect and complain
     // about ambiguities (use Font Bakery). Also, the Ubuntu fonts have
     // both LICENSE.txt and UFL.txt with the same contents.
-    .then(()=>treeToFiles(tree, filename=>{
-        var licenseFiles = new Set(['OFL.txt', 'LICENSE.txt', 'UFL.txt']);
-        return licenseFiles.has(filename);
+    .then(()=>findAllFilesEntriesInPath(rootTree, tree.path(), filename=>{
+        var relevantFiles = new Set([
+                            'OFL.txt', 'LICENSE.txt', 'UFL.txt'
+                          , 'DESCRIPTION.en_us.html'
+                        ]);
+        return relevantFiles.has(filename);
     }))
+    .then(fileEntries=>{
+        var seen = new Set()
+          , filesData = []
+          ;
+        for(let fileEntry of fileEntries) {
+            // files are in order if specificity, so the first occurance
+            // is the most important one, the other ones get skipped.
+            if(seen.has(fileEntry.name()))
+                continue;
+            seen.add(fileEntry.name());
+            filesData.push(this._treeEntryToFileData(fileEntry));
+        }
+        return Promise.all(filesData);
+    })
+    .then(filesData=>filesData.map(
+                        // This will override entries that are already
+                        // in files, which is expected.
+                        fileData/*[name, data]*/=>files.set(...fileData)))
     // Maybe we can have a drag and drop entry point for the dispatcher?
     // that way we could update stuff using the dispatcher pipeline
     // without having to program rare exceptions.
