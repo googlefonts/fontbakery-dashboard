@@ -13,7 +13,7 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:7
+        image: gcr.io/fontbakery-168509/base-javascript:10
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"

@@ -452,13 +452,13 @@ docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-6 containers/rethinkdb
 docker tag fontbakery/rethinkdb:2.3.6-fontbakery-6 gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
 docker push gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
 
-docker build -t fontbakery/base-javascript:7 containers/base/javascript;
-docker tag fontbakery/base-javascript:7 gcr.io/fontbakery-168509/base-javascript:7
-docker push gcr.io/fontbakery-168509/base-javascript:7
+docker build -t fontbakery/base-javascript:10 containers/base/javascript;
+docker tag fontbakery/base-javascript:10 gcr.io/fontbakery-168509/base-javascript:10
+docker push gcr.io/fontbakery-168509/base-javascript:10
 
-docker build -t fontbakery/base-python:4 containers/base/python;
-docker tag fontbakery/base-python:4 gcr.io/fontbakery-168509/base-python:4
-docker push gcr.io/fontbakery-168509/base-python:4
+docker build -t fontbakery/base-python:5 containers/base/python;
+docker tag fontbakery/base-python:5 gcr.io/fontbakery-168509/base-python:5
+docker push gcr.io/fontbakery-168509/base-python:5
 ```
 
 # Deploy
@@ -515,9 +515,9 @@ kubectl autoscale deployment fontbakery-worker-checker --cpu-percent=80 --min=1 
 ### update an image (roling update style)
 
 ```
-kubectl set image deployments/fontbakery-api fontbakery-api=gcr.io/fontbakery-168509/base-javascript:30
+kubectl set image deployments/fontbakery-api fontbakery-api=gcr.io/fontbakery-168509/base-javascript:1
 
-kubectl set image deployments/fontbakery-worker-checker fontbakery-worker-checker=gcr.io/fontbakery-168509/base-python:4
+kubectl set image deployments/fontbakery-worker-checker fontbakery-worker-checker=gcr.io/fontbakery-168509/base-python:1
 
 
 ```
