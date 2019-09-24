@@ -1024,7 +1024,7 @@ const _diffComparisonSources = new Map([
    // repo or even any repo. Don't know how this would work!
  //, ['custom', '']
    // null is not a key! (but could be in a Map).
- , [null, 'None: don\'t compare, create only preview renderings.']
+ , [null, 'Create only preview renderings. Don\'t Compare.']
 ]);
 
 function _getDiffComparisonSourcesOptions(...sourceIDs) {
@@ -1547,14 +1547,17 @@ _p.uiConfirmDispatch = function() {
               , options: [
                     ['Create Pull Request now.', 'accept']
                   , ['Dismiss and fail.', 'dismiss']
-
+                  // Not sure if this is useful! Maybe in Sandbox mode
+                  // where we don't necessarily need a PR, because we
+                  // may only be interested in running the QA tools.
+                  , ['End without Pull Request (no fail).', 'end']
               ]
               //, default: 'accepted' // 0 => the first item is the default
             }
           , {   name: 'reason'
-              , condition: ['action', 'dismiss']
+              , condition: ['action', '!' ,'accept']
               , type: 'line' // input type:text
-              , label: 'Why do you dismiss this process request?'
+              , label: 'Why do you dismiss/end this process?'
             }
         ]
     };
@@ -1579,8 +1582,16 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
       , callbackName, ticket
       ;
     if(action === 'dismiss' ) {
+        // FailStep will be used to handle this
         this._setFAILED('**@' + requester + '** decided to FAIL this process.'
-                        + values.reason ? '\n\n' + values.reason : ''
+                        + (values.reason ? ('\n\n' + values.reason) : '')
+        );
+        return;
+    }
+    else if(action === 'end' ) {
+        // FailStep will be used to handle this
+        this._setOK('**@' + requester + '** decided to end this process.'
+                        + (values.reason ? ('\n\n' + values.reason) : '')
         );
         return;
     }
