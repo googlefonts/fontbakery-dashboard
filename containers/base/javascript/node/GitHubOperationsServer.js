@@ -305,7 +305,8 @@ _p._replaceDirCommit = function(authorSignature, localBranchName, headCommitRefe
         )) // ->files
         .then(entries=>insertOrReplaceDir(repo, commitTree, dir, entries))// -> oid
         .then(newTreeOID=>{
-            return commitChanges(repo
+            return commitChanges(this._log
+                               , repo
                                , authorSignature
                                , localBranchName
                                , newTreeOID
@@ -393,7 +394,7 @@ _p.dispatchPullRequest = function(call, callback) {
     Promise.all([
         // collect more dependencies
         //  -> a OAuthTokenMessage -> oAuthToken.getAccessToken()
-        this._auth.getOAuthToken(sessionIdMessage)
+        this._auth.getOAuthToken(sessionIdMessage) // -> prOAuthToken
       , this._storage.get(storageKeyMessage)
     ]).then(([oAuthToken, pbFilesMessage])=>{
         // the user will make the PR
@@ -403,7 +404,7 @@ _p.dispatchPullRequest = function(call, callback) {
         return this._getAuthorSignature(userName, prOAuthToken)
         .then(authorSignature=>{
             // schedule the actual work!
-            this._log.info('this._queue.schedule _dispatch');
+            this._log.info('this._queue.schedule _dispatch for', authorSignature.toString(true));
             return this._queue.schedule(
                 this._dispatch.bind(this), authorSignature
               , localBranchName, targetDirectory, pbFilesMessage, commitMessage
@@ -459,7 +460,7 @@ _p._dispatch = function(authorSignature, localBranchName, targetDirectory
     return this._fetchUpstreamMaster(true)// -> ref
     .then(reference=>this._branch(localBranchName, reference, true))
     .then(headCommitReference=>this._replaceDirCommit(authorSignature
-                            ,localBranchName, headCommitReference
+                            , localBranchName, headCommitReference
                             , targetDirectory, pbFilesMessage, commitMessage))
 
     .then(()=>this._push(localBranchName, remoteRef, pushOAuthToken, true))
@@ -600,6 +601,7 @@ query($login: String!) {
 }
 `;
 _p._getAuthorSignature = function(userName, accessToken) {
+    this._log.debug('_getAuthorSignature for: ', userName);
     var query = {
             query: USER_EMAIL_QUERY
           , variables: {
@@ -608,25 +610,54 @@ _p._getAuthorSignature = function(userName, accessToken) {
         };
     return this._sendGitHubGraphQLRequest(accessToken, query)
     .then(result=> {
-        var userPrimaryEmail = result.data.user.email;
-        return NodeGit.Signature.now(userName + ' via Font Bakery Dashboard'
-                                     , userPrimaryEmail);
+        // hmm maybe inspect result here!
+            // The user's publicly visible profile email.
+            // this may not be set!
+        var userEmail = result.data.user.email
+          , name = `${userName} via Font Bakery Dashboard`
+            // returns: new signature, in case of error NULL
+          , signature = NodeGit.Signature.now(name, userEmail)
+          ;
+
+        if(!userEmail) {
+            // GitHub uses this to link the commit to to the account/login
+            // So we need to user to set a public email address for us,
+            // otherwise we can't create a nice commit.
+            throw new Error(`Can't create a commit signature for name: `
+                          + `**@${userName}**, because there's no public `
+                          + `email address set in the GitHub profile. `
+                          + `If you are **@${userName}**, please go to `
+                          + `https://github.com/settings/profile and update `
+                          + `the "Public email" entry. This email is used `
+                          + `by GitHub to link the commit to your profile.`);
+        }
+        signature = NodeGit.Signature.now(name, userEmail);
+        if(signature === null) {
+            // It's too bad that this is not giving us a proper error
+            // mesage with a hint of what went wrong!
+            throw new Error(`Cant create signature for name: ${name} mail: ${userEmail}`);
+        }
+        return signature;
     });
 };
 
 // from https://gist.github.com/getify/f5b111381413f9d9f4b2571c7d5822ce
-function commitChanges(repo, authorSignature, branchName, treeOID
+function commitChanges(log, repo, authorSignature, branchName, treeOID
                      , parentCommit, message) {
+    log.debug('commitChanges:', branchName, authorSignature.toString(true));
+    // currently looking to solve an error where the message is:
+    // "Signature author is required."
+    let committerSignature = authorSignature;
     return repo.createCommit(
         'refs/heads/' + branchName,
         authorSignature,
-        authorSignature,
+        committerSignature,
         message,
         treeOID,
         [parentCommit]
     )
-    .then(commit=>{
-        return repo.getCommit(commit);
+    .then(commitID=>{
+        return repo.getCommit(commitID);
     });
 }
 
