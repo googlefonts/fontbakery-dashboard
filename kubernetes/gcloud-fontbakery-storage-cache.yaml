@@ -14,7 +14,7 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-storage-cache
-        image: gcr.io/fontbakery-168509/base-javascript:10
+        image: gcr.io/fontbakery-168509/base-javascript:11
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
