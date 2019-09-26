@@ -600,3 +600,30 @@ $ ~/fontbakery-dashboard> kubectl delete deployment fontbakery-storage-persisten
 $ ~/fontbakery-dashboard> find ./kubernetes -type f -name 'gcloud-fontbakery-*' -exec kubectl apply -f {} ';'
 
 ```
+
+
+## kubectl contexts cheatsheet:
+
+```
+# classic use minikube context explicitly
+$ kubectl --context=minikube -n fontbakery
+# and via an alias:
+$ alias kf="kubectl --context=minikube -n fontbakery"
+
+
+# current gcloud:
+$ kubectl --context=gke_fontbakery-168509_us-central1-a_fontbakery-dashboard-1
+# and via an alias:
+$ alias gk="kubectl --context=gke_fontbakery-168509_us-central1-a_fontbakery-dashboard-1"
+
+$ kubectl config get-contexts
+CURRENT   NAME                                                         CLUSTER                                                      AUTHINFO                                                     NAMESPACE
+          gke_fontbakery-168509_us-central1-a_fontbakery-dashboard-1   gke_fontbakery-168509_us-central1-a_fontbakery-dashboard-1   gke_fontbakery-168509_us-central1-a_fontbakery-dashboard-1
+*         minikube                                                     minikube                                                     minikube
+
+# set the gcloud context as default
+$ kubectl config set-context gke_fontbakery-168509_us-central1-a_fontbakery-dashboard-1
+
+
+
+```
