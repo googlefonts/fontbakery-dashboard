@@ -206,7 +206,7 @@ Alternatively, `kubectl` can be used with `--namespace=fontbakery`  on every `ku
 ```
 $ kubectl --namespace=fontbakery get pods
 # or just do:
-$ alias kf="kubectl -n fontbakery"
+$ alias kf="kubectl --context=minikube  -n fontbakery"
 # now:
 $ kf get pods
 ```
@@ -256,7 +256,7 @@ $ docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-1 containers/rethinkdb
 $ docker build -t fontbakery/base-javascript:1 containers/base/javascript/
 $ docker build -t fontbakery/base-python:1 containers/base/python/
 $ kubectl create namespace fontbakery
-$ alias kf="kubectl -n fontbakery"
+$ alias kf="kubectl --context=minikube -n fontbakery"
 #$ ENVIRONMENT_VERSION="$(date)"
 #$ kf create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
 $ ./set-minikube-vars
