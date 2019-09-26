@@ -233,6 +233,7 @@ kind: Deployment
 metadata:
   labels:
     db: rethinkdb
+    role: proxy
   name: rethinkdb-proxy
 spec:
   # I had up to 16 running, ~ one per checker-vm
