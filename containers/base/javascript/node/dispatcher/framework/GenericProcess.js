@@ -93,7 +93,7 @@ function GenericProcess(resources, state) {
     if('steps' in state) {
         stepCtors = [];
         for(let i=0,l=state.steps.length;i<l;i++)
-            stepCtors.push(['(Generic Step)', GenericStep]);
+            stepCtors.push([GenericStep, {label: `(Generic Step ${i})`}]);
 
     }
     manipulateStateManagerValidation.call(this, state
@@ -105,8 +105,8 @@ const _p = GenericProcess.prototype = Object.create(Parent.prototype);
 _p.constructor = GenericProcess;
 
 _p.getRequestedUserInteractions = function() {
-    return null
-}
+    return null;
+};
 
 return GenericProcess;
 })();
