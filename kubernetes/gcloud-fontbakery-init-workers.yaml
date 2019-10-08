@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-init-workers
-        image: gcr.io/fontbakery-168509/base-javascript:11
+        image: gcr.io/fontbakery-168509/base-javascript:12
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
