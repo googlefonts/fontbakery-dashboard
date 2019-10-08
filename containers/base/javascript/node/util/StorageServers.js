@@ -111,8 +111,8 @@ DataItem.load = function(data){
             data.data
           , data.reads
           , data.counter
-          , data.instanceKeys
           , false // don't safe immediateley after load ...
+          , data.instanceKeys
     );
 };
 
