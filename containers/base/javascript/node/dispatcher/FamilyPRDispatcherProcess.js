@@ -1598,11 +1598,12 @@ _p.callbackConfirmDispatch = function([requester, sessionID]
     else if(action !== 'accept' )
         throw new Error('Pick one of the actions from the list.');
 
-    this._setLOG('**@' + requester +'** dispatches this process.');
+    this._setLOG(`**@${requester}** dispatches this process to ${this.process.mode}.`);
 
     pullRequest = new PullRequest();
     pullRequest.setSessionId(sessionID);
     pullRequest.setStorageKey(this.process._state.filesStorageKey);
+    pullRequest.setPRTarget(this.process.mode);
     pullRequest.setTargetDirectory(this.process._state.targetDirectory);
 
     // something standard

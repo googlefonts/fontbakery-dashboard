@@ -413,25 +413,27 @@ message PullRequest {
     string session_id = 1;
     // (file) data location, actually will return a FamilyData message
     string storage_key = 2;
+    // depends on setup, e.g. 'sandbox' or 'production'
+    string p_r_target = 3;
     // "ofl/myfont"
-    string target_directory = 3;
+    string target_directory = 4;
     // simple string as a title
-    string p_r_message_title = 4;
+    string p_r_message_title = 5;
     // github-markdown string
-    string p_r_message_body = 5;
+    string p_r_message_body = 6;
     // multi line string, first line and details should be
     // separated by an empty line
-    string commit_message = 6;
+    string commit_message = 7;
 
     // to make answering easier in the PR dispatcher, this will have
     // the essentials already configured
-    ProcessCommand process_command = 7;
+    ProcessCommand process_command = 8;
 
     // we should not override already existing remote branches...
     // maybe create in here using family name and date
     // can we use also target_directory or should we add a
     // branch_name_keyword>>> best of both worlds?
-    // string targetBranchName = 7;
+    // string targetBranchName = 9;
 }
 
 // needs to feed https://developer.github.com/v3/issues/

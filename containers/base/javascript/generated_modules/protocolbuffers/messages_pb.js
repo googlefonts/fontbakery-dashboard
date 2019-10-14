@@ -6308,10 +6308,11 @@ proto.fontbakery.dashboard.PullRequest.toObject = function(includeInstance, msg)
   var f, obj = {
     sessionId: jspb.Message.getFieldWithDefault(msg, 1, ""),
     storageKey: jspb.Message.getFieldWithDefault(msg, 2, ""),
-    targetDirectory: jspb.Message.getFieldWithDefault(msg, 3, ""),
-    pRMessageTitle: jspb.Message.getFieldWithDefault(msg, 4, ""),
-    pRMessageBody: jspb.Message.getFieldWithDefault(msg, 5, ""),
-    commitMessage: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    pRTarget: jspb.Message.getFieldWithDefault(msg, 3, ""),
+    targetDirectory: jspb.Message.getFieldWithDefault(msg, 4, ""),
+    pRMessageTitle: jspb.Message.getFieldWithDefault(msg, 5, ""),
+    pRMessageBody: jspb.Message.getFieldWithDefault(msg, 6, ""),
+    commitMessage: jspb.Message.getFieldWithDefault(msg, 7, ""),
     processCommand: (f = msg.getProcessCommand()) && proto.fontbakery.dashboard.ProcessCommand.toObject(includeInstance, f)
   };
 
@@ -6359,21 +6360,25 @@ proto.fontbakery.dashboard.PullRequest.deserializeBinaryFromReader = function(ms
       break;
     case 3:
       var value = /** @type {string} */ (reader.readString());
-      msg.setTargetDirectory(value);
+      msg.setPRTarget(value);
       break;
     case 4:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPRMessageTitle(value);
+      msg.setTargetDirectory(value);
       break;
     case 5:
       var value = /** @type {string} */ (reader.readString());
-      msg.setPRMessageBody(value);
+      msg.setPRMessageTitle(value);
       break;
     case 6:
       var value = /** @type {string} */ (reader.readString());
-      msg.setCommitMessage(value);
+      msg.setPRMessageBody(value);
       break;
     case 7:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setCommitMessage(value);
+      break;
+    case 8:
       var value = new proto.fontbakery.dashboard.ProcessCommand;
       reader.readMessage(value,proto.fontbakery.dashboard.ProcessCommand.deserializeBinaryFromReader);
       msg.setProcessCommand(value);
@@ -6421,38 +6426,45 @@ proto.fontbakery.dashboard.PullRequest.serializeBinaryToWriter = function(messag
       f
     );
   }
-  f = message.getTargetDirectory();
+  f = message.getPRTarget();
   if (f.length > 0) {
     writer.writeString(
       3,
       f
     );
   }
-  f = message.getPRMessageTitle();
+  f = message.getTargetDirectory();
   if (f.length > 0) {
     writer.writeString(
       4,
       f
     );
   }
-  f = message.getPRMessageBody();
+  f = message.getPRMessageTitle();
   if (f.length > 0) {
     writer.writeString(
       5,
       f
     );
   }
-  f = message.getCommitMessage();
+  f = message.getPRMessageBody();
   if (f.length > 0) {
     writer.writeString(
       6,
       f
     );
   }
+  f = message.getCommitMessage();
+  if (f.length > 0) {
+    writer.writeString(
+      7,
+      f
+    );
+  }
   f = message.getProcessCommand();
   if (f != null) {
     writer.writeMessage(
-      7,
+      8,
       f,
       proto.fontbakery.dashboard.ProcessCommand.serializeBinaryToWriter
     );
@@ -6491,78 +6503,93 @@ proto.fontbakery.dashboard.PullRequest.prototype.setStorageKey = function(value)
 
 
 /**
- * optional string target_directory = 3;
+ * optional string p_r_target = 3;
  * @return {string}
  */
-proto.fontbakery.dashboard.PullRequest.prototype.getTargetDirectory = function() {
+proto.fontbakery.dashboard.PullRequest.prototype.getPRTarget = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.PullRequest.prototype.setTargetDirectory = function(value) {
+proto.fontbakery.dashboard.PullRequest.prototype.setPRTarget = function(value) {
   jspb.Message.setProto3StringField(this, 3, value);
 };
 
 
 /**
- * optional string p_r_message_title = 4;
+ * optional string target_directory = 4;
  * @return {string}
  */
-proto.fontbakery.dashboard.PullRequest.prototype.getPRMessageTitle = function() {
+proto.fontbakery.dashboard.PullRequest.prototype.getTargetDirectory = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 4, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.PullRequest.prototype.setPRMessageTitle = function(value) {
+proto.fontbakery.dashboard.PullRequest.prototype.setTargetDirectory = function(value) {
   jspb.Message.setProto3StringField(this, 4, value);
 };
 
 
 /**
- * optional string p_r_message_body = 5;
+ * optional string p_r_message_title = 5;
  * @return {string}
  */
-proto.fontbakery.dashboard.PullRequest.prototype.getPRMessageBody = function() {
+proto.fontbakery.dashboard.PullRequest.prototype.getPRMessageTitle = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 5, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.PullRequest.prototype.setPRMessageBody = function(value) {
+proto.fontbakery.dashboard.PullRequest.prototype.setPRMessageTitle = function(value) {
   jspb.Message.setProto3StringField(this, 5, value);
 };
 
 
 /**
- * optional string commit_message = 6;
+ * optional string p_r_message_body = 6;
  * @return {string}
  */
-proto.fontbakery.dashboard.PullRequest.prototype.getCommitMessage = function() {
+proto.fontbakery.dashboard.PullRequest.prototype.getPRMessageBody = function() {
   return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 6, ""));
 };
 
 
 /** @param {string} value */
-proto.fontbakery.dashboard.PullRequest.prototype.setCommitMessage = function(value) {
+proto.fontbakery.dashboard.PullRequest.prototype.setPRMessageBody = function(value) {
   jspb.Message.setProto3StringField(this, 6, value);
 };
 
 
 /**
- * optional ProcessCommand process_command = 7;
+ * optional string commit_message = 7;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.PullRequest.prototype.getCommitMessage = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 7, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.PullRequest.prototype.setCommitMessage = function(value) {
+  jspb.Message.setProto3StringField(this, 7, value);
+};
+
+
+/**
+ * optional ProcessCommand process_command = 8;
  * @return {?proto.fontbakery.dashboard.ProcessCommand}
  */
 proto.fontbakery.dashboard.PullRequest.prototype.getProcessCommand = function() {
   return /** @type{?proto.fontbakery.dashboard.ProcessCommand} */ (
-    jspb.Message.getWrapperField(this, proto.fontbakery.dashboard.ProcessCommand, 7));
+    jspb.Message.getWrapperField(this, proto.fontbakery.dashboard.ProcessCommand, 8));
 };
 
 
 /** @param {?proto.fontbakery.dashboard.ProcessCommand|undefined} value */
 proto.fontbakery.dashboard.PullRequest.prototype.setProcessCommand = function(value) {
-  jspb.Message.setWrapperField(this, 7, value);
+  jspb.Message.setWrapperField(this, 8, value);
 };
 
 
@@ -6576,7 +6603,7 @@ proto.fontbakery.dashboard.PullRequest.prototype.clearProcessCommand = function(
  * @return {boolean}
  */
 proto.fontbakery.dashboard.PullRequest.prototype.hasProcessCommand = function() {
-  return jspb.Message.getField(this, 7) != null;
+  return jspb.Message.getField(this, 8) != null;
 };
 
 

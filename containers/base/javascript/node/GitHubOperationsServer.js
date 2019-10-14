@@ -23,10 +23,28 @@ const GITHUB_API_HOST = 'api.github.com'
     , GITHUB_BRANCH_URL = 'https://github.com/{remoteName}/tree/{branchName}'
     ;
 
-function GitHubRef(repoOwner, repoName, name) {
+
+function GitHubRef(repoOwner, repoName, name
+              // if this has no upstream, it is it's own upstream
+            , upstream=null// string: optional; name of another repo
+            , oAuthToken=null // string: optional; for pushing
+              // Only used when upstream is set.
+              // Without rebasing, the prTarget may be outdated and the
+              // PR on GitHub shows too many commits ...
+              // this is configurable, because the repo policy may
+              // conflict with that behavior.
+              // There won't be force pushes with this ever. This means
+              // we'll fail here if the rebase is not compatible and
+              // do not change the remote history too drastic, force
+              // push means rewriting the history.
+            , updateWithUpstreamBeforePR=false // boolean: optional
+            ) {
     this.repoOwner = repoOwner;
     this.repoName = repoName;
     this.branchName = name;
+    this.upstream = upstream;
+    this.oAuthToken = oAuthToken;
+    this.updateWithUpstreamBeforePR = updateWithUpstreamBeforePR || false;
     // e.g. "google/fonts"
     this.remoteName = [this.repoOwner, this.repoName].join('/');
     this.remoteUrl = GITHUB_HTTPS_GIT_URL
@@ -43,19 +61,14 @@ function GitHubRef(repoOwner, repoName, name) {
  *
  */
 function GitHubOperationsServer(logging, port, setup, repoPath
-                    , upstreamBranch, ghPushSetup, prTarget) {
+                                        , remoteRefs, ghPRSetup) {
     this._log = logging;
     this._repoPath = repoPath;
     this._queue = new AsyncQueue();
     this._any = new ProtobufAnyHandler(this._log, {GitHubReport:GitHubReport});
 
-    this._ghPushSetup = ghPushSetup;
-
-    this._upstreamBranch = upstreamBranch;
-    // prTarget is where we want to pull our changes into.
-    // If prTarget is not configured, we use this._upstream
-    // this is a convention over configuration case.
-    this._prTarget = prTarget || this._upstreamBranch;
+    this._remoteRefs = new Map(Object.entries(remoteRefs));
+    this._ghPRSetup = new Map(Object.entries(ghPRSetup));
 
     this._io = new IOOperations(setup.logging, null /* setup.db */, setup.amqp);
 
@@ -87,6 +100,52 @@ function _copyKeys(target, source, skip) {
         target[k] = v;
     }
 }
+
+_p._getRemoteRef = function(remoteName) {
+    var remoteRef = this._remoteRefs.get(remoteName);
+    if(!remoteRef)
+        throw new Error(`"${remoteName}" is no GitHub remote reference.`);
+    return remoteRef;
+};
+
+_p._getPRSetup = function(prTargetName) {
+    var prSetup = this._ghPRSetup.get(prTargetName);
+    if(!prSetup)
+        throw new Error(`"${prTargetName}" is no PR-Target.`);
+    return prSetup;
+};
+
+_p._getPRRemoteRef = function(prTargetName) {
+    var prSetup = this._getPRSetup(prTargetName);
+    return [prSetup.target, this._getRemoteRef(prSetup.target)];
+};
+
+/**
+ * If pushTarget is not defined this returns the pr target
+ * remote reference to push to.
+ */
+_p._getPushRemoteRef = function(prTargetName) {
+    var prSetup = this._getPRSetup(prTargetName)
+      , remoteName = prSetup.pushTarget || prSetup.target
+      ;
+    return [remoteName, this._getRemoteRef(remoteName)];
+};
+
+/**
+ * If repo.upstream is not defined in the prTarget this returns the same
+ * repo as `this._getPRRemoteRef(prTargetName)` would.
+ */
+_p._getUpstreamRemoteRef = function(prTargetName) {
+    var prSetup = this._getPRSetup(prTargetName)
+      , remoteName = prSetup.target
+      , remoteRef = this._getRemoteRef(prSetup.target)
+      ;
+    // if this has no upstream, it is it's own upstream.
+    if(remoteRef.upstream)
+        return [remoteRef.upstream, this._getRemoteRef(remoteRef.upstream)];
+    else
+        return [remoteName, remoteRef];
+};
 
 _p._sendRequest = function(url, options, bodyData) {
     var reqUrl = new URL(url)
@@ -233,29 +292,55 @@ _p._initRepository = function() {
  * # verify remote
  * $ git remote -v
  */
-_p._initUpstream = function() {
-    return gitRemoteGetAdd(this._repo, 'upstream', this._upstreamBranch.remoteUrl);
+_p._initUpstreams = function() {
+    var promises = []
+      , seen = new Set()
+      ;
+    for(let prTargetName of this._ghPRSetup.keys()) {
+        let [remoteName, remoteRef] = this._getUpstreamRemoteRef(prTargetName);
+        if(seen.has(remoteName))
+            continue;
+        seen.add(remoteName);
+        promises.push(
+            this._queue.schedule(gitRemoteGetAdd, this._repo
+                              , remoteName, remoteRef.remoteUrl));
+    }
+    return Promise.all(promises);
 };
 
 _p._fetchRef = function(noQueue, remoteName, remoteUrl, referenceName) {
-    var func = () => fetchRef(this._log, this._repo
-                                , remoteName, remoteUrl, referenceName);
+    var args = [this._log, this._repo , remoteName, remoteUrl, referenceName];
     if(noQueue)
-        return func();
+        return fetchRef(...args);
     else
-        return this._queue.schedule(func);
+        return this._queue.schedule(fetchRef, ...args);
 };
-
 
 /**
  * $ git fetch upstream master
  *
  * this will run frequently before creating a new branch
  */
-_p._fetchUpstreamMaster = function(noQueue) {
+_p._fetchUpstreamMaster = function(remoteName, remoteRef, noQueue) {
     return this._fetchRef(noQueue
-                        , 'upstream', this._upstreamBranch.remoteUrl
-                        , this._upstreamBranch.branchName); // -> ref
+                        , remoteName
+                        , remoteRef.remoteUrl
+                        , remoteRef.branchName); // -> ref
+};
+
+_p._fetchUpstreamMasters = function() {
+    var promises = []
+      , seen = new Set()
+      ;
+    for(let prTargetName of this._ghPRSetup.keys()) {
+        let [remoteName, remoteRef] = this._getUpstreamRemoteRef(prTargetName);
+        if(seen.has(remoteName))
+            continue;
+        seen.add(remoteName);
+                      // this is queued
+        promises.push(this._fetchUpstreamMaster(remoteName, remoteRef));
+    }
+    return Promise.all(promises);
 };
 
 _p._branch = function(branchName, reference, force) {
@@ -367,20 +452,21 @@ _p.dispatchPullRequest = function(call, callback) {
       , prMessageBody =  pullRequest.getPRMessageBody()
       , commitMessage = pullRequest.getCommitMessage()
       , processCommand = pullRequest.getProcessCommand()
+      , prTargetName = pullRequest.getPRTarget()
+      , [remoteName, pushRemoteRef] = this._getPushRemoteRef(prTargetName)
         // where the new branch is pushed to, to make the PR from
         // hmm, we could use the github api to find the clone of
         // the google/fonts repo of the user, but that way all PR-branches
         // end up at different repositories, will be confusing...
         // If we use a single repo, either each user needs write permissions,
         // which is probably best, or we use a single token for all these
-        // operations, which is easiest and fastest.
-      , remoteRef = new GitHubRef(this._ghPushSetup.repoOwner
-                                , this._ghPushSetup.repoName
-                                , targetBranchName)
-        // must be allowed to push to remoteRef
-      , pushOAuthToken = this._ghPushSetup.accessToken
-      , prHead = remoteRef.prHead
-      , prTarget = this._prTarget
+        // operations, which is easiest and fastest for now.
+      , remoteRef = new GitHubRef(pushRemoteRef.repoOwner
+                                , pushRemoteRef.repoName
+                                , targetBranchName
+                                , null
+                                  // must be allowed to push to remoteRef
+                                , pushRemoteRef.oAuthToken)
       , report = new GitHubReport()
       ;
     // We know this already, even if we may fail to create it.
@@ -408,8 +494,8 @@ _p.dispatchPullRequest = function(call, callback) {
             return this._queue.schedule(
                 this._dispatch.bind(this), authorSignature
               , localBranchName, targetDirectory, pbFilesMessage, commitMessage
-              , remoteRef, pushOAuthToken, prMessageTitle, prMessageBody
-              , prHead, prTarget, prOAuthToken
+              , [remoteName, remoteRef], prMessageTitle, prMessageBody
+              , prTargetName, prOAuthToken
             );
         });
     })
@@ -453,19 +539,27 @@ _p._sendDispatchResult = function(preparedProcessCommand
  * wrap this into a this._queue.schedule!
  */
 _p._dispatch = function(authorSignature, localBranchName, targetDirectory
-                      , pbFilesMessage, commitMessage, remoteRef
-                      , pushOAuthToken, prMessageTitle, prMessageBody
-                      , prHead, prTarget, prOAuthToken) {
-    this._log.debug('_dispatch:', targetDirectory);
-    return this._fetchUpstreamMaster(true)// -> ref
+                      , pbFilesMessage, commitMessage, remote
+                      , prMessageTitle, prMessageBody
+                      , prTargetName, prOAuthToken) {
+    this._log.debug('_dispatch:', prTargetName, targetDirectory);
+    var [remoteName, remoteRef] = remote
+      , [prRemoteName, prRemoteRef] = this._getPRRemoteRef(prTargetName)
+      , [upRemoteName, upRremoteRef] = this._getUpstreamRemoteRef(prTargetName)
+      ;
+    // noQueue is true because _dispatch is/must be queued!
+    return this._fetchUpstreamMaster(upRemoteName, upRremoteRef, true)// -> ref
     .then(reference=>this._branch(localBranchName, reference, true))
     .then(headCommitReference=>this._replaceDirCommit(authorSignature
                             , localBranchName, headCommitReference
                             , targetDirectory, pbFilesMessage, commitMessage))
-
-    .then(()=>this._push(localBranchName, remoteRef, pushOAuthToken, true))
-    .then(()=>this._gitHubPR(prMessageTitle, prMessageBody, prHead
-                                            , prTarget, prOAuthToken));
+    .then(()=>this._push(remoteName, localBranchName, remoteRef, true))
+    .then(()=>this._updateUpstream(prRemoteName, prRemoteRef))
+    .then(()=>this._gitHubPR(prMessageTitle, prMessageBody
+                             // `${remoteRef.repoOwner}:${remoteRef.branchName}`
+                           , remoteRef.prHead
+                           , prRemoteRef
+                           , prOAuthToken));
 };
 
 _p._getIssueRequestBodyData = function(issueMessage) {
@@ -561,8 +655,8 @@ _p.serve = function() {
     // No db yet!
 
     return this._initRepository()
-        .then(()=>this._initUpstream())
-        .then(()=>this._fetchUpstreamMaster())
+        .then(()=>this._initUpstreams())
+        .then(()=>this._fetchUpstreamMasters())
         .then(()=>{
             this._log.info('Conecting external services...');
             return Promise.all([this._auth.waitForReady().then(()=>this._log.info('auth is ready now'))
@@ -714,12 +808,62 @@ function insertOrReplaceDir(repo, tree, path, items) {
     );
 }
 
+/**
+ * wrap this into a this._queue.schedule!
+ * NOTE: when called in _dispatch it is by wrapped!
+ *
+ * hmm, basically if I have the origins "upstream" and "origin" and "origin"
+ * is a fork of "upstream". In branch master -> origin/master
+ *      git fetch upstream
+ *      git rebase upstream/master
+ *      git push
+ * brings my origin/master to the same state as upstream/master
+ * so in this case, I should just push the local upstream branch to
+ * the prTarget...
+ */
+_p._updateUpstream = function(remoteName, remoteRef) {
+        // e.g. remoteName = "graphicore"  remoteRef.branchName = "master"
+    var upstreamRemoteName = remoteRef.upstream
+      , upstreamRemoteRef
+      , fullLocalRef
+      , force = false
+      ;
+
+    if(!upstreamRemoteName || !remoteRef.updateWithUpstreamBeforePR)
+        return;
+    upstreamRemoteRef = this._getRemoteRef(upstreamRemoteName);
+    // e.g. refs/remotes/upstream/master
+    fullLocalRef = `refs/remotes/${upstreamRemoteName}/${upstreamRemoteRef.branchName}`;
+    return this._push(remoteName, fullLocalRef, remoteRef, force);
+};
+
 // push localBranchName -> to graphicore/googleFonts:fontbakery-test_01
-_p._push = function(localBranchName, remoteRef, oAuthToken, force) {
-    this._log.debug('_push:', remoteRef.remoteName, remoteRef.branchName);
-    return gitRemoteGetAdd(this._repo, 'staging', remoteRef.remoteUrl, true)
+_p._push = function(remoteName, localBranchName, remoteRef, force) {
+    this._log.debug('_push:', remoteName, remoteRef.remoteName, remoteRef.branchName);
+    return gitRemoteGetAdd(this._repo, remoteName, remoteRef.remoteUrl, true)
     .then(remote => {
-        var fullLocalRef = 'refs/heads/' + localBranchName
+            //
+            // here `remoteName` was "staging"
+            // and  `localBranchName` was "Font_Bakery_Dispatcher_2019_10_11_ofl_abeezee"
+            //
+            //      root@fontbakery-github-operations-68f5f75d8c-phmgq:/var/javascript/fontsgit# tree refs/
+            //      refs/
+            //      |-- heads
+            //      |   `-- dispatch_branch
+            //      |-- remotes
+            //      |   |-- staging
+            //      |   |   `-- Font_Bakery_Dispatcher_2019_10_11_ofl_abeezee
+            //      |   `-- upstream
+            //      |       `-- master
+            //      `-- tags
+            //
+            // to push from a remote that was fetched e.g.:
+            //     fullLocalRef = refs/remotes/upstream/master
+            //     fullRemoteRef = refs/heads/master
+            // localBranchName can also be a fullLocalRef
+        var fullLocalRef = localBranchName.indexOf('refs/') === 0
+                        ? localBranchName
+                        : 'refs/heads/' + localBranchName
           , fullRemoteRef = 'refs/heads/' + remoteRef.branchName
           // refspec for force pushing must include a + at the start.
           , refSpec = (force ? '+' : '') + fullLocalRef + ':' + fullRemoteRef
@@ -730,7 +874,7 @@ _p._push = function(localBranchName, remoteRef, oAuthToken, force) {
                     // correctly, this is a bypass but not needed on Linux.
                     // certificateCheck: ()=>1,
                     credentials: ()=>NodeGit.Cred.userpassPlaintextNew(
-                                oAuthToken, "x-oauth-basic")
+                                remoteRef.oAuthToken, "x-oauth-basic")
                 }
             }
           ;
@@ -857,7 +1001,7 @@ _p._gitHubPR = function(title
             }
         }
       , {   title: title
-          , body:  body
+          , body: body
           , head: head
           , base: prBase.branchName
         }
@@ -987,21 +1131,57 @@ if (typeof require != 'undefined' && require.main==module) {
     var { getSetup } = require('./util/getSetup')
       , repoPath = './fontsgit'
       , setup = getSetup(), gitHubOperationsServer, port=50051
-        // all PRs are based on this branch
-      , upstream = new GitHubRef('google', 'fonts', 'master')
-        // if not defined falls back to upstream
-        // but this is for development, to not disturb
-        // the production people
-      , prTarget = new GitHubRef('graphicore', 'googleFonts', 'master')
-      // FIXME: we could also use the authenticated user to perform the
-      // push and in the spirit of the OAuthAPI, we maybe should …
-      // This here may well be a temporary setup!
-      // Though! this way, we can at least ensure that the access token
-      // is authorized to push to the repo.
-      , ghPushSetup = {
-            repoOwner: 'graphicore',
-            repoName: 'googleFonts',
-            accessToken: setup.gitHubAPIToken
+        // all PRs are based on the respective upstream repository branch
+      , remoteRefs = {
+            googlefonts: new GitHubRef(
+                                'google', 'fonts', 'master'
+                                // this has no upstream, it is its own upstream
+                              , null
+                              , setup.gitHubAPIToken
+                              , false // updateWithUpstreamBeforePR
+                              )
+          , graphicore: new GitHubRef(
+                                'graphicore', 'googleFonts', 'master'
+                              , 'googlefonts' // upstream: the key in this "remoteRefs" object
+                              , setup.gitHubAPIToken
+                              , true // updateWithUpstreamBeforePR
+                              )
+        }
+      , ghPRSetup = {
+            production: {
+                target: 'googlefonts'
+                // we could also have a different repo for the push target
+                // but we don't do this right now.
+                // PRs to production push to  upstream.repoOwner/upstream.repoName
+                //
+                //
+                // we will create our own branch and force push to it!
+                //
+                // we could use the users OAuthToken, but that may not
+                // have the rights to do Pushes.
+                // However, together with the users repo as pushTarget
+                // using the access token of the user would be cool!
+                // this would be a "dynamic" pushTarget that comes with
+                // the users request.
+                // We could look if the user has a fork of upstream and
+                // If not, ask him to to make one (and maybe do it for him)
+                // eventually nobody would have to push to google/fonts
+                // -> does travis really only run when pushed to google fonts?
+                // it should run on PullRequests/
+                //
+                // uses repoOwner, repoName , oAuthToken
+                // creates a branch named by this._makeRemoteBranchName
+                // FIXME: _makeRemoteBranchName uses targetDirectory, but
+                // that may not be distinctive enough, because in sandbox
+                // for example, we have the same target directories for
+                // different sources, in case of a feature branch workflow!
+                // It's coming from the process implementation, so we could
+                // as well just set an explicit branch name in there.
+              , pushTarget: 'graphicore'
+            }
+          , sandbox: {
+                target: 'graphicore'
+            }
         }
     ;
 
@@ -1017,8 +1197,8 @@ if (typeof require != 'undefined' && require.main==module) {
     setup.logging.info('Init server, port: '+ port +' ...');
     setup.logging.log('Loglevel', setup.logging.loglevel);
 
-    gitHubOperationsServer = new GitHubOperationsServer(setup.logging, port, setup, repoPath
-                            , upstream, ghPushSetup, prTarget);
+    gitHubOperationsServer = new GitHubOperationsServer(setup.logging, port
+                            , setup, repoPath, remoteRefs, ghPRSetup);
     gitHubOperationsServer.serve()
         .then(
               ()=>setup.logging.info('Server ready!')

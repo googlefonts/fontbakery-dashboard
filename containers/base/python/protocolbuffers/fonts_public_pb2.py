@@ -251,25 +251,25 @@ DESCRIPTOR.message_types_by_name['FontProto'] = _FONTPROTO
 DESCRIPTOR.message_types_by_name['AxisProto'] = _AXISPROTO
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-FamilyProto = _reflection.GeneratedProtocolMessageType('FamilyProto', (_message.Message,), dict(
-  DESCRIPTOR = _FAMILYPROTO,
-  __module__ = 'fonts_public_pb2'
+FamilyProto = _reflection.GeneratedProtocolMessageType('FamilyProto', (_message.Message,), {
+  'DESCRIPTOR' : _FAMILYPROTO,
+  '__module__' : 'fonts_public_pb2'
   # @@protoc_insertion_point(class_scope:google.fonts.FamilyProto)
-  ))
+  })
 _sym_db.RegisterMessage(FamilyProto)
 
-FontProto = _reflection.GeneratedProtocolMessageType('FontProto', (_message.Message,), dict(
-  DESCRIPTOR = _FONTPROTO,
-  __module__ = 'fonts_public_pb2'
+FontProto = _reflection.GeneratedProtocolMessageType('FontProto', (_message.Message,), {
+  'DESCRIPTOR' : _FONTPROTO,
+  '__module__' : 'fonts_public_pb2'
   # @@protoc_insertion_point(class_scope:google.fonts.FontProto)
-  ))
+  })
 _sym_db.RegisterMessage(FontProto)
 
-AxisProto = _reflection.GeneratedProtocolMessageType('AxisProto', (_message.Message,), dict(
-  DESCRIPTOR = _AXISPROTO,
-  __module__ = 'fonts_public_pb2'
+AxisProto = _reflection.GeneratedProtocolMessageType('AxisProto', (_message.Message,), {
+  'DESCRIPTOR' : _AXISPROTO,
+  '__module__' : 'fonts_public_pb2'
   # @@protoc_insertion_point(class_scope:google.fonts.AxisProto)
-  ))
+  })
 _sym_db.RegisterMessage(AxisProto)
 
 
