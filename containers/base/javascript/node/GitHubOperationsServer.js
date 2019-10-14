@@ -150,9 +150,7 @@ _p._getUpstreamRemoteRef = function(prTargetName) {
 _p._sendRequest = function(url, options, bodyData) {
     var reqUrl = new URL(url)
       , options_ = {
-            hostname: reqUrl.hostname
-          , path: reqUrl.pathname
-          , method: bodyData ? 'POST' : 'GET'// override with `options` arg
+            method: bodyData ? 'POST' : 'GET'// override with `options` arg
           // , port: 443 // 443 is the default for https
           , headers: {
                 'Accept': 'application/json'
@@ -244,7 +242,7 @@ _p._sendRequest = function(url, options, bodyData) {
     }
 
     return new Promise((resolve, reject) => {
-        var req = https.request(options_, result=>onResult.call(this
+        var req = https.request(reqUrl, options_, result=>onResult.call(this
                                             , resolve, reject, result));
         req.on('error', reject);
         if (body)
@@ -405,18 +403,12 @@ _p._replaceDirCommit = function(authorSignature, localBranchName, headCommitRefe
 
 
 _p._makeRemoteBranchName = function(targetDirectory) {
-    var date = new Date()
-      , zeroPadTwo = number=> ('00' + number).slice(-2)
-      ;
-    // -> Font_Bakery_Dispatcher_2019_01_25_ofl_myfont
+    // -> Font_Bakery_Dispatcher/ofl_myfont
     // we could use the process id to make per process unique branches
     // let's wait and see if that's needed.
-    return ['Font', 'Bakery', 'Dispatcher'
-            , date.getUTCFullYear()
-            , zeroPadTwo(date.getUTCMonth() + 1) /* month is zero based */
-            , zeroPadTwo(date.getUTCDate())
-            , ...targetDirectory.split('/')
-        ].join('_');
+    return ['Font_Bakery_Dispatcher'
+            , targetDirectory.split('/').join('_')
+        ].join('/');
 
 };
 
@@ -555,11 +547,47 @@ _p._dispatch = function(authorSignature, localBranchName, targetDirectory
                             , targetDirectory, pbFilesMessage, commitMessage))
     .then(()=>this._push(remoteName, localBranchName, remoteRef, true))
     .then(()=>this._updateUpstream(prRemoteName, prRemoteRef))
-    .then(()=>this._gitHubPR(prMessageTitle, prMessageBody
+    // NOTE: at this point the PUSH was already successful, so the branch
+    // of the PR exists or if it existed it has changed.
+    .then(()=>this._gitHubGetOpenPullRequest(prOAuthToken
+                            , prRemoteRef.repoOwner
+                            , prRemoteRef.repoName
+                            , remoteRef.prHead // head e.g. user:branchName
+                            , prRemoteRef.branchName // base e.g. master
+                            ))
+    .then((getPRResult)=>{
+        // We only create a new PR if it doesn't exists:
+        // https://github.com/googlefonts/fontbakery-dashboard/issues/143
+        // This has exactly one or no result, because of the combination
+        // of the `head`, `base` and `status="open"` parameters in the
+        // requst.
+        //
+        // if no result, the answer is an empty list and we create a new
+        // PR.
+        //
+        // if one result: the issue number is result[0].number
+        //      issue_url: "https://api.github.com/repos/graphicore/googleFonts/issues/43"
+        //      html_url: "https://github.com/graphicore/googleFonts/pull/43"
+        if(!getPRResult.length) {
+            return this._gitHubPR(prOAuthToken
+                           , prMessageTitle
+                           , prMessageBody
                              // `${remoteRef.repoOwner}:${remoteRef.branchName}`
                            , remoteRef.prHead
                            , prRemoteRef
-                           , prOAuthToken));
+                           );
+        }
+        return this._gitHubIssueComment(prOAuthToken
+                            , prRemoteRef.repoOwner
+                            , prRemoteRef.repoName
+                            , getPRResult[0].number // the issue number
+                            , {body: `Updated:\n\n---\n${prMessageBody}`})
+                            .then(result=>{
+                                // Add the issue number, the calling code expects it.
+                                result.number = getPRResult[0].number;
+                                return result;
+                            });
+    });
 };
 
 _p._getIssueRequestBodyData = function(issueMessage) {
@@ -578,6 +606,71 @@ _p._getIssueRequestBodyData = function(issueMessage) {
     if(labels.length)
         bodyData.labels = labels;
     return bodyData;
+};
+
+/**
+ * https://developer.github.com/v3/pulls/#list-pull-requests
+ * GET /repos/:owner/:repo/pulls
+ */
+_p._gitHubGetOpenPullRequest = function(OAuthAccessToken, repoOwner, repoName, head, base) {
+    this._log.debug('_gitHubIssue at:', repoOwner + '/' + repoName);
+    var url = [
+                'https://'
+              , GITHUB_API_HOST
+              , '/repos'
+              , '/' + repoOwner
+              , '/' + repoName
+              , '/pulls'
+              , '?state=open'
+              , `&head=${encodeURIComponent(head)}`
+              , `&base=${encodeURIComponent(base)}`
+              ].join('')
+      ;
+    return this._sendRequest(
+        url
+      , {
+            method: 'GET'
+          , headers: {
+                // In this case authorization may not be required for
+                // public repositories.
+                Authorization: 'bearer ' + OAuthAccessToken
+            }
+        }
+    );
+};
+
+/**
+ * POST /repos/:owner/:repo/issues/:issue_number/comments
+ */
+_p._gitHubIssueComment = function(OAuthAccessToken, repoOwner, repoName
+                                            , issueNumber, bodyData) {
+
+    var url = [
+                'https://'
+              , GITHUB_API_HOST
+              , '/repos'
+              , '/' + repoOwner
+              , '/' + repoName
+              , '/issues'
+              , '/' + issueNumber
+              , '/comments'
+              ].join('')
+      ;
+    return this._sendRequest(
+        url
+      , {
+            method: 'POST' // implied by adding body data ...
+          , headers: {
+                'Content-Type': 'application/json'
+                // wondering when to use "bearer" vs. "token"
+                // but it seems like "bearer" is the standard and
+                // "token" is either github specific or an error in the docs
+                // both "bearer" and "token" seem to work!
+              , Authorization: 'bearer ' + OAuthAccessToken
+            }
+        }
+      , bodyData
+    );
 };
 
 /**
@@ -970,11 +1063,11 @@ _p._push = function(remoteName, localBranchName, remoteRef, force) {
  * as the authenticated user:
  * sessionData.accessToken.access_token === 'ABCDEFGH1234567890'
  */
-_p._gitHubPR = function(title
+_p._gitHubPR = function(OAuthAccessToken
+                      , title
                       , body  /* markdown */
                       , head  /* i.e. graphicore:fontbakery-test_01 */
                       , prBase /* new GitHubRef('google', 'fonts', 'master') */
-                      , OAuthAccessToken
                       ) {
 
     this._log.debug('_gitHubPR:', head, '=>', prBase.remoteName, prBase.branchName);
