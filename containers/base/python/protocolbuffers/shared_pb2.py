@@ -99,18 +99,18 @@ DESCRIPTOR.message_types_by_name['File'] = _FILE
 DESCRIPTOR.message_types_by_name['Files'] = _FILES
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-File = _reflection.GeneratedProtocolMessageType('File', (_message.Message,), dict(
-  DESCRIPTOR = _FILE,
-  __module__ = 'shared_pb2'
+File = _reflection.GeneratedProtocolMessageType('File', (_message.Message,), {
+  'DESCRIPTOR' : _FILE,
+  '__module__' : 'shared_pb2'
   # @@protoc_insertion_point(class_scope:fontbakery.dashboard.File)
-  ))
+  })
 _sym_db.RegisterMessage(File)
 
-Files = _reflection.GeneratedProtocolMessageType('Files', (_message.Message,), dict(
-  DESCRIPTOR = _FILES,
-  __module__ = 'shared_pb2'
+Files = _reflection.GeneratedProtocolMessageType('Files', (_message.Message,), {
+  'DESCRIPTOR' : _FILES,
+  '__module__' : 'shared_pb2'
   # @@protoc_insertion_point(class_scope:fontbakery.dashboard.Files)
-  ))
+  })
 _sym_db.RegisterMessage(Files)
 
 
