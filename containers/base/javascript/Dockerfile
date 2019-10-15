@@ -3,7 +3,7 @@
 FROM node:11.15.0-stretch
 
 
-RUN touch /tmp/cache_spoof_10
+RUN touch /tmp/cache_spoof_11
 
 RUN npm install -g bower browserify requirejs;
 
