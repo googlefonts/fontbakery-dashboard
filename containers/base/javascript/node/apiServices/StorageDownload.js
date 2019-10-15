@@ -1,6 +1,6 @@
 #! /usr/bin/env node
 "use strict";
-/* jshint esnext:true, node:true */
+/* jshint esversion:9, node:true */
 /* globals escape,unescape */
 
 const yazl = require('yazl')
@@ -50,6 +50,9 @@ function StorageDownload(server, app, logging, storages /* { e.g.: cache, persis
     this._knownTypes = messages_pb;
     this._app.get('/:storage/:key_extension', this._download.bind(this));
     this._app.get('/:storage/:key/:filename_extension', this._download.bind(this));
+
+    // only doing this for zips now
+    this._app.get('/:storage/collect/:keys_and_names/:filename.zip', this._downloadCollectionZip.bind(this));
 }
 
 const _p = StorageDownload.prototype;
@@ -81,8 +84,6 @@ function getTypeName(knownTypes, message) {
     return null;
 }
 
-
-
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent
 function makeContentDispositionHeader(fileName) {
     return [
@@ -102,14 +103,26 @@ function encodeRFC5987ValueChars(str) {
             replace(/%(?:7C|60|5E)/g, unescape);
 }
 
-function _zipAndSendMessage(res, message, filename) {
+
+/**
+ * A context for context management, this means it can shut down itself.
+ */
+function *_zipAndSendMessagesCTX(res, filename) {
+    // prep
     res.setHeader('Content-Type', 'application/zip');
     // mark as downloadable file
     res.setHeader(...makeContentDispositionHeader(filename));
-    var zipfile = new yazl.ZipFile()
-      , files
-      ;
+    var zipfile = new yazl.ZipFile();
+    zipfile.outputStream.pipe(res);
 
+    yield zipfile;
+
+    // end
+    zipfile.end();
+}
+
+function _zipAddMessage(zipfile, message, prefix) {
+    var files;
     if(message instanceof FamilyData)
         files = message.getFiles().getFilesList();
     else if(message instanceof Files)
@@ -118,11 +131,46 @@ function _zipAndSendMessage(res, message, filename) {
         // getName and getData_asU8 are expected
         files = [message];
 
-    for(let file of files)
-        zipfile.addBuffer(Buffer.from(file.getData_asU8()), file.getName());
+    for(let file of files) {
+        let fileName = `${prefix || ''}${file.getName()}`;
+        zipfile.addBuffer(Buffer.from(file.getData_asU8()), fileName);
+    }
+}
 
-    zipfile.outputStream.pipe(res);
-    zipfile.end();
+function _zipAndSendMessage(res, filename, message) {
+    var context = _zipAndSendMessagesCTX(res, filename)
+      , zipFile = context.next().value
+      ;
+    try {
+        _zipAddMessage(zipFile, message);
+    }
+    finally {
+        context.next();
+    }
+}
+
+async function* _getMessages(storage, namesKeyMap) {
+    for(let [name, key] of namesKeyMap) {
+        let storageKey = new StorageKey();
+        storageKey.setKey(key);
+        let message = await storage.get(storageKey);
+        yield [name, message];
+    }
+}
+
+async function _zipAndSendMessages(res, filename, storage, namesKeyMap) {
+    var context = _zipAndSendMessagesCTX(res, filename)
+      , zipFile = context.next().value
+      ;
+    try {
+        for await (let [name, message] of _getMessages(storage, namesKeyMap)) {
+            let prefix = name ? `${name}/` : null;
+            _zipAddMessage(zipFile, message, prefix);
+        }
+    }
+    finally {
+        context.next();
+    }
 }
 
 /**
@@ -176,9 +224,9 @@ _p._download = function(req, res, next) {
                        .send('Not Found: data has no zip representation.');
                     return;
                 }
-                contentType = 'application/zip';
+                // contentType = 'application/zip';
                 // is sent none-blocking and as a stream
-                _zipAndSendMessage(res, message, filename);
+                _zipAndSendMessage(res, filename, message);
                 return;
             }
             else if(extension === 'proto.bin') {
@@ -247,6 +295,46 @@ _p._download = function(req, res, next) {
         });
 };
 
+/**
+ * GET
+ * only doing this for zips now
+ * since keys can have a-z0-9: we separate by ; and ,
+ * {key},{name};{key},{name};{key},{name}
+ *
+ *    /:storage/collect/:keys_and_names/:filename.zip
+ */
+_p._downloadCollectionZip = function(req, res, next) {
+    // jshint unused:vars
+    var storage
+      , filename = `${req.params.filename}.zip`
+      , namesKeyMap = req.params.keys_and_names.split(';')
+                                        .map(kn=>kn.split(',').reverse())
+      ;
+
+    if(!(req.params.storage in this._storages)) {
+        res.status(404)
+           .send('Not Found: unknown storage parameter.');
+        return;
+    }
+    storage = this._storages[req.params.storage];
+    return _zipAndSendMessages(res, filename, storage, namesKeyMap)
+    .then(null, err=> {
+         // ... 404 not found OR 500 depends on the message!
+
+         var statusCode = 500
+           , message = 'Internal Error'
+           ;
+         if(err.code === grpcStatus.NOT_FOUND) {
+             statusCode = 404;
+             message = 'Not Found: ' + err.details;
+         }
+
+         this._log.error('_download storage [GET]', req.params.storage
+                                                 , req.params.keys_and_names, err);
+         res.status(statusCode).send(message);
+         return;
+     });
+};
 
 module.exports.StorageDownloadService = StorageDownload;
 
