@@ -11,7 +11,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-dispatcher
-        image: gcr.io/fontbakery-168509/base-javascript:12
+        image: gcr.io/fontbakery-168509/base-javascript:13
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
