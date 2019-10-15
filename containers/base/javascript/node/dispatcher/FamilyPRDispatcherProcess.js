@@ -656,7 +656,8 @@ _p.callbackReceiveFiles = function([requester, sessionID]
             //       link. Since no solution is realy good, hardcoded will
             //       have to do for now, it's quick and dirty,
             //       the quickest way in fact ...
-          , zipDownloadLink = `/download/persistence/${filesStorageKey}/`
+          , zipDownloadLink = `${this.resources.frontendBaseURL}/download/`
+                            + `persistence/${filesStorageKey}/`
                             + `${encodeURIComponent(this.process.familyName)}.zip`
           , familyDirName = this.process.familyName.toLowerCase().replace(/ /g, '')
           ;
@@ -1208,18 +1209,31 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
     // }
     var results = genericStorageWorkerResult.getResultsList();
     if(results.length) {
+        let keysAndNames = [], fileName;
         report += '\n### Results\n';
         for(let result of results) {
             let name = result.getName()
               , storageKey = result.getStorageKey()
+              , key = storageKey.getKey()
               ;
+            keysAndNames.push([key, name]);
             // FIXME: a hard coded url is bad :-/
             report += ` * browse report: [**${name}**]`
-                    + `(/browse/persistence/${storageKey.getKey()}/report.html)`
+                    + `(${this.resources.frontendBaseURL}/`
+                            +`browse/persistence/${key}/report.html)`
                     + ` or download: [zip file]`
-                    + `(/download/persistence/${storageKey.getKey()}/`
-                            + `Diffenator_${encodeURIComponent(this.process.familyName)}.zip)\n`;
+                    + `(${this.resources.frontendBaseURL}/`
+                            + `download/persistence/${key}/`
+                            + `Diffenator_${encodeURIComponent(this.process.familyName)}_`
+                            + `${encodeURIComponent(name)}.zip)\n`;
         }
+        keysAndNames = encodeURIComponent(keysAndNames.map(kn=>kn.join(',')).join(';'));
+        fileName = `${encodeURIComponent('Diffenator_')}`
+                            + `${encodeURIComponent(this.process.familyName)}.zip`;
+
+        report += `\nDownload the [full report zip file]`
+                + `(${this.resources.frontendBaseURL}/`
+                + `download/persistence/collect/${keysAndNames}/${fileName}).\n`;
     }
     report += '\n';
     report += [
@@ -1404,20 +1418,33 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
     // }
     var results = genericStorageWorkerResult.getResultsList();
     if(results.length) {
+        let keysAndNames = [], fileName;
         report += '\n### Results\n';
         for(let result of results) {
             let name = result.getName()
               , storageKey = result.getStorageKey()
+              , key = storageKey.getKey()
               ;
+            keysAndNames.push([key, name]);
             // FIXME: a hard coded url is bad :-/
             report += ` * browse report: [**${name}**]`
                       // uses index.html or autoindex
-                    + `(/browse/persistence/${storageKey.getKey()}/)`
+                    + `(${this.resources.frontendBaseURL}/`
+                            + `browse/persistence/${key}/)`
                     + ` or download: [zip file]`
-                    + `(/download/persistence/${storageKey.getKey()}/`
-                            + `${encodeURIComponent('Browser Diffs_')}`
-                            + `${encodeURIComponent(this.process.familyName)}.zip)\n`;
+                    + `(${this.resources.frontendBaseURL}/`
+                            + `download/persistence/${key}/`
+                            + `${encodeURIComponent('Browser Diffs')}_`
+                            + `${encodeURIComponent(this.process.familyName)}_`
+                            + `${encodeURIComponent(name)}.zip)\n`;
         }
+        keysAndNames = encodeURIComponent(keysAndNames.map(kn=>kn.join(',')).join(';'));
+        fileName = `${encodeURIComponent('Browser Diffs')}_`
+                            + `${encodeURIComponent(this.process.familyName)}.zip`;
+
+        report += `\nDownload the [full report zip file]`
+                + `(${this.resources.frontendBaseURL}/`
+                + `download/persistence/collect/${keysAndNames}/${fileName}).\n`;
     }
     report += '\n';
     report += [
