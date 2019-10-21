@@ -19,7 +19,7 @@
     "amqplib": "^0.5.2",
     "body-parser": "^1.19.0",
     "cookie-parser": "^1.4.3",
-    "csv-parse": "^2.2.0",
+    "csv-parse": "^4.6.5",
     "express": "^4.17.1",
     "google-protobuf": "^3.8.0",
     "grpc": "^1.21.1",
