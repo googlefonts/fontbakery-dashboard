@@ -1087,8 +1087,14 @@ _p.uiChooseAction = function() {
             }
           , {   name: 'accept'
               , condition: ['finish', true]
-              , type:'binary'
-              , label: 'Diffenator looks good!'
+              , type: 'choice'
+              , label: 'Please review Diffenator.'
+              , options: [
+                        ['FAIL! It shows severe problems.', false]
+                      , ['PASS! Looks good.', 'PASS']
+                      , ['SKIP! Please explain (same effect as PASS). ', 'SKIP']
+                      ]
+            //, default: 'production' // 0 => the first item is the default
             }
           , {   name: 'notes'
               , type: 'text' // input type:text
@@ -1116,8 +1122,15 @@ _p.callbackChooseAction = function([requester, sessionID]
                                         , 'callbackReceiveFamilyData'
                                         , values.source);
     }
-    if(values.accept === true)
-        this._setOK('**@' + requester + '** Diffenator is looking  good.' + notes);
+    if(values.accept !== false) {
+        if(values.accept !== 'PASS' && values.accept !== 'SKIP')
+            throw new Error(`values.accept has an unexpected value: ${values.accept}`);
+        this._setOK('**@' + requester + '** Diffenator '+ (
+                            values.accept === 'PASS'
+                            ? 'is looking good'
+                            : 'is skipped'
+                    ) +'.' + notes);
+    }
     else
         this._setFAILED('**@' + requester + '** Diffenator is failing.' + notes);
 };
@@ -1298,9 +1311,15 @@ _p.uiChooseAction = function() {
             }
           , {   name: 'accept'
               , condition: ['finish', true]
-              , type:'binary'
-              , label: 'Diffs and previews look good!'
+              , type: 'choice'
+              , label: 'Please review Diffs and Previews.'
+              , options: [
+                        ['FAIL! It shows severe problems.', false]
+                      , ['PASS! Looks good.', true]
+                      ]
+            //, default: 'production' // 0 => the first item is the default
             }
+
           , {   name: 'notes'
               , type: 'text' // input type:text
               , label: 'Notes'
@@ -1331,7 +1350,7 @@ _p.callbackChooseAction = function([requester, sessionID]
     }
     if(values.accept === true)
         this._setOK('**@' + requester + '** Browsers diffs and previews are '
-                                                + 'looking  good.' + notes);
+                                                  + 'looking good.' + notes);
     else
         this._setFAILED('**@' + requester + '** Browsers diffs and previews '
                                                 + 'are failing.' + notes);
