@@ -890,11 +890,16 @@ _p.uiConfirmFontbakery = function() {
       , ui: [
             {
                 type: 'info'
-              , content: 'Please review the Font Bakery result:'
+              , content: 'Finish this task:'
             }
-          , {   name: 'accept'
-              , type:'binary'
-              , label: 'Fontbakery looks good!'
+          , { name: 'accept'
+              , type: 'choice'
+              , label: 'Please review the Font Bakery Report.'
+              , options: [
+                    ['FAIL! The reported problems are too severe to continue.', false]
+                  , ['PASS! The report looks good.', true]
+              ]
+            //, default: 'production' // 0 => the first item is the default
             }
           , {   name: 'notes'
               , type: 'text' // input type:text
@@ -1068,7 +1073,7 @@ _p.uiChooseAction = function() {
             }
           , {   name: 'finish'
               , type:'binary'
-              , label: 'Finish this process.'
+              , label: 'Finish this task.'
             }
           , {   name: 'source'
               , condition: ['finish', false]
@@ -1278,7 +1283,7 @@ _p.uiChooseAction = function() {
             }
           , {   name: 'finish'
               , type:'binary'
-              , label: 'Finish this process.'
+              , label: 'Finish this task.'
             }
           , {   name: 'source'
               , condition: ['finish', false]
