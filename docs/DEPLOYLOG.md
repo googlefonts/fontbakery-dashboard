@@ -378,19 +378,34 @@ Script Template:
 ```bash
 #!/usr/bin/env bash
 GOOGLE_API_KEY=AAAAAAAAABBBBBBXXXXXX{PRIVATE}XXXXAAAABBBB
+# https://github.com/settings/tokens
+# scope: public_repo
 GITHUB_API_TOKEN=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+
+# From an OAuth App in https://github.com/settings/developers
+# set "Authorization callback URL" to your FRONTEND_BASE_URL + '/github-oauth'
+# e.g. http://localhost:3000/github-oauth
 GITHUB_OAUTH_CLIENT_ID=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
 GITHUB_OAUTH_CLIENT_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
+
 # whitelist user login names on github to have the role "engineer"
 GITHUB_AUTH_ENGINEERS="[\"userlogina\", \"userloginb\", \"userloginc\"]"
-# generated like so: $ head -c 33  /dev/urandom | base64 --wrap=0 ;echo ''
+# did generate it like so: $ head -c 33  /dev/urandom | base64 --wrap=0 ;echo ''
 WEB_SERVER_COOKIE_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 DISPATCHER_MANAGER_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 
+# Generated random admin password
 RETHINKDB_PASSWORD=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
 
+# these are needed for the python diffbrowsers worker
+BROWSERSTACK_USERNAME="username"
+BROWSERSTACK_ACCESS_KEY="AAAAABBBBCCCCC123456"
+
+# If there's an actual url, use that, for minikube something like the following
+FRONTEND_BASE_URL="http://localhost:3000"
+
 # Note: the "-n fontbakery" argument is only needed if kubectl must address
-# a special namespace e.g. in minikube but not on gcloud
+# a special namespace e.g. for me in minikube but not on gcloud
 
 kubectl -n fontbakery delete secret external-resources
 kubectl -n fontbakery create secret generic external-resources \
@@ -401,12 +416,18 @@ kubectl -n fontbakery create secret generic external-resources \
      --from-literal=github-auth-engineers="$GITHUB_AUTH_ENGINEERS"\
      --from-literal=web-server-cookie-secret=$WEB_SERVER_COOKIE_SECRET\
      --from-literal=dispatcher-manager-secret=$DISPATCHER_MANAGER_SECRET\
+     --from-literal=browserstack-username=$BROWSERSTACK_USERNAME\
+     --from-literal=browserstack-access-key=$BROWSERSTACK_ACCESS_KEY\
      --from-literal=rethinkdb-password=$RETHINKDB_PASSWORD\
       ;
 
 ENVIRONMENT_VERSION="$(date)" # like: Mi 8. Nov 03:57:01 CET 2017
-kubectl -n fontbakery delete configmap env-config
-kubectl -n fontbakery create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
+kubectl delete configmap env-config
+kubectl create configmap env-config \
+     --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"\
+     --from-literal=frontend-base-url=$FRONTEND_BASE_URL\
+     ;
+
 ```
 
 Insert secrets, then run it:

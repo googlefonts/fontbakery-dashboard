@@ -249,6 +249,11 @@ $ /fontbakery-dashboard/containers/base$ ./update_protobufs.sh
 ```
 
 
+### 2. set-minikube-vars
+For the `set-minikube-vars` see the [script template](./DEPLOYLOG.md#set-gcloud-vars).
+
+
+
 ```
 $ minikube start
 $ . <(minikube docker-env)
@@ -257,8 +262,7 @@ $ docker build -t fontbakery/base-javascript:1 containers/base/javascript/
 $ docker build -t fontbakery/base-python:1 containers/base/python/
 $ kubectl create namespace fontbakery
 $ alias kf="kubectl --context=minikube -n fontbakery"
-#$ ENVIRONMENT_VERSION="$(date)"
-#$ kf create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRONMENT_VERSION"
+# see script template link above
 $ ./set-minikube-vars
 # same order as in DEPLOY log
 $ kf apply -f kubernetes/minikube-rabbitmq.yaml
