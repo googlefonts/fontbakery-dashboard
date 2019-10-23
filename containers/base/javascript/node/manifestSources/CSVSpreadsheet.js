@@ -194,8 +194,13 @@ var CSVFamily = (function() {
           , enumerable: true
         }
       , fontFilesLocation: {
-            get: function() {
+            get: function(){
                 let path = this.fontfilesPrefix.split('/')
+                        // It's really bad when path starts starts with a "/"
+                        // but also a common thing people do. This takes care
+                        // of that case and also any subsequent separator
+                        // usages like: "my///path".
+                        .filter(part=>!!part)
                   , filesPrefix = path.pop()
                   ;
                 return  [path.join('/'), filesPrefix !== undefined
@@ -968,7 +973,18 @@ _p._getGitData = function(familyData, reference) {
               , treePromise = path === ''
                         ? rootTreePromise // -> no path: use root
                         : commit.getEntry(path) // -> treeEntry
+                                .then(null, err=>{
+                                    this._log.error(`[_getGitData] Can't get `
+                                            + `entry from path: "${path}"`, err);
+                                    // the original error was not helpful at all
+                                    var error = new Error('Can\'t get entry from path:'
+                                        + ` \`${path}\`. Is the \`fontfilesPrefix\` correct?`);
+                                    error.code = grpcStatus.NOT_FOUND;
+                                    error.name = 'NOT_FOUND';
+                                    throw error;
+                                })
                                 .then(_getTreeFromTreeEntry) // -> tree
+
               , masterFamilyTreePromise = this._getGitMasterTreeForFamily(familyData.name)
               ;
 
