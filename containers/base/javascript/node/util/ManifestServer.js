@@ -376,7 +376,7 @@ _p.getDelayed = function(call, callback) {
             // But since we know that there's an error and this is
             // expected to report similar to the `get` interface,
             // with grpc codes, UNKOWN (6) seem appropriate.
-            familyData.setErrorCode(err.code || grpc.StatusCode.UNKNOWN);
+            familyData.setErrorCode(err.code || grpc.status.UNKNOWN);
             familyData.setCollectionid(collectionId);
             familyData.setFamilyName(familyName);
             return familyData;
