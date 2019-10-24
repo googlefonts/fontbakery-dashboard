@@ -8,6 +8,7 @@ from .diff_tools_shared import (
                                , on_each_matching_font
                                )
 
+import diffenator
 from diffenator.diff import DiffFonts
 from diffenator.font import DFont
 
@@ -75,6 +76,8 @@ class DiffenatorWorker(DiffWorkerBase):
   def __init__(self, logging, job, cache, persistence, queue, tmp_directory):
     self._workername = 'diffenator'
     super().__init__(logging, job, cache, persistence, queue, tmp_directory)
+    self._answer.preparation_logs.append(
+                    'Diffenator version {}'.format(diffenator.__version__))
 
   def run(self):
     self._set_answer_timestamp('started')

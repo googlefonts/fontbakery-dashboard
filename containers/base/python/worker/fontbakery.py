@@ -18,6 +18,8 @@ from protocolbuffers.messages_pb2 import (
                                         , WorkerJobDescription
                                         , CompletedWorker
                                         )
+
+import fontbakery
 from fontbakery.reporters import FontbakeryReporter
 from fontbakery.message import Message
 from fontbakery.checkrunner import STARTCHECK, ENDCHECK, DEBUG
@@ -150,7 +152,7 @@ def _prepare(job, cache, dbOps=None, tmp_directory=None):
   # And big enough for all of our jobs, otherwise, change ;-)
   files = cache.get(job.cache_key).files
   maxfiles = 45
-  logs = []
+  logs = ['Font Bakery version: {}'.format(fontbakery.__version__)]
   if tmp_directory is None:
     logs.append('Dry run! tmp_directory is None.')
   seen = set()
@@ -321,6 +323,7 @@ class Distributor(WorkerBase):
 
     self._dbOps.update({
           'started': datetime.now(pytz.utc)
+        , 'fontBakeryVersion': fontbakery.__version__
           # important for parallel execution, to piece together the original
           # order again. The items in the execution_order list are JSON
           # formatted strings and can be used as keys.
@@ -386,7 +389,13 @@ class Checker(WorkerBase):
     self._ticks_to_flush = ticks_to_flush
 
   def _run(self, fonts):
-    self._dbOps.update({'started': datetime.now(pytz.utc)})
+    self._dbOps.update({
+        'started': datetime.now(pytz.utc)
+      # In an race condition, when updating the workers, fontbakery
+      # between the distributor and also between the checkers can have
+      # different versions.
+      , 'fontBakeryVersion': fontbakery.__version__
+    })
     runner, profile = get_fontbakery(fonts)
     order = profile.deserialize_order(self._job.order)
     reporter = DashbordWorkerReporter(self._dbOps, self._job.jobid,
