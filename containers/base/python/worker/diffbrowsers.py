@@ -14,6 +14,7 @@ from collections import namedtuple
 from fontTools.ttLib import TTFont
 import json
 
+import diffbrowsers
 from diffbrowsers.diffbrowsers import DiffBrowsers
 from diffbrowsers.browsers import test_browsers
 
@@ -137,6 +138,8 @@ class DiffbrowsersWorker(DiffWorkerBase):
   def __init__(self, logging, job, cache, persistence, queue, tmp_directory):
     self._workername = 'diffbrowsers'
     super().__init__(logging, job, cache, persistence, queue, tmp_directory)
+    self._answer.preparation_logs.append(
+                    'Diffbrowsers version {}'.format(diffbrowsers.__version__))
 
   def run(self):
     self._set_answer_timestamp('started')
