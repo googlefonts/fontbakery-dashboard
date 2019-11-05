@@ -506,7 +506,8 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
       , room
       , processState, uiDescriptions
       , foundExpectedUI
-      , uiRoles = null
+      , uiRoles = new Set() // empty
+      , addRoles = roles=>roles.forEach(role=>uiRoles.add(role))
       , authorizedRolesRequest
       ;
     // There's an assumption that the socket is alreay subscribed to
@@ -548,24 +549,29 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
         // }
         if(uiDescription.targetPath === commandData.targetPath
                         && uiDescription.ticket === commandData.ticket) {
-                // Hmm, no uiDescription.roles would be an error in the
-                // definition I guess.
-                foundExpectedUI = true;
-                uiRoles = uiDescription.roles
-                            ? new Set(uiDescription.roles)
-                            : null
-                            ;
-                break;
+            // Hmm, no uiDescription.roles would be an error in the
+            // definition I guess.
+            foundExpectedUI = true;
+            if(uiDescription.roles)
+                addRoles(uiDescription.roles);
+            break;
         }
     }
     if(!foundExpectedUI)
         return Promise.reject('The requested interaction is not expected.');
-    else if(!uiRoles )
+    else if(!uiRoles.size)
         return Promise.reject('No roles that apply for the request were found.');
 
     authorizedRolesRequest = new AuthorizedRolesRequest();
     authorizedRolesRequest.setSessionId(sessionId);
     authorizedRolesRequest.setRepoNameWithOwner(processState.repoNameWithOwner);
+    authorizedRolesRequest.setInitiator(processState.initiator);
+
+    // requester + eventually a list of equally authorized people (e.g. when
+    // we add a database to manage sources, we can have a list of people
+    // who are authorized to work the processes initialized with that source.
+    // Also, via a form it could be possible to add more names to the process
+    // directly.
 
     // This will also check if sessionId is valid!
     return this._ghAuthClient.getRoles(authorizedRolesRequest)
@@ -587,7 +593,9 @@ _p._authorizeExecute = function(socket, sessionId, commandData) {
         if(matches.size) // => hooray!
             return [matches, userName];
         else {
-            throw 'Requester has no matching roles.';
+            throw 'Requester has no matching roles.\n'
+                + ` * requester roles: ${Array.from(roles).join(', ')}\n`
+                + ` * expected roles: ${Array.from(uiRoles).join(', ')}`;
         }
     });
 };

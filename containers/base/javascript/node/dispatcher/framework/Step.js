@@ -198,9 +198,19 @@ _p.serialize = function(options) {
     return data;
 };
 
+
+Object.defineProperty(_p, 'failedStepUIRoles', {
+    get: function() {
+        throw new Error('NotImpelemented: "failedStepUIRoles". '
+                      + 'Please define in concrete class.');
+    }
+});
+
 _p.uiHandleFailedStep = function() {
     return {
-        roles: ['input-provider', 'engineer']
+        // Used to be ['input-provider', 'engineer']. But this really
+        // is dependent of the context of the Process.
+        roles: this.failedStepUIRoles
       , ui: [
             {   name: 'reason'
               , type: 'line' // input type:text
