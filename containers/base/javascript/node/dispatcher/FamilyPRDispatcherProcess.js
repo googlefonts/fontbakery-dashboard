@@ -1317,14 +1317,15 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
     // }
     var results = genericStorageWorkerResult.getResultsList();
     if(results.length) {
-        let keysAndNames = [], fileName;
+        let keysAndNames = [];
         report += '\n### Results\n';
         for(let result of results) {
             let name = result.getName()
+              , fileName = `Diffenator_${this.process.familyName}_${name}`
               , storageKey = result.getStorageKey()
               , key = storageKey.getKey()
               ;
-            keysAndNames.push([key, name]);
+            keysAndNames.push([key, fileName]);
             // FIXME: a hard coded url is bad :-/
             report += ` * browse report: [**${name}**]`
                     + `(${this.resources.frontendBaseURL}/`
@@ -1332,11 +1333,10 @@ _p.callbackDiffenatorFinished = function([requester, sessionID]
                     + ` or download: [zip file]`
                     + `(${this.resources.frontendBaseURL}/`
                             + `download/persistence/${key}/`
-                            + `Diffenator_${encodeURIComponent(this.process.familyName)}_`
-                            + `${encodeURIComponent(name)}.zip)\n`;
+                            + `${encodeURIComponent(fileName)}.zip)\n`;
         }
         keysAndNames = encodeURIComponent(keysAndNames.map(kn=>kn.join(',')).join(';'));
-        fileName = `${encodeURIComponent('Diffenator_')}`
+        let fileName = `${encodeURIComponent('Diffenator_')}`
                             + `${encodeURIComponent(this.process.familyName)}.zip`;
 
         report += `\nDownload the [full report zip file]`
@@ -1531,14 +1531,15 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
     // }
     var results = genericStorageWorkerResult.getResultsList();
     if(results.length) {
-        let keysAndNames = [], fileName;
+        let keysAndNames = [];
         report += '\n### Results\n';
         for(let result of results) {
             let name = result.getName()
+              , fileName = `Browser Diffs_${this.process.familyName}_${name}`
               , storageKey = result.getStorageKey()
               , key = storageKey.getKey()
               ;
-            keysAndNames.push([key, name]);
+            keysAndNames.push([key, fileName]);
             // FIXME: a hard coded url is bad :-/
             report += ` * browse report: [**${name}**]`
                       // uses index.html or autoindex
@@ -1547,12 +1548,10 @@ _p.callbackDiffbrowsersFinished = function([requester, sessionID]
                     + ` or download: [zip file]`
                     + `(${this.resources.frontendBaseURL}/`
                             + `download/persistence/${key}/`
-                            + `${encodeURIComponent('Browser Diffs')}_`
-                            + `${encodeURIComponent(this.process.familyName)}_`
-                            + `${encodeURIComponent(name)}.zip)\n`;
+                            + `${encodeURIComponent(fileName)}.zip)\n`;
         }
         keysAndNames = encodeURIComponent(keysAndNames.map(kn=>kn.join(',')).join(';'));
-        fileName = `${encodeURIComponent('Browser Diffs')}_`
+        let fileName = `${encodeURIComponent('Browser Diffs')}_`
                             + `${encodeURIComponent(this.process.familyName)}.zip`;
 
         report += `\nDownload the [full report zip file]`
