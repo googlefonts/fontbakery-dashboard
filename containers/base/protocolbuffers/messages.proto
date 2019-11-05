@@ -380,6 +380,7 @@ message SessionId {
 message AuthorizedRolesRequest {
     string session_id = 1;
     string repo_name_with_owner = 2;
+    string initiator = 3;
 }
 
 message AuthorizedRoles {

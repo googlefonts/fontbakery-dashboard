@@ -5725,7 +5725,8 @@ proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.toObject = function(
 proto.fontbakery.dashboard.AuthorizedRolesRequest.toObject = function(includeInstance, msg) {
   var f, obj = {
     sessionId: jspb.Message.getFieldWithDefault(msg, 1, ""),
-    repoNameWithOwner: jspb.Message.getFieldWithDefault(msg, 2, "")
+    repoNameWithOwner: jspb.Message.getFieldWithDefault(msg, 2, ""),
+    initiator: jspb.Message.getFieldWithDefault(msg, 3, "")
   };
 
   if (includeInstance) {
@@ -5770,6 +5771,10 @@ proto.fontbakery.dashboard.AuthorizedRolesRequest.deserializeBinaryFromReader = 
       var value = /** @type {string} */ (reader.readString());
       msg.setRepoNameWithOwner(value);
       break;
+    case 3:
+      var value = /** @type {string} */ (reader.readString());
+      msg.setInitiator(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -5813,6 +5818,13 @@ proto.fontbakery.dashboard.AuthorizedRolesRequest.serializeBinaryToWriter = func
       f
     );
   }
+  f = message.getInitiator();
+  if (f.length > 0) {
+    writer.writeString(
+      3,
+      f
+    );
+  }
 };
 
 
@@ -5843,6 +5855,21 @@ proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.getRepoNameWithOwner
 /** @param {string} value */
 proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.setRepoNameWithOwner = function(value) {
   jspb.Message.setProto3StringField(this, 2, value);
+};
+
+
+/**
+ * optional string initiator = 3;
+ * @return {string}
+ */
+proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.getInitiator = function() {
+  return /** @type {string} */ (jspb.Message.getFieldWithDefault(this, 3, ""));
+};
+
+
+/** @param {string} value */
+proto.fontbakery.dashboard.AuthorizedRolesRequest.prototype.setInitiator = function(value) {
+  jspb.Message.setProto3StringField(this, 3, value);
 };
 
 

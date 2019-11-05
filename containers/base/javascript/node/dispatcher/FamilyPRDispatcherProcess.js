@@ -32,6 +32,42 @@ const PROCESS_MODE_PRODUCTION = 'production'
       ])
     ;
 
+//////
+// ROLES used in here:
+//
+// 'input-provider', 'engineer', 'initiator', 'stakeholder'
+//
+// It is important to recognize that the role model oft this process
+// is not fully worked out, that means we don't really what roles we
+// need and what the roles can do.
+//
+// That said:
+//
+// 'engineer' is the most powerful role. The engineer-role-holders are
+//  currently defined explicitly via an environment variable.
+//
+// The 'Input-provider-role has ADMIN or WRITE access to the upstream github repo.
+//
+// The 'initiator' started the process.
+//
+// The 'stakeholder' is mentioned in the source of a family. This is not
+// implemented at the moment, but rather a suggestion.
+//
+// In general, in the future we may rather want to implement
+// an ACL with capabilities and a role could be just a collection of
+// these capabilities, like meta capabilities", not defined in here but
+// in the role ACL. The capabilities are the like
+// "DiffenatorTask.action" or maybe even "ApproveProcessTask.uiCheckFamilyFilesPackage"
+// like the callback used in `_setExpectedAnswer` or similar.
+//
+// However, the general goal is to a) remove as many user interactions
+// as possible, by automation and better understanding requirements b)
+// make interaction of roles like "engineer" less needed by enabling
+// e.g. the "stakeholders" to perform those parts. But this will be
+// a step by step process.
+// The mode "sandbox" will enable more common roles to perform more actions
+// than the mode "production", to enable users to run the QA process fully,
+// before requesting our engineers to onboard a font.
 
 
 /**
@@ -52,6 +88,14 @@ function makeClass(name, parentPrototype, constructor) {
     return CTOR;
 }
 
+function _rolesMergedInSandbox(productionRoles, sanboxRoles) {
+        // jshint validthis: true
+    return this.process.mode === PROCESS_MODE_SANDBOX
+            ? sanboxRoles.concat(productionRoles)
+            : productionRoles
+            ;
+}
+
 /**
  * Helper to remove simple Step boilerplate like this:
  *     const MyStep = (function() {
@@ -70,14 +114,14 @@ function makeClass(name, parentPrototype, constructor) {
  *
  * Instead we can do just:
  *
- * const MyStep = stepFactory('MyStep', {
+ * const MyStep = baseStepFactory('MyStep', {
  *              JobA: JobATask
  *            , JobB: JobBTask
  *            // , JobC: ...
  * });
  *
  */
-function stepFactory(name, tasks, anySetup) {
+function baseStepFactory(name, tasks, anySetup) {
     const Parent = Step;
     // this injects Parent and tasks
     // also, this is like the actual constructor implementation.
@@ -87,7 +131,20 @@ function stepFactory(name, tasks, anySetup) {
     return makeClass(name, Parent.prototype, StepConstructor);
 }
 
-function taskFactory(name, anySetup) {
+function stepFactory(name, tasks, anySetup) {
+    var Step = baseStepFactory(name, tasks, anySetup);
+    Object.defineProperty(Step.prototype, 'failedStepUIRoles', {
+        // Who can decide that the step ultimately failed.
+        get: function() {
+            return _rolesMergedInSandbox.call(this
+                        , ['input-provider', 'engineer']
+                        , ['initiator', 'stakeholder']);
+        }
+    });
+    return Step;
+}
+
+function baseTaskFactory(name, anySetup) {
     const Parent = Task;
     // this injects Parent
     // also, this is like the actual constructor implementation.
@@ -97,6 +154,18 @@ function taskFactory(name, anySetup) {
     return makeClass(name, Parent.prototype, TaskConstructor);
 }
 
+function taskFactory(name, anySetup) {
+    var Task = baseTaskFactory(name, anySetup);
+    Object.defineProperty(Task.prototype, 'uiRetryRoles', {
+        // Who can initiate a re-try of a failed Task.
+        get: function() {
+            return _rolesMergedInSandbox.call(this
+                        , ['input-provider', 'engineer']
+                        , ['initiator', 'stakeholder']);
+        }
+    });
+    return Task;
+}
 
 // This is an empty function to temporarily disable jshint
 // "defined but never used" warnings and to mark unfinished
@@ -280,11 +349,13 @@ _p.uiApproveProcess = function() {
         userTask = 'Please review that the registered info is still good';
     }
     return {
-        roles: ['input-provider', 'engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['input-provider', 'engineer']
+                  , ['initiator', 'stakeholder'])
       , ui: [
             {
                 type: 'info'
-            , content: `**@${this.process.requester}** requests to **${this.process.initType}** a font family.
+            , content: `**@${this.process.initiator}** requests to **${this.process.initType}** a font family.
 
 ### ${userTask}:` + (this.process._state.note
                         ? '\n\n *with note:*\n\n' + this.process._state.note
@@ -389,7 +460,9 @@ _p.callbackApproveProcess = function([requester, sessionID]
 //         throw new Error('NOT IMPLEMENTED: initType "'+this.process.initType+'"');
 //
 //     var result = {
-//         roles: ['input-provider', 'engineer']
+//         roles: _rolesMergedInSandbox.call(this,
+//                    ['input-provider', 'engineer']
+//                  , ['initiator', 'stakeholder'])
 //       , ui: _getInitNewUI().map(item=>{
 //             // show only when "action" has the value "register"
 //             if(item.name === 'genre' && this.process._state.genre)
@@ -505,7 +578,21 @@ _p._mdCompareSourceDetails = function() {
 
 _p.uiSignOffSpreadsheet = function() {
     return {
-        roles: ['engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['engineer']
+                    // FIXME:
+                    // In sandbox, at the moment, the roles below can't
+                    // change the source setup. This is well known and
+                    // will be addressed by the feature described as
+                    // "database for upstream repos + interfaces". Until
+                    // it is implemented, we could communicate
+                    // that in the info box of this UI and ask the user
+                    // to file an issue in the FBD repository. However,
+                    // the general available sandbox is an unofficial
+                    // beta feature anyways, so we'll probably not get
+                    // so many users via this and those who know it
+                    // will have a contact to us I expect.
+                  , ['input-provider', 'initiator', 'stakeholder'])
       , ui: [
             {
                 type: 'info'
@@ -716,7 +803,9 @@ _p.callbackReceiveFiles = function([requester, sessionID]
 
 _p.uiCheckFamilyFilesPackage = function() {
     return {
-        roles: ['engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['engineer']
+                  , ['input-provider', 'initiator', 'stakeholder'])
       , ui: [
             {
                 type: 'info'
@@ -886,7 +975,9 @@ _p.callbackFontBakeryFinished = function([requester, sessionID]
 
 _p.uiConfirmFontbakery = function() {
     return {
-        roles: ['engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['engineer']
+                  , ['input-provider', 'initiator', 'stakeholder'])
       , ui: [
             {
                 type: 'info'
@@ -1062,10 +1153,9 @@ const source2label = sourceID=>_diffComparisonSources.get(sourceID);
 
 _p.uiChooseAction = function() {
     return {
-        // TODO: in general in process sandbox mode, roles can be very relaxed
-        //       especially "engineer" can be ["input-provider", "engineer"]
-        //       so, input provider can run the whole process in sandbox mode.
-        roles: ['engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['engineer']
+                  , ['input-provider', 'initiator', 'stakeholder'])
       , ui: [
             {
                 type: 'info'
@@ -1285,10 +1375,9 @@ const source2label = sourceID=>_diffComparisonSources.get(sourceID);
 
 _p.uiChooseAction = function() {
     return {
-        // TODO: in general in process sandbox mode, roles can be very relaxed
-        //       especially "engineer" can be ["input-provider", "engineer"]
-        //       so, input provider can run the whole process in sandbox mode.
-        roles: ['engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['engineer']
+                  , ['input-provider', 'initiator', 'stakeholder'])
       , ui: [
             {
                 type: 'info'
@@ -1590,7 +1679,9 @@ _p._activate = function() {
 
 _p.uiConfirmDispatch = function() {
     return {
-        roles: ['engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['engineer']
+                  , ['input-provider', 'initiator', 'stakeholder'])
       , ui: [
             {   name: 'action'
               , type: 'choice'
@@ -1775,7 +1866,9 @@ _p._getIssueTargets = function() {
 
 _p.uiFailTask = function() {
     return {
-        roles: ['engineer']
+        roles: _rolesMergedInSandbox.call(this,
+                    ['engineer']
+                  , ['input-provider', 'initiator', 'stakeholder'])
       , ui: [
             {
                 type: 'info'
@@ -1961,7 +2054,7 @@ function FamilyPRDispatcherProcess(resources, state, initArgs) {
     this._state.initType = initType;
     this._state.familyName = familyName;
     this._state.familyKeySuffix = familyKeySuffix;
-    this._state.requester = requester;
+    this._state.initiator = requester;
     this._state.repoNameWithOwner = repoNameWithOwner || null;
     this._state.branch = branch || null;
     this._state.genre = genre;
@@ -2460,7 +2553,7 @@ stateManagerMixin(_p, {
      * (a string) so that we can get the roles of the requester
      * from the DB.
      */
-  , requester: _genericStateItem
+  , initiator: _genericStateItem
     /**
      * We need this to determine the roles of a authenticated (GitHub)
      * user. Users having WRITE or ADMIN permissions for the repo have
@@ -2503,9 +2596,9 @@ Object.defineProperties(_p, {
         }
       , enumerable: true
      }
-   , requester: {
+   , initiator: {
         get: function() {
-            return this._state.requester;
+            return this._state.initiator;
         }
     }
   , repoNameWithOwner: {

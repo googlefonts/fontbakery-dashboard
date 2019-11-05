@@ -366,7 +366,7 @@ define([
         return result;
     };
 
-    _p._statusMakeExecLog = function(key, logs){
+    _p._statusMakeExecLog = function(key, logs) {
         /*
          * logs =  [
          *    [
@@ -413,7 +413,7 @@ define([
     _p._renderProcess = function(processElem, processId, processState, uiDescriptions, isInit) {
         // "familyName": "ABeeZee",
         // "familyKey": "ABeeZee:feature branch identifier",
-        // "requester": "graphicore",
+        // "initiator": "graphicore",
         // "initType": "update",
         // "genre": "",
         // "fontfilesPrefix": "",
@@ -442,7 +442,7 @@ define([
                 // specific/data elements
               , 'familyName': this._statusMakeTextNode
               , 'familyKey': this._statusMakeTextNode
-            //, 'requester':
+            //, 'initiator':
               , 'note': this._statusMakeMarkdown
             //, 'initType':
             //, 'genre':
@@ -454,7 +454,7 @@ define([
                 // only, in order, elements that must be inserted before
                 // everything else.
           , order = ['mode', 'id', 'familyKey', 'created', 'initType'
-                   , 'requester'
+                   , 'initiator'
                    , 'genre', 'repoNameWithOwner', 'branch'
                    ,  'fontfilesPrefix', 'note']
           , target = this._getElementFromTemplate(isInit

@@ -331,9 +331,18 @@ _p._handleStateChange = function(methodName, stateChangePromise) {
     });
 };
 
+Object.defineProperty(_p, 'uiRetryRoles', {
+    get: function() {
+        throw new Error('NotImpelemented: "uiRetryRoles". '
+                      + 'Please define in concrete class.');
+    }
+});
+
 _p.uiRetry = function (){
     return {
-        roles: ['input-provider', 'engineer']
+        // Used to be ['input-provider', 'engineer']. But this really
+        // is dependent of the context of the Process.
+        roles: this.uiRetryRoles
       , ui: [
             {
                 type: 'send' // a button (does't have to be a <button>) that sends the form.

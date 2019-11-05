@@ -781,46 +781,41 @@ _p.getRoles = function(call, callback) {
         // call.request is an AuthorizedRolesRequest
     var sessionId = call.request.getSessionId()
       , repoNameWithOwner = call.request.getRepoNameWithOwner()
-      , promise
+      , initiator = call.request.getInitiator()
       ;
 
     this._getSessionData(sessionId)
     .then(([session, ])=>{
-        if(!session){
+        var roles = new Set();
+        if(!session)
             // => empty Roles message
-            callback(null,  new AuthorizedRoles());
-            return;
-        }
+            return [null, roles];
 
         // hasAuth
+        if(initiator === session.user.login)
+            roles.add('initiator');
+        if(this._engineers.has(session.user.login))
+            roles.add('engineer');
 
-        if(repoNameWithOwner) {
-            // figure RepositoryPermission for user
-            promise = this._getRepositoryPermission(session, repoNameWithOwner)
-                .then(repositoryPermission=>{
-                    return (repositoryPermission === 'ADMIN'
-                                    || repositoryPermission === 'WRITE')
-                        ? new Set(['input-provider'])
-                        : new Set()
-                        ;
-                });
-        }
-        else
-            // empty
-            promise = Promise.resolve(new Set());
+        if(!repoNameWithOwner)
+            return [session.user.login, roles];
 
-        promise.then(roles=>{
-            if(this._engineers.has(session.user.login))
-                roles.add('engineer');
-            return roles;
-        })
-        .then(roles=>{
-            var rolesMessage = new AuthorizedRoles();
+        // figure RepositoryPermission for user
+        return this._getRepositoryPermission(session, repoNameWithOwner)
+        .then(repositoryPermission=>{
+            if(repositoryPermission === 'ADMIN' || repositoryPermission === 'WRITE')
+                roles.add('input-provider');
+            return [session.user.login, roles];
+        });
+    })
+    .then(([username, roles])=>{
+        var rolesMessage = new AuthorizedRoles();
+        if(username)
+            rolesMessage.setUserName(username);
+        if(roles)
             for(let role of roles)
                 rolesMessage.addRoles(role);
-            rolesMessage.setUserName(session.user.login);
-            callback(null, rolesMessage);
-        });
+        callback(null, rolesMessage);
     })
     .then(null, error=>callback(error));
 };
