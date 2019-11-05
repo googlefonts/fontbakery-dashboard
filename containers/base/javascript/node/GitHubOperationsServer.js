@@ -403,12 +403,12 @@ _p._replaceDirCommit = function(authorSignature, localBranchName, headCommitRefe
 
 
 _p._makeRemoteBranchName = function(targetDirectory) {
-    // -> Font_Bakery_Dispatcher/ofl_myfont
+    // -> Font_Bakery_Dispatcher-ofl_myfont
     // we could use the process id to make per process unique branches
     // let's wait and see if that's needed.
     return ['Font_Bakery_Dispatcher'
             , targetDirectory.split('/').join('_')
-        ].join('/');
+        ].join('-');
 
 };
 
