@@ -7,15 +7,19 @@
 const { _Source: Parent } = require('./_Source')
   , { ManifestServer } = require('../util/ManifestServer')
   , { getSetup } = require('../util/getSetup')
+  , { nodeCallback2Promise } = require('../util/nodeCallback2Promise')
   , https = require('https')
   , http = require('http')
   , fs = require('fs')
   , url = require('url')
   , { status: grpcStatus } = require('grpc')
+  , yauzl = require('yauzl')
   ;
 
-function GoogleFonts(logging, id, apiDataUrl, familyWhitelist, reportsSetup) {
+function GoogleFonts(logging, id, apiDataUrl, downloadFamilyUrl
+                                      , familyWhitelist, reportsSetup) {
     this._apiAPIDataUrl = apiDataUrl; // contains api key
+    this._downloadFamilyUrl = downloadFamilyUrl;
     this._familyWhitelist = familyWhitelist;
     Parent.call(this, logging, id, reportsSetup);
 }
@@ -56,38 +60,51 @@ function makeFontFileName(familyName, variant) {
     ].join('');
 }
 
-function download(fileUrl) {
-    function onResult(resolve, reject, res) {
+
+function _readStream2Uint8Array(stream, resolve, reject) {
         var data = [ ];
-        res.on('data', function(chunkBuffer) {
+        stream.on('data', function(chunkBuffer) {
             data.push(chunkBuffer);
         });
-        res.on('end', function() {
+        stream.on('end', function() {
             resolve(new Uint8Array(Buffer.concat(data)));
         });
-        res.on('error', function(err) {
+        stream.on('error', function(err) {
             reject(err);
         });
-    }
-    return new Promise(function(resolve, reject) {
-        let resultHandler = onResult.bind(null, resolve, reject)
-          , protocol = fileUrl.split('://', 1)[0]
-          ;
+}
+function _dataFromStream(stream) {
+    return new Promise(_readStream2Uint8Array.bind(null, stream/* resolve, reject*/));
+}
 
-        if(protocol.startsWith('http')) {
-            var httpx = protocol === 'https' ? https : http;
-            httpx.get(url.parse(fileUrl), resultHandler);
-        }
-        else if(protocol === 'file')
-            resultHandler(fs.createReadStream(fileUrl.slice('file://'.length)));
-        else
-            throw new Error('Don\'t know how to handle file url "'+fileUrl+'"; '
+function download(fileUrl) {
+    var protocol = fileUrl.split('://', 1)[0];
+    if(protocol.startsWith('http')) {
+        var httpx = protocol === 'https' ? https : http;
+        return new Promise((resolve/*, reject*/)=>httpx.get(url.parse(fileUrl), resolve))
+        .then(stream=>{
+            var { statusCode } = stream;
+            if (statusCode !== 200) {
+                var error = new Error(`Request Failed.\nStatus Code: ${statusCode}`
+                               +` at URL: ${fileUrl}`);
+                if(statusCode === 404) {
+                    error.code = grpcStatus.NOT_FOUND;
+                    error.name = 'NOT_FOUND';
+                }
+                throw error;
+            }
+            return _dataFromStream(stream);
+        });
+    }
+    else if(protocol === 'file')
+        return _dataFromStream(fs.createReadStream(fileUrl.slice('file://'.length)));
+    else
+        throw new Error('Don\'t know how to handle file url "'+fileUrl+'"; '
                 + 'it should start with "http://", "https://" or "file://".');
-    });
 }
 
 function download2JSON(uint8arr) {
-    return JSON.parse(new Buffer(uint8arr).toString());
+    return JSON.parse(Buffer.from(uint8arr).toString());
 }
 
 function apiData2Map(data) {
@@ -115,7 +132,113 @@ function downloadAPIData(url) {
             ;
 }
 
-_p._loadFamily = function(familyData) {
+_p._getDownloadFamilyUrl = function(familyName) {
+    return this._downloadFamilyUrl.replace('$FAMILYNAME', encodeURIComponent(familyName));
+};
+
+//getZipFile(fileUrl).then(zf=>zipFile = zf);
+//download(fileUrl).then(d=>zipdata=d);
+//_loadZipFile(zipdata).then(zf=>zipFile=zf);
+//p = _zipFileGetFiles(zipFile).then(r=>files=r, errr=>console.Error('onZipFile:', errr))
+
+function _loadZipFile(zipData) {
+    return nodeCallback2Promise(yauzl.fromBuffer, Buffer.from(zipData), {lazyEntries: true});
+}
+function _downloadZipFile(fileUrl) {
+    return download(fileUrl)
+    .then(
+        _loadZipFile
+      , err=>{
+            console.error(err);
+            throw err;
+    });
+}
+
+function _zipFileOnEntry(zipFile, promises, entry) {
+    if (/\/$/.test(entry.fileName)) {
+        // Directory file names end with '/'.
+        // Note that entires for directories themselves are optional.
+        // An entry's fileName implicitly requires its parent directories to exist.
+        // pass;
+    } else {
+        // file entry
+        promises.push(
+            nodeCallback2Promise(zipFile.openReadStream.bind(zipFile), entry)
+                .then(_dataFromStream)
+                .then(data=>[entry.fileName, data])
+        );
+    }
+    zipFile.readEntry();
+}
+
+function _zipFileGetFiles(zipFile) {
+    return new Promise((resolve, reject)=>{
+        var promises = [];
+        zipFile.on('entry', _zipFileOnEntry.bind(null, zipFile, promises));
+        zipFile.on('error', reject);
+        zipFile.on('end', ()=>resolve(Promise.all(promises)));
+        zipFile.readEntry();
+    });
+}
+
+const licenseFiles2Dirs = new Map([
+        ['UFL.txt', 'ufl']
+      , ['OFL.txt', 'ofl']
+        // this is last because the UFL font's also have a LICENSE.txt
+      , ['LICENSE.txt', 'apache']
+]);
+
+_p._loadFamily = function(familyName) {
+    var url = this._getDownloadFamilyUrl(familyName);
+    return _downloadZipFile(url)
+    .then(_zipFileGetFiles)
+    .then(files=>{
+        let fonts = []
+          , other = new Map()
+          ;
+        for(let file of files) {
+            let [name, data] = file;
+            if(name.endsWith('.ttf'))
+                fonts.push(file);
+            else
+                other.set(name, data);
+        }
+        return [fonts, other];
+    })
+    .then(([fonts, other])=>{
+            // unfortunately, we don't get all information from the API
+            // FIXME: these files should be added eventually, ideally
+            // without looking at the google/fonts repo! Right now progressing
+            // without this data is OK.
+
+            // TODO: create(!?) and add METADATA.pb
+            // https://github.com/googlefonts/tools has a lot related code
+            // files.push(['METADATA.pb', Uint8Array]); // serialize this in the human readable form
+
+            // maybe we can just use a placeholder content like 'N/A' this data
+            // is hard to come by when not using the googlefonts/tools repo
+            // files.push(['DESCRIPTION.en_us.html', Uint8Array]);
+        var files = [...fonts]
+          , familyDirName = familyName.toLowerCase().replace(/ /g, '')
+          , licenseDir = 'unknown_license'
+          , baseDir
+          ;
+        for(let name of other.keys()) {
+            licenseDir = licenseFiles2Dirs.get(name);
+            if(!licenseDir)
+                continue;
+            files.push([name, other.get(name)]);
+            break;
+        }
+        baseDir = `${licenseDir}/${familyDirName}`;
+        return [baseDir, files];
+    });
+};
+
+// Was used instead of _loadFamily I keep it because it has some
+// useful knowledge how the API works and documents the makeFontFileName
+// usage.
+_p._loadFontsFromFamilyData = function(familyData) {
     var files = [];
     // download the files
     for(let variant in familyData.files) {
@@ -171,10 +294,15 @@ _p._update = function(apiData) {
             continue;
 
         updating.push(
-            this._loadFamily(familyData) // -> filesData
+            this._loadFamily(familyName) // -> [baseDir, filesData]
                 // Including familyData as metadata, leaves a
                 // trail for documentation.
-                .then(filesData=>this._dispatchFamily(familyName, filesData, familyData)) // jshint ignore:line
+                .then(([baseDir, filesData])=>this._dispatchFamily(  // jshint ignore:line
+                        familyName
+                      , baseDir
+                      , filesData
+                      , familyData)
+                )
         );
     }
     return this._waitForAll(updating);
@@ -196,10 +324,11 @@ _p.get = function(familyName) {
     })
     .then(familyData=>Promise.all([
           familyName
-        , this._loadFamily(familyData) // filesData -> [[name, blob], [name, blob], ...]
+        , this._loadFamily(familyName) // [baseDir, filesData -> [[name, blob], [name, blob], ...]]
         , familyData]))
+    .then(([familyName, [baseDir, filesData], familyData])=>[familyName, baseDir, filesData, familyData])
     ;
-    // -> [familyName, filesData, metadata]
+    // -> [familyName, baseDir, filesData, metadata]
 };
 
 if (typeof require != 'undefined' && require.main==module) {
@@ -207,6 +336,7 @@ if (typeof require != 'undefined' && require.main==module) {
        , familyWhitelist = setup.develFamilyWhitelist
        , apiDataBaseUrl = 'https://www.googleapis.com/webfonts/v1/webfonts?key='
        , apiDataUrl = apiDataBaseUrl + setup.googleAPIKey
+       , downloadFamilyUrl = 'https://fonts.google.com/download?family=$FAMILYNAME'
        , grpcPort=50051
        ;
 
@@ -224,7 +354,7 @@ if (typeof require != 'undefined' && require.main==module) {
         setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
     // the prod api
 
-    sources.push(new GoogleFonts(setup.logging, 'production', apiDataUrl, familyWhitelist));
+    sources.push(new GoogleFonts(setup.logging, 'production', apiDataUrl, downloadFamilyUrl, familyWhitelist));
     // the devel api
     //sources.push(new GoogleFonts('sandbox'/* setup.logging, setup.amqp, setup.db, setup.cache */));
     // FIXME: Lots of setup arguments missing

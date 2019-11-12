@@ -24,7 +24,8 @@ spec:
                 name: external-resources
                 key: google-api-key
         workingDir: /var/javascript
-        command: ["node", "node/manifestSources/GoogleFonts.js", "-p", "50051"]
+        # command: ["node", "node/manifestSources/GoogleFonts.js", "-p", "50051"]
+        command: ["node", "--inspect=0.0.0.0:9229", "node/manifestSources/GoogleFonts.js", "-p", "50051"]
 ---
 apiVersion: v1
 kind: Service
