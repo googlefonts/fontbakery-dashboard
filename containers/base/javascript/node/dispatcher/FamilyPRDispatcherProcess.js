@@ -720,7 +720,7 @@ _p.callbackReceiveFiles = function([requester, sessionID]
           , familyPath: tree.path()
           , repository: familyData.upstream
           , branch: familyData.referenceName // Error: NotImplemented if not git
-          , googleMasterDir: googleMasterDir
+          , targetDirectory: targetDirectory
           , isUpdate: isUpdate
           , licenseDir: licenseDir
         };
@@ -746,19 +746,11 @@ _p.callbackReceiveFiles = function([requester, sessionID]
           , zipDownloadLink = `${this.resources.frontendBaseURL}/download/`
                             + `persistence/${filesStorageKey}/`
                             + `${encodeURIComponent(this.process.familyName)}.zip`
-          , familyDirName = this.process.familyName.toLowerCase().replace(/ /g, '')
           ;
-
 
         // this are the most important lines here.
         this.process._state.filesStorageKey = filesStorageKey;
-        // Ideally the two cases yield the same result! However, existing
-        // families may have directories violating the
-        // {licenseDir}/{familyDirName} rule
-        this.process._state.targetDirectory = metadata.isUpdate
-                            ? metadata.googleMasterDir
-                            : `${metadata.licenseDir}/${familyDirName}`
-                            ;
+        this.process._state.targetDirectory = metadata.targetDirectory;
         // isUpdate is only telling us if the family is in Github/google/fonts:master
         // the family may not be (yet?) in the production API! This is
         // semantically important, as we already expected wrongly availability

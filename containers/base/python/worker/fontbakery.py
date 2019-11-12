@@ -125,15 +125,20 @@ class DBOperations(object):
       raise WorkerError('RethinkDB: {}'.format(result['first_error']))
 
 
-def validate_filename(logs, seen, filename):
+def validate_filename(logs, seen, raw_filename):
   # Basic input validation
-  # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
-  if filename in {'', '.', '..'} or '/' in filename:
-    raise PreparationError('Invalid filename: "{0}".'.format(filename))
+  filename = os.path.normpath(raw_filename)
+  # os.path.normpath will have taken care of any of these names that are
+  # not a problem.
+  if any(part in {'', '.', '..'} for part in filename.split(os.sep)):
+    raise PreparationError(f'Invalid filename: "{filename}"` contains a '
+                           f'"{part}" raw_filename was "{raw_filename}".')
 
   if filename in seen:
-    logs.append('Skipping duplicate file name "{0}".'.format(filename))
+    logs.append(f'Skipping duplicate file name "{filename}" '
+                f'raw file name "{raw_filename}".')
     return False
+  seen.add(filename)
 
   return True
 
@@ -159,19 +164,20 @@ def _prepare(job, cache, dbOps=None, tmp_directory=None):
 
   fontfiles = []
   for jobFile in files:
-    filename = jobFile.name
-    if not validate_filename(logs, seen, filename):
+    raw_filename = jobFile.name
+    if not validate_filename(logs, seen, raw_filename):
       continue
+    filename = os.path.normpath(raw_filename)
 
-    seen.add(filename)
     if tmp_directory is not None:
       path = os.path.join(tmp_directory, filename)
+      os.makedirs(os.path.dirname(path), exist_ok=True)
       with open(path, 'wb') as f:
         f.write(jobFile.data)
     else:
       path = filename
 
-    logs.append('Added file "{}".'.format(filename))
+    logs.append('Added file "{}".'.format(raw_filename))
     if path.lower().endswith('.ttf') or path.lower().endswith('.otf'):
       fontfiles.append(path)
 

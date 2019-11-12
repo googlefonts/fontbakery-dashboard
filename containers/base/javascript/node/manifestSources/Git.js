@@ -266,16 +266,16 @@ _p._treeToFilesData = function (tree, filterFunction/*optional: filterFunction(s
  *               thus, using an explicit FamilyName can be much more robust
  *               here. See e.g. CSVSpreadsheet/upstream
  */
-_p._dispatchTree = function(tree, metadata
+_p._dispatchTree = function(tree, baseDir, metadata
             , asFamilyName/*optional: string*/
             , filterFunction/*optional: filterFunction(string:filename)*/) {
 
     return this._treeToFilesData(tree, filterFunction)
-                .then(filesData=>this._dispatchFilesData(filesData, metadata
+                .then(filesData=>this._dispatchFilesData(baseDir, filesData, metadata
                                                 , tree.path(), asFamilyName));
 };
 
-_p._dispatchFilesData = function(filesData, metadata, path, asFamilyName/*optional: string*/) {
+_p._dispatchFilesData = function(baseDir, filesData, metadata, path, asFamilyName/*optional: string*/) {
     return (asFamilyName
                     ? Promise.resolve(asFamilyName)
                     // raises/rejects if it can't find a family name
@@ -285,7 +285,7 @@ _p._dispatchFilesData = function(filesData, metadata, path, asFamilyName/*option
             return null;
         this._log.debug(this.id+':', 'dispatching family', familyName
                     , 'of', metadata.repository + ':' + metadata.branch);
-        return this._dispatchFamily(familyName, filesData, metadata);
+        return this._dispatchFamily(familyName, baseDir, filesData, metadata);
     });
 };
 
@@ -489,7 +489,7 @@ _p._treeEntryToMetadata = function(currentCommit, treeEntry) {
         commit: currentCommit.sha()
       , commitDate: currentCommit.date()
       , familyTree: treeEntry.sha()
-      , familyPath: treeEntry.path()
+      , targetDirectory: treeEntry.path() // used to be called "familyPath" e.g. ofl/abeezee
       , repository: this._baseRef.remoteName
       , branch: this._baseRef.name
     };
@@ -517,7 +517,8 @@ _p._update = function(currentCommit) {
         return this._waitForAll(treeEntries.map(treeEntry => {
             let metadata = this._treeEntryToMetadata(currentCommit, treeEntry);
             return treeEntry.getTree()
-                            .then(tree=>this._dispatchTree(tree, metadata));
+                .then(tree=>this._dispatchTree(tree
+                                    , metadata.targetDirectory, metadata));
         }));
     });
 };
@@ -620,8 +621,9 @@ _p.get = function(familyName) {
           , treeEntry.getTree().then(tree=>this._treeToFilesData(tree))
           , this._treeEntryToMetadata(currentCommit, treeEntry)
         ]));
-    });
-    // -> [familyName, filesData, metadata]
+    })
+    .then(([familyName, filesData, metadata])=>[familyName, metadata.targetDirectory, filesData, metadata]);
+    // -> [familyName, baseDir, filesData, metadata]
 };
 
 return GitBranch;
@@ -989,14 +991,14 @@ _p._update = function(checkFamilies) {
                     commit: prData.commit.sha()
                   , commitDate: prData.commit.date()
                   , familyTree: treeEntry.sha()
-                  , familyPath: treeEntry.path()
+                  , targetDirectory: treeEntry.path()
                   , repository: prData.data.headRepository.nameWithOwner
                   , branch: prData.data.headRefName
                   , prUrl: prData.data.url
                   , prTitle: prData.data.title
             };
             return treeEntry.getTree()
-                            .then(tree=>this._dispatchTree(tree, metadata));
+                            .then(tree=>this._dispatchTree(tree, metadata.targetDirectory, metadata));
         });
         promises.push(promise);
     });

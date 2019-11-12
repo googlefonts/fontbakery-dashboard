@@ -694,18 +694,22 @@ function zip(...arrays) {
 
 function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
     var isUpdate = !!googleMasterFamilyTree
-      , googleMasterDir = isUpdate
-                            ? googleMasterFamilyTree.path()
-                            : '(unknown)'
+        // Ideally the two cases yield the same result! However, existing
+        // families may have directories violating the
+        // {licenseDir}/{familyDirName} rule
+      , targetDirectory
         // as default assuming OFL, the most common license,
         // otherwise, add the right license file to the repo data!
       , licenseDir = 'ofl'
       ;
-    if(isUpdate)
-            // If this is the wrong licenseDir it's unlikely that
-            // the dispatcher pipeline will work for the family.
-            // At least the PR will end in the wrong place!
-            licenseDir = googleMasterDir.split('/')[0];
+
+    if(isUpdate) {
+        targetDirectory = googleMasterFamilyTree.path();
+        // If this is the wrong licenseDir it's unlikely that
+        // the dispatcher pipeline will work for the family.
+        // At least the PR will end in the wrong place!
+        licenseDir = targetDirectory.split('/')[0];
+    }
     // no update assumed
     else {
         for(let [file, dir] of [
@@ -718,6 +722,8 @@ function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
                 break;
             }
         }
+        let familyDirName = familyData.name.toLowerCase().replace(/ /g, '');
+        targetDirectory = `${licenseDir}/${familyDirName}`;
     }
 
     return {
@@ -728,7 +734,7 @@ function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
               , familyPath: tree.path()
               , repository: familyData.upstream
               , branch: familyData.referenceName // Error: NotImplemented if not git
-              , googleMasterDir: googleMasterDir
+              , targetDirectory: targetDirectory
               , isUpdate: isUpdate
               , licenseDir: licenseDir
         };
@@ -919,11 +925,12 @@ _p._collectDataGit = function(familyData, commit, tree, rootTree
             .then(filesData=>[metadata, filesData]);
     })
     .then(([metadata, filesData])=>[
-             filesData
+             metadata.targetDirectory
+           , filesData
            , metadata
            , tree.path()
            , familyData.name
-    ]);// -> [filesData, metadata, path, familyName]
+    ]);// -> [baseDir, filesData, metadata, path, familyName]
 };
 
 
@@ -991,12 +998,12 @@ _p._getGitData = function(familyData, reference) {
             return Promise.all([familyData, commit, treePromise, rootTreePromise, masterFamilyTreePromise, filesPrefix]);
         })
         // args = [familyData, commit, tree, rootTree, masterFamilyTree, filesPrefix]
-        .then(args=>this._collectDataGit(...args))// -> [filesData, metadata, path, familyName]
+        .then(args=>this._collectDataGit(...args))// -> [baseDir, filesData, metadata, path, familyName]
         ;
 };
 
 _p._prepareAndDispatchGit = function(familyData, reference) {
-    return this._getGitData(familyData, reference) // -> args: [filesData, metadata, path, asFamilyName]
+    return this._getGitData(familyData, reference) // -> args: [baseDir, filesData, metadata, path, asFamilyName]
         .then(args=>this._dispatchFilesData(...args))// -> a promise to track when it's done, value not relevant
         .then(null, err=>{
             let [path, ] = familyData.fontFilesLocation
@@ -1147,10 +1154,10 @@ _p.get = function(familyKey) {
                 throw new Error('Repository is not git.');
             return this._fetchGit(familyData)
                 .then(reference=>this._getGitData(familyData, reference));
-                // ->  [filesData, metadata, path, familyName]
+                // ->  [baseDir, filesData, metadata, path, familyName]
 
         })
-        .then(([filesData, metadata, path, familyName])=>[familyName, filesData, metadata]);
+        .then(([baseDir, filesData, metadata, path, familyName])=>[familyName, baseDir, filesData, metadata]);
 };
 
 

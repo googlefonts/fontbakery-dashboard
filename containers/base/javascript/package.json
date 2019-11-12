@@ -23,13 +23,14 @@
     "express": "^4.17.1",
     "google-protobuf": "^3.8.0",
     "grpc": "^1.21.1",
-    "marked": "^0.6.2",
+    "marked": "^0.7.0",
     "mime": "^2.4.4",
     "nodegit": "^0.24.3",
     "rethinkdbdash": "^2.3.31",
     "socket.io": "^2.2.0",
     "tmp": "0.0.33",
     "uid-safe": "^2.1.5",
+    "yauzl": "^2.10.0",
     "yazl": "^2.5.1"
   },
   "devDependencies": {

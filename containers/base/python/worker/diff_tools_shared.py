@@ -114,18 +114,21 @@ on_each_matching_or_new_font = partial(_map_fonts_to_func, include_new_fonts_in_
 # initWorkers could be really a simple implementation then, just forwarding
 # the actual job and doing the adimin...
 # If ever we need to share this, there can be refactoring be done.
-def validate_filename(logs, seen, expected_prefixes, filename):
+def validate_filename(logs, seen, expected_prefixes, raw_filename):
   # Basic input validation
   # Don't put any file into tmp containing a '/' or equal to '', '.' or '..'
+  filename = os.path.normpath(raw_filename)
+
   if not any(filename.startswith(prefix) for prefix in expected_prefixes):
     logs.append(('Skipping file name "{0}" must be in one of these '
                  'directories: {1}.').format(filename, ', '.join(expected_prefixes)))
     return False
 
-  prefix, basename = filename.split('/', 1)
-
-  if basename in {'', '.', '..'} or '/' in basename:
-    raise PreparationError('Invalid filename: "{0}".'.format(filename))
+  # os.path.normpath will have taken care of any of these names that are
+  # not a problem.
+  if any(part in {'', '.', '..'} for part in filename.split(os.sep)):
+    raise PreparationError(f'Invalid filename: "{filename}"` contains a '
+                           f'"{part}" raw_filename was "{raw_filename}".')
 
   if filename in seen:
     logs.append('Skipping duplicate file name "{0}".'.format(filename))
@@ -178,15 +181,19 @@ class DiffWorkerBase(WorkerBase):
       os.mkdir(os.path.join(self._tmp_directory, target_dir))
 
     for jobFile in files:
-      filename = jobFile.name
-      if not validate_filename(logs, seen, expected_prefixes, filename):
+      raw_filename = jobFile.name
+      if not validate_filename(logs, seen, expected_prefixes, raw_filename):
         continue
 
+      # validate_filename essentially validates after using os.path.normpath
+      filename = os.path.normpath(raw_filename);
+
       path = os.path.join(self._tmp_directory, filename)
+      os.makedirs(os.path.dirname(path), exist_ok=True)
       with open(path, 'wb') as f:
         f.write(jobFile.data)
 
-      logs.append('Added file "{}".'.format(filename))
+      logs.append('Added file "{}".'.format(raw_filename))
 
       if path.lower().endswith('.ttf') or path.lower().endswith('.otf'):
         prefix, _ = filename.split('/', 1)

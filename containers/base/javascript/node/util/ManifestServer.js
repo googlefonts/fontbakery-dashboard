@@ -124,7 +124,7 @@ _p.update = function(sourceId) {
  * filesData is is an array of arrays:
  *          [ [string filename, Uint8Array fileData], ... ]
  */
-_p._wrapFilesData = function(filesData) {
+_p._wrapFilesData = function(filesData, baseDir) {
     var filesMessage = new Files();
 
     // sort by file name
@@ -138,7 +138,7 @@ _p._wrapFilesData = function(filesData) {
         var file = new File()
           , [filename, arrBuff] = item
           ;
-        file.setName(filename);
+        file.setName(baseDir ? `${baseDir}/${filename}` : filename);
         file.setData(arrBuff);
         return file;
     }
@@ -200,8 +200,8 @@ _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
     return this._sendAMQPMessage(this._manifestMasterJobQueueName, buffer);
 };
 
-_p._dispatchFamily = function(sourceid, familyName, filesData, metadata) {
-    var filesMessage = this._wrapFilesData(filesData); // => filesMessage
+_p._dispatchFamily = function(sourceid, familyName, baseDir, filesData, metadata) {
+    var filesMessage = this._wrapFilesData(filesData, baseDir); // => filesMessage
     return this._queue('cache', () => this._cacheFamily(filesMessage)) // => cacheKey
         .then(cacheKey => {
             return this._dispatchFamilyJob(sourceid, familyName
@@ -298,10 +298,10 @@ _p._get = function(sourceId, familyName) {
 
     return (error ? Promise.reject(error)
                   : source.get(familyName))
-    .then(([familyName, filesData, metadata])=>{
+    .then(([familyName, baseDir, filesData, metadata])=>{
         var familyData = new FamilyData()
           , collectionId = [this._id, sourceId].join('/')
-          , filesMessage = this._wrapFilesData(filesData)
+          , filesMessage = this._wrapFilesData(filesData, baseDir)
           , timestamp = new Timestamp()
           ;
         timestamp.fromDate(new Date());

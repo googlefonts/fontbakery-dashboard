@@ -376,10 +376,13 @@ _p._replaceDirCommit = function(authorSignature, localBranchName, headCommitRefe
     return getCommitResources(headCommitReference)
     .then(({reference, commit: headCommit, commitTree})=>{
         var repo = reference.owner();
-
         // put all files into the git object database
-        return Promise.all(pbFilesMessage.getFilesList().map(pbFile=>{
-            var filename = pbFile.getName()
+        return Promise.all(pbFilesMessage.getFilesList()
+        // only files that are in the target dir
+        .filter(pbFile=>pbFile.getName().indexOf(`${dir}/`) === 0)
+        .map(pbFile=>{
+                           // filename remove prefix `${dir}/`
+            var filename = pbFile.getName().slice(`${dir}/`.length)
               , buffer = Buffer.from(pbFile.getData_asU8())
               ;
             return NodeGit.Blob.createFromBuffer(repo, buffer, buffer.length)
