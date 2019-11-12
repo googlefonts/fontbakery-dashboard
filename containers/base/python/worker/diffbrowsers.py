@@ -115,7 +115,7 @@ def run_renderers(logger, font_before, font_after, out, auth, gfr_url):
 Setup = namedtuple('Setup', ['gfr_url', 'bstack_credentials'])
 
 def getSetup():
-  gfr_url = os.environ.get("GF_REGRESSIONS_URL", "http://35.188.158.120/")
+  gfr_url = os.environ.get("GF_REGRESSIONS_URL", "http://35.238.63.0/")
 
   bstack_username = os.environ.get("BROWSERSTACK_USERNAME", None)
   bstack_access_key = os.environ.get("BROWSERSTACK_ACCESS_KEY", None)
