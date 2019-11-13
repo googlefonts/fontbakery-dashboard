@@ -473,13 +473,13 @@ docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-6 containers/rethinkdb
 docker tag fontbakery/rethinkdb:2.3.6-fontbakery-6 gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
 docker push gcr.io/fontbakery-168509/rethinkdb:2.3.6-fontbakery-6
 
-docker build -t fontbakery/base-javascript:14 containers/base/javascript;
-docker tag fontbakery/base-javascript:14 gcr.io/fontbakery-168509/base-javascript:14
-docker push gcr.io/fontbakery-168509/base-javascript:14
+docker build -t fontbakery/base-javascript:15 containers/base/javascript;
+docker tag fontbakery/base-javascript:15 gcr.io/fontbakery-168509/base-javascript:15
+docker push gcr.io/fontbakery-168509/base-javascript:15
 
-docker build -t fontbakery/base-python:7 containers/base/python;
-docker tag fontbakery/base-python:7 gcr.io/fontbakery-168509/base-python:7
-docker push gcr.io/fontbakery-168509/base-python:7
+docker build -t fontbakery/base-python:8 containers/base/python;
+docker tag fontbakery/base-python:8 gcr.io/fontbakery-168509/base-python:8
+docker push gcr.io/fontbakery-168509/base-python:8
 ```
 
 # Deploy
