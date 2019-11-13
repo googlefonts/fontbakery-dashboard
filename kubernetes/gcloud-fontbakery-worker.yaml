@@ -42,7 +42,7 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-pool-1
       containers:
       - name: fontbakery-worker-sprinter
-        image: gcr.io/fontbakery-168509/base-python:7
+        image: gcr.io/fontbakery-168509/base-python:8
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
@@ -106,7 +106,7 @@ spec:
         cloud.google.com/gke-nodepool: checker-sprinter-ssd-pool-1
       containers:
       - name: fontbakery-worker-sprinter-ssd
-        image: gcr.io/fontbakery-168509/base-python:7
+        image: gcr.io/fontbakery-168509/base-python:8
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "INFO"
@@ -164,7 +164,7 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-worker
-        image: gcr.io/fontbakery-168509/base-python:7
+        image: gcr.io/fontbakery-168509/base-python:8
         env:
           - name: FONTBAKERY_WORKER_LOG_LEVEL
             value: "DEBUG"
