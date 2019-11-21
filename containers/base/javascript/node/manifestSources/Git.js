@@ -1032,7 +1032,7 @@ if (typeof require != 'undefined' && require.main==module) {
 
     var setup = getSetup(), sources = [], server
        , familyWhitelist = setup.develFamilyWhitelist
-       , repoPath = './var/fontsgit'
+       , repoPath = '/var/git-repositories/github.com_google_fonts.git'
        , familyWhitelist = null
        , grpcPort=50051
        ;

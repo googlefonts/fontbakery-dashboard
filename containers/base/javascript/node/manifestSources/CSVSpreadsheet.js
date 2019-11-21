@@ -1174,7 +1174,9 @@ _p.getSourceDetails = function(familyName) {
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
       , familyWhitelist = setup.develFamilyWhitelist
-      , repoPath = './git-repositories'
+        // For development may contain /var/git-repositories/github.com_google_fonts.git
+        // /var/git-repositories$ git clone --bare https://github.com/google/fonts.git github.com_google_fonts.git
+      , repoPath = '/var/git-repositories'
       // TODO: could be configured via setup, however, not doing this
       // now, because the current situation doesn't require this.
       // This is the production data:
