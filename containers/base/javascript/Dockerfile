@@ -56,7 +56,15 @@ RUN mkdir -p /var/javascript/browser/js/bower_components/ansi_up/ \
     && curl -o /var/javascript/browser/js/bower_components/ansi_up/ansi_up.js \
                https://raw.githubusercontent.com/drudru/ansi_up/master/ansi_up.js
 
-ADD ./fontsgit /var/fontsgit
+# In the minikube development version it can be interesting to preload
+# the image with a current version of the github google/fonts repository.
+# If so in this directory (containers/base/javascript) do:
+# $ git clone --bare https://github.com/google/fonts.git fontsgit
+# Otherwise, if image file size is an issue:
+# $ mkdir fontsgit
+# Would be nice to have the ADD optional ...
+ADD ./fontsgit /var/git-repositories/github.com_google_fonts.git
+
 # This way we only need to rebuild the last intermediate container when
 # code changed, especially the npm install can be skipped!
 ADD ./browser /var/javascript/browser

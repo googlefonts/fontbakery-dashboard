@@ -1225,7 +1225,7 @@ module.exports.GitHubOperationsServer = GitHubOperationsServer;
 
 if (typeof require != 'undefined' && require.main==module) {
     var { getSetup } = require('./util/getSetup')
-      , repoPath = './fontsgit'
+      , repoPath = '/var/git-repositories/github.com_google_fonts.git'
       , setup = getSetup(), gitHubOperationsServer, port=50051
         // all PRs are based on the respective upstream repository branch
       , remoteRefs = {
