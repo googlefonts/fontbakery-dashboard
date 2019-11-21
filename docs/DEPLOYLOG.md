@@ -618,6 +618,7 @@ $ docker push gcr.io/fontbakery-168509/base-javascript:3
 # downtime then ...
 $ ~/fontbakery-dashboard> kubectl delete deployment fontbakery-storage-persistence
 # this excludes rabbitmq and rethinkdb
+$ ~/fontbakery-dashboard> ./set-gcloud-vars
 $ ~/fontbakery-dashboard> find ./kubernetes -type f -name 'gcloud-fontbakery-*' -exec kubectl apply -f {} ';'
 
 ```
