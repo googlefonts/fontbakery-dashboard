@@ -2,21 +2,21 @@
 # is based on Debian 8 Jessie, while Debian 9 Stretch is current.
 # And the project doesn't support a stretch deb image :-/
 # Then it mixes in a simplified yet inspired approach of rosskukulinski/rethinkdb-kubernetes
-FROM debian:stretch
+FROM debian:buster
 
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install  -y procps sudo mg git \
     build-essential protobuf-compiler python \
     libprotobuf-dev libcurl4-openssl-dev libboost-all-dev \
-    libncurses5-dev libjemalloc-dev wget m4 clang libssl1.0-dev \
+    libncurses5-dev libjemalloc-dev wget m4 clang libssl-dev \
     && rm -rf /var/lib/apt/lists/*;
 
 
 RUN mkdir -p /tmp/build \
     && cd /tmp/build \
-    && wget https://download.rethinkdb.com/dist/rethinkdb-2.3.6.tgz \
-    && tar xf rethinkdb-2.3.6.tgz \
-    && cd rethinkdb-2.3.6 \
+    && wget https://download.rethinkdb.com/dist/rethinkdb-2.3.7.tgz \
+    && tar xf rethinkdb-2.3.7.tgz \
+    && cd rethinkdb-2.3.7 \
     && ./configure --allow-fetch CXX=clang++ \
     && make -j8 \
     && make install \

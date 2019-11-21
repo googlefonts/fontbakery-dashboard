@@ -1,12 +1,20 @@
 # that's Debian Stretch (current stable: Debian 9)
 # and node 11.15.0; currently nodegit doesnt build with node 12.x
-FROM node:11.15.0-stretch
+FROM node:12.13.0-buster
 
 
 RUN touch /tmp/cache_spoof_13
 
-RUN npm install -g bower browserify requirejs;
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y software-properties-common
 
+# mentioned in https://github.com/nodegit/nodegit
+RUN apt-get update \
+    && apt-get install -y libssl-dev libpcre2-posix0 libkrb5-3 \
+    libk5crypto3 libcom-err2 libpcre2-dev libkrb5-dev
+
+
+RUN npm install -g bower browserify requirejs;
 
 ADD ./.bowerrc ./bower.json ./package.json /var/javascript/
 
@@ -14,17 +22,16 @@ RUN touch /tmp/cache_spoof_2
 ADD ./generated_modules /var/javascript/generated_modules
 
 RUN touch /tmp/cache_spoof_1
+
 # will also invoke bower install etc.
 # --production: don't install dev-dependencies
 RUN cd /var/javascript && npm install --unsafe-perm --production
 
 
-# It seems to be moost roust to read our METADATA.pb files using python
+# It seems to be most robust to read our METADATA.pb files using python
 # that's the only reason for this dependency, used in manifestSources
 # via the module /node/util/getMetadataPb
-RUN apt-get update && apt-get upgrade -y \
-    && apt-get install -y software-properties-common \
-    && apt-get update \
+RUN apt-get update \
     && apt-get install -y python-dev git;
 RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
 RUN pip install --upgrade pip

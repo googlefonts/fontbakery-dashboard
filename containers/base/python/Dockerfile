@@ -1,7 +1,7 @@
-# disco == 19.04 LTS
-FROM ubuntu:disco
+# eoan == 19.08 NOT LTS  End of Life: July, 2020
+FROM ubuntu:eoan
 
-RUN touch /tmp/cache_spoof_18
+RUN touch /tmp/cache_spoof_1
 
 
 # START TZCONFIG FIX suggested in:
@@ -66,7 +66,7 @@ RUN pip3 install lxml; # ==3.5.0
 ADD requirements.txt /var/python/requirements.txt
 RUN pip3 install -r /var/python/requirements.txt
 
-RUN touch /tmp/cache_spoof_20
+RUN touch /tmp/cache_spoof_1
 
 # FIXME: doesn't install all dependencies!
 # RUN pip3 install git+https://github.com/graphicore/fontbakery@dashboard_related
@@ -81,7 +81,7 @@ RUN pip3 install fontbakery;
 # tools used for live debugging and profiling
 # RUN pip3 install memory-profiler
 # RUN apt-get install -y vim tmux htop
-# RUN touch /tmp/cache_spoof_16
+# RUN touch /tmp/cache_spoof_1
 # RUN pip3 install remote-pdb
 # RUN git clone --depth 1 -b fb_dashboard_bughunt_issue100_OOM https://github.com/graphicore/fontdiffenator.git /var/fontdiffenator;\
 #     pip3 install -e /var/fontdiffenator;
@@ -89,7 +89,7 @@ RUN pip3 install fontdiffenator;
 
 RUN pip3 install gfdiffbrowsers
 
-RUN touch /tmp/cache_spoof_2
+RUN touch /tmp/cache_spoof_1
 
 # in update_protobufs.sh the command `python -m grpc_tools.protoc`
 # doesn't create python 3 ready relative imports
