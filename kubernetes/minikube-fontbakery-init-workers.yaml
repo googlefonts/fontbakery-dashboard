@@ -4,7 +4,7 @@ metadata:
   name: fontbakery-init-workers
 spec:
   replicas: 1
-  selector: 
+  selector:
     matchLabels:
       component: fontbakery-init-workers
   template:
