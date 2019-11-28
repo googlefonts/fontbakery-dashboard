@@ -1,12 +1,13 @@
-apiVersion: apps/v1
+apiVersion: apps/v1 # for versions before 1.6.0 use extensions/v1beta1
 kind: Deployment
 metadata:
   name: fontbakery-storage-cache
 spec:
   replicas: 1
-  selector:
+  selector: 
     matchLabels:
       component: fontbakery-storage-cache
+      role: messagecache
   template:
     metadata:
       labels:

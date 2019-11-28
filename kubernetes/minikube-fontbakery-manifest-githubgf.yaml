@@ -4,7 +4,7 @@ metadata:
   name: fontbakery-manifest-githubgf
 spec:
   replicas: 1
-  selector:
+  selector: 
     matchLabels:
       component: fontbakery-manifest-githubgf
   template:
