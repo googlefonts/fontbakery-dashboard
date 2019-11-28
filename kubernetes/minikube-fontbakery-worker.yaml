@@ -2,9 +2,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fontbakery-worker
+  labels:
+    component: fontbakery-worker
 spec:
   replicas: 1
-  selector:
+  selector: 
     matchLabels:
       run: fontbakery-worker
   template:
