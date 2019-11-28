@@ -4,6 +4,52 @@ See: googlefonts/fontbakery-dashboard#3
 
 ---
 
+Project Setup:
+```
+# 1. Install minikube + kubectl
+
+# 2. Start minikube
+$ minikube start --memory 8000 --vm-driver=virtualbox
+$ . <(minikube docker-env)
+
+# 3. Build docker images
+$ docker build -t fontbakery/rethinkdb:2.3.6-fontbakery-1 containers/rethinkdb
+$ docker build -t fontbakery/base-javascript:1 containers/base/javascript/
+$ docker build -t fontbakery/base-python:1 containers/base/python/
+
+# 4. Make your cluster easily accessible
+$ kubectl create namespace fontbakery
+$ alias kf="kubectl --context=minikube -n fontbakery"
+
+# 5 Create a file named `set-minikube-vars.sh` in the root of the project and make it exacutable. Here the project secets are kept.
+$ touch set_minikube_vars.sh
+$ chmod +x ./set_minicube_vars.sh
+$ ./set_minikube_vars
+
+# 6. Start the Kubernetes pods
+$ kf apply -f kubernetes/minikube-rabbitmq.yaml
+$ kf apply -f kubernetes/minikube-rethinkdb.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-storage-cache.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-storage-persistence.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-init-workers.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-worker.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-master.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-github-auth.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-github-operations.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-githubgf.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-gfapi.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-csvupstream.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-dispatcher.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-api.yaml
+
+# 7. Check if the pods are running correctly 
+$ watch kubectl -n fontbakery get pods 
+
+# 8. Run the project and make sure the api-pod name is correct (use: $kf get pods)
+$ kf port-forward fontbakery-api-0000000000-00000 3000:3000
+```
+
 Executing in the shell:
 ```
 $ minikube service flaskapp-service
