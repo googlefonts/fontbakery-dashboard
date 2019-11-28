@@ -4,7 +4,7 @@ metadata:
   name: fontbakery-storage-persistence
 spec:
   replicas: 1
-  selector:
+  selector: 
     matchLabels:
       component: fontbakery-storage-persistence
   template:

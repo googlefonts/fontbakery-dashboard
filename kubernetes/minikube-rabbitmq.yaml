@@ -6,7 +6,7 @@ metadata:
   name: rabbitmq
 spec:
   replicas: 1
-  selector:
+  selector: 
     matchLabels:
       component: rabbitmq
   template:
