@@ -4,7 +4,7 @@ metadata:
   name: fontbakery-reports
 spec:
   replicas: 1
-  selector: 
+  selector:
     matchLabels:
       component: fontbakery-reports
   template:
