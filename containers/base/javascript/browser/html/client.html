@@ -6,626 +6,13 @@
     <title>FontBakery</title>
     <script src="/browser/js/bower_components/requirejs/require.js"></script>
     <link href="https://fonts.googleapis.com/css?family=Inconsolata|Roboto:300,300i,400,400i,700,700i" rel="stylesheet">
-    <style>
+    <link rel="stylesheet" type="text/css" href="/browser/css/dashboard.css">
+    
+    <!-- Material Design -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.min.css">
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
 
-        html {
-            font-size: 20px;
-            font-family: Roboto, sans-serif;
-        }
-        article, header {
-            width: 80%;
-            margin: 0 auto;
-        }
-        header img{
-            display: block;
-            margin: 0 auto;
-        }
-
-        h1, h2{
-            font-family: Roboto, sans-serif;
-            font-weight: 300;
-        }
-        h1{
-            font-size: 2em;
-        }
-        h2{
-            font-size: 1.7em;
-        }
-
-        pre {
-            font-family: 'Inconsolata', monospace;
-            font-size: 1.1em;
-        }
-
-        .sending-interface input,
-        .sending-interface button {
-            padding: .5em;
-            font-family: Roboto, sans-serif;
-            font-size: 1em;
-        }
-
-
-        .sending-interface button {
-            cursor: pointer;
-        }
-
-        .drop-fonts {
-            display: inline-block;
-            border: 3px solid grey;
-            padding: .5em;
-            vertical-align: baseline;
-        }
-
-        .general-controls{
-            display: inline-block;
-            vertical-align: baseline;
-        }
-
-        .drop-fonts:hover {
-            background: #b3eeff; /* this is also the background color of the fb logo */
-        }
-
-        .filename {
-            white-space: nowrap;
-            display: block;
-            padding-left: 1em;
-        }
-
-        table {
-            border-spacing: 0;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 3px 10px;
-            border: 1px solid #ddd;
-        }
-
-        td {
-            vertical-align: top;
-        }
-
-        /* Reporting Interface */
-
-        .report-container_isFinished > strong,
-        .report-container_created > strong,
-        .report-container_started > strong,
-        .report-container_finished > strong {
-            display: inline-block;
-            margin-right: .5em;
-        }
-
-        .report-container_stderr pre,
-        .report-container_stdout pre {
-            background: darkgreen;
-            color: lime;
-            border: 3px solid lime;
-            padding: .5em;
-            overflow: auto;
-            max-height: 30em;
-            white-space: pre-wrap;
-        }
-
-        .report-container_exception pre {
-            background: pink;
-            border: 3px solid tomato;
-            padding: .5em
-        }
-
-        .report-container_command ol {
-            list-style: none;
-            padding: 0;
-        }
-        .report-container_command ol:before {
-            content: '$';
-            font-weight: bold;
-        }
-
-        .report-container_command {
-            margin: 1em 0;
-        }
-
-        .report-container_command li {
-            display: inline-block;
-            background: lightgrey;
-            margin: 0 0 .5em .5em;
-            padding: .2em;
-        }
-
-        .report-container_command li > * {
-            white-space: pre;
-
-            font-size: 1.1em;
-        }
-
-        .report-container_test-item > .generic-items > div{
-            display: inline;
-        }
-
-        .report-container_preparation_logs ol,
-        .check-item-container_statuses {
-            background: LemonChiffon;
-            max-height: 15em;
-            overflow: auto;
-        }
-
-        .report-container_preparation_logs li {
-            padding: .1em;
-            font-family: 'Inconsolata', monospace;
-            font-size: 1.1em;
-            /* "pre-wrap" is closest to what the terminal does */
-            white-space: pre-wrap;
-        }
-
-        .result-value_indicator-button,
-        .report-container_tests-tab {
-            display: inline-block;
-            margin-right: .5em;
-            margin-bottom: .5em;
-            padding: .4em;
-            border-style: outset;
-            cursor: pointer;
-        }
-
-        .report-container_tests-tab:hover,
-        .report-container_tests-tab.active-tab {
-            background-color: #b3eeff;
-        }
-
-        .report-container_tests-tab:hover,
-        .report-container_tests-tab.active-tab,
-        .result-value_indicator-button.active,
-        .result-value_indicator-button:hover {
-            border-style: inset;
-        }
-
-        .report-container_tests-container {
-            display: none;
-        }
-
-        .report-container_tests-container > ol {
-            overflow: auto;
-            list-style: none;
-            padding: 0;
-            background: #EFEFEF;
-            border-top: 3px solid lightgrey;
-        }
-
-        .report-container_tests-container.active-tab {
-            display: block;
-        }
-
-        .report-container_test-item {
-            margin: 1em 0;
-            background: white;
-            /* enforces the margins to not float into each other */
-            border-top: 1px solid transparent;
-            border-bottom: 1px solid transparent;
-        }
-
-
-        .report-container_test-item .check-item-container_result {
-            float: left;
-            margin-right: .5em;
-        }
-
-        .report-container_test-item > p:first-child {
-            min-height: 2.2em;
-        }
-
-        .report-container_test-item .generic-items > * {
-            margin-right: 1em;
-            font-family: 'Inconsolata', monospace;
-            font-size: 1.1em;
-            font-size: .7em;
-        }
-
-
-        .check-item-container_result {
-            padding: .5em;
-        }
-
-        .check-item_status_code:before {
-            content: '[';
-        }
-        .check-item_status_code:after {
-            content: ']';
-        }
-        .check-item_status_code {
-            background: #EEE;
-            color: #555;
-            font-family: 'Inconsolata', monospace;
-            /* "pre-wrap" is closest to what the terminal does */
-            white-space: pre-wrap;
-            font-size: .75em;
-        }
-
-        .check-item_status_status,
-        .check-item_status_message,
-        .check-item_status_code {
-            display: inline;
-        }
-
-        .check-item_status_message {
-            white-space: pre-wrap;
-        }
-
-
-        /* Repeat class names to make the selector more specific ;-)
-           Nobody needs !important!
-        */
-        .result-value_indicator-button.active.active.active:hover {
-            background: #DDD;
-        }
-
-        .result-value_indicator {
-            display: inline-block;
-            margin-right: .5em;
-            margin-bottom: .5em;
-            padding: .4em;
-        }
-
-        /* test result colors */
-        .fontbakery_status-ERROR,
-        .report-container_tests .status-value-ERROR,
-        .result-value_indicator-button.active.result-value-ERROR,
-        .result-value_indicator-button.inactive.result-value-ERROR:hover,
-        .result-value_indicator.result-value-ERROR,
-        .dashboard-table th.row_field-ERROR
-        {
-
-            background: crimson;
-            color: white;
-        }
-        .fontbakery_status-FAIL,
-        .report-container_tests .status-value-FAIL,
-        .result-value_indicator-button.active.result-value-FAIL,
-        .result-value_indicator-button.inactive.result-value-FAIL:hover,
-        .result-value_indicator.result-value-FAIL,
-        .dashboard-table th.row_field-FAIL
-        {
-            background: tomato;
-        }
-        .fontbakery_status-WARN,
-        .report-container_tests .status-value-WARN,
-        .result-value_indicator-button.active.result-value-WARN,
-        .result-value_indicator-button.inactive.result-value-WARN:hover,
-        .result-value_indicator.result-value-WARN,
-        .dashboard-table th.row_field-WARN
-        {
-            background: darkorange;
-        }
-        .fontbakery_status-SKIP,
-        .report-container_tests .status-value-SKIP,
-        .result-value_indicator-button.active.result-value-SKIP,
-        .result-value_indicator-button.inactive.result-value-SKIP:hover,
-        .result-value_indicator.result-value-SKIP,
-        .dashboard-table th.row_field-SKIP
-        {
-            background: LemonChiffon;
-        }
-        .fontbakery_status-INFO,
-        .report-container_tests .status-value-INFO,
-        .result-value_indicator-button.active.result-value-INFO,
-        .result-value_indicator-button.inactive.result-value-INFO:hover,
-        .result-value_indicator.result-value-INFO,
-        .dashboard-table th.row_field-INFO
-        {
-            background: #b3eeff;
-        }
-        .fontbakery_status-PASS,
-        .report-container_tests .status-value-PASS,
-        .result-value_indicator-button.active.result-value-PASS,
-        .result-value_indicator-button.inactive.result-value-PASS:hover,
-        .result-value_indicator.result-value-PASS,
-        .dashboard-table th.row_field-PASS
-        {
-            background: greenyellow;
-        }
-        .fontbakery_status-DEBUG,
-        .report-container_tests .status-value-DEBUG,
-        .result-value_indicator-button.active.result-value-DEBUG,
-        .result-value_indicator-button.inactive.result-value-DEBUG:hover,
-        .result-value_indicator.result-value-DEBUG,
-        .dashboard-table th.row_field-DEBUG
-        {
-            background: lavender ;
-        }
-
-        /* by https://stephanwagner.me/only-css-loading-spinner */
-
-        /*
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .report-container_isFinished .status{
-            position: relative;
-        }
-
-        .report-container_isFinished .status.in-progress:after {
-          content: '';
-          box-sizing: border-box;
-          position: absolute;
-          width: 20px;
-          height: 20px;
-          margin-left: 5px;
-          border-radius: 50%;
-          border: 2px solid #ccc;
-          border-top-color: #333;
-          animation: spinner .6s linear infinite;
-        }
-        */
-
-        .dashboard-table .slot_column-names  > th::after,
-        .collection-report_reports-head > th::after {
-            content: '▴';
-            margin-left: .2em;
-            vertical-align: super;
-            opacity: .3;
-        }
-
-        .dashboard-table .slot_column-names.sort-desc  > th::after,
-        .collection-report_reports-head.ordering-reversed > th::after {
-            content: '▾';
-        }
-
-        .dashboard-table .slot_column-names > th.sort-active::after,
-        .collection-report_reports-head > th.ordering-column::after {
-           opacity: 1;
-        }
-
-        .dashboard-table .slot_collection-names > th::before{
-            content: '◂\a0';
-        }
-        .dashboard-table .slot_collection-names > th.collection-expanded::before{
-            content: '▸\a0';
-        }
-
-        /* quick and dirty for this exception */
-        .dashboard-table .slot_collection-names
-                > th.row_field-collectionid[data-collection="fontnames"]::before{
-            content: '';
-        }
-        .dashboard-table .slot_collection-names
-                > th.row_field-collectionid[data-collection="fontnames"] {
-            visibility: hidden;
-        }
-
-        .dashboard-table tbody {
-            border-top: 3px solid grey;
-            border-bottom: 3px solid grey;
-        }
-
-        .dashboard-table th.row_field-Font_Family {
-            white-space: nowrap;
-            text-align: left;
-        }
-
-        .dashboard-table th,
-        .dashboard-table td {
-            position: relative;
-        }
-
-        .dashboard-table .percent-indicator {
-            display: block;
-            height: 100%;
-            background-color: #efefefef;
-            position: absolute;
-            left: 0;
-            bottom: 0;
-            z-index: -1;
-        }
-
-        .dashboard-interface .filter-query-ui input.filter-query {
-            /* Needs some space, these queries are a bit long. */
-            width: 70%;
-        }
-
-        .authentication {
-            line-height: 26px;
-        }
-        .authentication * {
-            vertical-align: middle;
-        }
-
-        .authentication .user img {
-            display: inline-block;
-            border-radius: 13px;
-            width: 26px;
-            height: 26px;
-        }
-
-        .user-log::before{
-            display: block;
-            background: black;
-            color: white;
-            font-weight: bold;
-            position: sticky;
-            top: 0;
-            text-align: center;
-            content: "logs:";
-        }
-
-        .user-log {
-            list-style: none;
-            padding: 0;
-            margin: 0 1.5em;
-            height: 200px;
-            overflow: auto;
-            float: right;
-            width: 600px;
-            border: 1px solid black;
-            background: white;
-            box-shadow: 5px 5px 15px black;
-        }
-
-        .user-log > li > * {
-            vertical-align: top;
-        }
-
-        .user-log > li > .markdown:first-child {
-            display: inline-block;
-        }
-
-        .user-log > li > .markdown p{
-            margin: 0;
-        }
-
-        .user-log > li > .preformated,
-        .inline-preformated
-        {
-            display: inline-block;
-            font-family: monospace;
-            white-space: pre;
-
-            vertical-align: top;
-        }
-
-        .user-log > li > markdown {
-            display: inline-block;
-        }
-
-        .user-log > li.priority-info:nth-child(even) {
-            background: #eee;
-        }
-
-        .user-log > li.priority-error {
-            background: LightPink;
-        }
-        .user-log > li.priority-error:nth-child(even){
-            background: Pink;
-        }
-        .user-log > li.priority-error::before {
-            content: '💥 ERROR > ';
-        }
-
-        .user-log > li.priority-warning{
-            background: PeachPuff;
-        }
-        .user-log > li.priority-warning:nth-child(even){
-            background: Moccasin;
-        }
-        .user-log > li.priority-warning::before {
-            content: '⚠️ WARNING > ';
-        }
-
-        .user-log > li.priority-info::before {
-            content: '> ';
-        }
-
-        .dispatcher-interface form{
-            border: 1px dotted black;
-            padding: 1em;
-            background: LemonChiffon;
-        }
-
-        .dispatcher-interface form label {
-            display: block;
-            margin: .5em 0;
-        }
-
-        .dispatcher-interface .status-code > * {
-            display: inline-block;
-            vertical-align: top;
-        }
-
-        .dispatcher-interface .status-code > .markdown p {
-            margin: 0
-        }
-        .dispatcher-interface .dispatcher-process ol.state-values
-        ,.dispatcher-interface .dispatcher-process > ol.steps {
-            list-style: none;
-            padding: 0;
-        }
-
-        .dispatcher-interface .dispatcher-process .step {
-            margin: 1em 0;
-            background: #ededed;
-        }
-
-        .dispatcher-interface .dispatcher-process .step > .header {
-            margin: .5em 0 0 0;
-            padding: .5em;
-            display: block;
-            cursor: pointer;
-            background: #888;
-            color: #ddd;
-        }
-
-        .dispatcher-interface .dispatcher-process .step > .header > * {
-            font-size: 1em;
-        }
-
-        .dispatcher-interface .dispatcher-process .step > .header h3 {
-            display: inline;
-            font-weight: normal;
-            color: #333;
-        }
-
-        .dispatcher-interface .dispatcher-process .step.finished > .header h3 {
-            color: black;
-        }
-
-        .dispatcher-interface .dispatcher-process .step.active > .header h3 {
-            color: LemonChiffon;
-        }
-
-        .dispatcher-interface .dispatcher-process .step.active > .header {
-            background: #333;
-            color: white;
-        }
-
-        .dispatcher-interface .dispatcher-process .step.finished > .header {
-            color: white;
-            background: #aaa;
-        }
-
-        .dispatcher-interface .dispatcher-process.OK > .header::after,
-        .dispatcher-interface .dispatcher-process .step.finished.OK > .header h3::after {
-            content: ' ✔';
-            color: lightgreen;
-        }
-
-        .dispatcher-interface .dispatcher-process.FAILED > .header::after,
-        .dispatcher-interface .dispatcher-process .step.finished.FAILED > .header h3::after {
-            content: ' ✘';
-            color: red;
-        }
-
-        .dispatcher-interface .status-code.OK::before {
-            content: '✔ ';
-            color: lightgreen;
-        }
-
-        .dispatcher-interface .status-code.FAILED::before {
-            content: '✘ ';
-            color: red;
-        }
-
-        .dispatcher-interface .dispatcher-process .step > .body,
-        /* hmm, bad class name in this case, "opened" */
-        .dispatcher-interface .dispatcher-process .step.active.opened > .body
-         {
-            display: none
-        }
-
-        .dispatcher-interface .dispatcher-process .step.active > .body,
-        .dispatcher-interface .dispatcher-process .step.opened > .body
-        {
-            display: block;
-        }
-
-        .dispatcher-interface .dispatcher-process .step .task{
-            margin: 0 0 .5em 0;
-            padding: .5em;
-            background: white;
-        }
-        .dispatcher-interface .dispatcher-process .step .task h4 {
-            margin: .5em 0;
-        }
-    </style>
     <script>
     require(['/browser/js/bootstrap.js'], function(require) {
         require(['main'], function(main){main()});
@@ -635,25 +22,28 @@
 <body>
 <div class="templates" style="display:none">
     <div class="sending-interface">
-        <p>Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.</p>
-        <p>Font Bakery will run inter-family checks if you drop more than one font.</p>
-        <h3>What happens with my files?</h3>
-        <p>
-        Your files will be uploaded to our servers. We keep them around until Font Bakery finished running
-        the checks and creating its report. After checking, your files are removed from our servers.
-        </p><p>
-        The Font Bakery report created for your files, however, remains in our database, so that you can
-        share and revisit the link to the report. <strong>Everyone with the link can view a report.</strong>
-        The link contains the random unique ID of the report, created by the database server, it should be
-        really hard to guess. We do not keep outline data or actual font files, but, the report can contain
-        some detailed information about your fonts, like file names, name table entries and generally problems
-        found in your fonts and metadata etc.
-        </p>
-        <p>For further questions, discussion and bug reports please see our
-        <a href="https://github.com/googlefonts/fontbakery-dashboard/issues">GitHub issue tracker</a>.</p>
-        <div class="drop-fonts"><p>Drop font files here or <button>click to choose</button></p></div>
-        <div class="general-controls"></div>
-        <ol class="files-controls"></ol>
+        <div class="dropzone-container">
+            <div class="general-controls"></div>
+            <ol class="files-controls"></ol>
+        </div>
+        <p>Is your font ready for the real world?</p>
+        <div class="explanation-container">
+            <div class="step-container">
+                <span class="step"><img src="/browser/img/font_icon.svg" alt="file"></span>
+                <p>Drop your font files</p>
+            </div>
+            <div class="pointer">⮀</div>
+            <div class="step-container">
+                <span class="step"><img src="/browser/img/oven_icon.svg" alt="oven"></span>
+                <p>Run Checks on your fonts</p>
+            </div>
+            <div class="pointer">⮀</div>
+            <div class="step-container">
+                <span class="step"><img src="/browser/img/report_icon.svg" alt="report"></span>
+                <p>Get a report on performance</p>
+            </div>
+        </div>
+        
     </div>
     <div class="reporting-interface">
     <!-- insert: report-root -->
@@ -688,8 +78,8 @@
     </div>
 
     <div class="authentication">
-        <span class="user">(not set)</span>
-        <button class="action">login</button>
+        <span class="github_username user">(not set)</span>
+        <button class="action mdl-button mdl-js-button mdl-button--raised">login</button>
     </div>
 </div>
 
@@ -863,8 +253,29 @@
     </button>
 </div>
 <header>
-    <!-- insert: authentication-ui -->
-    <img alt="Font Bakery" src="/browser/img/logo_200px.png"/>
+    <div class="fbd-header mdl-layout__header">
+        <div class="mdl-layout__header-row fbd-navigation-row">
+          <span class="fbd-title">
+            <!-- <img class="fbd-logo-image" src="/browser/img/logo_icon.png"> -->
+            <img class="fbd-logo-image" src="/browser/img/logo_text.png">
+          </span>
+          <!-- Navigation -->
+          <div class="fbd-navigation-container">
+            <nav class="fbd-navigation mdl-navigation">
+              <a class="mdl-navigation__link" href="">Reporter</a>
+              <a class="mdl-navigation__link" href="">Docs</a>
+              <a class="mdl-navigation__link" type="button" id="more-button">Tools ▼</a>
+              <ul class="mdl-menu mdl-js-menu mdl-menu--bottom-right mdl-js-ripple-effect" for="more-button">
+                <li class="mdl-menu__item">A</li>
+                <li class="mdl-menu__item">B</li>
+                <li class="mdl-menu__item">C</li>
+                <li class="mdl-menu__item"><a href="/dispatcher">Dispatcher</a></li>
+              </ul>
+            </nav>
+          </div>
+          <!-- insert: authentication-ui -->
+        </div>
+    </div>
 </header>
 <article class="active-interface"><!-- server side include marker --></article>
 </body>
