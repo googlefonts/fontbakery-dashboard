@@ -489,7 +489,7 @@ define([
         }
         else {
             this._button.textContent = 'login with GitHub';
-            userChildren = [dom.createElement('strong', null, '(not signed in)')];
+            userChildren = [dom.createElement('strong', null, '')];
         }
         dom.clear(this._user);
         dom.appendChildren(this._user, userChildren);

@@ -1,3 +1,15 @@
+
+/* Color variables */
+
+:root {
+  --premium-gray-blue: #9DA2C7;
+  --premium-blue: #3040C2;
+  --premium-light-blue: #70C1E3;
+  --premium-red: #C23600;
+  --premium-orange: #F37F29;
+  --premium-black: #282922;
+}
+
 .dashboard {
 	width: 60%;
 	margin: 0 auto;
@@ -7,6 +19,177 @@
 	font-size: 16pt;
 	font-variant: small-caps;
 }
+
+/* new stuff */
+
+::-moz-selection {
+  background-color: #6ab344;
+  color: #fff;
+}
+
+::selection {
+  background-color: #6ab344;
+  color: #fff;
+}
+
+.fbd-header .mdl-menu__container {
+  z-index: 50;
+  margin: 0 !important;
+  background-color: white;
+}
+
+.mdl-textfield--expandable {
+  width: auto;
+}
+
+.fbd-navigation-row{
+  display: flex;
+  background-color: white;
+}
+
+.fbd-title{
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fbd-logo-image {
+  height: 80%;
+}
+
+
+.fbd-header {
+  overflow: visible;
+  background-color: white;
+}
+
+.fbd-header .mdl-navigation__link{
+  color: var(--premium-black) !important;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.github_username{
+  color: var(--premium-black) !important;
+  font-weight: 700;
+  font-size: 14px;
+  padding-right: 1em;
+}
+
+.fbd-navigation-container{
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.fbd-navigation {
+/* ... and now make sure the content is actually LTR */
+  direction: ltr;
+  -webkit-justify-content: flex-end;
+      -ms-flex-pack: end;
+          justify-content: flex-end;
+}
+
+.fbd-navigation .mdl-navigation__link {
+  display: inline-block;
+  height: 60px;
+  line-height: 68px;
+  color: var(--premium-black);
+  border-bottom: 4px solid transparent;
+}
+
+.fbd-navigation .mdl-navigation__link:hover {
+  border-bottom: 4px solid var(--premium-light-blue);
+}
+
+.logo-font {
+  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  line-height: 1;
+  color: #767777;
+  font-weight: 500;
+}
+
+.fbd-create-character {
+  font-size: 21px;
+  padding-top: 400px;
+}
+
+.fbd-create-character a {
+  text-decoration: none;
+  color: #767777;
+  font-weight: 300;
+}
+
+.fbd-screen-section {
+  position: relative;
+  padding-top: 60px;
+  padding-bottom: 80px;
+}
+
+.fbd-screens {
+  text-align: right;
+  width: 100%;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+
+.fbd-screen {
+  text-align: center;
+}
+
+.fbd-screen .fbd-link {
+  margin-top: 16px;
+  display: block;
+  z-index: 2;
+}
+
+.fbd-image-link {
+  text-decoration: none;
+}
+
+.fbd-link {
+  text-decoration: none;
+  color: #8bc34a !important;
+}
+
+.fbd-link:hover {
+  color: #7cb342 !important;
+}
+
+.fbd-link .material-icons {
+  position: relative;
+  top: -1px;
+  vertical-align: middle;
+}
+
+.github-login-button{
+    width: 7em !important;
+    height: 2em !important;
+    background-color: var(--premium-black) !important;
+    color: white !important;
+    border-radius: 5px !important;
+}
+
+.fbd-alt-link {
+  text-decoration: none;
+  color: #64ffda !important;
+  font-size: 16px;
+}
+
+.fbd-alt-link:hover {
+  color: #00bfa5 !important;
+}
+
+.fbd-alt-link .material-icons {
+  position: relative;
+  top: 6px;
+}
+
+.fbd-link-menu:hover {
+  cursor: pointer;
+}
+
+/* end new stuff */
 
 ul {
 	margin: 0 auto;
@@ -55,4 +238,638 @@ progress[value]::-moz-progress-bar {
 .axis text {
 	font-family: Lato;
 	font-size: 13px;
+}
+
+html {
+    font-size: 20px;
+    font-family: Roboto, sans-serif;
+}
+
+h1, h2{
+    font-family: Roboto, sans-serif;
+    font-weight: 300;
+}
+
+h1{
+    font-size: 2em;
+}
+
+h2{
+    font-size: 1.7em;
+}
+
+pre {
+    font-family: 'Inconsolata', monospace;
+    font-size: 1.1em;
+}
+
+.sending-interface{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.sending-interface input,
+.sending-interface button {
+    padding: .5em;
+    font-family: Roboto, sans-serif;
+    font-size: 1em;
+}
+
+
+.sending-interface button {
+    cursor: pointer;
+}
+
+.sending-interface .dropzone-container{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 20em;
+    width: 30em;
+    border-radius: 2em;
+    border: 2px black dashed;
+    margin-top: 2em;
+}
+
+.sending-interface .explanation-container{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sending-interface .explanation-container .step-container{
+    display: flex;
+    flex-direction: column;
+    height: 100px;
+    width: 100px;
+}
+
+.sending-interface .explanation-container .step-container p{
+    text-align: center;
+}
+
+.sending-interface .explanation-container .step-container .step{
+    height: 100px;
+    width: 100px;
+}
+
+.sending-interface .explanation-container .pointer{
+    height: 30px;
+    width: 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.drop-fonts {
+    display: inline-block;
+    border: 3px solid grey;
+    padding: .5em;
+    vertical-align: baseline;
+}
+
+.general-controls{
+    display: inline-block;
+    vertical-align: baseline;
+}
+
+.drop-fonts:hover {
+    background: #b3eeff; /* this is also the background color of the fb logo */
+}
+
+.filename {
+    white-space: nowrap;
+    display: block;
+    padding-left: 1em;
+}
+
+table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 3px 10px;
+    border: 1px solid #ddd;
+}
+
+td {
+    vertical-align: top;
+}
+
+/* Reporting Interface */
+
+.report-container_isFinished > strong,
+.report-container_created > strong,
+.report-container_started > strong,
+.report-container_finished > strong {
+    display: inline-block;
+    margin-right: .5em;
+}
+
+.report-container_stderr pre,
+.report-container_stdout pre {
+    background: darkgreen;
+    color: lime;
+    border: 3px solid lime;
+    padding: .5em;
+    overflow: auto;
+    max-height: 30em;
+    white-space: pre-wrap;
+}
+
+.report-container_exception pre {
+    background: pink;
+    border: 3px solid tomato;
+    padding: .5em
+}
+
+.report-container_command ol {
+    list-style: none;
+    padding: 0;
+}
+.report-container_command ol:before {
+    content: '$';
+    font-weight: bold;
+}
+
+.report-container_command {
+    margin: 1em 0;
+}
+
+.report-container_command li {
+    display: inline-block;
+    background: lightgrey;
+    margin: 0 0 .5em .5em;
+    padding: .2em;
+}
+
+.report-container_command li > * {
+    white-space: pre;
+
+    font-size: 1.1em;
+}
+
+.report-container_test-item > .generic-items > div{
+    display: inline;
+}
+
+.report-container_preparation_logs ol,
+.check-item-container_statuses {
+    background: LemonChiffon;
+    max-height: 15em;
+    overflow: auto;
+}
+
+.report-container_preparation_logs li {
+    padding: .1em;
+    font-family: 'Inconsolata', monospace;
+    font-size: 1.1em;
+    /* "pre-wrap" is closest to what the terminal does */
+    white-space: pre-wrap;
+}
+
+.result-value_indicator-button,
+.report-container_tests-tab {
+    display: inline-block;
+    margin-right: .5em;
+    margin-bottom: .5em;
+    padding: .4em;
+    border-style: outset;
+    cursor: pointer;
+}
+
+.report-container_tests-tab:hover,
+.report-container_tests-tab.active-tab {
+    background-color: #b3eeff;
+}
+
+.report-container_tests-tab:hover,
+.report-container_tests-tab.active-tab,
+.result-value_indicator-button.active,
+.result-value_indicator-button:hover {
+    border-style: inset;
+}
+
+.report-container_tests-container {
+    display: none;
+}
+
+.report-container_tests-container > ol {
+    overflow: auto;
+    list-style: none;
+    padding: 0;
+    background: #EFEFEF;
+    border-top: 3px solid lightgrey;
+}
+
+.report-container_tests-container.active-tab {
+    display: block;
+}
+
+.report-container_test-item {
+    margin: 1em 0;
+    background: white;
+    /* enforces the margins to not float into each other */
+    border-top: 1px solid transparent;
+    border-bottom: 1px solid transparent;
+}
+
+
+.report-container_test-item .check-item-container_result {
+    float: left;
+    margin-right: .5em;
+}
+
+.report-container_test-item > p:first-child {
+    min-height: 2.2em;
+}
+
+.report-container_test-item .generic-items > * {
+    margin-right: 1em;
+    font-family: 'Inconsolata', monospace;
+    font-size: 1.1em;
+    font-size: .7em;
+}
+
+
+.check-item-container_result {
+    padding: .5em;
+}
+
+.check-item_status_code:before {
+    content: '[';
+}
+.check-item_status_code:after {
+    content: ']';
+}
+.check-item_status_code {
+    background: #EEE;
+    color: #555;
+    font-family: 'Inconsolata', monospace;
+    /* "pre-wrap" is closest to what the terminal does */
+    white-space: pre-wrap;
+    font-size: .75em;
+}
+
+.check-item_status_status,
+.check-item_status_message,
+.check-item_status_code {
+    display: inline;
+}
+
+.check-item_status_message {
+    white-space: pre-wrap;
+}
+
+
+/* Repeat class names to make the selector more specific ;-)
+   Nobody needs !important!
+*/
+.result-value_indicator-button.active.active.active:hover {
+    background: #DDD;
+}
+
+.result-value_indicator {
+    display: inline-block;
+    margin-right: .5em;
+    margin-bottom: .5em;
+    padding: .4em;
+}
+
+/* test result colors */
+.fontbakery_status-ERROR,
+.report-container_tests .status-value-ERROR,
+.result-value_indicator-button.active.result-value-ERROR,
+.result-value_indicator-button.inactive.result-value-ERROR:hover,
+.result-value_indicator.result-value-ERROR,
+.dashboard-table th.row_field-ERROR
+{
+
+    background: crimson;
+    color: white;
+}
+.fontbakery_status-FAIL,
+.report-container_tests .status-value-FAIL,
+.result-value_indicator-button.active.result-value-FAIL,
+.result-value_indicator-button.inactive.result-value-FAIL:hover,
+.result-value_indicator.result-value-FAIL,
+.dashboard-table th.row_field-FAIL
+{
+    background: tomato;
+}
+.fontbakery_status-WARN,
+.report-container_tests .status-value-WARN,
+.result-value_indicator-button.active.result-value-WARN,
+.result-value_indicator-button.inactive.result-value-WARN:hover,
+.result-value_indicator.result-value-WARN,
+.dashboard-table th.row_field-WARN
+{
+    background: darkorange;
+}
+.fontbakery_status-SKIP,
+.report-container_tests .status-value-SKIP,
+.result-value_indicator-button.active.result-value-SKIP,
+.result-value_indicator-button.inactive.result-value-SKIP:hover,
+.result-value_indicator.result-value-SKIP,
+.dashboard-table th.row_field-SKIP
+{
+    background: LemonChiffon;
+}
+.fontbakery_status-INFO,
+.report-container_tests .status-value-INFO,
+.result-value_indicator-button.active.result-value-INFO,
+.result-value_indicator-button.inactive.result-value-INFO:hover,
+.result-value_indicator.result-value-INFO,
+.dashboard-table th.row_field-INFO
+{
+    background: #b3eeff;
+}
+.fontbakery_status-PASS,
+.report-container_tests .status-value-PASS,
+.result-value_indicator-button.active.result-value-PASS,
+.result-value_indicator-button.inactive.result-value-PASS:hover,
+.result-value_indicator.result-value-PASS,
+.dashboard-table th.row_field-PASS
+{
+    background: greenyellow;
+}
+.fontbakery_status-DEBUG,
+.report-container_tests .status-value-DEBUG,
+.result-value_indicator-button.active.result-value-DEBUG,
+.result-value_indicator-button.inactive.result-value-DEBUG:hover,
+.result-value_indicator.result-value-DEBUG,
+.dashboard-table th.row_field-DEBUG
+{
+    background: lavender ;
+}
+
+.dashboard-table .slot_column-names  > th::after,
+.collection-report_reports-head > th::after {
+    content: '▴';
+    margin-left: .2em;
+    vertical-align: super;
+    opacity: .3;
+}
+
+.dashboard-table .slot_column-names.sort-desc  > th::after,
+.collection-report_reports-head.ordering-reversed > th::after {
+    content: '▾';
+}
+
+.dashboard-table .slot_column-names > th.sort-active::after,
+.collection-report_reports-head > th.ordering-column::after {
+   opacity: 1;
+}
+
+.dashboard-table .slot_collection-names > th::before{
+    content: '◂\a0';
+}
+.dashboard-table .slot_collection-names > th.collection-expanded::before{
+    content: '▸\a0';
+}
+
+/* quick and dirty for this exception */
+.dashboard-table .slot_collection-names
+        > th.row_field-collectionid[data-collection="fontnames"]::before{
+    content: '';
+}
+.dashboard-table .slot_collection-names
+        > th.row_field-collectionid[data-collection="fontnames"] {
+    visibility: hidden;
+}
+
+.dashboard-table tbody {
+    border-top: 3px solid grey;
+    border-bottom: 3px solid grey;
+}
+
+.dashboard-table th.row_field-Font_Family {
+    white-space: nowrap;
+    text-align: left;
+}
+
+.dashboard-table th,
+.dashboard-table td {
+    position: relative;
+}
+
+.dashboard-table .percent-indicator {
+    display: block;
+    height: 100%;
+    background-color: #efefefef;
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    z-index: -1;
+}
+
+.dashboard-interface .filter-query-ui input.filter-query {
+    /* Needs some space, these queries are a bit long. */
+    width: 70%;
+}
+
+.authentication {
+    line-height: 26px;
+}
+.authentication * {
+    vertical-align: middle;
+}
+
+.authentication .user img {
+    display: inline-block;
+    border-radius: 13px;
+    width: 26px;
+    height: 26px;
+}
+
+.user-log::before{
+    display: block;
+    background: black;
+    color: white;
+    font-weight: bold;
+    position: sticky;
+    top: 0;
+    text-align: center;
+    content: "logs:";
+}
+
+.user-log {
+    list-style: none;
+    padding: 0;
+    margin: 0 1.5em;
+    height: 200px;
+    overflow: auto;
+    float: right;
+    width: 600px;
+    border: 1px solid black;
+    background: white;
+    box-shadow: 5px 5px 15px black;
+}
+
+.user-log > li > * {
+    vertical-align: top;
+}
+
+.user-log > li > .markdown:first-child {
+    display: inline-block;
+}
+
+.user-log > li > .markdown p{
+    margin: 0;
+}
+
+.user-log > li > .preformated,
+.inline-preformated
+{
+    display: inline-block;
+    font-family: monospace;
+    white-space: pre;
+
+    vertical-align: top;
+}
+
+.user-log > li > markdown {
+    display: inline-block;
+}
+
+.user-log > li.priority-info:nth-child(even) {
+    background: #eee;
+}
+
+.user-log > li.priority-error {
+    background: LightPink;
+}
+.user-log > li.priority-error:nth-child(even){
+    background: Pink;
+}
+.user-log > li.priority-error::before {
+    content: '💥 ERROR > ';
+}
+
+.user-log > li.priority-warning{
+    background: PeachPuff;
+}
+.user-log > li.priority-warning:nth-child(even){
+    background: Moccasin;
+}
+.user-log > li.priority-warning::before {
+    content: '⚠️ WARNING > ';
+}
+
+.user-log > li.priority-info::before {
+    content: '> ';
+}
+
+.dispatcher-interface form{
+    border: 1px dotted black;
+    padding: 1em;
+    background: LemonChiffon;
+}
+
+.dispatcher-interface form label {
+    display: block;
+    margin: .5em 0;
+}
+
+.dispatcher-interface .status-code > * {
+    display: inline-block;
+    vertical-align: top;
+}
+
+.dispatcher-interface .status-code > .markdown p {
+    margin: 0
+}
+.dispatcher-interface .dispatcher-process ol.state-values
+,.dispatcher-interface .dispatcher-process > ol.steps {
+    list-style: none;
+    padding: 0;
+}
+
+.dispatcher-interface .dispatcher-process .step {
+    margin: 1em 0;
+    background: #ededed;
+}
+
+.dispatcher-interface .dispatcher-process .step > .header {
+    margin: .5em 0 0 0;
+    padding: .5em;
+    display: block;
+    cursor: pointer;
+    background: #888;
+    color: #ddd;
+}
+
+.dispatcher-interface .dispatcher-process .step > .header > * {
+    font-size: 1em;
+}
+
+.dispatcher-interface .dispatcher-process .step > .header h3 {
+    display: inline;
+    font-weight: normal;
+    color: #333;
+}
+
+.dispatcher-interface .dispatcher-process .step.finished > .header h3 {
+    color: black;
+}
+
+.dispatcher-interface .dispatcher-process .step.active > .header h3 {
+    color: LemonChiffon;
+}
+
+.dispatcher-interface .dispatcher-process .step.active > .header {
+    background: #333;
+    color: white;
+}
+
+.dispatcher-interface .dispatcher-process .step.finished > .header {
+    color: white;
+    background: #aaa;
+}
+
+.dispatcher-interface .dispatcher-process.OK > .header::after,
+.dispatcher-interface .dispatcher-process .step.finished.OK > .header h3::after {
+    content: ' ✔';
+    color: lightgreen;
+}
+
+.dispatcher-interface .dispatcher-process.FAILED > .header::after,
+.dispatcher-interface .dispatcher-process .step.finished.FAILED > .header h3::after {
+    content: ' ✘';
+    color: red;
+}
+
+.dispatcher-interface .status-code.OK::before {
+    content: '✔ ';
+    color: lightgreen;
+}
+
+.dispatcher-interface .status-code.FAILED::before {
+    content: '✘ ';
+    color: red;
+}
+
+.dispatcher-interface .dispatcher-process .step > .body,
+/* hmm, bad class name in this case, "opened" */
+.dispatcher-interface .dispatcher-process .step.active.opened > .body
+ {
+    display: none
+}
+
+.dispatcher-interface .dispatcher-process .step.active > .body,
+.dispatcher-interface .dispatcher-process .step.opened > .body
+{
+    display: block;
+}
+
+.dispatcher-interface .dispatcher-process .step .task{
+    margin: 0 0 .5em 0;
+    padding: .5em;
+    background: white;
+}
+.dispatcher-interface .dispatcher-process .step .task h4 {
+    margin: .5em 0;
 }
