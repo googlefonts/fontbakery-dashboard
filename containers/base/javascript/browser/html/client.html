@@ -22,36 +22,38 @@
 <body>
 <div class="templates" style="display:none">
     <div class="sending-interface">
-        <div class="dropzone-container">
-            <div class=""><p>Drop font files here or <button>click to choose</button></p></div>
-            <div class="general-controls"></div>
+        <div class="dropzone-container drop-fonts general-controls">
+            <div class="dropzone-info">
+                <span class="image"><img src="/browser/img/drop_file_icon.svg" alt="report"></span>
+                <p class="text mdl-typography--subhead">Drop your fonts or <button class="link_button mdl-typography--font-bold">Browse</button></p>
+            </div>
+            <hr>
             <ol class="files-controls"></ol>
+
         </div>
-        <p>Is your font ready for the real world?</p>
         <div class="explanation-container">
             <div class="step-container">
-                <span class="step"><img src="/browser/img/font_icon.svg" alt="file"></span>
+                <span class="step mdl-typography--font-regular"><img src="/browser/img/font_icon.svg" alt="file"></span>
                 <p>Drop your font files</p>
             </div>
             <div class="pointer">⮀</div>
             <div class="step-container">
-                <span class="step"><img src="/browser/img/oven_icon.svg" alt="oven"></span>
+                <span class="step mdl-typography--font-regular"><img src="/browser/img/oven_icon.svg" alt="oven"></span>
                 <p>Run Checks on your fonts</p>
             </div>
             <div class="pointer">⮀</div>
             <div class="step-container">
-                <span class="step"><img src="/browser/img/report_icon.svg" alt="report"></span>
+                <span class="step mdl-typography--font-regular"><img src="/browser/img/report_icon.svg" alt="report"></span>
                 <p>Get a report on performance</p>
             </div>
         </div>
 
-        <p>Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.</p>
-        <p>Font Bakery will run inter-family checks if you drop more than one font.</p>
-        <h2>What happens with my files?</h2>
-        <p>
+        <h2 class="mdl-typography--headline">What happens with my files?</h2>
+        <p class="explanation">
         Your files will be uploaded to our servers. We keep them around until Font Bakery finished running
         the checks and creating its report. After checking, your files are removed from our servers.
-        </p><p>
+        </p>
+        <p class="explanation">
         The Font Bakery report created for your files, however, remains in our database, so that you can
         share and revisit the link to the report. <strong>Everyone with the link can view a report.</strong>
         The link contains the random unique ID of the report, created by the database server, it should be
@@ -59,9 +61,31 @@
         some detailed information about your fonts, like file names, name table entries and generally problems
         found in your fonts and metadata etc.
         </p>
-        <p>For further questions, discussion and bug reports please see our
-        <a href="https://github.com/googlefonts/fontbakery-dashboard/issues">GitHub issue tracker</a>.</p>
+        <p class="explanation">For further questions, discussion and bug reports please see our
+            <a href="https://github.com/googlefonts/fontbakery-dashboard/issues">GitHub issue tracker</a>.
+        </p>
+        
+        <h2 class="mdl-typography--headline">Good to know!</h2>
 
+        <div class="cardcontainer">
+            <div class="card mdl-card mdl-shadow--2dp">
+          <div class="mdl-card__title">
+            <h2 class="mdl-card__title-text">Drop more font files at once</h2>
+          </div>
+          <div class="mdl-card__supporting-text">
+            Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.
+          </div>
+        </div>
+
+        <div class="card mdl-card mdl-shadow--2dp">
+          <div class="mdl-card__title">
+            <h2 class="mdl-card__title-text">Family checks</h2>
+          </div>
+          <div class="mdl-card__supporting-text">
+            Font Bakery will run inter-family checks if you drop more than one font.
+          </div>
+        </div>
+        </div>
     </div>
     <div class="reporting-interface">
     <!-- insert: report-root -->
@@ -271,20 +295,22 @@
     </button>
 </div>
 <header>
-    <div class="fbd-header mdl-layout__header">
-        <div class="mdl-layout__header-row fbd-navigation-row">
-          <span class="fbd-title">
-            <a href="/"><img class="fbd-logo-image" src="/browser/img/logo_text.png"></a>
-          </span>
-          <!-- Navigation -->
-          <div class="fbd-navigation-container">
-            <nav class="fbd-navigation mdl-navigation">
-              <a class="mdl-navigation__link active" href="/">Reporter</a>
-              <a class="mdl-navigation__link" href="https://font-bakery.readthedocs.io/en/latest/">Docs</a>
-              <a class="mdl-navigation__link" href="/dispatcher">Dispatcher</a>
-            </nav>
-          </div>
-          <!-- insert: authentication-ui -->
+    <div class="mdl-layout--fixed-header mdl-shadow--2dp">
+        <div class="fbd-header mdl-layout__header mdl-layout__header--waterfall">
+            <div class="mdl-layout__header-row fbd-navigation-row">
+              <span class="fbd-title">
+                <a href="/"><img class="fbd-logo-image" src="/browser/img/logo_text.png"></a>
+              </span>
+              <!-- Navigation -->
+              <div class="fbd-navigation-container">
+                <nav class="fbd-navigation mdl-navigation">
+                  <a class="mdl-navigation__link" href="/">Reporter</a>
+                  <a class="mdl-navigation__link" href="/dispatcher">Dispatcher</a>
+                  <a class="mdl-navigation__link" href="https://font-bakery.readthedocs.io/en/latest/">Docs</a>
+                </nav>
+              </div>
+              <!-- insert: authentication-ui -->
+            </div>
         </div>
     </div>
 </header>
