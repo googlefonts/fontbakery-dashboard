@@ -1,18 +1,1 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Generator: Adobe Illustrator 24.0.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
-<svg version="1.1" id="Layer_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px"
-	 viewBox="0 0 67.7 67.3" style="enable-background:new 0 0 67.7 67.3;" xml:space="preserve">
-<style type="text/css">
-	.st0{fill:#393A3A;}
-</style>
-<g>
-	<g>
-		<path class="st0" d="M52,53H16.4V4.1h25.7l10,9.3V53z M20.1,49.2h28.2V15l-7.7-7.2H20.1V49.2z"/>
-	</g>
-	<polygon class="st0" points="25.6,19.6 25.6,25.5 28.9,25.5 28.9,22.8 32.6,22.8 32.6,36.8 29.9,36.8 29.9,40.1 38.5,40.1 
-		38.5,36.8 35.8,36.8 35.8,22.8 39.5,22.8 39.5,25.5 42.8,25.5 42.8,19.6 	"/>
-	<g>
-		<polygon class="st0" points="62.7,63.2 5,63.2 5,40.2 8.8,40.2 8.8,59.4 58.9,59.4 58.9,40.2 62.7,40.2 		"/>
-	</g>
-</g>
-</svg>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 67.7 67.3"><style>.st0{fill:#393a3a}</style><path class="st0" d="M52 53H16.4V4.1h25.7l10 9.3V53zm-31.9-3.8h28.2V15l-7.7-7.2H20.1v41.4z"/><path class="st0" d="M25.6 19.6v5.9h3.3v-2.7h3.7v14h-2.7v3.3h8.6v-3.3h-2.7v-14h3.7v2.7h3.3v-5.9zM62.7 63.2H5v-23h3.8v19.2h50.1V40.2h3.8z"/></svg>
