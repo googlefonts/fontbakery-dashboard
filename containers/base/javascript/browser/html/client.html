@@ -22,16 +22,17 @@
 <body>
 <div class="templates" style="display:none">
     <div class="sending-interface">
-        <div class="dropzone-container drop-fonts general-controls">
+        <div class="dropzone-container drop-fonts">
             <div class="dropzone-info">
                 <span class="image"><img src="/browser/img/drop_file_icon.svg" alt="report"></span>
-                <p class="text mdl-typography--subhead">Drop your fonts or <button class="link_button mdl-typography--font-bold">Browse</button></p>
+                <h5 class="text">Drop your fonts or <h5 class="link">&nbsp;Browse</h5></h5>
             </div>
             <hr>
             <ol class="files-controls"></ol>
+            <div class="general-controls"></div>
 
         </div>
-        <div class="explanation-container">
+        <div class="graphic-explanation-container">
             <div class="step-container">
                 <span class="step mdl-typography--font-regular"><img src="/browser/img/font_icon.svg" alt="file"></span>
                 <p>Drop your font files</p>
@@ -48,43 +49,66 @@
             </div>
         </div>
 
-        <h2 class="mdl-typography--headline">What happens with my files?</h2>
-        <p class="explanation">
-        Your files will be uploaded to our servers. We keep them around until Font Bakery finished running
-        the checks and creating its report. After checking, your files are removed from our servers.
-        </p>
-        <p class="explanation">
-        The Font Bakery report created for your files, however, remains in our database, so that you can
-        share and revisit the link to the report. <strong>Everyone with the link can view a report.</strong>
-        The link contains the random unique ID of the report, created by the database server, it should be
-        really hard to guess. We do not keep outline data or actual font files, but, the report can contain
-        some detailed information about your fonts, like file names, name table entries and generally problems
-        found in your fonts and metadata etc.
-        </p>
-        <p class="explanation">For further questions, discussion and bug reports please see our
-            <a href="https://github.com/googlefonts/fontbakery-dashboard/issues">GitHub issue tracker</a>.
-        </p>
+
+        <div class="mid-container">
+            <h2 class="mdl-typography--headline">What happens with my files?</h2>
+            <p class="explanation">
+            Your files will be uploaded to our servers. We keep them around until Font Bakery finished running
+            the checks and creating its report. After checking, your files are removed from our servers.
+            </p>
+            <p class="explanation">
+            The Font Bakery report created for your files, however, remains in our database, so that you can
+            share and revisit the link to the report. <strong>Everyone with the link can view a report.</strong>
+            The link contains the random unique ID of the report, created by the database server, it should be
+            really hard to guess. We do not keep outline data or actual font files, but, the report can contain
+            some detailed information about your fonts, like file names, name table entries and generally problems
+            found in your fonts and metadata etc.
+            </p>
+            <p class="explanation">For further questions, discussion and bug reports please see our
+                <a href="https://github.com/googlefonts/fontbakery-dashboard/issues">GitHub issue tracker</a>.
+            </p>
+        </div>
         
-        <h2 class="mdl-typography--headline">Good to know!</h2>
+        
+        <div class="mid-container">
+            <h2 class="mdl-typography--headline">Good to know!</h2>
+            <div class="cardcontainer">
+                <div class="card mdl-card mdl-shadow--2dp">
+                  <div class="mdl-card__title">
+                    <h2 class="mdl-card__title-text">Drop more font files at once</h2>
+                  </div>
+                  <div class="mdl-card__supporting-text">
+                    Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.
+                  </div>
+                </div>
 
-        <div class="cardcontainer">
-            <div class="card mdl-card mdl-shadow--2dp">
-          <div class="mdl-card__title">
-            <h2 class="mdl-card__title-text">Drop more font files at once</h2>
-          </div>
-          <div class="mdl-card__supporting-text">
-            Font Bakery runs quality checks on all fonts you drop at it and generates a summary report.
-          </div>
-        </div>
+                <div class="card mdl-card mdl-shadow--2dp">
+                      <div class="mdl-card__title">
+                        <h2 class="mdl-card__title-text">Family checks</h2>
+                      </div>
+                      <div class="mdl-card__supporting-text">
+                        Font Bakery will run inter-family checks if you drop more than one font.
+                      </div>
+                </div>
 
-        <div class="card mdl-card mdl-shadow--2dp">
-          <div class="mdl-card__title">
-            <h2 class="mdl-card__title-text">Family checks</h2>
-          </div>
-          <div class="mdl-card__supporting-text">
-            Font Bakery will run inter-family checks if you drop more than one font.
-          </div>
-        </div>
+                <div class="card mdl-card mdl-shadow--2dp">
+                      <div class="mdl-card__title">
+                        <h2 class="mdl-card__title-text">Understandable</h2>
+                      </div>
+                      <div class="mdl-card__supporting-text">
+                        Each check is well documented, so you know what has been checked and how to improve your font.
+                      </div>
+                </div>
+
+                <div class="card mdl-card mdl-shadow--2dp">
+                      <div class="mdl-card__title">
+                        <h2 class="mdl-card__title-text">Share your report</h2>
+                      </div>
+                      <div class="mdl-card__supporting-text">
+                        By sharing the URL of your report anyone can view the results.
+                      </div>
+                </div>
+            </div>
         </div>
     </div>
     <div class="reporting-interface">
