@@ -7,18 +7,6 @@
   --premium-orange: #F37F29;
   --premium-black: #282922;
 
-  /* Text variables */
-  --main-font-family: "Roboto";
-
-  --small-font-weight: 500;
-  --small-font-size: 14px;
-
-  --medium-font-weight: 600;
-  --medium-font-size: 16px;
-
-  --large-font-weight: 700;
-  --large-font-size: 18px;
-
   /* Spacing variables */
   --spacing-small: 1em;
   --spacing-medium: 2em;
@@ -28,10 +16,6 @@
   --border-radius-large: 2em;
   --border-radius-small: 1em;
 
-}
-
-html {
-    font-family: var(--main-font-family), sans-serif;
 }
 
 table {
@@ -63,9 +47,7 @@ ul {
 }
 
 li {
-    width: 100%;
     list-style-type: none;
-    text-align: center;
 }
 
 progress {
@@ -119,7 +101,7 @@ a{
 }
 
 .fbd-logo-image {
-  height: 80%;
+  height: 4em;
 }
 
 .fbd-header {
@@ -129,14 +111,11 @@ a{
 
 .fbd-header .mdl-navigation__link{
   color: var(--premium-black) !important;
-  font-weight: var(--medium-font-weight);
 }
 
 .github_username{
   color: var(--premium-black);
-  font-weight: 700;
-  font-size: 14px;
-  padding-right: 1em;
+  padding-right: var(--spacing-small);
 }
 
 .fbd-navigation-container{
@@ -147,16 +126,14 @@ a{
 .fbd-navigation .mdl-navigation__link {
   display: inline-block;
   height: 60px;
-  line-height: 68px;
-  color: var(--premium-black);
   border-bottom: 4px solid transparent;
 }
 
-.fbd-navigation-container .fbd-navigation .mdl-navigation__link:hover {
+.mdl-navigation__link:hover {
   border-bottom: 4px solid var(--premium-light-blue);
 }
 
-.fbd-navigation .mdl-navigation__link.active {
+.mdl-navigation__link.active {
   border-bottom: 4px solid var(--premium-light-blue);
 }
 
@@ -203,7 +180,8 @@ a{
     flex-direction: column;
     align-items: center;
     min-height: 10em;
-    width: 40em;
+    width: 100%;
+    max-width: 40em;
     border-radius: var(--border-radius-small);
     border: 2px black dashed;
     margin-top: var(--spacing-medium);
@@ -212,69 +190,79 @@ a{
 
 .sending-interface .cardcontainer{
     display: flex;
+    flex-wrap: wrap;
 }
 
-.sending-interface .cardcontainer .card{
+.card{
+    margin-right: var(--spacing-small);
+    margin-bottom: var(--spacing-small);
+    max-width: 16.5em;
+}
+
+.sending-interface{
     display: flex;
     margin: var(--spacing-small);
-}
-
-.sending-interface .explanation{
-    width: 40em;
 }
 
 .sending-interface .dropzone-container .dropzone-info{
     display: flex;
-    margin: var(--spacing-medium);
+    justify-content: center;
+    align-items: center;
+    margin:var(--spacing-medium);
 }
 
-.sending-interface .dropzone-container .dropzone-info .link_button{
-    border: none;
+.link{
     color: var(--premium-blue);
-    font-weight: 700;
-    font-size: 14px;
-    margin: 0px;
-    padding: 0px;
+    cursor: pointer;
 }
 
-.sending-interface .dropzone-container .dropzone-info .text{
-    margin: var(--spacing-small);
+.dropzone-info .text{
+    margin-left: var(--spacing-small);
 }
 
-.sending-interface .dropzone-container .dropzone-info .image{
+.dropzone-info .image{
     width: 4em;
     height: 4em;
 }
 
-.sending-interface .explanation-container{
+.mid-container{
+    max-width: 40em;
+    margin-left: auto;
+    margin-right: auto;
+    padding: var(--spacing-large) var(--spacing-small) 0 var(--spacing-small);
+}
+
+.sending-interface .graphic-explanation-container{
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.sending-interface .explanation-container .step-container{
+.step-container{
     display: flex;
     flex-direction: column;
-    width: 100px;
+    width: 8em;
 }
 
-.sending-interface .explanation-container .step-container p{
+.step-container p{
     text-align: center;
-    line-height: 1em;
+    line-height: 1.2em;
 }
 
-.sending-interface .explanation-container .step-container .step{
-    height: 100px;
-    width: 100px;
+.step-container .step{
+    height: 8em;
+    width: 8em;
 }
 
-.sending-interface .explanation-container .pointer{
-    height: 30px;
-    width: 30px;
+.pointer{
+    height: 2em;
+    width: 2em;
 
     display: flex;
     align-items: center;
     justify-content: center;
+
+    padding-bottom: 3em;
 }
 
 .general-controls{
