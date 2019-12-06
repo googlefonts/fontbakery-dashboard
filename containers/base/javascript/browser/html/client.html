@@ -20,14 +20,15 @@
     </script>
 </head>
 <body>
-<div class="templates" style="display:none">
+<script type="text/templates" class="templates">
     <div class="sending-interface">
-        <div class="dropzone-container drop-fonts">
+        <div class="drop-fonts"></div>
+        <div id="dropzoneContainer" class="dropzone-container">
             <div class="dropzone-info">
                 <span class="image"><img src="/browser/img/drop_file_icon.svg" alt="report"></span>
-                <h5 class="text">Drop your fonts or <h5 class="link">&nbsp;Browse</h5></h5>
+                <h5 class="text">Drop your fonts or <h5 id="browse-link" class="link">&nbsp;Browse</h5></h5>
             </div>
-            <hr>
+            <hr id="file-bar" class="hidden">
             <ol class="files-controls"></ol>
             <div class="general-controls"></div>
 
@@ -147,7 +148,7 @@
         <span class="github_username user">(not set)</span>
         <button class="action mdl-button mdl-js-button mdl-button--raised">login</button>
     </div>
-</div>
+</script>
 
 <div class="dashboard-templates" style="display:none">
     <form class="filter-query-ui">
