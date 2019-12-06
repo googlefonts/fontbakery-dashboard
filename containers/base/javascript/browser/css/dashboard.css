@@ -3,6 +3,7 @@
   --premium-gray-blue: #9DA2C7;
   --premium-blue: #3040C2;
   --premium-light-blue: #70C1E3;
+  --premium-white-blue: #DCF8FF;
   --premium-red: #C23600;
   --premium-orange: #F37F29;
   --premium-black: #282922;
@@ -177,8 +178,8 @@ a{
 
 .sending-interface .dropzone-container{
     display: flex;
-    flex-direction: column;
     align-items: center;
+    justify-content: center;
     min-height: 10em;
     width: 100%;
     max-width: 40em;
@@ -186,6 +187,14 @@ a{
     border: 2px black dashed;
     margin-top: var(--spacing-medium);
     margin-bottom: var(--spacing-medium);
+}
+
+.filled{
+    flex-direction: column;
+}
+
+.dragover{
+    background-color: var(--premium-white-blue);
 }
 
 .sending-interface .cardcontainer{
@@ -214,6 +223,21 @@ a{
 .link{
     color: var(--premium-blue);
     cursor: pointer;
+    position: relative;
+    left: 0px;
+    top: 0px;
+    z-index: 3;
+}
+
+.drop-fonts{
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    z-index: 2;
+}
+
+.upper-layer{
+    z-index: 3;
 }
 
 .dropzone-info .text{
