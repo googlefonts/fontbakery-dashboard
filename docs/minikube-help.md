@@ -4,7 +4,24 @@ See: googlefonts/fontbakery-dashboard#3
 
 ---
 
-Project Setup:
+### Project Setup with Skaffold:
+
+1. Install minikube + kubectl
+2. Start minikube: `minikube start --memory 8000 --vm-driver=virtualbox`
+3. Configure Docker for Minikube: `. <(minikube docker-env)`
+4. Install [Skaffold](https://skaffold.dev/docs/install/).
+5. From the root of the repo, run `skaffold dev --port-forward`.
+
+This will build all images and deploy to your local Minkube.
+Additionally, it will watch your project for changes and rebuild and redeploy containers as needed.
+
+[Skaffold file sync](https://skaffold.dev/docs/pipeline-stages/filesync/) is configured for the dashboard frontend.
+This enables a faster development cycle, where changed files are automatically copied into the container without having to rebuild and redeploy the container.
+
+[Skaffold port-forwarding](https://skaffold.dev/docs/pipeline-stages/port-forwarding/) is configured to forward `localhost:3000` to the `fontbakery-api` container.
+
+### Project Setup (manual):
+
 ```
 # 1. Install minikube + kubectl
 
