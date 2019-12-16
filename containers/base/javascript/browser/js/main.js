@@ -1,3 +1,4 @@
+//jshint esversion:6
 define([
     'dom-tool'
   , 'socket.io'
@@ -8,6 +9,7 @@ define([
   , 'CollectionReport'
   , 'DashboardController'
   , 'DispatcherController'
+  , 'DispatcherLists'
 ], function(
     dom
   , socketio
@@ -18,10 +20,16 @@ define([
   , CollectionReport
   , DashboardController
   , DispatcherController
+  , DispatcherLists
 ) {
     "use strict";
     /*global document, window, FileReader, Set, console*/
-    // jshint browser:true
+    //jshint browser:true
+
+    const {
+        DispatcherListsController
+      , DispatcherListController
+    } = DispatcherLists;
 
     function makeFileInput(fileOnLoad, element) {
         var hiddenFileInput = dom.createChildElement(element, 'input'
@@ -281,11 +289,32 @@ define([
         var container = activateTemplate('dispatcher-interface')
          , templatesContainer = getTemplatesContainer('dispatcher-templates')
          , socket = socketio('/')
-         , dispatcher = new DispatcherController(container, templatesContainer, socket, data)
-         , sessionChangeHandler = dispatcher.sessionChangeHandler.bind(dispatcher)
+         , ctrl = new DispatcherController(container, templatesContainer, socket, data)
+         , sessionChangeHandler = ctrl.sessionChangeHandler.bind(ctrl)
          , unsubscribeSessionChange = authController.onSessionChange(sessionChangeHandler, true)
          ;
         container.addEventListener('destroy', unsubscribeSessionChange, false);
+        return ctrl;
+    }
+
+    function initDispatcherLists(data/*, authController*/) {
+        var container = activateTemplate('dispatcher-lists')
+         , templatesContainer = null//getTemplatesContainer('dispatcher-templates')
+         , socket = socketio('/')
+         // There's just one set of channels for receiving these lists
+         // and their updates, this separates the messages and sends
+         // them to the subscribers.
+         , listsCtrl = new DispatcherListsController(socket, data)
+         // We can have multiple of these lists in a document, think of
+         // a dashboard of interesting lists.
+         , listCtrl =  new DispatcherListController(container, templatesContainer, listsCtrl)
+         ;
+         // will be nice, to know if there's a "my-processes" list.
+         //, sessionChangeHandler = dispatcher.sessionChangeHandler.bind(dispatcher)
+         //, unsubscribeSessionChange = authController.onSessionChange(sessionChangeHandler, true)
+        container.addEventListener('destroy'
+                            , listsCtrl.destroy.bind(listsCtrl), false);
+        return [listsCtrl, listCtrl];
     }
 
     var AuthenticationController = (function(){
@@ -536,35 +565,62 @@ define([
           , defaultData = null
           , mode, init
           , pathparts = window.location.pathname.split('/')
+          , parameters = []
           , i, l
           , modes = {
                 // path-marker: "mode"
                 // We use a mapping here for historical reasons.
                 // Could maybe get rid of it.
+                // Font Bakery result report
                 report:  initReportingInterface
+                // list of links to font bakery collection-reports
+                // just one simple GET request
               , collections: _initCollectionsInterface
+                // list of (source) status report logs
+                // has infinite scroll/pagination
               , status: _initStatusInterface
+                // individual (source) status report logs
               , 'status-report': function(){} // No action, is server side rendered.
               , 'collection-report': initCollectionReportInterface
               , 'drag-and-drop': initDNDSendingInterface
               , 'dashboard': initDashboard
               , 'dispatcher': initDispatcher
+              , 'dispatcher/lists': initDispatcherLists
             }
           ;
         mode = defaultMode;
         // change mode?
+        outer:
         for(i=0,l=pathparts.length;i<l;i++) {
-            if(pathparts[i] in modes) {
-                mode = pathparts[i];
-                break;
+            // removes parts from the front, maybe the root is in a sub-path
+            // but there's currently no case for this so this.
+            let subparts = pathparts.slice(i);
+            while(subparts.length) {
+                let testmode = subparts.join('/');
+                if(testmode in modes ) {
+                    mode = testmode;
+                    parameters = pathparts.slice(i + subparts.length);
+                    break outer;
+                }
+                //Remove from the back, maybe there are parameters
+                // that way we match the most specific (longest name)
+                // mode.
+                subparts.pop();
             }
         }
         init = modes[mode];
         // extra data for mode?
+        i=0; //reset, i in parameters now
         switch(mode) {
+            case('dispatcher/lists'):
+                data = {
+                    parameters: parameters
+                  , url:  window.location.pathname
+                };
+                break;
             case('dispatcher'):
-                if(pathparts[i+1]==='process')
-                    i+=1; // => dispatcher/process/{id}
+                if(parameters[0]==='process')
+                    i = 1; // => dispatcher/process/{id}
                     // falls through
                     // now behaves exactly like report, but `id` is for process_id
                 else {
@@ -578,7 +634,8 @@ define([
                 // if 'reporting/' in url
                 // familytests_id is at reporting/{id}
                 data = {
-                    id: decodeURIComponent(pathparts[i+1])
+                    id: decodeURIComponent(parameters[i])
+                  , parameters: parameters
                   , url:  window.location.pathname
                 };
                 break;
@@ -603,10 +660,7 @@ define([
         // reporting interface.
         // The sending interface will also transform into the reporting interface.
 
-        var interfaceMode = getInterfaceMode()
-          , data = interfaceMode[0]
-          , init = interfaceMode[1]
-          ;
+        var [data, init] = getInterfaceMode();
         init(data, authController);
         // Using pushstate changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushstate was not used.
