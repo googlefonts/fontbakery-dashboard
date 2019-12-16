@@ -1,13 +1,13 @@
 #! /usr/bin/env node
 "use strict";
-/* jshint esnext:true, node:true */
+/* jshint esversion:9, node:true */
 
 const { _BaseServer, RootService } = require('../_BaseServer')
   , { GithubOAuthService } = require('../apiServices/GithubOAuth')
   , { StorageDownloadService } = require('../apiServices/StorageDownload')
   , {
-        ProcessListQuery
-      , ProcessQuery
+        ProcessQuery
+      //, ProcessListQuery: ProcessListQueryMessage
       , ProcessCommand
       , ProcessCommandResult
       , DispatcherInitProcess
@@ -115,7 +115,7 @@ const Server = (function() {
 function Server(...args) {
     this._serviceDefinitions = [
         ['/', RootService, ['server', '*app', 'log']]
-      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth']]
+      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth', 'io']]
       , ['/github-oauth', GithubOAuthService, ['server', '*app', 'log', 'ghauth', 'webServerCookieSecret']]
       , ['/download', StorageDownloadService, ['server', '*app', 'log'
                             , {/*cache: 'cache',*/ persistence: 'persistence'}]]
@@ -129,6 +129,796 @@ return Server;
 
 })();
 
+
+const ProcessListQuery = (function(){
+
+function ProcessListQuery(log, tokens) {
+    this._log = log;
+    // TODO: this will have to interprete the semantics of tokens
+    this._tokens = tokens;
+    // This is a cache and must be invalidated (set to null again)
+    // when this._tokens changes.
+    this._query = null;
+}
+
+var _p = ProcessListQuery.prototype;
+
+/*
+_p._tokenDefinitions = {
+    mode: 'sandbox', 'production' // could also be any string
+    familyName: 'Gupter' // any string
+    initiator: 'vv-monsalve' // any string
+
+    order: 'changed', 'created', 'finished' * '-asc' '-desc'
+
+    // as an index, could be a 2 bit flag:
+    // then we can use e.g getAll([True, False], {index: 'waitingFor'})
+    // False False, False True, True False, False False
+    // also, if there's a waiting for, we have to use getAll, hence
+    // nothing else may use getAll, unless we create a compound index
+    // BUT then order-by({index: 'changed'}) won't work!
+    // However, order-by works "after a between command provided it uses the same index."
+    // so maybe we can have a waitingFor-changed index, the can get all
+    // between [1, r.minval], [1, r.maxval]
+    // where e.g. 1 === service-answers
+    // then orderBy(index: 'waitingFor-changed')
+    waitingFor: not-waiting, service-answers, user-answers, any-answers
+
+    hmm, these queries, I guess, are interesting for either "my-own"
+    e.g. the initiator processes or for all processes...
+    hence an index [changed, waitingFor, initiator] could be interesting
+    and the most interesting question is if r.minval/r.maxval works within
+    a compound index: that example is in the docs!
+
+
+    right now, thinking it may be best to tightly define the few queries
+    we really need and how each individually is variable and then define
+    the possible tokes to select a) the query + b) the possible variability
+    settings per query. Without creating a full blown generic solution.
+
+
+
+}
+
+*/
+
+/**
+ * funny, all queries are probably conceivable as:
+ *      for a specific initiator
+ *      for all entries
+ *
+ * And it feels like a specific initiator limits the result set the most,
+ * more like any other query, so that if possible, initiator should be
+ * the index.
+ *
+ * by: all, initiator, familyName, initiator+familyname ?
+ * filter: finished, running, waitng-for-*, mode:sandbox/production
+ * orderBy: created, changed, finished
+ *
+ *
+ * open-processes, closed-processes
+ *
+ *
+ * OK in general, 'secondary indexes' are a premature optimization compared
+ * to just using "filter". Only simple secondary indexes should be used
+ * so far, it's basically impossible to write generic queries based on
+ * mainly compound secondary indexes as they are very limiting.
+ * :-(
+ *
+ * my processes: initiator => finished, open, waitingFor-* familyName mode
+ * family processes: familyName => finished, open, waitingFor-* (familyKeySuffix) initiator mode
+ *
+ * one list: all index waiting-for {date}, id with pagination
+ *           all orderBy changed   with pagination -< nice live list
+ *           all orderBy created   with pagination
+ *           all finished orderBy finished with pagination
+ *              index finished-date: {date, id} : filter finished status (OK,FAIL)
+ *              contains only finished
+ *
+ *
+ *
+ * query:waitingFor
+ * query:initiator
+ *
+ * all queries using between for pagination need a secondary index like
+ * [{date}, "id"] to make it a) sortable and b) all entries in the index unique
+ * by taking the uniqueness of the primary index `id`
+ *
+ * because they are typical maybe
+ * [initiator, {date}, id]
+ * [familyName, familyKeySuffix, {date}, id]
+ * could be used as well, though, these only qualify to query specific
+ * initiator/familyName+suffix combinations
+ *
+ * so these could select a "family"
+ * order by that index (one of created/changed/finished)
+ * still filter by arbitrary stuff ... (well make a list of generic filters I guess)
+ * be paginated
+ */
+
+/*
+why waitingFor: service -> detect maybe stuck processes (changed-asc)
+                user -> find processes that need attention by a human
+
+may be needed as a virtual/generated field: for filter
+may be needed as a secondary index, together with {date} , id
+
+
+
+indexes:
+    (ALL)
+    created_id
+    changed_id
+    finished_id
+        FILTERS: finished:any, finished:OK, finished:FAIL, finished:not
+             **  waitingFor:not, waitingFor:any, waitingFor:service, waitingFor:user, waitingFor:both
+                 mode:{(string) sndbox. production}
+               * initiator:{gh-handle}
+               * family:{(string)*familyName}{[optional :(string)*familyKeySuffix} <- no suffix === '', could allow '*' for any suffix
+
+    ** should fall through to WAITING_FOR if orderBy is "changed"
+        otherwise, we stay with the (ALL) filters because:
+                orderBy finished is irrelevant or noise if it produces something
+                orderBy created: is probably not irrelevant but not a really interesting query,
+                    because it doesn't really help determining since when the processes are waiting.
+    * if these are present, could fall through to one of the below
+        suggesting: family before initiator, as I would expect family selects less than initiator, but that's
+        speculation.
+
+
+    (WAITING_FOR) waitingFor:not, waitingFor:service, waitingFor:user, waitingFor:both
+            // waitingFor:any -> not usable as index -> bad order
+    waitingFor_changed_id // this is a bad index idea, as when I look for service, I'm interested in service + both
+                          // and when I look for user, I'm interested in user + both
+                          // but actually, that fucks up my orderBy changed, as all
+                          // e.g. only-service entries come before service + user entries
+                          // that's just how these index orderings work!
+                          // so this can only be a filter :-(
+                          // or not a change feed ...
+                          // or we need two secondary indexes
+                          //    waiting for service
+                          //    waiting for user
+                          // not waiting should equal finished
+                          // waiting for any should equal not-finished
+                          // waiting for only user or only service is not really interesting
+        waitingForService_changed_id
+        waitingForUser_changed_id
+
+        FILTERS: finished:any, finished:OK, finished:FAIL, finished:not //finished filters are probably not relevant
+                 mode:{(string) sndbox. production}
+                 // family and initator are falling through to the respective secondary index queries
+
+    (FAMILY) family:{(string)*familyName}{[optional :(string)*familyKeySuffix} <- no suffix === ''
+    familyName_familyKeySuffix_created_id
+    familyName_familyKeySuffix_changed_id
+    familyName_familyKeySuffix_finished_id
+        FILTERS: finished:any, finished:OK, finished:FAIL, finished:not
+                 waitingFor:not, waitingFor:*, waitingFor:service, waitingFor:user, waitingFor:both
+                 mode:{(string) sndbox. production}
+                 initiator:{gh-handle}
+
+    (INITIATOR) initiator:{gh-handle}
+    initiator_created_id
+    initiator_changed_id
+    initiator_finished_id
+        FILTERS: finished:any, finished:OK, finished:FAIL, finished:not
+                 waitingFor:any, waitingFor:service, waitingFor:user, waitingFor:both , waitingFor:not
+                 mode:{(string) sndbox. production}
+                 family:{(string)*familyName}{[optional :(string)*familyKeySuffix} <- no suffix === '', could allow '*' for any suffix
+
+    All tokens are filtered such that the last token is used,
+    could also be the first, but this way the ui can do a quick and dirty
+    append token and get back a new query.
+    If more power is needed, a value parser could be added.
+
+    for anything else, we can use filter:
+    obviously, only the last key of a kind is ever used.
+    {token}:{value} => .filter({token: value})
+
+
+
+custom calculated fields (very similar to the indexes!):
+    waitingFor
+    changed
+    family // (`${familyName}:${familyKeySuffix}`)
+
+
+change feeds paged mit changed_id machen nicht viel sinn, weil, wenn das
+paging element sich ändert verliert die seite ihren semantischen sinn.
+
+created_id und finished_id ändern sich hingegen nie: je nachdem von welcher
+seite man diese feeds betrachet, bleiben die pages sogar stabil
+(order-by: asc) => frühestes datum zuerst. aber die seite ist ja meist nicht
+interressant!!!
+trotzdem, auch bei orderBy: desc > spätestes datum zuerst ist die seite
+vielleicht nicht die erste seite dann, aber die ansicht mit datum_id bleibt
+stabil!
+
+daher sollten pages in "changed" feeds mit skip/slice implementiert werden
+was allerdings nicht zu funktionieren scheint! daher kein paging hier im
+change feed, sondern statdessen immer größeres limit???
+slice beended den change feed.
+
+
+_p.queryDefinitions = {
+
+
+};
+
+*/
+
+function _getOrderBy(value, defaultKey, defaultDir, validKeys) {
+    var [key, dir] = value ? value.split('-') : []; // "changed" or "changed-asc"
+
+    if(!validKeys.has(key))
+        key = defaultKey;
+
+    if(['asc', 'desc'].indexOf(dir) === -1)
+        dir = defaultDir;
+
+    return [key, dir];
+}
+
+/**
+ * [familyName, familyKeySuffix] = getFamily('ABeeZee:*')
+ */
+function _getFamily(value) {
+    var sepIndex = value ? value.indexOf(':') : -1
+      , familyName, familyKeySuffix
+      ;
+    if(sepIndex === -1)
+        return [value, ''];
+    familyName = value.slice(0, sepIndex);
+    familyKeySuffix = value.slice(sepIndex + 1);
+    if(familyKeySuffix === '*')
+        // any! only allowed as filter, not as secondary index, because
+        // that screws up the ordering.
+        familyKeySuffix = null;
+    return [familyName, familyKeySuffix];
+}
+
+/**
+ *
+ */
+_p._getNormalizedQuery = function(tokens) {
+    // jshint unused:vars
+
+    // hmm, this needs to filter the tokens to create something that makes
+    // sense, hence, we kind of need an idea of the possible token values
+    // in here.
+
+    // we need to know how to create the query from this, it's not just
+    // normalized tokens, it's also the automate that writes the query.
+
+    // keeps order, removes duplicates
+    var tokenMap = new Map();
+    for(let [token, value] of tokens)
+        tokenMap.set(token, value);
+
+    // "desc" is the default direction to see the latest that happened.
+    var [orderBy, orderDir] = _getOrderBy(tokenMap.get('orderBy')
+                            , 'changed', 'desc' // TODO: store defaults centrally, DRY!
+                            , new Set(['changed', 'created', 'finished'])
+                            );
+
+    // first one found in this order is used!
+    var indexTokens = ['family', 'initiator', 'waitingFor']
+      , indexToken = null
+      ;
+    for(let _indexToken of indexTokens) {
+        if(!tokenMap.has(_indexToken))
+            continue;
+        if(_indexToken === 'waitingFor') {
+            // must be ordered by 'changed' or it doesn't apply as indexToken
+            if(orderBy !== 'changed')
+                continue;
+            if(['user', 'service'].indexOf(tokenMap.get(_indexToken)) === -1)
+                // we only have the indexes:
+                //     waitingForService_changed_id
+                //     waitingForUser_changed_id
+                continue;
+        }
+        if(_indexToken === 'family') {
+            let [/*familyName*/, familyKeySuffix] = _getFamily(tokenMap.get(_indexToken));
+            if(familyKeySuffix === null)
+                // if "any" is requested this can't be the secondary index
+                continue;
+        }
+        // found one
+        indexToken = _indexToken;
+        break;
+    }
+
+    // * familyName/familyKeySuffix they are ignored and only
+    //   "family" is used via _getFamily if "family" is present
+    // * waitingFor is totally ignored as a filter, we use it only for
+    //   the specific use case implied with the secondary indexes
+    //
+    // ignoring is interesting, as we allow generic filter tokens here.
+    // so, why don't allow specifically unusable ones?
+    // One reason might be, that the user will receive a canonical query
+    // and these removed makes probably sense, as we know that they are
+    // wrong here. Not entirely sure about the validity of the reasoning.
+    // One point about these filters is, that if we get a zero result
+    // we know the filter value doesn't exist.
+    var ignoreFilters = new Set(['waitingFor', 'orderBy']);
+    if(tokenMap.has('family')) {
+        ignoreFilters.add('familyName');
+        ignoreFilters.add('familyKeySuffix');
+    }
+
+    // NOTE: filters as of now can only have string types!
+    // but e.g. `familyKeySuffix` in the document can be `null` or a string
+    // (can't be an empty string, so we can fix that manually) other
+    // values could be numbers or other types. So, having only string
+    // types can be a restriction. Maybe we can come up with a type marker.
+    var filters = new Map();
+    for(let [token, value] of tokenMap){
+        if(token === indexToken)
+            continue;
+        if(ignoreFilters.has(token))
+            continue;
+
+        // if not ignored
+        if(token === 'familyKeySuffix' && value === '')
+            value = null;
+
+        filters.set(token, value);
+    }
+
+    // TODO: missing: limit and pagination items
+
+    var query = {
+        index: indexToken ? [indexToken, tokenMap.get(indexToken)] : null
+      , orderBy: [orderBy, orderDir]
+      , filters: filters
+      , limit: 25
+    };
+
+    this._log.debug('normalized query from tokens:', tokens);
+    this._log.debug('created normalized query:', query);
+
+    // next: put this into an actual query
+    // add the index definitions to the table definition
+
+    return query;
+};
+
+_p._getNormalizedTokens = function(query) {
+    var tokens = [];
+    if(query.index)
+        tokens.push(query.index.slice());
+
+    tokens.push(...Array.from(query.filters)
+                     .sort(([a, ], [b, ])=>{
+                            if(a === b) return 0;
+                            if(a > b) return 1;
+                            return -1;
+                }));
+
+    if(query.orderBy) {
+        let [orderBy, orderDir] = query.orderBy
+          , value = `${orderBy}-${orderDir}`
+          ;
+        // // TODO: store defaults centrally, DRY!
+        if(value !== 'changed-desc') // default
+            tokens.push(['orderBy', value]);
+    }
+    //TODO: add limit
+    //      add paging
+
+    return tokens;
+};
+
+/**
+ * q.filter({
+ *        mode: 'sandbox' // 'production'
+ *      , familyName: 'Gupter'
+ *      , initiator: 'vv-monsalve'
+ *   })
+ *
+ * mode: ['sandbox', 'production'] // or not set == both
+ *
+ * Indexes (with getAll) are faster than filter queries, hence if there
+ * is an index
+ * equivalent to the filter, it should be used.
+ * However, there can be many indexes that fit a subsection of the filter
+ * and its not necessarily clear which filter to choose in those cases.
+ * Also "between"
+ */
+_p.configureQuery = function(q, r) {
+
+    var query = this.query
+      , index, indexValue
+      , [orderBy, orderDir] = query.orderBy
+      ;
+
+    //{
+    //    index: indexToken ? [indexToken, tokenMap.get(indexToken)] : null
+    //  , orderBy: [orderBy, orderDir]
+    //  , filters: (Map) filters
+    //}
+
+
+    switch(query.index ? query.index[0] : 'ALL') {
+        case('ALL'):
+            // created_id
+            // changed_id
+            // finished_id
+            index = `${orderBy}_id`;
+            indexValue = [
+                [r.minval, r.minval]
+              , [r.maxval, r.maxval]
+            ];
+            break;
+        case('waitingFor'):
+            // waitingForService_changed_id
+            // waitingForUser_changed_id
+            index = `waitingFor${query.index[1][0].toUpperCase()+query.index[1].slice(1)}_${orderBy}_id`;
+            // draft?
+            indexValue = [
+                         [query.index[1], r.minval, r.minval]
+                       , [query.index[1], r.maxval, r.maxval]
+                       ];
+            break;
+        case('family'):
+            // familyName_familyKeySuffix_created_id
+            // familyName_familyKeySuffix_changed_id
+            // familyName_familyKeySuffix_finished_id
+            index = `familyName_familyKeySuffix_${orderBy}_id`;
+            // NOTE: it's important that in the actual index definition
+            // a index for a process with a familyKeySuffix === null
+            // is created using familyKeySuffix = ''.
+            let [familyName, familyKeySuffix
+                            ] = _getFamily(query.index[1]);
+            indexValue = [
+                         [familyName, familyKeySuffix, r.minval, r.minval]
+                       , [familyName, familyKeySuffix, r.maxval, r.maxval]
+                       ];
+            break;
+        case('initiator'):
+            // initiator_created_id
+            // initiator_changed_id
+            // initiator_finished_id
+            index = `initiator_${orderBy}_id`;
+            indexValue = [
+                         [query.index[1], r.minval, r.minval]
+                       , [query.index[1], r.maxval, r.maxval]
+                       ];
+            break;
+        default:
+            throw new Error(`configureQuery don't know how to handle index: ${query.index.join(':')}.`);
+    }
+
+    q = q.between(...indexValue, {index:index,  leftBound: 'closed', rightBound: 'closed'})
+         .orderBy({index: r[orderDir/* 'asc' | 'desc'*/](index)})
+         .limit(query.limit);
+    if(query.filters.size)
+        q = q.filter(Object.fromEntries(query.filters));
+
+    this._log.debug('rDB query:', q.toString());
+
+    // no paging yet
+    // for pagination, it will be interesting to test:
+    // .between and .limit with the change feed!
+    // but in the worst case, we can do pagination in the client for a while
+    // until the data gets too much.
+
+    // pluck should be called before run, not in here, because then we
+    // know most about the query/result structure!
+    // must also pluck: ['type', 'old_offset', 'new_offset']
+    // var pluckKeys = ['id', 'created', 'initiator', 'familyName']
+    // q.pluck({new_val: pluckKeys, old_val: pluckKeys})
+    return q;
+};
+
+Object.defineProperties(_p, {
+    query: {
+        get: function() {
+            if(!this._query) {
+                this._query = this._getNormalizedQuery(this._tokens);
+                this._log.debug('query: got normalized: ', !!this._query);
+                Object.freeze(this._query);
+            }
+            this._log.debug('query: returning query:', !!this._query);
+            return this._query;
+        }
+    }
+  , tokens: {
+        get: function() {
+            return this._getNormalizedTokens(this.query);
+        }
+    }
+  , user: {
+        get: function() {
+            return _tokensToUserQueryString(this.tokens);
+        }
+    }
+  , url: {
+        get: function() {
+            return _tokensToURLQueryString(this.tokens);
+        }
+    }
+});
+
+
+
+/**
+ * Factory function, parses queryString into an instance of ProcessListQuery.
+ *
+ * It throws away anything it doesn't understand, this is considered
+ * to function as a quick way of input validation. If more detailed
+ * parsing messages are needed we'll have to implement it.
+ *
+ * A query string in general consists of key:value tokens.
+ *
+ * There are two ways to encode query strings:
+ * - url parameter encoded: to maximize url readability, make parsing
+ *   easier and to put it into urls
+ * - user encoded: to make it easier for a user to enter and manipulate
+ *   in a text input field.
+ *
+ * A url parameter encoded query string, used after the `?q=` part in the
+ * query and ends at the first `&`
+ *
+ * A url parameter encoded query string starts with "q=" so we can clearly
+ * discern it from a user encoded query string, which starts directly with
+ * a token or with spaces.
+ *
+ * Tokens are separated by the `+` sign.
+ *
+ * Keys can only contain a-z and A-Z and 0-9, camelCase is suggested,
+ * if word boundaries are needed.
+ *
+ * Values are encoded with `encodeUriComponent`, hence they don't contain
+ * the separators `+`, `:` and `&` (etc)
+ *
+ * A user encoded query string, for a form input is a bit different:
+ *
+ * Tokens are separated by the space sign ` `
+ *
+ * Keys are the same as in the url parameter encoded query string.
+ *
+ * Values are just text, if they don't contain any spaces, which would
+ * end the token. Spaces, if part of the value can be escaped with "\ ".
+ *
+ * To better readable values, that contain spaces, they can be put
+ * between double quotes `"`. Then double quotes in the value must be
+ * escaped with the backslash `\"`.
+ *
+ * A backslash itself can be escaped with another
+ * backslash hence "\"" prints " and "\\" prints \ while "\\"" is an invalid
+ * token (the value is just \ ) but then it's not separated by a space.
+ * "\" is an invalid, unterminated value, because it doesn't end with a "
+ * \ returns (escapes) its following character in any case so "\3" equals "3"
+ * while "\\3" prints \3
+ */
+ProcessListQuery.fromString = function(log, queryString) {
+    var tokens = queryString.startsWith('q=')
+        ? _tokenizeURLQueryString(queryString)
+        : _tokenizeUserQueryString(queryString)
+        ;
+    log.debug('ProcessListQuery.fromString in:',  queryString);
+    log.debug('ProcessListQuery.fromString out:',  tokens);
+    return new ProcessListQuery(log, tokens);
+};
+
+// one or more of a-z A-Z 0-9 and nothing else
+const reKey = /^[a-z0-9]+$/i;
+
+/**
+ * returns a list of tokens where a token is a pair of:
+ * [(string) key, (string) value]
+ * [(string) flag, null] is a "flag"
+ * [(string) key, empty string] is just an empty value
+ * there are no empty string or null keys
+ *
+ * If this doesn't understand how to parse a token, it's silently skipped
+ * at the moment.
+ */
+function _tokenizeURLQueryString(queryString) {
+    if(queryString.indexOf('q=') === 0)
+        queryString = queryString.slice(2);
+    return queryString.split('+')
+        .map(tokenString=>{
+            var token = tokenString.split(':')
+              , key, value
+              ;
+            if(token.length === 1) {
+                // a flag
+                key = token[0];
+                value = null;
+            }
+            else if (token.length === 2) {
+                [key, value] = token;
+            }
+            else
+                // Zero length or more than 2 we don't try to understand.
+                // For more than 2, the actual value is supposed to be
+                // url-encoded, hence ":" should be encoded as "%3A".
+                return false;
+
+            if(!reKey.test(key))
+                return false;
+
+            if(value !== null) {
+                // value.length === 0: An empty value is OK, but has probably
+                // no semantic value later and may be ignored then.
+                try { // don't know if this ever raises
+                    value = decodeURIComponent(value);
+                }
+                catch(e) {
+                    return false;
+                }
+            }
+            return [key, value];
+        })
+        .filter(token=>!!token);
+}
+
+function _tokenizeUserQueryString(queryString) {
+    var tokens = []
+      , context = 'top'
+      , prevContexts = []
+      , enter = newContext=>{
+            prevContexts.push(context);
+            context = newContext;
+        }
+      , exit = ()=>{
+            context = prevContexts.pop();
+        }
+      , key = null
+      , value = null
+      , flushToken = ()=>{
+            var token = [
+                key.join('')
+                // if it's null it's a flag
+              , (value !== null ? value.join('') : null)
+            ];
+
+            // key must pass this
+            if(reKey.test(token[0]))
+                tokens.push(token);
+            key = null;
+            value = null;
+        }
+      ;
+
+    for(let char of queryString) {
+        switch(context) {
+            case 'top':
+                key = null;
+                value = null;
+                if(reKey.test(char)) {
+                    // enter key context
+                    enter('key');
+                    key = [char];
+                }
+                break;
+            case 'key':
+                if(char === ' ') {
+                    //end key context: is a flag
+                    flushToken();
+                    exit();
+                }
+                else if(char === ':') {
+                    // enter value
+                    exit();
+                    enter('value');
+                    value = [];
+                }
+                else {
+                    // Key could be bad and we will dismiss it in
+                    // flushToken if it is invalid.
+                    key.push(char);
+                }
+                break;
+            case 'value':
+                if(value.length === 0 && char === '"') {
+                    exit();
+                    // it's the other kind
+                    enter('quotedValue');
+                }
+                else if(char === '\\') {
+                    enter('escapedCharValue');
+                }
+                else if(char === ' ') {
+                    // end value context
+                    flushToken();
+                    exit();
+                }
+                else {
+                    value.push(char);
+                }
+                break;
+            case 'quotedValue':
+                if(char === '"') {
+                    exit();
+                    enter('endQuotedValue');
+                }
+                else if(char === '\\') {
+                    enter('escapedCharValue');
+                }
+                else {
+                    value.push(char);
+                }
+                break;
+            case 'endQuotedValue':
+                // A quoted value must be followed by a separator
+                // or the end of the query string;
+                if(char === ' ') {
+                    flushToken();
+                }
+                // else: skip, don't understand
+                exit();
+                break;
+            case 'escapedCharValue':
+                value.push(char);
+                exit();
+        }
+    }
+    // cleanup
+    switch(context) {
+        // these can be flushed if active on queryString end
+        case 'key':
+            // falls through
+        case 'value':
+            // falls through
+        case 'endQuotedValue':
+            flushToken();
+        // we don't flush in:
+        //  top -> nothing to flush
+        //  escapedCharValue -> there was nothing to escape and hence
+        //                      the value was incomplete/invalid
+        // quotedValue -> it didn't end with a " hence it's incomplete
+    }
+    return tokens;
+}
+
+function _tokensToUserQueryString(tokens) {
+    return tokens.map(([k,v])=>{
+        if(v===null)
+            return k;
+        v = v.replace(/\\/g, '\\\\');
+        // Alternatively, we could escape the spaces with the backslash
+        // but I think this is ultimately better readable
+        if(v.indexOf(' ') !== -1)
+            v = `"${v.replace(/"/g, '\\"')}`;
+        return `${k}:${v}`;
+    }).join(' ');
+}
+
+function _tokensToURLQueryString(tokens) {
+    // For readability of the resulting url, we could use a less
+    // strict version of encodeURIComponent. However, this is playing it
+    // very save.
+    return 'q=' + tokens.map(([k,v])=>`${k}:${encodeURIComponent(v)}`).join('+');
+}
+//
+// > qs = 'Hello:"Wh ör\\"l:d" bÄd:key I:am 13ab::AB"C fully:"c o n t a i n e d " ' +
+//      'this:\\\\\\\\ inval:"id"e go:od" noth:ing:::\\ matters captureTheFlag el:se\\'
+// > console.log(qs)
+// Hello:"Wh ör\"l:d" bÄd:key I:am 13ab::AB"C fully:"c o n t a i n e d " this:\\\\ inval:"id"e go:od" noth:ing:::\ matters captureTheFlag el:se\
+// > _tokenizeUserQueryString(qs)
+// [
+//   [ 'Hello', 'Wh ör"l:d' ],
+//   // 'bÄd:key' doesn't parse because we don't allow the Ä in kezs
+//   [ 'I', 'am' ],
+//   [ '13ab', ':AB"C' ],
+//   [ 'fully', 'c o n t a i n e d ' ],
+//   [ 'this', '\\\\' ],
+//   // 'inval:"id"e' must be followed by a space, if it is a quoted value
+//   [ 'go', 'od"' ],
+//   [ 'noth', 'ing::: matters' ],
+//   [ 'captureTheFlag', null ]
+//   // '... el:se\\' is literally el:se\ and is not accepted because it has
+//   // an escape without a value, hence the value never completes.
+// ]
+
+return ProcessListQuery;
+})();
+
+
 /**
  * TODO: Factor out the specific knowledge about the FontbakeryPRDispatcherProcess
  * e.g. make a DispatcherProcessUIService with special knowledge about our
@@ -140,14 +930,17 @@ return Server;
  *       message. It also does authorization.
  *
  */
-function ProcessUIService(server, app, logging, processManager, ghAuthClient) {
+function ProcessUIService(server, app, logging, processManager, ghAuthClient
+                        , io) {
     this._server = server;
     this._app = app;// === express()
     this._log = logging;
     this._processManager = processManager;
     this._ghAuthClient = ghAuthClient;
+    this._io = io;
 
     this._app.get('/', this._server.serveStandardClient);
+    this._app.get('/lists', this._server.serveStandardClient);
     this._app.get('/process/:id', this._checkProcessExists.bind(this));
 
     this._sockets = new Map();
@@ -304,6 +1097,7 @@ _p.uiShowProcess = function(request) {
 
 _p._subscribeList = function(socket, data) {
     //jshint unused: vars
+    // WTF? what is this? there's already subscribeToList ...
     // var selection = data.selection; // ???
     // TODO;// what selections are needed?
     //   * running processes
@@ -330,6 +1124,7 @@ _p._subscribeList = function(socket, data) {
 // there's a gRPC subscribe in process manager
 _p._subscribeProcess = function(socket, data) {
     //jshint unused: vars
+    // WTF? what is this? there's already subscribeToProcess ...
     // var processId = data.id;
     // TODO(this.grpcClient.subscribeProcess(processId));
 
@@ -342,16 +1137,18 @@ _p._subscribeProcess = function(socket, data) {
     //      authorized users can change for process(family)
 };
 
-_p._handleAsyncGen = async function(generator, cancel, messageHandler) { // jshint ignore:line
+_p._handleAsyncGen = async function(generator, cancel, messageHandler) {
     try {
-    /* jshint ignore:start */
-    // Code here will be ignored by JSHint.
         for await(let message of generator)
             messageHandler(message);
-    /* jshint ignore:end */
     }
     catch(error) {
         // statusCANCELLED is expected
+        // FIXME: we now got a case where we don't use this._processManager
+        // and instead directly connect to rethinkDB, hence, statusCANCELLED
+        // is not expected in that case (but what is acceptable?)
+        // An error here ends in an "Exceptionally ended generator" message
+        // and that's it, hence it's probably just fine.
         if(error.code !== this._processManager.statusCANCELLED) {
             this._log.error('generator', error);
             throw error;
@@ -362,12 +1159,12 @@ _p._handleAsyncGen = async function(generator, cancel, messageHandler) { // jshi
         cancel();
     }
     return true;
-}; // jshint ignore:line
+};
 
-_p._initRoom = function(generator, cancel, emit, process/*optional*/) {
+_p._initRoom = function(generatorCancel, emit, process/*optional*/) {
     var room = {
             sockets: new Set()
-          , cancel: cancel
+          , cancel: ()=>{}
           , lastMessage: null
           , emit: emit
         }
@@ -375,7 +1172,7 @@ _p._initRoom = function(generator, cancel, emit, process/*optional*/) {
             // We can do optional pre-processing of the message here
             // so we don't have to create the actually emitted data
             // on each call to emit.
-            var processed = process ? process(message) : message;
+            var processed = process ? process(message, room.lastMessage) : message;
             room.lastMessage = processed;
             for(let socketId of room.sockets) {
                 let socket = this._sockets.get(socketId).socket;
@@ -383,45 +1180,316 @@ _p._initRoom = function(generator, cancel, emit, process/*optional*/) {
             }
         }
       ;
-    // ALLRIGHT! when the process is not found or there's any other
-    // error the second handler is called! Thus we should use this
-    // to tell the client about the misfortune of not being able
-    // to enter/open/stay in/init the room!
-    //
-    // also, generally, when the generator ends, this will be informed
-    // via the result handler. I.e. the processManager can just
-    // hang up using `call.end()`
-    this._handleAsyncGen(generator, cancel, messageHandler).then(
-        (...args)=>console.log('!!!!Well ended generator:', args)
-      , (...args)=> console.log('¡¡¡¡Exceptionally ended generator:', args)
-    );
+
+    Promise.resolve(generatorCancel)
+    .then(({generator, cancel})=>{
+        room.cancel = cancel;
+        // ALLRIGHT! when the process is not found or there's any other
+        // error the second handler is called! Thus we should use this
+        // to tell the client about the misfortune of not being able
+        // to enter/open/stay in/init the room!
+        //
+        // also, generally, when the generator ends, this will be informed
+        // via the result handler. I.e. the processManager can just
+        // hang up using `call.end()`
+        return this._handleAsyncGen(generator, cancel, messageHandler).then(
+            (...args)=>this._log.debug('Well ended generator:', args)
+                       // this should be fine, we handled it (used cancel).
+          , (...args)=>this._log.debug('Exceptionally ended generator:', args)
+        );
+    })
+    .then(null, error=>{
+        // TODO: this implies creating the room failed, we should close
+        // it and disconnect everyone.
+        this._log.error(error);
+        // FIXME: making this effectively an unhandled exception!
+        // Maybe we should end the server here, could mean the db resource
+        // is broken.
+        // It's also likely, that for instance _queryProcessList failed
+        // because the query is invalid. An invalid query would be a
+        // good test case to trigger this and not really a reason to
+        // end the server.
+        throw error;
+    })
+    ;
     return room;
 };
 
-_p._getListRoomId = function(listId) {
-    return ['list', listId].join(':');
+
+//////////////////////////////////////////////
+//// Start infrastructure for _subscribeToList
+//// Not using the once proposed this._processManager.subscribeProcessList
+//// API, because this way is more straight forward.
+////
+
+_p._closeCursor = function(cursor) {
+    if(cursor) {
+        // rethinkDB doesn't emit the end event, but it's nice (not
+        // necessarily needed), for the async generator that we use to
+        // read the cursor.
+        cursor.emit('end');
+        cursor.close()
+        .then(()=>this._log.debug('A cursor has been closed.'))
+        .catch(this._io.r.Error.ReqlDriverError, (err) => {
+            this._log.error('An error occurred on cursor close', err);
+        });
+    }
 };
 
-_p._getListRoom = function(listId) {
-    var roomId = this._getListRoomId(listId)
+/**
+ * Very similar to (started with a copy of) ProcessManagerClient._readableStreamToGenerator
+ * Maybe these can be unified in a mixin-module???
+ */
+_p.rdbChangeCursorToAsyncGenerator =  async function*(cursor, bufferMaxSize, debugName) {
+        var METHOD = debugName ? `[${debugName.toUpperCase()}]` : null
+        // Buffer will be only needed if messages are incoming faster then
+        // they can be consumed, otherwise a "waiting" promise will be
+        // available.
+        // Only the latest bufferMaxSize_ items are held in buffer
+        // defaults to 1, meaning that only the latest message is relevant.
+        // This only makes sense if message have no subsequent reference
+        // like a series of diffs, and instead represent the complete
+        // state at once.
+        // Use Infinity if you can't loose any items at all
+        // Use one if only the latest incoming item is interesting.
+      , bufferMaxSize_ = Math.abs(bufferMaxSize) || 1 // default 1
+      , buffer = [] // a FiFo queue
+      , waiting = {}
+      , setWaitingHandlers = (resolve, reject) => {
+            waiting.resolve = resolve;
+            waiting.reject = reject;
+        }
+      , _putMessage = (resolveOrReject, message) => {
+            if(!waiting[resolveOrReject]) {
+                buffer.push(Promise[resolveOrReject](message));
+                let dropped = buffer.splice(0, Math.max(0, buffer.length-bufferMaxSize_));
+                if(dropped.length)
+                    this._log.debug('Dropped', dropped.length, 'buffer items.'
+                                   , 'Buffer size:', buffer.length);
+            }
+            else
+                waiting[resolveOrReject](message);
+            waiting.reject = waiting.resolve = null;
+        }
+      , resolve = message=>_putMessage('resolve', message)
+      , reject = error=>_putMessage('reject', error)
+      ;
+
+    cursor.on('data', message=>{
+        if(METHOD)
+            this._log.debug(METHOD, 'on:DATA', message.toString());
+        resolve(message);
+    });
+
+    // The 'end' event indicates that the server has finished sending
+    // and no errors occurred.
+    cursor.on('end', ()=>{
+        if(METHOD)
+            this._log.debug(METHOD, 'on:END');
+        resolve(null);//ends the generator
+    });
+
+    // An error has occurred and the stream has been closed.
+    cursor.on('error', error => {
+        if(METHOD)
+            this._log.error(METHOD, 'on:ERROR', error);
+        reject(error);
+    });
+
+    while(true) {
+        let value = null
+          , promise = buffer.length
+                        ? buffer.shift()
+                          // If no promise is buffered we're waiting for
+                          // new events to come in
+                        : new Promise(setWaitingHandlers)
+          ;
+        value = await promise; // jshint ignore:line
+        if(value === null)
+            // ended
+            break;
+        yield value;
+    }
+};
+
+/**
+ * returns promise {async generator, function cancel}
+ */
+_p._queryProcessList = function(processListQuery) {
+    var q = this._io.query('dispatcherprocesses')
+      , r = this._io.r
+      ;
+
+    q = processListQuery.configureQuery(q, r);
+
+    return new Promise((resolve,reject)=>{
+        q.changes({
+            includeInitial: true
+          , includeTypes: true
+          , includeOffsets: true
+        //  , squash: 1 -> ReqlLogicError: Cannot include offsets for range subs
+        })
+        .run((err, cursor) => {
+            if(err)
+                reject(err);
+            else
+                resolve({
+                    generator: this.rdbChangeCursorToAsyncGenerator(cursor, Infinity, 'PROCESS_LIST')
+                  , cancel: ()=>this._closeCursor(cursor)
+                });
+        }, {cursor: true});
+    });
+};
+
+/**
+ * `applyChange` requires https://www.npmjs.com/package/deep-equal
+ *
+ * The good news is, that deepEqual is only used to compare the `id`
+ * values of the entries, and since we use strings as ids, we can
+ * easily shim this!
+ */
+function deepEqual(valA, valB) {
+    var allowed = new Set(['string', 'number']);
+    if(!allowed.has(typeof valA) || !allowed.has(typeof valB))
+        throw new Error(`Only the types ${Array.from(allowed).join(', ')}`
+                + 'can be compared. Found: '
+                + `${Array.from(new Set([typeof valA, typeof valB])).join(', ')} `
+                + 'Please use the npm deep-equal package instead.'
+        );
+    return valA === valB;
+}
+
+/**
+ * A change feed from rethinkDB can have the option flag "includeOffsets"
+ * set. In that case a "orderBy.limit" query adds information about
+ * the changed item offset in the list.
+ *
+ * See more: https://rethinkdb.com/api/javascript/changes
+ *
+ * This function can update an existing list with the change information
+ * taken from https://github.com/rethinkdb/horizon/blob/next/client/src/ast.js
+ */
+
+function applyChange(arr, change) {
+    switch (change.type) {
+    case 'remove':
+    case 'uninitial': {
+      // Remove old values from the array
+      if (change.old_offset != null) {
+        arr.splice(change.old_offset, 1);
+      } else {
+        const index = arr.findIndex(x => deepEqual(x.id, change.old_val.id));
+        if (index === -1) {
+          // Programming error. This should not happen
+          throw new Error(
+            `change couldn't be applied: ${JSON.stringify(change)}`);
+        }
+        arr.splice(index, 1);
+      }
+      break;
+    }
+    case 'add':
+    case 'initial': {
+      // Add new values to the array
+      if (change.new_offset != null) {
+        // If we have an offset, put it in the correct location
+        arr.splice(change.new_offset, 0, change.new_val);
+      } else {
+        // otherwise for unordered results, push it on the end
+        arr.push(change.new_val);
+      }
+      break;
+    }
+    case 'change': {
+      // Modify in place if a change is happening
+      if (change.old_offset != null) {
+        // Remove the old document from the results
+        arr.splice(change.old_offset, 1);
+      }
+      if (change.new_offset != null) {
+        // Splice in the new val if we have an offset
+        arr.splice(change.new_offset, 0, change.new_val);
+      } else {
+        // If we don't have an offset, find the old val and
+        // replace it with the new val
+        const index = arr.findIndex(x => deepEqual(x.id, change.old_val.id));
+        if (index === -1) {
+          // indicates a programming bug. The server gives us the
+          // ordering, so if we don't find the id it means something is
+          // buggy.
+          throw new Error(
+            `change couldn't be applied: ${JSON.stringify(change)}`);
+        }
+        arr[index] = change.new_val;
+      }
+      break;
+    }
+    case 'state': {
+      // This gets hit if we have not emitted yet, and should
+      // result in an empty array being output.
+      break;
+    }
+    default:
+      throw new Error(
+        `unrecognized 'type' field from server ${JSON.stringify(change)}`);
+    }
+    return arr;
+}
+
+
+_p._getListRoom = function(query) {
+                               // the parser should be shared with the
+                               // processManager, that way we can ensure
+                               // the interpretation and results are
+                               // coherent, without any of the services
+                               // trusting the other blindly.
+    var processListQuery = ProcessListQuery.fromString(this._log, query)
+      , canonicalQueryString = processListQuery.user
+        // could be a checksum of canonicalQueryString to make it shorter
+        // in the messages, but like this it's easier to debug and refer
+        // to. The "roomId" should however not be interpreted/parsed, itself
+        // we should rather send the canonical query string explicitly for
+        // those cases.
+      , roomId = `list:${canonicalQueryString}`
       , room = this._rooms.get(roomId)
       ;
     if(!room) {
-        let processListQuery = new ProcessListQuery();
-        processListQuery.setQuery(listId);
-        let { generator, cancel } = this._processManager.subscribeProcessList(processListQuery)
+        let process = (changeObject, lastMessage)=>{
+                console.log(`process ${roomId} ...`);
+
+                var _lastMessage = lastMessage !== null
+                      // Salvage the actual message from the argument list,
+                      // it's the first argument ([0]),
+                      // and make a copy (slice);
+                    ? lastMessage[0].slice()
+                      // empty list
+                    : []
+                    ;
+                var result = applyChange(_lastMessage, changeObject);
+                // is used as an argument list
+                return [result];
+            }
             // TODO: this will need more effort
-          , emit = (socket, message)=>socket.emit('changes-dispatcher-list'
-                        , 'list !!!!!! ' + message.getProcessesList()
-                              //=> [instances of ProcessListItem]
-                              .map(processListItem=>processListItem.getProcessId())
-                              .join('///'))
+          , emit = (socket, data)=>socket.emit('changes-dispatcher-list'
+                    // Multiplexing the event, so we can listen to
+                    // many lists at the same time.
+                    , roomId
+                    , ...data
+            )
           ;
-        room = this._initRoom(generator, cancel, emit);
+                              // Promise.resolve({ generator, cancel })
+        room = this._initRoom(this._queryProcessList(processListQuery), emit, process);
         this._rooms.set(roomId, room);
     }
-    return roomId;
+    return [roomId, {
+        user: processListQuery.user
+      , url: processListQuery.url
+    }];
 };
+
+////
+//// END Infrastructure for _subscribeToList
+////////////////////////////////////////////
 
 _p._getProcessRoomId = function(processId) {
     return ['process', processId].join(':');
@@ -676,12 +1744,14 @@ _p._getProcessRoom = function(processId) {
               , JSON.parse(processStateMessage.getProcessData())
               , JSON.parse(processStateMessage.getUserInterface())
             ]
-          , { generator, cancel } = this._processManager.subscribeProcess(processQuery)
-            // TODO: this will need more effort
           , emit = (socket, data)=>socket.emit('changes-dispatcher-process'
-                                              , ... data)
+                // data is the result of process:
+                // processId, processData, userInterface
+                                              , ...data)
           ;
-        room = this._initRoom(generator, cancel, emit, process);
+                             // { generator, cancel }
+        room = this._initRoom(this._processManager.subscribeProcess(processQuery)
+                            , emit, process);
         this._rooms.set(roomId, room);
     }
     return roomId;
@@ -719,20 +1789,23 @@ _p._socketIsInRoom = function (socket, roomId) {
 /**
  * socket event 'subscribe-dispatcher-list'
  */
-_p._subscribeToList = function(socket, data) {
+_p._subscribeToList = function(socket, query, callback) {
     //jshint unused: vars
     // subscribe at processManager ...
-    var listId = 'TODO no such thing as a List ID' // = data ?
-      , roomId = this._getListRoom(listId)
+    this._log.debug('_subscribeToList', query);
+    // FIXME: make sure query.query is a string! seems like, if this
+    // raises, the server is ended!
+    var [roomId, canonicalQuery] = this._getListRoom(query.query)
+      , error = null
       ;
     this._registerSocketInRoom(socket, roomId);
+    // FIXME: some requests are not possible to be change feeds, we should
+    // send the data directly with the callback and don't have the whole
+    // subscription model initiated.
+    callback({roomId, canonicalQuery}, error);
 };
 
-_p._unsubscribeFromList = function(socket, data) {
-    // jshint unused:vars
-    var listId = 'TODO no such thing as a List ID' // = data ?
-      , roomId = this._getListRoomId(listId)
-      ;
+_p._unsubscribeFromList = function(socket, roomId) {
     this._removeSocketFromRoom(socket, roomId);
 };
 

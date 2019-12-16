@@ -31,7 +31,7 @@ function FontBakeryServer(...args) {
                             , {/*cache: 'cache',*/ persistence: 'persistence'}]]
       , ['/browse', StorageBrowseService, ['server', '*app', 'log'
                             , {/*cache: 'cache',*/ persistence: 'persistence'}]]
-      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth']]
+      , ['/dispatcher', ProcessUIService, ['server', '*app', 'log', 'dispatcher', 'ghauth', 'io']]
     ];
     _BaseServer.call(this, ...args);
 }

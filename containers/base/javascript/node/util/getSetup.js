@@ -233,12 +233,11 @@ function initDB(log, dbSetup) {
         });
     }
 
-    function createTableIndex(dbTable, index) {
+    function createTableIndex(dbTable, ...index) {
         var tableName = dbSetup.tables[dbTable]
           , query = r.table(tableName)
-          , index_ =  index instanceof Array ? index : [index]
           ;
-        return query.indexCreate.apply(query, index_)
+        return query.indexCreate(...index)
             .run()
             .error(function(err) {
                 if (err.message.indexOf('already exists') !== -1)
@@ -248,7 +247,7 @@ function initDB(log, dbSetup) {
             // Wait for the index to be ready to use
             .then(function(){
                 return r.table(tableName)
-                        .indexWait(index_[0])
+                        .indexWait(index[0])
                         .run();
             });
     }
@@ -266,7 +265,7 @@ function initDB(log, dbSetup) {
                   , [r.row('environment_version'), r.row('test_data_hash')]
                 ];
             return Promise.all([
-                createTableIndex('family', index)
+                createTableIndex('family', ...index)
               , createTableIndex('family', 'created')
             ]);
         })
@@ -277,8 +276,8 @@ function initDB(log, dbSetup) {
                 // collection_id
                 createTableIndex('collection', 'collection_id')
                 // collection_id | family_name
-              , createTableIndex('collection', ['collection_family'
-                        , [r.row('collection_id'), r.row('family_name')]])
+              , createTableIndex('collection', 'collection_family'
+                        , [r.row('collection_id'), r.row('family_name')])
                 // familytests_id
               , createTableIndex('collection', dbSetup.tables.family + '_id')
                 // date
@@ -293,13 +292,79 @@ function initDB(log, dbSetup) {
                 // reported | id
                 // this index exists to make it possible to orderBy `reported`
                 // while doing an (optimized by index) pagination using `id`.
-              , createTableIndex('statusreport', ['reported_id'
-                                        , [r.row('reported'), r.row('id')]])
+              , createTableIndex('statusreport', 'reported_id'
+                                        , [r.row('reported'), r.row('id')])
             ]);
         })
         .then(()=>{
+
+            function getExpectedAnswer(item){return item('expectedAnswer');}
+            function getExpectedAnswers(itemList){ return itemList.map(getExpectedAnswer);}
+            function stepGetExpectedAnswers(step){
+              return getExpectedAnswers(step('tasks').map(task=>task(1)))
+                  .union([getExpectedAnswer(step)])
+                  .filter(item=>item.ne(null));
+            }
+            function stepsGetExpectedAnswers(steps) {
+              return steps.concatMap(stepGetExpectedAnswers);
+            }
+            function processGetExpectedAnswers(process) {
+              return stepsGetExpectedAnswers(
+                process('steps').union([
+                          process('failsStep').default(null)
+                        , process('finallyStep').default(null)
+                ])
+                .filter(item=>item.ne(null))
+              );
+            }
+
+            var changedDef = process=>process('execLog').nth(-1)(0)
+                                                 .default(process('created'))
+                // Docs say: "If the function passed to indexCreate returns an error
+                //      for a given document, that document will not be indexed.
+                //      No error will be returned for those documents."
+                // Hence, a not finished document won't be indexed here
+              , finishedDef = process=>process('finishedStatus')('created')
+                // processes waiting for none-ui-answers
+                // may hint for stuck processes!
+                // looks good
+              , waitingForServiceDef = process=>processGetExpectedAnswers(process)
+                    .filter(ea=>ea(2).eq(null))// => is a none-ui-answer
+                    .count().gt(0)
+                    .and(process('finishedStatus').eq(null))
+                    // defines the whole index here (changed, id)
+                    // null => not indexed!
+                    .branch([changedDef(process), process('id')], null)
+                // processes waiting for any ui-answers
+                // shows processes waiting for user interaction!
+
+              , waitingForUserDef = process=>processGetExpectedAnswers(process)
+                    .filter(ea=>ea(2).ne(null))// => is a ui-answer
+                    .count().gt(0)
+                    .and(process('finishedStatus').eq(null))
+                    // defines the whole index here (changed, id)
+                    // null => not indexed!
+                    .branch([changedDef(process), process('id')], null)
+                // Docs say: "Secondary indexes will not store null values or objects."
+                // Hence: null values here will be '' in the index, which is fine but
+                // we also need to remember this when running the queries.
+              , familyKeySuffixDef = process=>process('familyKeySuffix').default('')
+              ;
+
             //  create indexes for dbSetup.tables.dispatcherprocesses
-            return Promise.resolve(true);// placeholder
+            return Promise.all([
+                createTableIndex('dispatcherprocesses', 'created_id', [r.row('created'), r.row('id')])
+              , createTableIndex('dispatcherprocesses', 'changed_id', p=>[changedDef(p), p('id')])
+              , createTableIndex('dispatcherprocesses', 'finished_id', p=>[finishedDef(p),p('id')])
+              , createTableIndex('dispatcherprocesses', 'waitingForService_changed_id', waitingForServiceDef)
+              , createTableIndex('dispatcherprocesses', 'waitingForUser_changed_id', waitingForUserDef)
+              , createTableIndex('dispatcherprocesses', 'initiator_created_id', [r.row('initiator'), r.row('created'), r.row('id')])
+              , createTableIndex('dispatcherprocesses', 'initiator_changed_id', p=>[p('initiator'), changedDef(p), p('id')])
+              , createTableIndex('dispatcherprocesses', 'initiator_finished_id', p=>[p('initiator'), finishedDef(p), p('id')])
+              , createTableIndex('dispatcherprocesses', 'familyName_familyKeySuffix_created_id', p=>[p('familyName'), familyKeySuffixDef(p), 'created', 'id'])
+              , createTableIndex('dispatcherprocesses', 'familyName_familyKeySuffix_changed_id', p=>[p('familyName'), familyKeySuffixDef(p), changedDef(p), 'id'])
+              , createTableIndex('dispatcherprocesses', 'familyName_familyKeySuffix_finished_id', p=>[p('familyName'), familyKeySuffixDef(p), finishedDef(p), 'id'])
+            ]);
         })
         .then(function(){return r;})
         .catch(function(err) {

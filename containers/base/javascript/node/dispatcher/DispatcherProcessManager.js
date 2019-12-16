@@ -194,15 +194,86 @@ _p._examineProcessInitMessage = function(initMessage) {
 };
 
 /**
+// Many of these are combined with OR
+// Though, not a hard requirement, in GitHub, for example, we can't have
+// two author:{githubhandle} rules, the last one is used
+// for here, if we can optimize queries like that, could be an option
+family:{familyName}
+initiator:@{githubhandle}
+status:{ok, fail, open, closed}
+    // "closed" expands to status:OK OR status:FAIL ?
+pending:user pending:service pending:all
+    //all = pending:user OR pending:service
+// maybe pending:all is unnecessary because status:open implies the same
+pr:done (only if it really was PRed), i.e. has a PR issue number
+    -> this is a good one because its shows our KPI (Key Performance Indicator)
+
+
+// GitHub "filters" examples
+is:open is:issue
+author:{githubhandle}
+label:"Blocked - waiting for some feedback"
+sort:comments-desc  // that's not a filter!
+assignee:graphicore
+*/
+// changelog: figure if we can e.g. have an index for pending:user and then
+//            get an info when that index is removed from an object in the query
+//            i.e. new_val: none, oldval: something
+// in general, having changelogs without actual data, just the info that
+// the query result may have changed seems appropriate.
+
+//example:
+//    sort ==  "recently updated"
+//    filter: is:open assignee:graphicore sort:updated-desc
+//    url query string: /googlefonts/fontbakery/issues?q=is%3Aopen+assignee%3Agraphicore+sort%3Aupdated-desc
+//
+//    Interesting handling of whitespace in the url value of the label:
+//    is:open assignee:graphicore sort:updated-desc label:"Blocked - waiting for some feedback"
+//    googlefonts/fontbakery/issues?q=is%3Aopen+assignee%3Agraphicore+sort%3Aupdated-desc+label%3A%22Blocked+-+waiting+for+some+feedback%22
+//    I wonder how a literal + in the label would be treated, maybe as '%2B' ?
+/**
+ *
+ *     // var selection = data.selection; // ???
+    // TODO;// what selections are needed?
+    //   * processes by: familyName
+    //   * processes by user/stakeholder => how do we know that?
+    //          'initiator'
+    //          maybe one day 'assignee'  (makes 'assigned to me' possible)
+    //   * running/pending processes
+    //   * finished processes
+    //          * also finished OK/FAIL/PREMATURE(last would be new)
+    //
+    //   * processes that need user interaction/attention
+    //   * processes that need ui/attention by the user authorized for it.
+    // This will be a rather tough thing to do efficiently in the DB
+    // TODO(this.grpcClient.subscribeList(selection));
+ *
  * What are the basics that we want to query:
- *      - all processes for a family
+ *      - all processes for a family: familyName
  *      - closed/pending/failed processes
  *      - processes with pending user interactions
+ *              -> would be easier if all expectedAnswers were stored top
+ *                 level, easily accessible via a query, we can of course
+ *                 try to produce all expected anwers and look for the third
+ *                 entry 'requestedUserInteractionName'
  *      - processes with pending user interactions, that can be answered
  *        by the authenticated user (role based, where one role is e.g
- *        maintainer:creepster for special cases ...)
+ *              -> not in the expectedAnswer data yet!
+ *              -> maybe too complex to do the right way for now! The DB
+ *                 would have to store values like initiator:name with the
+ *                 expectedAnswer and if we change e.g. by switching
+ *                 to production mode (not possible yet) that would have
+ *                 to be removed again.
+ *                 we also have relative roles like "stakeholder" that
+ *                 would be better defined elsewhere, hence these queries
+ *                 become complicated. "input-provider" is a role based
+ *                 on github repo rights (ADMIN or WRITE)!
  *
- *      - order by last change date
+ *        maintainer:creepster for special cases ...)?
+ *
+ *      - order by last change date !!! we don't yet
+ *                 ... deep query or put it top level on each change
+ *                 => solved!
  *      - order by creation
  *      - (more?)
  *      - it should be possible to combine most of the the above!
@@ -218,45 +289,183 @@ _p._examineProcessInitMessage = function(initMessage) {
  *      implemented in the process manager.
  *
  */
+Object.defineProperty(_p, '_query', {
+   get: function(){
+       return [this._io.query('dispatcherprocesses'), this._io.r];
+    }
+});
+
+
+_p._queryProcessList = function(selection) {
+    // jshint unused:vars
+    var [q, r] = this._query;
+
+    q.orderBy(r.desc('created'));// make created an index: orderBy({index: r.asc('created')})
+
+    /*
+       filter takes a dict, e.g. ...
+       q.filter({
+            mode: 'sandbox' // 'production'
+          , familyName: 'Gupter'
+          , initiator: 'vv-monsalve'
+       })
+       but to query with an OR condition, there's a functional approach:
+       .filter(process=>
+           process('mode').eq('sandbox').default(false).and(process('familyName').eq('Alata')).default(false)
+           // includes Gupter in sandbox and in production
+           .or(process('familyName').eq('Gupter').default(false))
+        )
+
+    .filter(process=>
+
+    //not failed on a status entry
+    process('failStep')('finishedStatus')('status').ne('FAILED')
+
+    // no finishedStatus -> not finished
+    process('finishedStatus').eq(null)//('isActivated').eq(false)
+    )
+
+    reasonable "changed" date, as used for the "changed" index:
+    .map(process=>process.merge({changed: process('execLog').nth(-1)(0).default(process('created'))}))
+
+    .filter(process=>
+        // unfinished
+        process('finishedStatus').eq(null)
+        // something is in the exec log/vs nothing is in the exec log => new and un touched
+            .and(process('execLog').count().ne(0))
+    )
+
+
+    // waitingFor:
+    // get a list of all expected answers:
+    function getExpectedAnswer(item){return item('expectedAnswer')};
+    function getExpectedAnswers(itemList){ return itemList.map(getExpectedAnswer);}
+    function stepGetExpectedAnswers(step){
+      return getExpectedAnswers(step('tasks').map(task=>task(1)))
+          .union([getExpectedAnswer(step)])
+          .filter(item=>item.ne(null));
+    }
+    function stepsGetExpectedAnswers(steps) {
+      return steps.concatMap(stepGetExpectedAnswers);
+    }
+    function processGetExpectedAnswers(process) {
+      return stepsGetExpectedAnswers(
+        process('steps').union([
+                  process('failsStep').default(null)
+                , process('finallyStep').default(null)
+        ])
+        .filter(item=>item.ne(null))
+      );
+    }
+
+    // then:
+
+    q.map(process=>process.merge({expectedAnswers:
+            r.do(process, processGetExpectedAnswers)}))
+
+
+   // processes waiting for none-ui-answers
+   // may hint for stuck processes!
+   .filter(process=>process('expectedAnswers')
+     .filter(ea=>ea(2).eq(null))// => is a none-ui-answer
+     .count().gt(0)
+   )
+
+   // processes waiting for any ui-answers
+   // shows processes waiting for user interaction!
+   .filter(process=>process('expectedAnswers')
+     .filter(ea=>ea(2).ne(null))// => is a ui-answer
+     .count().gt(0)
+   )
+
+
+    TODO: implement!
+
+    */
+    //switch(selection) {
+    //    case('mode'):
+    //        q.filter({mode: 'sandbox'});
+    //        break
+    //    case('familyName')
+    //        q.filter({familyName: 'Gupter'});
+    //        break;
+    //    case('initiator')
+    //        q.filter({initiator: 'vv-monsalve'});
+    //        break;
+    //    case('all'):
+    //        // falls through
+    //    default:
+    //        break;
+    //}
+
+
+    return q.pluck(['created', 'initiator', 'familyName']);
+
+
+    // nice one: .group('familyName')
+
+    // so, what do we get here? Actually, if any of the selected
+    // items change, we get an old_val/new_val object, where
+    // old_val is null if it's a new item.
+    // hence, this is not very helpful to update a list of items,
+    // as we can't see how the collection changes due to this
+    // change report. Calculating the change to the collection
+    // ourselves seems like a bad idea as well.
+    // looks like polling the collection seems a better choice,
+    // maybe after a change has been received and in between a
+    // minimal interval.
+    // .changes()
+    // In the case of this pluck, the old_val key in a new
+    // item is not set at all (instead of null).
+    //.pluck({new_val: ['created', 'initiator', 'familyName'], old_val: ['created']})
+};
+
+/**
+ * This is not implemented, because there's an implementation in
+ * ProcessUIService, that uses rethinkDB change feeds directly and
+ * there's no need to go via the ProcessManager to do so. Further, the
+ * frontend server will do some caching etc. it's probably better to
+ * use the resources there, since horizontally frontend servers scale
+ * better.
+ *
+ * That said, I leave this here as a stub, maybe we find a use/need for
+ * this interface and this would be a nice starting point.
+ */
+// FIXME: decomission;
 _p.subscribeProcessList = function(call) {
     var processListQuery = call.request
       , unsubscribe = ()=> {
-            if(!timeout) // marker if there is an active subscription/call
-                return;
             // End the subscription and delete the call object.
             // Do this only once, but, `unsubscribe` may be called more than
             // once, e.g. on `call.destroy` via FINISH, CANCELLED and ERROR.
             this._log.info('subscribeProcessList ... UNSUBSCRIBE');
-            clearInterval(timeout);
-            timeout = null;
-        }
-      ;
 
+            // if a subscribed to call, this should be ending it and cleaning
+            // up.
+
+            // If a change listener is not an option, polling like all
+            // 5 seconds could be an option.
+
+            // if the query is not a subscription, we should clean up
+            // and hang up directly after answering.
+        }
+        , selection = null// FIXME: process processListQuery
+      ;
     this._log.info('processListQuery subscribing to', processListQuery.getQuery());
     this._subscribeCall('process-list', call, unsubscribe);
 
-    var counter = 0, maxIterations = Infinity
-      , timeout = setInterval(()=>{
-        this._log.debug('subscribeProcessList call.write counter:', counter);
-
+    this._queryProcessList(selection).then(list=>{
         var processList = new ProcessList();
-        for(let i=0,l=3;i<l;i++) {
+        for(let {initiator, familyName, created} of list) {
             let processListItem = new ProcessListItem();
             processListItem.setProcessId(
-                            '#' + i + '+-+' + new Date().toISOString());
+                            `${familyName} by @${initiator} created: ${created}`);
             processList.addProcesses(processListItem);
         }
-
-        counter++;
-        if(counter === maxIterations) {
-            //call.destroy(new Error('Just a random server fuckup.'));
-            //clearInterval(timeout);
-            call.end();
-        }
-        else
-            call.write(processList);
-
-    }, 1000);
+        call.write(processList);
+        // hang up.
+        call.end();
+    });
 };
 
 if (typeof require != 'undefined' && require.main==module) {
