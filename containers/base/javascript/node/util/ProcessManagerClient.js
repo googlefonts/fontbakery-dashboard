@@ -2,7 +2,7 @@
 "use strict";
 // this is expected to run in nodejs
 /* global require */
-/* jshint esnext:true */
+/* jshint esversion:9 */
 
 const { nodeCallback2Promise } = require('./nodeCallback2Promise')
   , grpc = require('grpc')
@@ -113,7 +113,7 @@ _p._getStreamAsList = function(client, method, message) {
 /**
  * Async generator for a subscription.
  */
-_p._readableStreamToGenerator = async function* (method, call, bufferMaxSize) { // jshint ignore:line
+_p._readableStreamToGenerator = async function* (method, call, bufferMaxSize) {
     var METHOD = '[' + method.toUpperCase() + ']'
         // Buffer will be only needed if messages are incoming faster then
         // they can be consumed, otherwise a "waiting" promise will be
@@ -186,12 +186,12 @@ _p._readableStreamToGenerator = async function* (method, call, bufferMaxSize) { 
             break;
         yield value;
     }
-}; // jshint ignore:line
+};
 
 _p._getStreamAsGenerator = function(client, method, message) {
     var call = client[method](message, {deadline: Infinity});
     return {
-        generator :this._readableStreamToGenerator(method, call)
+        generator: this._readableStreamToGenerator(method, call)
       , cancel: ()=>call.cancel()
     };
 };
