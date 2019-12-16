@@ -28,16 +28,6 @@ define([
 
         this._socket = socket;
 
-        //var countList = 0;
-        //this.onChangeList = function(data) {
-        //    this._listElem.innerHTML = data;
-        //    countList += 1;
-        //    if(countList === 3)
-        //        socket.emit('unsubscribe-dispatcher-list', {});
-        //};
-        // socket.on('changes-dispatcher-list', this.onChangeList.bind(this));
-        // socket.emit('subscribe-dispatcher-list', {});
-
         if(data && data.id)
             this._showProcess(data.id);
         else {
@@ -52,11 +42,6 @@ define([
         // To test if it loads (seserializes) well
         //onInitAnswer('b56d226d-8333-41e1-80da-ad973b8ab0c6', null)
         // finished: onInitAnswer('a9963e5b-b3fc-4b2d-9199-1856fa666e6f', null);
-
-        container.addEventListener('destroy', (e)=>{
-            this._log.info('OH, Hey!, the destroy event got received by DispatcherController');
-            socket.emit('unsubscribe-dispatcher-list');
-        }, false);
     }
     var _p = DispatcherController.prototype;
 
