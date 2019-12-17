@@ -1205,7 +1205,7 @@ _p._initRoom = function(generatorCancel, emit, process/*optional*/) {
         // FIXME: making this effectively an unhandled exception!
         // Maybe we should end the server here, could mean the db resource
         // is broken.
-        // It's also likely, that for instance _queryProcessList failed
+        // It's also likely, that for instance _queryProcessListChangeFeed failed
         // because the query is invalid. An invalid query would be a
         // good test case to trigger this and not really a reason to
         // end the server.
@@ -1315,7 +1315,7 @@ _p.rdbChangeCursorToAsyncGenerator =  async function*(cursor, bufferMaxSize, deb
 /**
  * returns promise {async generator, function cancel}
  */
-_p._queryProcessList = function(processListQuery) {
+_p._queryProcessListChangeFeed = function(processListQuery) {
     var q = this._io.query('dispatcherprocesses')
       , r = this._io.r
       ;
@@ -1340,6 +1340,20 @@ _p._queryProcessList = function(processListQuery) {
         }, {cursor: true});
     });
 };
+
+_p._queryProcessList = function(processListQuery) {
+    var q = this._io.query('dispatcherprocesses')
+      , r = this._io.r
+      ;
+
+    return processListQuery.configureQuery(q, r)
+        .run()
+        ;
+        // doesn't return a cursor apparently
+        //.then(cursor=>cursor.toArray());
+};
+
+
 
 /**
  * `applyChange` requires https://www.npmjs.com/package/deep-equal
@@ -1436,15 +1450,8 @@ function applyChange(arr, change) {
     return arr;
 }
 
-
-_p._getListRoom = function(query) {
-                               // the parser should be shared with the
-                               // processManager, that way we can ensure
-                               // the interpretation and results are
-                               // coherent, without any of the services
-                               // trusting the other blindly.
-    var processListQuery = ProcessListQuery.fromString(this._log, query)
-      , canonicalQueryString = processListQuery.user
+_p._getProcessListRoom = function(processListQuery) {
+    var canonicalQueryString = processListQuery.user
         // could be a checksum of canonicalQueryString to make it shorter
         // in the messages, but like this it's easier to debug and refer
         // to. The "roomId" should however not be interpreted/parsed, itself
@@ -1478,13 +1485,10 @@ _p._getListRoom = function(query) {
             )
           ;
                               // Promise.resolve({ generator, cancel })
-        room = this._initRoom(this._queryProcessList(processListQuery), emit, process);
+        room = this._initRoom(this._queryProcessListChangeFeed(processListQuery), emit, process);
         this._rooms.set(roomId, room);
     }
-    return [roomId, {
-        user: processListQuery.user
-      , url: processListQuery.url
-    }];
+    return roomId;
 };
 
 ////
@@ -1788,21 +1792,63 @@ _p._socketIsInRoom = function (socket, roomId) {
 
 /**
  * socket event 'subscribe-dispatcher-list'
+ *
+ * FIXME: seems like asChangeFeed could/should be part of the query string
+ * request = {queryString: (string), asChangeFeed: (boolean)}
+ * However, since it changes the format of the answer (yet, only if a
+ * change feed is possible), it may be better when it's separated.
  */
-_p._subscribeToList = function(socket, query, callback) {
+_p._subscribeToList = function(socket, request, callback) {
     //jshint unused: vars
     // subscribe at processManager ...
-    this._log.debug('_subscribeToList', query);
+    this._log.debug('_subscribeToList', request.queryString);
     // FIXME: make sure query.query is a string! seems like, if this
     // raises, the server is ended!
-    var [roomId, canonicalQuery] = this._getListRoom(query.query)
-      , error = null
+    var query = ProcessListQuery.fromString(this._log, request.queryString)
+      , canonicalQuery = {
+            user: query.user
+          , url: query.url
+        }
+      , result = {
+            roomId: null
+          , canonicalQuery
+          , isChangeFeed: null
+          , data: null
+        }
       ;
-    this._registerSocketInRoom(socket, roomId);
-    // FIXME: some requests are not possible to be change feeds, we should
-    // send the data directly with the callback and don't have the whole
-    // subscription model initiated.
-    callback({roomId, canonicalQuery}, error);
+    // Some requests can't be change feeds, we should send the data
+    // directly with the callback and don't have the whole subscription
+    // model initiated.
+    // Further, the client can request not to subscribe to a change feed
+    // and also get's the data sent directly.
+
+    // TODO: canBeChangeFeed
+    //       trying different queries
+    //       interfaces using these queries
+    if(request.asChangeFeed && query.canBeChangeFeed) {
+        result.roomId = this._getProcessListRoom(query);
+        this._registerSocketInRoom(socket, result.roomId);
+        result.isChangeFeed = true;
+        // HMM, missing a way to receive/process error
+        callback(result, null);
+    }
+    else {
+        return this._queryProcessList(query)
+            .then(data=>{
+                console.log('Got data:', data);
+                result.data = data;
+                result.isChangeFeed = false;
+                callback(result);
+            }
+          , error=>{
+                this._log.error(`Query list with "${canonicalQuery.user}" raised:`, error);
+                callback(null, {
+                        name: error.name
+                      , message: error.message
+                });
+            });
+    }
+
 };
 
 _p._unsubscribeFromList = function(socket, roomId) {
