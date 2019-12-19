@@ -932,7 +932,7 @@ define([
             //          this state, with thank you screen and NO process
             //          interface is unique for this situation, there's
             //          no other way (e.g. via the URL) to get here. The
-            //          reason for the url chnge is, that the user can
+            //          reason for the url change is, that the user can
             //          share the link immediately.
 
             window.history.pushState(null, null, url);
