@@ -6,44 +6,47 @@ define([
   , UserLog
 ) {
     /* jshint browser:true, esnext:true*/
+    /*global console, URLSearchParams*/
     "use strict";
 
-    const DispatcherListController = (function(){
+    // matches ?q= or &q= until the next & or to the end includes
+    // the "q=" part.
+    // example: "http://hello.example/lists?q=family:ABeeZeee&some=other"
+    // > window.location.search.match(r)[1]
+    // "q=family:ABeeZeee"
+    // var matchURLQuery = /[\?&](q=[^&]*)/;
+
+    const GenericDispatcherListController = (function() {
     /**
      * This is controlling just a single list.
      */
-    function DispatcherListController(container, templatesContainer, queryAPI) {
+    function GenericDispatcherListController(container, templatesContainer, queryAPI) {
         this._container = container;
         this._templatesContainer = templatesContainer;
         this._queryAPI = queryAPI;
 
         this._log = new UserLog(dom.createElement('ol', {class: 'user-log'}));
 
-        this._queryField = dom.createElement('input', {
-                type: 'text'
-              , name: 'query-process-list'
-              , value: 'initiator:graphicoredummy'
-            });
-        this._queryFieldSend = dom.createElement('input', {type: 'button', name: 'send-process-list-query', value: 'send'});
-        this._queryFieldSend.addEventListener('click', ()=>this._queryList());
-
-
         dom.appendChildren(this._container, [
             this._log.container
-          , this._queryField
-          , ' '
-          , this._queryFieldSend
         ]);
         this._log.reatached();
         // this._log.infoMd('**data:**\n\n```\n'+ JSON.stringify(data, null, 2) +'\n```');
 
-        container.addEventListener('destroy', this.destroy.bind(this), false);
-        //this._queryList();
+        this._container.addEventListener('destroy', this.destroy.bind(this), false);
+
+        this._roomId = null;
+        //this._queryList(query, true);
     }
 
-    var _p = DispatcherListController.prototype;
+    var _p = GenericDispatcherListController.prototype;
 
+    /**
+     * Will be used with an empty array as listData to reset the
+     * interface when a room was changed.
+     */
     _p._renderList = function(listData) {
+        console.log('_renderList -> listData', listData.length, listData);
         var target = dom.getMarkerComment(this._container, 'insert: dispatcher-list-item');
         while(target.parentNode.lastChild !== target)
             dom.removeNode(target.parentNode.lastChild);
@@ -61,16 +64,6 @@ define([
     };
 
     /**
-     * Get the new query from the input field, maybe also window URL or
-     * if specified differently, from there.
-     */
-    _p._getQuery = function() {
-        return this._queryField.value;
-        // e.g.: 'initiator:qraphicore mode:sandbox orderBy:changed-desc';
-        //return this._queryField.value;
-    };
-
-    /**
      * send the query to subscribe-dispatcher-list
      */
     _p._sendQuery = function(query, asChangeFeed) {
@@ -81,45 +74,143 @@ define([
     };
 
     /**
+     * Return [(string) query, (bool) asChangeFeed]
+     */
+    _p._getQuery = function() {
+        throw new Error('Not implemented: _getQuery');
+    };
+
+    /**
+     * This is to be implemented by the actual interface controller.
+     * The aim is to update the source of the query-string that was
+     * sent to the server with the canonical result in the response of
+     * the server.
+     * After using this, _getQuery should return the canonocal query
+     * either in user or in url format. url format starts with "q="
+     */
+    _p._receiveCanonicalQuery = function(canonicalQuery) {
+        // jshint unused:vars
+        throw new Error('Not implemented: _receiveCanonicalQuery');
+    };
+
+    /**
+     * This is to be implemented by the actual interface controller.
+     * The aim is to indicate whether the user is looking at a live
+     * streamed, updating list or as a static list.
+     */
+    _p._setIsChangeFeed = function(isChangeFeed) {
+        // jshint unused:vars
+        throw new Error('Not implemented: _setIsChangeFeed');
+    };
+
+    /**
      * Change the List
      */
-    _p._queryList = function() {
-        var query = this._getQuery()
-          , asChangeFeed = true
-          ;
-
+    _p._queryList = function(query, asChangeFeed) {
         // In any case, this should clear the contents, for ease
         // of use. Some subscriptions don't produce any output and
         // hence never report anything.
-        this._renderList([]);
 
         return this._sendQuery(query, asChangeFeed)
-        .then(({canonicalQuery, isChangeFeed})=>{
+        .then(({/* roomId, */canonicalQuery, isChangeFeed})=>{
             // Room subscription stuff is handled by parent.
-            // This subscriber can only be in one room at a time.
+            // This subscriber can only be in one room at a time
 
             //The canonical query may be changed (via server response),
             // change the input field and maybe also the window URL.
             // this._queryField.value = canonicalQuery.user;
             this._log.info(`Got callback isChangeFeed ${isChangeFeed}`
                             , canonicalQuery.user, canonicalQuery.url);
+            this._receiveCanonicalQuery(canonicalQuery);
+            this._setIsChangeFeed(isChangeFeed);
         });
     };
 
     _p.destroy = function(e) {
         // jshint unused:vars
-        this._log.info('DispatcherListController received destroy event.');
+        this._log.info('GenericDispatcherListController received destroy event.');
         return this._queryAPI.unsubscribe(this);
     };
 
-    return DispatcherListController;
+    return GenericDispatcherListController;
+    })();
+
+    const DispatcherListQueryUIController = (function(){
+    const Parent = GenericDispatcherListController;
+
+    function DispatcherListQueryUIController(container, templatesContainer
+                    , queryAPI, data) {
+        Parent.call(this, container, templatesContainer, queryAPI);
+
+        this._queryField = dom.createElement('input', {
+                type: 'text'
+              , name: 'query-process-list'
+              , value: ''
+            });
+        this._queryFieldSend = dom.createElement('input', {type: 'button', name: 'send-process-list-query', value: 'send'});
+        this._queryFieldSend.addEventListener('click', ()=>this._queryList(...this._getQuery()));
+
+        dom.appendChildren(this._container, [
+            this._queryField
+          , ' '
+          , this._queryFieldSend
+        ]);
+
+
+        // on load, if there's a query in the url ...
+        // TODO: try:  new URLSearchParams(data.search).get('q') || ''
+        // var urlQueryMatch = data.search.match(matchURLQuery);
+        var urlSearchParams = new URLSearchParams(data.search);
+        this._queryList(urlSearchParams.get('q') || '', true);
+    }
+    const _p = DispatcherListQueryUIController.prototype = Object.create(Parent.prototype);
+
+    /**
+     * Get the new query from the input field, maybe also window URL or
+     * if specified differently, from there.
+     */
+    _p._getQuery = function() {
+        return [this._queryField.value, true];
+    };
+
+
+    _p._receiveCanonicalQuery = function(canonicalQuery) {
+        var {user, url:urlQuery}= canonicalQuery
+         , url = new URL(window.location.href)
+         , newUrl
+         ;
+        this._queryField.value = user;
+
+        if(urlQuery.slice(2) !== url.searchParams.get('q')) {
+            url.searchParams.set('q', 'REPLACEMENTMARKER');
+            // using searchParams.set URLEncodes the value, but we have
+            // done that already sufficiently and for better readability
+            // on the server.
+            newUrl = url.href.replace('q=REPLACEMENTMARKER', urlQuery);
+            window.history.pushState(null, null, newUrl);
+        }
+    };
+
+    /**
+     * This is to be implemented by the actual interface controller.
+     * The aim is to indicate whether the user is looking at a live
+     * streamed, updating list or as a static list.
+     */
+    _p._setIsChangeFeed = function(isChangeFeed) {
+        // jshint unused:vars
+        // TODO:
+        this._log.info(`TODO _setIsChangeFeed: (${isChangeFeed})`);
+    };
+
+    return DispatcherListQueryUIController;
     })();
 
 
     /**
-     * This is controlling many DispatcherListController. The reason is,
-     * that all lists go through the same socket event (i.e. like multiplexing
-     * and this controller is routing the events to their actual controllers.
+     * This is controlling many instances ofGenericDispatcherListController.
+     * The reason is, that all lists go through the same socket event
+     * (i.e. like multiplexing) and this controller is routing the events
+     * to their actual controllers.
      */
     function DispatcherListsController(socket, data) {
         //jshint unused:vars
@@ -225,7 +316,7 @@ define([
     };
 
     _p.subscribeTo = function(subscriber, query, asChangeFeed, onData) {
-        function callback(resolve, reject, result, error){
+        function callback(resolve, reject, result, error) {
             //jshint validthis:true
             // In some cases we don't have a change feed as a result,
             // just a list of entries, we handle both cases in here!
@@ -268,6 +359,9 @@ define([
                     // If the roomId changes we leave the old room
                     // and enter the new room, Only do this if roomId is
                     // different
+
+                    // Send an empty list as a reset!
+                    oldSubscription.onData([]);
                     this.unsubscribe(subscriber);
             }
             // If subscriber was subscribed and roomId is the same
@@ -276,7 +370,7 @@ define([
             // expected to be cool with this.
             this._subscribers.set(subscriber, {roomId, onData});
             room.attendees.add(subscriber);
-            resolve(result);// has: {canonicalQuery, isChangeFeed}
+            resolve(result);// has: {roomId, canonicalQuery, isChangeFeed}
         }
 
         return new Promise((resolve, reject)=>{
@@ -296,6 +390,7 @@ define([
 
     return {
         DispatcherListsController
-      , DispatcherListController
+      , GenericDispatcherListController
+      , DispatcherListQueryUIController
     };
 });
