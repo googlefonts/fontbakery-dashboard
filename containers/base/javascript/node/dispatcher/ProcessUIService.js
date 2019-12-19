@@ -639,6 +639,12 @@ Object.defineProperties(_p, {
             return _tokensToURLQueryString(this.tokens);
         }
     }
+  , canBeChangeFeed:{
+        get: function() {
+            // FIXME: implement
+            return true;
+        }
+    }
 });
 
 
@@ -940,6 +946,15 @@ function ProcessUIService(server, app, logging, processManager, ghAuthClient
     this._io = io;
 
     this._app.get('/', this._server.serveStandardClient);
+    // shows a query-editor interface, will be very rudimentary at the
+    // beginning. Queries can be given via the ?q={query} parameter
+    this._app.get('/lists-query', this._server.serveStandardClient);
+    // Shows a collection of list queries. The intention is to use the
+    // ?q={query} parameter to make the list queries more specific, i.e.
+    // ?q=initiator:a-github-handle or ?q=family:AbBeeZee
+    // but probably not all possible queries will work here in the ?q=
+    // parameter, in fact, the specific queries may override some of
+    // the ?q= query parameters according to their setup.
     this._app.get('/lists', this._server.serveStandardClient);
     this._app.get('/process/:id', this._checkProcessExists.bind(this));
 
@@ -1822,15 +1837,32 @@ _p._subscribeToList = function(socket, request, callback) {
     // Further, the client can request not to subscribe to a change feed
     // and also get's the data sent directly.
 
-    // TODO: canBeChangeFeed
-    //       trying different queries
-    //       interfaces using these queries
+    // TODO:
+    //      trying different queries
+    //      implement canBeChangeFeed
+    //      pluck only useful fields
+    //      makew interfaces using these queries
+    //          => one generic overview (dashboard)
+    //                => fully generic
+    //                => one generic personal overview (like generic overview but with family:name token in the url)
+    //                => one generic family overview (like generic overview but with initiator:name token in the url)
+    //                => each dashboard table can have its own link to the generic query interface (inspect or details or "open in query editor")
+    //          => one generic query interface that can take url query strings
+    //      clean up
     if(request.asChangeFeed && query.canBeChangeFeed) {
         result.roomId = this._getProcessListRoom(query);
-        this._registerSocketInRoom(socket, result.roomId);
         result.isChangeFeed = true;
         // HMM, missing a way to receive/process error
         callback(result, null);
+        // Do this after callback, otherwise the client will get confused,
+        // since this will send initial data immediately if available.
+        // Using Promise.resolve to run it async, alternatively, a small
+        // setTimeout could be used to put a more significant delay
+        // in between.
+        // Promise.resolve(true).then(()=>
+        this._registerSocketInRoom(socket, result.roomId);
+        //);
+
     }
     else {
         return this._queryProcessList(query)

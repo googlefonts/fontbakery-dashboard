@@ -28,7 +28,7 @@ define([
 
     const {
         DispatcherListsController
-      , DispatcherListController
+      , DispatcherListQueryUIController
     } = DispatcherLists;
 
     function makeFileInput(fileOnLoad, element) {
@@ -307,14 +307,15 @@ define([
          , listsCtrl = new DispatcherListsController(socket, data)
          // We can have multiple of these lists in a document, think of
          // a dashboard of interesting lists.
-         , listCtrl =  new DispatcherListController(container, templatesContainer, listsCtrl)
+         , listUICtrl =  new DispatcherListQueryUIController(container
+                                , templatesContainer, listsCtrl, data)
          ;
          // will be nice, to know if there's a "my-processes" list.
          //, sessionChangeHandler = dispatcher.sessionChangeHandler.bind(dispatcher)
          //, unsubscribeSessionChange = authController.onSessionChange(sessionChangeHandler, true)
         container.addEventListener('destroy'
                             , listsCtrl.destroy.bind(listsCtrl), false);
-        return [listsCtrl, listCtrl];
+        return [listsCtrl, listUICtrl];
     }
 
     var AuthenticationController = (function(){
@@ -586,6 +587,7 @@ define([
               , 'dashboard': initDashboard
               , 'dispatcher': initDispatcher
               , 'dispatcher/lists': initDispatcherLists
+              , 'dispatcher/lists-query': initDispatcherLists
             }
           ;
         mode = defaultMode;
@@ -597,7 +599,7 @@ define([
             let subparts = pathparts.slice(i);
             while(subparts.length) {
                 let testmode = subparts.join('/');
-                if(testmode in modes ) {
+                if(testmode in modes) {
                     mode = testmode;
                     parameters = pathparts.slice(i + subparts.length);
                     break outer;
@@ -613,9 +615,13 @@ define([
         i=0; //reset, i in parameters now
         switch(mode) {
             case('dispatcher/lists'):
+            // falls through
+            case('dispatcher/lists-query'):
                 data = {
                     parameters: parameters
                   , url:  window.location.pathname
+                  , mode: mode
+                  , search: window.location.search
                 };
                 break;
             case('dispatcher'):
@@ -662,8 +668,8 @@ define([
 
         var [data, init] = getInterfaceMode();
         init(data, authController);
-        // Using pushstate changes the behavior of the browser back-button.
-        // This is intended to make it behave as if pushstate was not used.
+        // Using pushState changes the behavior of the browser back-button.
+        // This is intended to make it behave as if pushState was not used.
         window.onpopstate = function(event) {
             // jshint unused:vars
             if(ignoreNextPopState) {
