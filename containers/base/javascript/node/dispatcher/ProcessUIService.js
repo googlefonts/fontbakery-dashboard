@@ -402,7 +402,8 @@ _p._getNormalizedQuery = function(tokens) {
                             );
 
     // first one found in this order is used!
-    var indexTokens = ['family', 'initiator', 'waitingFor']
+    // waitingFor is first, because it can't be queried as a filter
+    var indexTokens = ['waitingFor', 'family', 'initiator']
       , indexToken = null
       ;
     for(let _indexToken of indexTokens) {
@@ -546,20 +547,22 @@ _p.configureQuery = function(q, r) {
             // changed_id
             // finished_id
             index = `${orderBy}_id`;
-            indexValue = [
-                [r.minval, r.minval]
-              , [r.maxval, r.maxval]
-            ];
+            // not needed
+            //indexValue = [
+            //    [r.minval, r.minval]
+            //  , [r.maxval, r.maxval]
+            //];
             break;
         case('waitingFor'):
             // waitingForService_changed_id
             // waitingForUser_changed_id
             index = `waitingFor${query.index[1][0].toUpperCase()+query.index[1].slice(1)}_${orderBy}_id`;
-            // draft?
-            indexValue = [
-                         [query.index[1], r.minval, r.minval]
-                       , [query.index[1], r.maxval, r.maxval]
-                       ];
+            // not needed
+            // index contains is [changed, id]
+            // indexValue = [
+            //              [r.minval, r.minval]
+            //            , [r.maxval, r.maxval]
+            //            ];
             break;
         case('family'):
             // familyName_familyKeySuffix_created_id
@@ -589,12 +592,28 @@ _p.configureQuery = function(q, r) {
         default:
             throw new Error(`configureQuery don't know how to handle index: ${query.index.join(':')}.`);
     }
+    if(indexValue)
+        q = q.between(...indexValue, {index:index,  leftBound: 'closed', rightBound: 'closed'});
 
-    q = q.between(...indexValue, {index:index,  leftBound: 'closed', rightBound: 'closed'})
-         .orderBy({index: r[orderDir/* 'asc' | 'desc'*/](index)})
+
+    q = q.orderBy({index: r[orderDir/* 'asc' | 'desc'*/](index)})
          .limit(query.limit);
-    if(query.filters.size)
-        q = q.filter(Object.fromEntries(query.filters));
+    if(query.filters.size) {
+        var filters = Object.fromEntries(query.filters);
+        if('family' in filters) {
+            let [familyName, familyKeySuffix] = _getFamily(filters.family);
+            filters.familyName = familyName;
+            if(familyKeySuffix !== null)
+                // This is a bit confusing. Returned from _getFamily
+                // null means "all" so as a filter: don't set it.
+                // '' means "no suffix" (usually the production version)
+                // but that's in the database document as `null`
+                filters.familyKeySuffix = familyKeySuffix === ''
+                                                ? null : familyKeySuffix;
+            delete filters.family;
+        }
+        q = q.filter(filters);
+    }
 
     this._log.debug('rDB query:', q.toString());
 

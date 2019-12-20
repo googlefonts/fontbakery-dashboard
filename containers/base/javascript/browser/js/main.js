@@ -27,8 +27,9 @@ define([
     //jshint browser:true
 
     const {
-        DispatcherListsController
+        DispatcherListsQueryAPI
       , DispatcherListQueryUIController
+      , DispatcherListsCollectionController
     } = DispatcherLists;
 
     function makeFileInput(fileOnLoad, element) {
@@ -297,25 +298,94 @@ define([
         return ctrl;
     }
 
+    // DispatcherListsCollectionController(container, templatesContainer, queryAPI, setup)
     function initDispatcherLists(data/*, authController*/) {
-        var container = activateTemplate('dispatcher-lists')
-         , templatesContainer = null//getTemplatesContainer('dispatcher-templates')
-         , socket = socketio('/')
-         // There's just one set of channels for receiving these lists
-         // and their updates, this separates the messages and sends
-         // them to the subscribers.
-         , listsCtrl = new DispatcherListsController(socket, data)
-         // We can have multiple of these lists in a document, think of
-         // a dashboard of interesting lists.
-         , listUICtrl =  new DispatcherListQueryUIController(container
-                                , templatesContainer, listsCtrl, data)
-         ;
+        var templatesContainer = getTemplatesContainer('dispatcher-lists-templates')
+          , socket = socketio('/')
+          // There's just one set of channels for receiving these lists
+          // and their updates, this separates the messages and sends
+          // them to the subscribers.
+          , queryAPI = new DispatcherListsQueryAPI(socket, data)
+          , container, widget
+          ;
+
+        if(data.mode === 'dispatcher/lists') {
+            let setup = {
+                search: data.search
+                // these widgets should never contain `initiator` or
+                // `family` query tokens, that's the main idea behind
+                // adding the url query parameter to this interface,
+                // to make it customizable for these cases.
+                // other useful query filters: mode:{sandbox|production}
+                // maybe: genre
+                // would be nice to filter for finished:{OK|FAIL}
+                // or maybe result:{PR,ISSUE,NONE} (implies it's finished)
+                // but we don't do this now.
+              , widgets: [
+                    {   title: 'recently updated'
+                      , description: null
+                      , queryTokens: [
+                            // this is the default anyways
+                            ['orderBy', 'changed-desc']
+                        ]
+                      , asChangeFeed: true
+                    }
+                  , {   title: 'recently created'
+                      , description: null
+                      , queryTokens: [
+                            ['orderBy', 'created-desc']
+                        ]
+                      , asChangeFeed: true
+                    }
+                  , {   title: 'recently finished'
+                      , description: null
+                      , queryTokens: [
+                            ['orderBy', 'finished-desc']
+                        ]
+                      , asChangeFeed: true
+                    }
+                  , {   title: 'Waiting for User Input'
+                      , description: null
+                      , queryTokens: [
+                            ['waitingFor', 'user']
+                            // waitingFor only comes with changed
+                          , ['orderBy', 'changed-desc']
+                        ]
+                      , asChangeFeed: true
+                    }
+                  , {   title: 'Waiting for Service Response'
+                      , description: null
+                      , queryTokens: [
+                            ['waitingFor', 'service']
+                            // waitingFor only comes with changed
+                          , ['orderBy', 'changed-desc']
+                        ]
+                      , asChangeFeed: true
+                    }
+                ]
+            };
+            container = activateTemplate('dispatcher-lists');
+            widget = new DispatcherListsCollectionController(container
+                                , templatesContainer, queryAPI, setup);
+        }
+        else if(data.mode === 'dispatcher/lists-query') {
+            container = activateTemplate('dispatcher-lists-query');
+            widget =  new DispatcherListQueryUIController(container
+                                , templatesContainer, queryAPI, data);
+        }
+        else
+            throw new Error(`Unknown mode "${data.mode}" in initDispatcherLists.`);
+
+
          // will be nice, to know if there's a "my-processes" list.
          //, sessionChangeHandler = dispatcher.sessionChangeHandler.bind(dispatcher)
          //, unsubscribeSessionChange = authController.onSessionChange(sessionChangeHandler, true)
         container.addEventListener('destroy'
-                            , listsCtrl.destroy.bind(listsCtrl), false);
-        return [listsCtrl, listUICtrl];
+                            , queryAPI.destroy.bind(queryAPI), false);
+
+
+
+        return [queryAPI, widget];
     }
 
     var AuthenticationController = (function(){
@@ -655,6 +725,7 @@ define([
         return [data, init];
     }
 
+    // FIXME: explain!
     var ignoreNextPopState = false;// bad hack;
     return function main() {
         var authController = initAutentication();
@@ -670,6 +741,8 @@ define([
         init(data, authController);
         // Using pushState changes the behavior of the browser back-button.
         // This is intended to make it behave as if pushState was not used.
+        // FIXME: how does this help? Seems like there should be a better
+        // solution possible.
         window.onpopstate = function(event) {
             // jshint unused:vars
             if(ignoreNextPopState) {

@@ -6,7 +6,7 @@ define([
   , UserLog
 ) {
     /* jshint browser:true, esnext:true*/
-    /*global console, URLSearchParams*/
+    /*global console*/
     "use strict";
 
     // matches ?q= or &q= until the next & or to the end includes
@@ -14,24 +14,16 @@ define([
     // example: "http://hello.example/lists?q=family:ABeeZeee&some=other"
     // > window.location.search.match(r)[1]
     // "q=family:ABeeZeee"
-    // var matchURLQuery = /[\?&](q=[^&]*)/;
+    var matchURLQuery = /[\?&](q=[^&]*)/;
 
     const GenericDispatcherListController = (function() {
     /**
      * This is controlling just a single list.
      */
-    function GenericDispatcherListController(container, templatesContainer, queryAPI) {
+    function GenericDispatcherListController(container, queryAPI, log) {
         this._container = container;
-        this._templatesContainer = templatesContainer;
         this._queryAPI = queryAPI;
-
-        this._log = new UserLog(dom.createElement('ol', {class: 'user-log'}));
-
-        dom.appendChildren(this._container, [
-            this._log.container
-        ]);
-        this._log.reatached();
-        // this._log.infoMd('**data:**\n\n```\n'+ JSON.stringify(data, null, 2) +'\n```');
+        this._log = log;
 
         this._container.addEventListener('destroy', this.destroy.bind(this), false);
 
@@ -74,18 +66,11 @@ define([
     };
 
     /**
-     * Return [(string) query, (bool) asChangeFeed]
-     */
-    _p._getQuery = function() {
-        throw new Error('Not implemented: _getQuery');
-    };
-
-    /**
      * This is to be implemented by the actual interface controller.
      * The aim is to update the source of the query-string that was
      * sent to the server with the canonical result in the response of
      * the server.
-     * After using this, _getQuery should return the canonocal query
+     * After using this, e.g. _getQuery should return the canonical query
      * either in user or in url format. url format starts with "q="
      */
     _p._receiveCanonicalQuery = function(canonicalQuery) {
@@ -110,7 +95,7 @@ define([
         // In any case, this should clear the contents, for ease
         // of use. Some subscriptions don't produce any output and
         // hence never report anything.
-
+        console.log('_queryList query:', query, 'asChangeFeed', asChangeFeed);
         return this._sendQuery(query, asChangeFeed)
         .then(({/* roomId, */canonicalQuery, isChangeFeed})=>{
             // Room subscription stuff is handled by parent.
@@ -132,15 +117,46 @@ define([
         return this._queryAPI.unsubscribe(this);
     };
 
+    /**
+     * Shared helper, no side effects.
+     */
+    _p._setURLQueryToHref = function(href, urlQuery) {
+        var pureURLQuery = urlQuery.slice(2)// remove "q="
+          , url = new URL(href)
+          , newUrl
+          ;
+
+        if(pureURLQuery !== '') {
+            url.searchParams.set('q', 'REPLACEMENTMARKER');
+            // searchParams.set URLEncodes the value, but we have done
+            // that already sufficiently and optimized for better readability
+            // on the server.
+            newUrl = url.href.replace('q=REPLACEMENTMARKER', urlQuery);
+        }
+        else {
+            url.searchParams.delete('q');
+            newUrl = url.href;
+        }
+        return newUrl;
+    };
+
     return GenericDispatcherListController;
     })();
 
-    const DispatcherListQueryUIController = (function(){
+    const DispatcherListQueryUIController = (function() {
     const Parent = GenericDispatcherListController;
 
     function DispatcherListQueryUIController(container, templatesContainer
                     , queryAPI, data) {
-        Parent.call(this, container, templatesContainer, queryAPI);
+        this._templatesContainer = templatesContainer;
+        var log = new UserLog(dom.createElement('ol', {class: 'user-log'}));
+
+        Parent.call(this, container, queryAPI, log);
+
+        dom.appendChildren(this._container, [
+            this._log.container
+        ]);
+        this._log.reatached();
 
         this._queryField = dom.createElement('input', {
                 type: 'text'
@@ -156,12 +172,16 @@ define([
           , this._queryFieldSend
         ]);
 
-
         // on load, if there's a query in the url ...
-        // TODO: try:  new URLSearchParams(data.search).get('q') || ''
-        // var urlQueryMatch = data.search.match(matchURLQuery);
-        var urlSearchParams = new URLSearchParams(data.search);
-        this._queryList(urlSearchParams.get('q') || '', true);
+        var urlQueryMatch = data.search.match(matchURLQuery)
+           , urlQuery = urlQueryMatch ? urlQueryMatch[1] : ''
+           ;
+        // hmm this seems to unescape much of the query which makes
+        // it useless as url query...
+        //var urlSearchParams = new URLSearchParams(data.search)
+        //  , urlQuery = urlSearchParams.has('q') ? `q=${urlSearchParams.get('q')}` : ''
+        //  ;
+        this._queryList(urlQuery, true);
     }
     const _p = DispatcherListQueryUIController.prototype = Object.create(Parent.prototype);
 
@@ -173,22 +193,13 @@ define([
         return [this._queryField.value, true];
     };
 
-
     _p._receiveCanonicalQuery = function(canonicalQuery) {
-        var {user, url:urlQuery}= canonicalQuery
-         , url = new URL(window.location.href)
-         , newUrl
-         ;
-        this._queryField.value = user;
-
-        if(urlQuery.slice(2) !== url.searchParams.get('q')) {
-            url.searchParams.set('q', 'REPLACEMENTMARKER');
-            // using searchParams.set URLEncodes the value, but we have
-            // done that already sufficiently and for better readability
-            // on the server.
-            newUrl = url.href.replace('q=REPLACEMENTMARKER', urlQuery);
+        var newUrl = this._setURLQueryToHref(window.location.href
+                                           , canonicalQuery.url);
+        if(newUrl !== window.location.href)
             window.history.pushState(null, null, newUrl);
-        }
+        this._queryField.value = canonicalQuery.user;
+
     };
 
     /**
@@ -205,6 +216,181 @@ define([
     return DispatcherListQueryUIController;
     })();
 
+    const DispatcherListsSimpleUIController = (function() {
+    const Parent = GenericDispatcherListController;
+    function DispatcherListsSimpleUIController(container, queryAPI
+                    , log, title, description, query, asChangeFeed) {
+        console.log('init DispatcherListsSimpleUIController', title, description, query, asChangeFeed);
+        Parent.call(this, container, queryAPI, log);
+
+        dom.insertAtMarkerComment(this._container, 'insert: title'
+                                            , dom.createTextNode(title));
+        if(description)
+            dom.insertAtMarkerComment(this._container, 'insert: description'
+                                , dom.createElement('p', {}, description));
+        this._drilldownLink = dom.createElement('a', {}, 'drilldown');
+        dom.insertAtMarkerComment(this._container, 'insert: drilldown-link'
+                                                    , this._drilldownLink);
+        // this thing is going to do two things:
+        // a: query and display the result, live if it is a feed
+        // b: show a link to the query in the query editor window
+        //
+        // no paging! -> just the x first rows
+        // no query editing
+        // no re-ordering
+        // etc.
+        // all these can be done in the more complete query editor.
+        //
+        // Maybe, the parent could change the query when running?
+        // in that case, we shouldn't probably not query on init at all,
+        // it's not the most flexible thing to do anyways.
+        this._queryList(query, asChangeFeed);
+    }
+
+    const _p = DispatcherListsSimpleUIController.prototype = Object.create(Parent.prototype);
+
+    _p._receiveCanonicalQuery = function(canonicalQuery) {
+        var {user, url}= canonicalQuery
+          , baseHref = '/dispatcher/lists-query'
+            // an empty/default query would appear as "q="
+          , href = url !== 'q='
+                                ?`${baseHref}?${url}`
+                                : baseHref
+          ;
+        this._drilldownLink.setAttribute('href', href);
+        this._drilldownLink.setAttribute('title', user);
+    };
+
+    /**
+     * This is to be implemented by the actual interface controller.
+     * The aim is to indicate whether the user is looking at a live
+     * streamed, updating list or as a static list.
+     */
+    _p._setIsChangeFeed = function(isChangeFeed) {
+        // jshint unused:vars
+        // TODO:
+        // maybe turn a info marker on or so.
+        this._log.info(`TODO _setIsChangeFeed: (${isChangeFeed})`);
+        // hmm, given that in this case thiswill only be called once
+        // because we don't query twice with these elements, this is
+        // somehow OK. However, If we'd run this repeatedly,the last time
+        // inserted element would have to  be removed here again.
+        // But, this will rather be solved with a css class toggle, than
+        // a inserted element,
+        dom.insertAtMarkerComment(this._container
+                , 'insert: is-change-feed-indicator'
+                , dom.createElement('span', {}, isChangeFeed
+                                                    ? 'live feed'
+                                                    : 'static list'));
+    };
+
+    return DispatcherListsSimpleUIController;
+    })();
+
+
+    function _getElementFromTemplate(klass, deep, container) {
+        var template = dom.getChildElementForSelector(container
+                                                    , '.' + klass, deep)
+          ;
+        return template ? template.cloneNode(true) : null;
+    }
+
+    /**
+     * This will initiate a couple of instances of
+     * DispatcherListsSimpleUIController to show a dashboard like
+     * overview if many lists.
+     *
+     */
+    const DispatcherListsCollectionController = (function() {
+
+
+    function DispatcherListsCollectionController(container, templatesContainer
+                        , queryAPI, setup) {
+        this._container = container;
+        this._templatesContainer = templatesContainer;
+        this._queryAPI = queryAPI;
+        this._setup = setup;
+
+        this._log = new UserLog(dom.createElement('ol', {class: 'user-log'}));
+        dom.appendChildren(this._container, [
+            this._log.container
+        ]);
+        this._log.reatached();
+
+        this._children = new Set();
+
+        var urlQueryMatch = setup.search.match(matchURLQuery)
+           , urlQuery = urlQueryMatch ? urlQueryMatch[1].slice(2) : ''
+           ;
+        this._urlQuery = urlQuery ? urlQuery : null;
+        this._initWidgets();
+    }
+
+    const _p = DispatcherListsCollectionController.prototype;
+
+    _p.destroy = function() {
+        for(let child of this._children.values())
+            child.destroy();
+        this._children.clear();
+    };
+
+    _p._getElementFromTemplate = function(klass, deep) {
+        return _getElementFromTemplate(klass, deep, this._templatesContainer);
+    };
+
+
+    /**
+     * Similar as in ProcessUIServer.js, using the url format because
+     * we don't need to parse it in here then.
+     */
+    function _tokensToURLSubQueryString(tokens) {
+        // For readability of the resulting url, we could use a less
+        // strict version of encodeURIComponent. However, this is playing it
+        // very save.
+        return tokens.map(([k,v])=>`${k}:${encodeURIComponent(v)}`);
+    }
+
+    _p._initWidget = function(marker, setup) {
+        // make a childContainer from _templatesContainer
+        // must contain:
+        //      insert: dispatcher-list-item
+        //      insert: drilldown-link
+        //      insert: title
+        //      insert: description  (if a query needs more context)
+        var childContainer = this._getElementFromTemplate('simple-list-widget');
+        // insert before, to maintain the right order!
+        dom.insert(...marker, childContainer);
+
+
+        // Putting the this._urlQuery first, because this is user input
+        // via the URL. Putting it first means the `setup.queryTokens`
+        // can override tokens in the URL and hence stay more true to
+        // their intent and to what is stated in the title.
+        var query = [this._urlQuery, ..._tokensToURLSubQueryString(setup.queryTokens)]
+                            .filter(item=>!!item);
+        query = `q=${query.join('+')}`;
+        console.log('init widget for:', query);
+        return new DispatcherListsSimpleUIController(childContainer
+                             , this._queryAPI, this._log
+                             , setup.title
+                             , setup.description
+                             , query
+                             , setup.asChangeFeed);
+
+    };
+
+    _p._initWidgets = function() {
+        var marker = dom.getMarkerComment(this._container, 'insert: dispatcher-list-widget');
+        for(let childSetup of this._setup.widgets) {
+            // insert before marker to keep correct order in DOM
+            let child = this._initWidget([marker, 'before'], childSetup);
+            this._children.add(child);
+        }
+    };
+
+    return DispatcherListsCollectionController;
+    })();
+
 
     /**
      * This is controlling many instances ofGenericDispatcherListController.
@@ -212,7 +398,7 @@ define([
      * (i.e. like multiplexing) and this controller is routing the events
      * to their actual controllers.
      */
-    function DispatcherListsController(socket, data) {
+    function DispatcherListsQueryAPI(socket, data) {
         //jshint unused:vars
         this._session = null;
 
@@ -225,11 +411,11 @@ define([
         this._reconnectHandler = this._onReconnect.bind(this);
         this._socket.on('reconnect', this._reconnectHandler);
     }
-    var _p = DispatcherListsController.prototype;
+    var _p = DispatcherListsQueryAPI.prototype;
 
     _p.destroy = function(e) {
         // jshint unused:vars
-        console.info('DispatcherListsController received destroy event.');
+        console.info('DispatcherListsQueryAPI received destroy event.');
         for(let subscriber of this._subscribers.keys()) {
             // Is this the right semantic, to destroy subscribers?
             // It' probably more common to destroy children in a
@@ -389,8 +575,9 @@ define([
     };
 
     return {
-        DispatcherListsController
+        DispatcherListsQueryAPI
       , GenericDispatcherListController
       , DispatcherListQueryUIController
+      , DispatcherListsCollectionController
     };
 });
