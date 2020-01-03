@@ -26,7 +26,7 @@ define([
     function makeFileInput(fileOnLoad, element) {
         var hiddenFileInput = dom.createChildElement(element, 'input'
                                 , {type: 'file', 'multiple': 'multiple'});
-        hiddenFileInput.style.display = 'none'; // can be hidden!
+        hiddenFileInput.style.display = 'none';
 
         function handleFiles(files) {
             var i, l, reader, file;
@@ -54,17 +54,34 @@ define([
             e.stopPropagation();
             e.preventDefault();
         }
+
         function drop(e) {
+            document.getElementById("dropzoneContainer").classList.remove("dragover");
+            document.getElementById("dropzoneContainer").classList.add("filled");
+            document.getElementById("file-bar").classList.remove("hidden");
+            document.getElementById("run-button").classList.remove("hidden");
             e.stopPropagation();
             e.preventDefault();
             handleFiles(e.dataTransfer.files);
         }
 
+        function colorBackground() {
+          document.getElementById("dropzoneContainer").classList.add("dragover");
+        }
+
+        function unColorBackground() {
+          document.getElementById("dropzoneContainer").classList.remove("dragover");
+        }
+
+
         hiddenFileInput.addEventListener('change', fileInputChange);
-        element.addEventListener('click', forwardClick);
-        element.addEventListener("dragenter", noAction);
+        element.addEventListener("dragenter", colorBackground);
         element.addEventListener("dragover", noAction);
+        element.addEventListener("dragleave", unColorBackground);
         element.addEventListener("drop", drop);
+
+        // Open file browser on click
+        document.getElementById("browse-link").addEventListener('click', forwardClick);
     }
 
     function initFileInputs(fileOnLoad, container, klass) {
@@ -86,9 +103,10 @@ define([
 
     function activateElement(templatesContainer, klass, targetContainer, markerComment) {
         console.log('activateElement', templatesContainer, klass, targetContainer, markerComment);
-        var template = templatesContainer.getElementsByClassName(klass)[0]
-          , activatedElement = template.cloneNode(true)
-          ;
+        var templateString = templatesContainer.innerHTML;
+        var template = document.createRange().createContextualFragment(templateString);
+        var activatedElement = template.querySelector("." + klass);
+
         if(!markerComment)
             targetContainer.appendChild(activatedElement);
         else
@@ -489,7 +507,7 @@ define([
         }
         else {
             this._button.textContent = 'login with GitHub';
-            userChildren = [dom.createElement('strong', null, '(not signed in)')];
+            userChildren = [dom.createElement('strong', null, '')];
         }
         dom.clear(this._user);
         dom.appendChildren(this._user, userChildren);

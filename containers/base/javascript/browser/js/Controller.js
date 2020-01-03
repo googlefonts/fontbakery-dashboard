@@ -98,8 +98,9 @@ define([
 
     _p._initControls = function() {
         var send = dom.createChildElement(this.generalControls, 'button'
-                                            , null, 'Run the Checks!');
-
+                                            , null, 'Run the Checks');
+        send.className = "mdl-button mdl-js-button mdl-button--raised upper-layer hidden";
+        send.setAttribute("id", "run-button");
         send.addEventListener('click', this._send.bind(this));
     };
 
