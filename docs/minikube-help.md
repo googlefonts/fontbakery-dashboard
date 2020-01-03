@@ -9,8 +9,10 @@ See: googlefonts/fontbakery-dashboard#3
 1. Install minikube + kubectl
 2. Start minikube: `minikube start --memory 8000 --vm-driver=virtualbox`
 3. Configure Docker for Minikube: `. <(minikube docker-env)`
-4. Install [Skaffold](https://skaffold.dev/docs/install/).
-5. From the root of the repo, run `skaffold dev --port-forward`.
+4. Make your cluster accessible: `kubectl create namespace fontbakery`
+5. Set enviroment variables: `./set_minikube_vars` (Ask former developers for file)
+6. Install [Skaffold](https://skaffold.dev/docs/install/).
+7. From the root of the repo, run `skaffold dev -n fontbakery --port-forward`.
 
 This will build all images and deploy to your local Minkube.
 Additionally, it will watch your project for changes and rebuild and redeploy containers as needed.
