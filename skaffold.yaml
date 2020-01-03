@@ -20,5 +20,6 @@ deploy:
 portForward:
 - resourceType: service
   resourceName: fontbakery-api
+  namespace: fontbakery
   port: 80
   localPort: 3000
