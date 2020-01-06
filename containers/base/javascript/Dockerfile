@@ -63,7 +63,10 @@ RUN mkdir -p /var/javascript/browser/js/bower_components/ansi_up/ \
 # Otherwise, if image file size is an issue:
 # $ mkdir fontsgit
 # Would be nice to have the ADD optional ...
-ADD ./fontsgit /var/git-repositories/github.com_google_fonts.git
+# ADD ./fontsgit /var/git-repositories/github.com_google_fonts.git
+
+# ADD ./fontsgit /var/fontsgit
+# RUN ln -s /var/fontsgit /var/git-repositories
 
 # This way we only need to rebuild the last intermediate container when
 # code changed, especially the npm install can be skipped!

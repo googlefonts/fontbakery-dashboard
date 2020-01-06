@@ -1,0 +1,25 @@
+apiVersion: skaffold/v1
+kind: Config
+metadata:
+  name: fontbakery-dashboard
+build:
+  artifacts:
+  - image: fontbakery/base-javascript
+    context: containers/base/javascript
+    sync:
+      infer:
+      - 'browser/**'
+  - image: fontbakery/base-python
+    context: containers/base/python
+  - image: fontbakery/rethinkdb
+    context: containers/rethinkdb
+deploy:
+  kubectl:
+    manifests:
+    - kubernetes/minikube-*.yaml
+portForward:
+- resourceType: service
+  resourceName: fontbakery-api
+  namespace: fontbakery
+  port: 80
+  localPort: 3000
