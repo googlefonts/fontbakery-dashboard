@@ -7,6 +7,7 @@
   --premium-red: #C23600;
   --premium-orange: #F37F29;
   --premium-black: #282922;
+  --premium-white: #F3F4F5;
 
   /* Spacing variables */
   --spacing-small: 1em;
@@ -14,9 +15,13 @@
   --spacing-large: 3em;
 
   /* Border variables */
-  --border-radius-large: 2em;
-  --border-radius-small: 1em;
+  --border-radius-large: 1.5em;
+  --border-radius-small: 0.7em;
 
+}
+
+body{
+    background: var(--premium-white);
 }
 
 table {
@@ -102,7 +107,7 @@ a{
 }
 
 .fbd-logo-image {
-  height: 4em;
+  height: 3.5em;
 }
 
 .fbd-header {
@@ -125,6 +130,7 @@ a{
 }
 
 .fbd-navigation .mdl-navigation__link {
+  background: white;
   display: inline-block;
   height: 60px;
   border-bottom: 4px solid transparent;
@@ -177,6 +183,7 @@ a{
 }
 
 .sending-interface .dropzone-container{
+    background: white;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -194,12 +201,21 @@ a{
 }
 
 .dragover{
-    background-color: var(--premium-white-blue);
+    background-color: var(--premium-white-blue) !important;
 }
 
 .sending-interface .cardcontainer{
     display: flex;
     flex-wrap: wrap;
+}
+
+.action{
+    background-color: var(--premium-white) !important;
+    box-shadow: 0 2px 2px 0 rgba(0,0,0,.14), 0 3px 1px -2px rgba(0,0,0,.2), 0 1px 5px 0 rgba(0,0,0,.12);
+}
+
+.action:active{
+    background-color: var(--premium-white-blue) !important;
 }
 
 .card{
@@ -293,11 +309,6 @@ a{
     display: inline-block;
     vertical-align: baseline;
 }
-
-/* todo: hover color only when file is draged over;
-/*.drop-fonts:hover {
-    background: var(--premium-light-blue);
-}*/
 
 .filename {
     white-space: nowrap;
