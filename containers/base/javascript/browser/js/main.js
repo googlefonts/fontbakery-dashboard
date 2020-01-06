@@ -42,7 +42,12 @@ define([
         function fileInputChange(e) {
             /*jshint validthis:true, unused:vars*/
             handleFiles(this.files);
+            document.getElementById("dropzoneContainer").classList.remove("dragover");
+            document.getElementById("dropzoneContainer").classList.add("filled");
+            document.getElementById("file-bar").classList.remove("hidden");
+            document.getElementById("run-button").classList.remove("hidden");
         }
+
         function forwardClick(e) {
             /*jshint unused:vars*/
             // forward the click => opens the file dialogue
