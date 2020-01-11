@@ -43,16 +43,56 @@ define([
         while(target.parentNode.lastChild !== target)
             dom.removeNode(target.parentNode.lastChild);
 
+        // TODO: make this config
+        // available keys in ProcessUIService.js
+           // search for _PLUCK_DISPATCHER_LIST_ITEM
+           // 'id', 'created', 'initiator', 'mode', 'changed', 'finished', 'family'
+        var columns = ['id', 'created', 'initiator', 'mode', 'changed', 'finished', 'family'];
+
+        var thead = dom.createElement('thead', null,
+            dom.createElement('tr', null,
+                    columns.map(name=> {
+                        if(name === 'id')
+                            name = 'process';
+                        return dom.createElement('th', null, name);
+                    })
+            )
+        );
+
         var listItems = [];
-        for(let i=0,l=listData.length;i<l;i++){
-            let {created, id, initiator, familyName} = listData[i]
-              , execLog = listData[i].execLog
-              , lastExecLog = execLog && execLog[execLog.length-1]
-              , changed = lastExecLog && lastExecLog[0] || created
+        for(let i=0,l=listData.length;i<l;i++) {
+            let tds = []
+              , data = listData[i]
               ;
-            listItems.push(dom.createElement('li', null, `${created} ${initiator} ${familyName} ${changed} ${id}`));
+            for(let name of columns) {
+                let content
+                  , value = data[name]
+                  ;
+                if(['created', 'changed', 'finished'].indexOf(name) !== -1
+                                && !!value)
+                    value = new Date(value);
+
+                if(name === 'id') {
+                    content = dom.createElement('a', {
+                                href: '/dispatcher/process/' + value
+                              , title: value
+                              }, '🔗');
+                }
+                else if(value instanceof Date) {
+                    content = dom.createElement('span'
+                                            , {class:'date-field'}
+                                            , value.toLocaleString());
+                }
+                else {
+                    content = `${value}`;
+                }
+                tds.push(dom.createElement('td', {class:`field-name-${name}`}, content));
+            }
+            listItems.push(dom.createElement('tr', null, tds));
         }
-        dom.insert(target, 'after', dom.createFragment(listItems));
+        var tbody = dom.createElement('tbody', null, listItems);
+        dom.insert(target, 'after', tbody);
+        dom.insert(target, 'after', thead);
     };
 
     /**
@@ -162,15 +202,22 @@ define([
                 type: 'text'
               , name: 'query-process-list'
               , value: ''
+              , class: 'query-field'
             });
-        this._queryFieldSend = dom.createElement('input', {type: 'button', name: 'send-process-list-query', value: 'send'});
-        this._queryFieldSend.addEventListener('click', ()=>this._queryList(...this._getQuery()));
+        var form = dom.getChildElementForSelector(this._container
+                                    , '.submit-process-list-query', true);
+        dom.insertAtMarkerComment(form, 'insert: query-field'
+                                                    , this._queryField);
 
-        dom.appendChildren(this._container, [
-            this._queryField
-          , ' '
-          , this._queryFieldSend
-        ]);
+        form.addEventListener('submit', e=>{
+            e.preventDefault();
+            this._queryList(...this._getQuery());
+        });
+
+        dom.insertAtMarkerComment(this._container, 'insert:usage-info-documentation'
+                                                    , this._getUsageInfo());
+
+
 
         // on load, if there's a query in the url ...
         var urlQueryMatch = data.search.match(matchURLQuery)
@@ -192,6 +239,67 @@ define([
     _p._getQuery = function() {
         return [this._queryField.value, true];
     };
+
+    _p._getUsageInfo = function(){
+        var markdown = `
+### filters vs index
+
+We have indexes for: \`initiator\`, \`family\`, and none of the
+two before all with \`created\`, \`changed\` and \`finished\`
+
+### \`waitingFor:{user|service}\`
+
+How are these special, how \`orderBy:\` must be \`changed-{asc|desc}\` these
+ * *service* is used to find stuck processes (long time not changed)
+ * *user* is used to created live todo lists, especially when combined with \`initiator:myName\`
+
+### what can I filter for
+
+filters are pretty basic it's always just \`fieldname:value\` there's no
+\`AND\` \`OR\` etc. (we could though) There's also (yet) no way to adress
+values deeper in the document structure. (But we could provide some fields
+that are made up in the query, e.g. like a \`result:PR\` field *TODO*).
+
+A filter can be e.g. \`mode:production\`.
+
+### field documentation
+
+ * \`family\` is actually \`familyName:familyKeySuffix\`. Without \`:familyKeySuffix\`
+ usually the production version is referred. \`familyName:*\` selects all possible
+ values for \`familyKeySuffix\`
+
+### \`orderBy\`
+
+\`created\`, \`changed\`, \`finised\` combined with \`-asc\` or \`-desc\`.
+The default is always \`changed-desc\`.
+
+### \`limit\`
+
+The default is \`linit:25\`
+
+### live vs static
+
+*TODO* all feeds are live now. We will introduce \`static\` lists, especially
+in combination with paging this is totally reasonable. Currently all live
+feeds can be requested as a static list, there's just no way to do it from
+the user interface, the API supports it.
+
+### not implemented (filter) fields we need
+
+make a GItHub issue e.g. (\`result:{PR|ISSUE|SILENT}\`)
+
+### \`paging\`
+
+TODO
+
+
+### example queries
+
+TODO
+`;
+        return dom.createFragmentFromMarkdown(markdown);
+    };
+
 
     _p._receiveCanonicalQuery = function(canonicalQuery) {
         var newUrl = this._setURLQueryToHref(window.location.href
@@ -228,7 +336,7 @@ define([
         if(description)
             dom.insertAtMarkerComment(this._container, 'insert: description'
                                 , dom.createElement('p', {}, description));
-        this._drilldownLink = dom.createElement('a', {}, 'drilldown');
+        this._drilldownLink = dom.createElement('a', {}, 'Query Editor');
         dom.insertAtMarkerComment(this._container, 'insert: drilldown-link'
                                                     , this._drilldownLink);
         // this thing is going to do two things:
@@ -288,9 +396,9 @@ define([
     })();
 
 
-    function _getElementFromTemplate(klass, deep, container) {
+    function _getElementFromTemplate(selector, deep, container) {
         var template = dom.getChildElementForSelector(container
-                                                    , '.' + klass, deep)
+                                                    , selector, deep)
           ;
         return template ? template.cloneNode(true) : null;
     }
@@ -334,8 +442,8 @@ define([
         this._children.clear();
     };
 
-    _p._getElementFromTemplate = function(klass, deep) {
-        return _getElementFromTemplate(klass, deep, this._templatesContainer);
+    _p._getElementFromTemplate = function(selector, deep) {
+        return _getElementFromTemplate(selector, deep, this._templatesContainer);
     };
 
 
@@ -357,7 +465,7 @@ define([
         //      insert: drilldown-link
         //      insert: title
         //      insert: description  (if a query needs more context)
-        var childContainer = this._getElementFromTemplate('simple-list-widget');
+        var childContainer = this._getElementFromTemplate('.simple-list-widget');
         // insert before, to maintain the right order!
         dom.insert(...marker, childContainer);
 
@@ -455,11 +563,6 @@ define([
             let {onData} = this._subscribers.get(subscriber);
             onData(data);
         }
-    };
-
-    _p._getElementFromTemplate = function(className) {
-        var template = this._templatesContainer.getElementsByClassName(className)[0];
-        return template.cloneNode(true);
     };
 
     _p._clearContainer = function() {
