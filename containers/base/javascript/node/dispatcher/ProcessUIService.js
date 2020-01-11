@@ -377,6 +377,12 @@ function _getFamily(value) {
     return [familyName, familyKeySuffix];
 }
 
+function _getLimit(value, defaultVal) {
+    var limit = parseInt(value, 10);
+    // Return only positive numbers bigger than zero or defaultVal.
+    return limit && limit > 0 ? limit : defaultVal;
+}
+
 /**
  *
  */
@@ -400,6 +406,9 @@ _p._getNormalizedQuery = function(tokens) {
                             , 'changed', 'desc' // TODO: store defaults centrally, DRY!
                             , new Set(['changed', 'created', 'finished'])
                             );
+
+    var limit = _getLimit(tokenMap.get('limit'), 25);
+
 
     // first one found in this order is used!
     // waitingFor is first, because it can't be queried as a filter
@@ -442,7 +451,7 @@ _p._getNormalizedQuery = function(tokens) {
     // wrong here. Not entirely sure about the validity of the reasoning.
     // One point about these filters is, that if we get a zero result
     // we know the filter value doesn't exist.
-    var ignoreFilters = new Set(['waitingFor', 'orderBy']);
+    var ignoreFilters = new Set(['waitingFor', 'orderBy', 'limit']);
     if(tokenMap.has('family')) {
         ignoreFilters.add('familyName');
         ignoreFilters.add('familyKeySuffix');
@@ -467,13 +476,13 @@ _p._getNormalizedQuery = function(tokens) {
         filters.set(token, value);
     }
 
-    // TODO: missing: limit and pagination items
+    // TODO: missing: pagination items
 
     var query = {
         index: indexToken ? [indexToken, tokenMap.get(indexToken)] : null
       , orderBy: [orderBy, orderDir]
       , filters: filters
-      , limit: 25
+      , limit: limit
     };
 
     this._log.debug('normalized query from tokens:', tokens);
@@ -501,12 +510,15 @@ _p._getNormalizedTokens = function(query) {
         let [orderBy, orderDir] = query.orderBy
           , value = `${orderBy}-${orderDir}`
           ;
-        // // TODO: store defaults centrally, DRY!
+        // TODO: store defaults centrally, DRY!
         if(value !== 'changed-desc') // default
             tokens.push(['orderBy', value]);
     }
-    //TODO: add limit
-    //      add paging
+    // TODO: store defaults centrally, DRY!
+    if(query.limit !== 25)
+        tokens.push(['limit', ''+query.limit]);
+
+    //TODO: add paging
 
     return tokens;
 };
@@ -1346,6 +1358,45 @@ _p.rdbChangeCursorToAsyncGenerator =  async function*(cursor, bufferMaxSize, deb
     }
 };
 
+// for merge:
+function _rqlChangedDef(process) {
+    return process('execLog').nth(-1)(0).default(process('created')).default(null);
+}
+
+function _rqlFinishedDef(process) {
+    return process('finishedStatus')('created').default(null);
+}
+function _rqlFamilyDef(r, process) {
+    return r.expr([process('familyName'), process('familyKeySuffix')])
+        // familyKeySuffix can be null in which case we don't want
+        // a ":null" at the end instead, no colon at all
+        .filter(item=>item.ne(null))
+        //.join(':');
+        .fold('', function (acc, word) {
+            return acc.add(r.branch(acc.eq(''), '', ':')).add(word);
+        })
+        // new_val can be empty in a change feed, when process is removed
+        .default(null);
+}
+
+function _rqlProcessMerges(r, process){
+    return {
+        changed: _rqlChangedDef(process)
+      , finished: _rqlFinishedDef(process)
+      , family: _rqlFamilyDef(r, process)
+    };
+}
+
+const _PLUCK_DISPATCHER_LIST_ITEM = [
+    'id', 'created', 'initiator', 'mode'
+  // TODO: create changed an other derrived fields in the query!
+  // BUT: since we likely can't merge before filter in a change feed,
+  // we best can reuse the definition of these fields directly in the
+  // filter as well.
+  , 'changed', 'finished', 'family'
+];
+
+
 /**
  * returns promise {async generator, function cancel}
  */
@@ -1363,6 +1414,14 @@ _p._queryProcessListChangeFeed = function(processListQuery) {
           , includeOffsets: true
         //  , squash: 1 -> ReqlLogicError: Cannot include offsets for range subs
         })
+        .merge(changeRow=>({new_val: _rqlProcessMerges(r, changeRow('new_val').default(null))}))
+        .pluck({new_val: _PLUCK_DISPATCHER_LIST_ITEM
+                // only 'id' for applyChange is needed
+              , old_val: ['id']
+              , type: true
+              , new_offset: true
+              , old_offset: true
+            })
         .run((err, cursor) => {
             if(err)
                 reject(err);
@@ -1381,6 +1440,8 @@ _p._queryProcessList = function(processListQuery) {
       ;
 
     return processListQuery.configureQuery(q, r)
+        .merge(process=>_rqlProcessMerges(r, process))
+        .pluck(_PLUCK_DISPATCHER_LIST_ITEM)
         .run()
         ;
         // doesn't return a cursor apparently
@@ -1857,17 +1918,17 @@ _p._subscribeToList = function(socket, request, callback) {
     // and also get's the data sent directly.
 
     // TODO:
-    //      trying different queries
+    //      trying different queries DONE
     //      implement canBeChangeFeed
-    //      pluck only useful fields
-    //      makew interfaces using these queries
+    //      pluck only useful fields DONE
+    //      makew interfaces using these queries DONE (bad UI though)
     //          => one generic overview (dashboard)
     //                => fully generic
     //                => one generic personal overview (like generic overview but with family:name token in the url)
     //                => one generic family overview (like generic overview but with initiator:name token in the url)
     //                => each dashboard table can have its own link to the generic query interface (inspect or details or "open in query editor")
     //          => one generic query interface that can take url query strings
-    //      clean up
+    //      clean up LOL
     if(request.asChangeFeed && query.canBeChangeFeed) {
         result.roomId = this._getProcessListRoom(query);
         result.isChangeFeed = true;
