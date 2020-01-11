@@ -830,3 +830,15 @@ a{
 .dispatcher-interface .dispatcher-process .step .task h4 {
     margin: .5em 0;
 }
+
+.dispatcher-lists-query form.submit-process-list-query label{
+    display: block;
+}
+.dispatcher-lists-query form.submit-process-list-query input.query-field{
+    width: 70%
+}
+
+.dispatcher-lists table .date-field,
+.dispatcher-lists-query table .date-field{
+    white-space: nowrap;
+}
