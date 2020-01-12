@@ -155,13 +155,13 @@ a{
 }
 
 .axis path {
-	fill: none;
-	stroke: #777;
-	shape-rendering: crispEdges;
+    fill: none;
+    stroke: #777;
+    shape-rendering: crispEdges;
 }
 .axis text {
-	font-family: Lato;
-	font-size: 13px;
+    font-family: Lato;
+    font-size: 13px;
 }
 
 .sending-interface{
