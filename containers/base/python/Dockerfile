@@ -1,7 +1,7 @@
 # eoan == 19.08 NOT LTS  End of Life: July, 2020
 FROM ubuntu:eoan
 
-RUN touch /tmp/cache_spoof_1
+RUN touch /tmp/cache_spoof_2
 
 
 # START TZCONFIG FIX suggested in:
@@ -66,7 +66,7 @@ RUN pip3 install lxml; # ==3.5.0
 ADD requirements.txt /var/python/requirements.txt
 RUN pip3 install -r /var/python/requirements.txt
 
-RUN touch /tmp/cache_spoof_1
+RUN touch /tmp/cache_spoof_2
 
 # FIXME: doesn't install all dependencies!
 # RUN pip3 install git+https://github.com/graphicore/fontbakery@dashboard_related
@@ -76,6 +76,12 @@ RUN touch /tmp/cache_spoof_1
 #    pip3 install /var/fontbakery;
 
 # FIXME: probably all `pip3 install dependencies should be in requirements.txt
+
+# See: https://github.com/fonttools/ttfautohint-py/issues/5
+RUN apt-get install -y flex autotools-dev libtool bison cmake
+RUN pip install scikit-build
+RUN pip install git+https://github.com/fonttools/ttfautohint-py.git@v0.4.3#egg=ttfautohint-py
+
 RUN pip3 install fontbakery;
 
 # tools used for live debugging and profiling
