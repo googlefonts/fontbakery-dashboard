@@ -1,10 +1,12 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   labels:
     component: rabbitmq
   name: rabbitmq
+  namespace: fontbakery
 spec:
+  serviceName: rabbitmq
   replicas: 1
   selector:
     matchLabels:
@@ -16,13 +18,30 @@ spec:
         component: rabbitmq
     spec:
       containers:
-      - image: rabbitmq:3-management
+      - image: rabbitmq:3-management-alpine
         name: rabbitmq
         ports:
-        - containerPort: 5672
+          - name: http
+            protocol: TCP
+            containerPort: 15672
+          - name: amqp
+            protocol: TCP
+            containerPort: 5672
+          - name: epmd
+            containerPort: 4369
         resources:
           limits:
             cpu: 100m
+        imagePullPolicy: Always
+      #volumes:
+      #  - name: config-volume
+      #    configMap:
+      #      name: rabbitmq-config
+      #      items:
+      #      - key: rabbitmq.conf
+      #        path: rabbitmq.conf
+      #      - key: enabled_plugins
+      #        path: enabled_plugins
 ---
 apiVersion: v1
 kind: Service
