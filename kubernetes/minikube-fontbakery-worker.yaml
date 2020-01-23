@@ -35,3 +35,17 @@ spec:
                 key: rethinkdb-password
         workingDir: /var/python
         command: ["python3",  "-u", "worker-launcher.py"]
+      # depends directly on rabbitmq/amqp
+      # wait until rabbitmq can be reached before starting the actual container
+      initContainers:
+        - name: init-wait-for-rabbitmq
+          image: busybox
+          command:
+          - sh
+          - "-c"
+          - >
+            until wget -q -O -
+            http://guest:guest@$RABBITMQ_MANAGEMENT_SERVICE_HOST:$RABBITMQ_MANAGEMENT_SERVICE_PORT/api/aliveness-test/%2F;
+            do echo [`date`] waiting for rabbitmq: 10s;
+            sleep 10;
+            done;
