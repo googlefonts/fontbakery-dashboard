@@ -22,7 +22,7 @@ import gftools.fonts_public_pb2 as fonts_pb2
 from google.protobuf import text_format
 msg = fonts_pb2.FamilyProto()
 text_format.Merge(sys.argv[1], msg)
-sys.stdout.write(msg.SerializeToString())
+sys.stdout.buffer.write(msg.SerializeToString())
 `// < END INLINE PYTHON SCRIPT
 // > START INLINE PYTHON SCRIPT
 // sys.stdin returns the binary serialization of a FamilyProto Message
@@ -32,7 +32,7 @@ import sys
 import gftools.fonts_public_pb2 as fonts_pb2
 from google.protobuf import text_format
 msg = fonts_pb2.FamilyProto()
-msg.ParseFromString(sys.stdin.read())
+msg.ParseFromString(sys.stdin.buffer.read())
 sys.stdout.write(text_format.MessageToString(msg))
 `// < END INLINE PYTHON SCRIPT
     , fs = require('fs')
@@ -52,7 +52,7 @@ sys.stdout.write(text_format.MessageToString(msg))
  * google.fonts.FamilyProto serialized as protocol buffer text format.
  */
 function parseMetadata(metadataPbTxt) {
-    var py = spawn('python', ['-c', PYTHON_PARSE_FAMILY_PROTO, metadataPbTxt])
+    var py = spawn('python3', ['-c', PYTHON_PARSE_FAMILY_PROTO, metadataPbTxt])
        , stderr = []
        , stdout = []
        ;
@@ -98,7 +98,7 @@ exports.parseMetadata = parseMetadata;
  */
 function serializeMetadata(familyProtoMessage) {
     var buffer = Buffer.from(familyProtoMessage.serializeBinary())
-      , py = spawn('python', ['-c', PYTHON_SERIALIZE_FAMILY_PROTO, buffer])
+      , py = spawn('python3', ['-c', PYTHON_SERIALIZE_FAMILY_PROTO, buffer])
       , stderr = []
       , stdout = []
       ;
@@ -143,6 +143,7 @@ function serializeMetadata(familyProtoMessage) {
 
 exports.serializeMetadata = serializeMetadata;
 
+
 function getTmpDir(options) {
     return new Promise((resolve, reject)=>{
         tmp.dir(options||{}, (err, path, cleanupCallback)=>{
@@ -168,7 +169,7 @@ function pythonCreateMetadata(filesPath) {
     // "One argument, a directory containing a font family"
     // args.push('--nam_dir="'+ADD_FONTS_NAM_DIR+'"')
     // Thus, changing cwd and going with the default location... "./encodings"
-    py = spawn('python', args, {cwd: path.dirname(ADD_FONTS_NAM_DIR)});
+    py = spawn('python3', args, {cwd: path.dirname(ADD_FONTS_NAM_DIR)});
 
     return new Promise((resolve, reject)=> {
         // both stdout and stderr are just printed
@@ -203,6 +204,7 @@ function pythonCreateMetadata(filesPath) {
         py.on('error', error=> reject(error));
     });
 }
+
 
 function createMetadata(filesData, licenseDir) {
         // build a tmp directory

@@ -3,7 +3,7 @@
 FROM node:12.13.0-buster
 
 
-RUN touch /tmp/cache_spoof_13
+RUN touch /tmp/cache_spoof_14
 
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y software-properties-common
@@ -21,7 +21,7 @@ ADD ./.bowerrc ./bower.json ./package.json /var/javascript/
 RUN touch /tmp/cache_spoof_2
 ADD ./generated_modules /var/javascript/generated_modules
 
-RUN touch /tmp/cache_spoof_1
+RUN touch /tmp/cache_spoof_2
 
 # will also invoke bower install etc.
 # --production: don't install dev-dependencies
@@ -32,9 +32,18 @@ RUN cd /var/javascript && npm install --unsafe-perm --production
 # that's the only reason for this dependency, used in manifestSources
 # via the module /node/util/getMetadataPb
 RUN apt-get update \
-    && apt-get install -y python-dev git;
-RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python /tmp/get-pip.py;
+    && apt-get install -y build-essential cmake python3-dev git;
+RUN curl -o /tmp/get-pip.py https://bootstrap.pypa.io/get-pip.py; python3 /tmp/get-pip.py;
 RUN pip install --upgrade pip
+
+# opentype-sanitizer needs ninja which did not build without these:
+# related: https://github.com/scikit-build/ninja-python-distributions/issues/22
+RUN pip install scikit-build
+# help ninja build itself
+ENV CXXFLAGS="-D_BSD_SOURCE"
+# build ninja
+RUN pip install ninja
+
 
 RUN git clone --depth 1 -b master https://github.com/googlefonts/gftools.git /var/gftools;\
     pip install /var/gftools;
