@@ -23,7 +23,7 @@
 # Use 1 SSD, try 170 GB, if it doesn't cause disk pressure
 # we should be able to scale up to ~22 VMS and ~ 2.5 k workers
 # 5 VMS: 519 Pods
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fontbakery-worker-sprinter
@@ -33,6 +33,9 @@ spec:
   # 107 pods per machine, 749 with 7 machines.
   # replicas: 642
   replicas: 0
+  selector:
+    matchLabels:
+      run: fontbakery-worker-sprinter
   template:
     metadata:
       labels:
@@ -85,7 +88,7 @@ spec:
 ---
 # SSD one disk is 375 GB and the current quota is ???
 # 15 VMS: 1619 Pods
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fontbakery-worker-sprinter-ssd
@@ -97,6 +100,9 @@ spec:
   # used last => 15 VMs: 1619
   replicas: 0
   #replicas: 0
+  selector:
+    matchLabels:
+      run: fontbakery-worker-sprinter-ssd
   template:
     metadata:
       labels:
@@ -149,12 +155,15 @@ spec:
 ---
 # let these wait for drag and drop jobs in the normal cluster
 # it seems like it is sized enough for that.
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: fontbakery-worker
 spec:
   replicas: 2 # 8
+  selector:
+    matchLabels:
+      run: fontbakery-worker
   template:
     metadata:
       labels:
