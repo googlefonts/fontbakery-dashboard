@@ -660,7 +660,7 @@ _p.put = function(call) {
 
         try {
             // does I/O
-            // -> a intanceKey or a a promise
+            // -> an intanceKey or a promise
             putResult = this._data.set(hash, pbAnyMessage);
         }
         catch(error) {
