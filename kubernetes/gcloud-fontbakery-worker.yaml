@@ -160,7 +160,7 @@ kind: Deployment
 metadata:
   name: fontbakery-worker
 spec:
-  replicas: 2 # 8
+  replicas: 6 # 8
   selector:
     matchLabels:
       run: fontbakery-worker
