@@ -107,7 +107,8 @@ _p._sendRequest = function(url, options, bodyData) {
             try {
                 let json = JSON.parse(data.join(''));
                 if(res.statusCode !== 200) {
-                    let error = Error('('+res.statusCode+') ' + json.message);
+                    let error = Error('('+res.statusCode+') ' + json.message
+                                    + '[RAW JSON: '+ data.join('') +']');
                     error.code = res.statusCode;
                     error.isHTTPError = true;
                     throw error;
@@ -631,14 +632,20 @@ _p._checkAccessToken = function({access_token: accessToken}) {
               , GITHUB_API_HOST
               , '/applications/'
               , this._ghOAuth.clientId
-              , '/tokens/'
-              , accessToken
+              , '/token'
               ].join('')
+      , bodyData = {access_token: accessToken}
       ;
+
     return this._sendRequest(url, {
-        method: 'GET'
-      , auth: this._ghOAuth.clientId + ':'+ this._ghOAuth.clientSecret
-    })
+          method: 'POST'
+        , headers: {
+            'Content-Type': 'application/json'
+          }
+        , auth: this._ghOAuth.clientId + ':'+ this._ghOAuth.clientSecret
+        }
+      , bodyData
+    )
     .then(null, error=>{
         if(error.isHTTPError && error.code === 404) {
             // (Invalid tokens will return 404 NOT FOUND)
