@@ -78,9 +78,9 @@ RUN touch /tmp/cache_spoof_2
 # FIXME: probably all `pip3 install dependencies should be in requirements.txt
 
 # See: https://github.com/fonttools/ttfautohint-py/issues/5
-RUN apt-get install -y flex autotools-dev libtool bison cmake
-RUN pip install scikit-build
-RUN pip install git+https://github.com/fonttools/ttfautohint-py.git@v0.4.3#egg=ttfautohint-py
+# RUN apt-get install -y flex autotools-dev libtool bison cmake
+# RUN pip install scikit-build
+# RUN pip install git+https://github.com/fonttools/ttfautohint-py.git@v0.4.3#egg=ttfautohint-py
 
 RUN pip3 install fontbakery;
 
