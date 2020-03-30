@@ -228,7 +228,7 @@ spec:
         matchLabels:
           provisioning: static
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -238,6 +238,9 @@ metadata:
 spec:
   # I had up to 16 running, ~ one per checker-vm
   replicas: 1
+  selector:
+    matchLabels:
+      db: rethinkdb
   template:
     metadata:
       labels:
