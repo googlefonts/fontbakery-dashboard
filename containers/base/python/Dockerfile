@@ -1,7 +1,7 @@
 # eoan == 19.08 NOT LTS  End of Life: July, 2020
 FROM ubuntu:eoan
 
-RUN touch /tmp/cache_spoof_2
+RUN touch /tmp/cache_spoof_5
 
 
 # START TZCONFIG FIX suggested in:
@@ -66,7 +66,7 @@ RUN pip3 install lxml; # ==3.5.0
 ADD requirements.txt /var/python/requirements.txt
 RUN pip3 install -r /var/python/requirements.txt
 
-RUN touch /tmp/cache_spoof_2
+RUN touch /tmp/cache_spoof_3
 
 # FIXME: doesn't install all dependencies!
 # RUN pip3 install git+https://github.com/graphicore/fontbakery@dashboard_related
