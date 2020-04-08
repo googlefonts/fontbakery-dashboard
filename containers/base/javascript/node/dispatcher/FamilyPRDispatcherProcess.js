@@ -2433,7 +2433,11 @@ function callbackPreInit(resources, requester, values) {
                 ;
         return resources.getFamilyList(sourceId).then(familyList=>{
             if(familyList.indexOf(values[familyNameKey]) === -1)
-                messages.push('You must pick a family from the list to update.');
+                messages.push('The request cannot be processed, because the family. '
+                    + 'information is missing. This can happen when either the family '
+                    + 'is not listed or the server has not yet received the latest '
+                    + 'information. Please wait a moment and try again. If the problem '
+                    + 'persists please file an issue.');
             familyName = values[familyNameKey];
             if(familyName.indexOf(':') !== -1)
                 [familyName, familyKeySuffix] = familyName.split(':');
