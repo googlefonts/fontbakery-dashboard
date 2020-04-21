@@ -1,7 +1,7 @@
 # eoan == 19.08 NOT LTS  End of Life: July, 2020
 FROM ubuntu:eoan
 
-RUN touch /tmp/cache_spoof_5
+RUN touch /tmp/cache_spoof_6
 
 
 # START TZCONFIG FIX suggested in:
@@ -66,7 +66,7 @@ RUN pip3 install lxml; # ==3.5.0
 ADD requirements.txt /var/python/requirements.txt
 RUN pip3 install -r /var/python/requirements.txt
 
-RUN touch /tmp/cache_spoof_3
+RUN touch /tmp/cache_spoof_4
 
 # FIXME: doesn't install all dependencies!
 # RUN pip3 install git+https://github.com/graphicore/fontbakery@dashboard_related
@@ -83,6 +83,13 @@ RUN touch /tmp/cache_spoof_3
 # RUN pip install git+https://github.com/fonttools/ttfautohint-py.git@v0.4.3#egg=ttfautohint-py
 
 RUN pip3 install fontbakery;
+
+
+# There's a temporary error in Pillow after 7.0.0:
+# https://github.com/python-pillow/Pillow/issues/4518#issuecomment-616377174
+# At version 7.1.1: "Downgrade to Pillow 7.0.0 until a newer Pillow is released"
+
+RUN pip3 -v install Pillow==7.0.0;
 
 # tools used for live debugging and profiling
 # RUN pip3 install memory-profiler
