@@ -477,9 +477,9 @@ docker build -t fontbakery/base-javascript:17 containers/base/javascript;
 docker tag fontbakery/base-javascript:17 gcr.io/fontbakery-168509/base-javascript:17
 docker push gcr.io/fontbakery-168509/base-javascript:17
 
-docker build -t fontbakery/base-python:13 containers/base/python;
-docker tag fontbakery/base-python:13 gcr.io/fontbakery-168509/base-python:13
-docker push gcr.io/fontbakery-168509/base-python:13
+docker build -t fontbakery/base-python:15 containers/base/python;
+docker tag fontbakery/base-python:15 gcr.io/fontbakery-168509/base-python:15
+docker push gcr.io/fontbakery-168509/base-python:15
 ```
 
 # Deploy
