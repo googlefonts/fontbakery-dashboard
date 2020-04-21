@@ -60,11 +60,11 @@ define([
     }
 
     function createElementfromMarkdown(tag, attr, mardownText) {
-        return createElementfromHTML(tag, attr, marked(mardownText, {gfd: true}));
+        return createElementfromHTML(tag, attr, marked(mardownText, {gfm: true}));
     }
 
     function createFragmentFromMarkdown(mardownText) {
-        return createFragmentFromHTML(marked(mardownText, {gfd: true}));
+        return createFragmentFromHTML(marked(mardownText, {gfm: true}));
     }
 
     function appendHTML(elem, html) {
@@ -75,7 +75,7 @@ define([
     }
 
     function appendMarkdown(elem, markdown) {
-        appendHTML(elem, marked(markdown, {gfd: true}));
+        appendHTML(elem, marked(markdown, {gfm: true}));
     }
 
     function createFragmentFromHTML(html) {
