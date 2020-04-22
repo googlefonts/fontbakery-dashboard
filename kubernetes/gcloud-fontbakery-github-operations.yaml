@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: fontbakery-github-operations
-        image: gcr.io/fontbakery-168509/base-javascript:17
+        image: gcr.io/fontbakery-168509/base-javascript:18
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"

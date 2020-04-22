@@ -1,9 +1,7 @@
-# that's Debian Stretch (current stable: Debian 9)
-# and node 11.15.0; currently nodegit doesnt build with node 12.x
-FROM node:12.13.0-buster
+FROM node:13.13.0-buster
 
 
-RUN touch /tmp/cache_spoof_15
+RUN touch /tmp/cache_spoof_16
 
 RUN apt-get update && apt-get upgrade -y \
     && apt-get install -y software-properties-common
@@ -11,7 +9,7 @@ RUN apt-get update && apt-get upgrade -y \
 # mentioned in https://github.com/nodegit/nodegit
 RUN apt-get update \
     && apt-get install -y libssl-dev libpcre2-posix0 libkrb5-3 \
-    libk5crypto3 libcom-err2 libpcre2-dev libkrb5-dev
+    libk5crypto3 libcomerr2 libpcre2-dev libkrb5-dev
 
 
 RUN npm install -g bower browserify requirejs;
