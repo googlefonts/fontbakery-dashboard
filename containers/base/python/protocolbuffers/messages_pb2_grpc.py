@@ -7,707 +7,1175 @@ import messages_pb2 as messages__pb2
 
 
 class StorageStub(object):
-  """The Storage service
+    """The Storage service
 
-  """
-
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
     """
-    self.Put = channel.stream_stream(
-        '/fontbakery.dashboard.Storage/Put',
-        request_serializer=messages__pb2.StorageItem.SerializeToString,
-        response_deserializer=messages__pb2.StorageKey.FromString,
-        )
-    self.Get = channel.unary_unary(
-        '/fontbakery.dashboard.Storage/Get',
-        request_serializer=messages__pb2.StorageKey.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
-        )
-    self.Purge = channel.unary_unary(
-        '/fontbakery.dashboard.Storage/Purge',
-        request_serializer=messages__pb2.StorageKey.SerializeToString,
-        response_deserializer=messages__pb2.StorageStatus.FromString,
-        )
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Put = channel.stream_stream(
+                '/fontbakery.dashboard.Storage/Put',
+                request_serializer=messages__pb2.StorageItem.SerializeToString,
+                response_deserializer=messages__pb2.StorageKey.FromString,
+                )
+        self.Get = channel.unary_unary(
+                '/fontbakery.dashboard.Storage/Get',
+                request_serializer=messages__pb2.StorageKey.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
+                )
+        self.Purge = channel.unary_unary(
+                '/fontbakery.dashboard.Storage/Purge',
+                request_serializer=messages__pb2.StorageKey.SerializeToString,
+                response_deserializer=messages__pb2.StorageStatus.FromString,
+                )
 
 
 class StorageServicer(object):
-  """The Storage service
+    """The Storage service
 
-  """
-
-  def Put(self, request_iterator, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
-
-  def Get(self, request, context):
-    """Sends another greeting
     """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
 
-  def Purge(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Put(self, request_iterator, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Get(self, request, context):
+        """Sends another greeting
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Purge(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_StorageServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'Put': grpc.stream_stream_rpc_method_handler(
-          servicer.Put,
-          request_deserializer=messages__pb2.StorageItem.FromString,
-          response_serializer=messages__pb2.StorageKey.SerializeToString,
-      ),
-      'Get': grpc.unary_unary_rpc_method_handler(
-          servicer.Get,
-          request_deserializer=messages__pb2.StorageKey.FromString,
-          response_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
-      ),
-      'Purge': grpc.unary_unary_rpc_method_handler(
-          servicer.Purge,
-          request_deserializer=messages__pb2.StorageKey.FromString,
-          response_serializer=messages__pb2.StorageStatus.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.Storage', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'Put': grpc.stream_stream_rpc_method_handler(
+                    servicer.Put,
+                    request_deserializer=messages__pb2.StorageItem.FromString,
+                    response_serializer=messages__pb2.StorageKey.SerializeToString,
+            ),
+            'Get': grpc.unary_unary_rpc_method_handler(
+                    servicer.Get,
+                    request_deserializer=messages__pb2.StorageKey.FromString,
+                    response_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
+            ),
+            'Purge': grpc.unary_unary_rpc_method_handler(
+                    servicer.Purge,
+                    request_deserializer=messages__pb2.StorageKey.FromString,
+                    response_serializer=messages__pb2.StorageStatus.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.Storage', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Storage(object):
+    """The Storage service
+
+    """
+
+    @staticmethod
+    def Put(request_iterator,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.stream_stream(request_iterator, target, '/fontbakery.dashboard.Storage/Put',
+            messages__pb2.StorageItem.SerializeToString,
+            messages__pb2.StorageKey.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Get(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Storage/Get',
+            messages__pb2.StorageKey.SerializeToString,
+            google_dot_protobuf_dot_any__pb2.Any.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Purge(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Storage/Purge',
+            messages__pb2.StorageKey.SerializeToString,
+            messages__pb2.StorageStatus.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class ManifestStub(object):
-  """The Manifest service
+    """The Manifest service
 
-  """
-
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
     """
-    self.Poke = channel.unary_unary(
-        '/fontbakery.dashboard.Manifest/Poke',
-        request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-        )
-    self.Get = channel.unary_unary(
-        '/fontbakery.dashboard.Manifest/Get',
-        request_serializer=messages__pb2.FamilyRequest.SerializeToString,
-        response_deserializer=messages__pb2.FamilyData.FromString,
-        )
-    self.GetDelayed = channel.unary_unary(
-        '/fontbakery.dashboard.Manifest/GetDelayed',
-        request_serializer=messages__pb2.FamilyRequest.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-        )
-    self.List = channel.unary_unary(
-        '/fontbakery.dashboard.Manifest/List',
-        request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
-        response_deserializer=messages__pb2.FamilyNamesList.FromString,
-        )
-    self.GetSourceDetails = channel.unary_unary(
-        '/fontbakery.dashboard.Manifest/GetSourceDetails',
-        request_serializer=messages__pb2.FamilyRequest.SerializeToString,
-        response_deserializer=messages__pb2.SourceDetails.FromString,
-        )
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Poke = channel.unary_unary(
+                '/fontbakery.dashboard.Manifest/Poke',
+                request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.Get = channel.unary_unary(
+                '/fontbakery.dashboard.Manifest/Get',
+                request_serializer=messages__pb2.FamilyRequest.SerializeToString,
+                response_deserializer=messages__pb2.FamilyData.FromString,
+                )
+        self.GetDelayed = channel.unary_unary(
+                '/fontbakery.dashboard.Manifest/GetDelayed',
+                request_serializer=messages__pb2.FamilyRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.List = channel.unary_unary(
+                '/fontbakery.dashboard.Manifest/List',
+                request_serializer=messages__pb2.ManifestSourceId.SerializeToString,
+                response_deserializer=messages__pb2.FamilyNamesList.FromString,
+                )
+        self.GetSourceDetails = channel.unary_unary(
+                '/fontbakery.dashboard.Manifest/GetSourceDetails',
+                request_serializer=messages__pb2.FamilyRequest.SerializeToString,
+                response_deserializer=messages__pb2.SourceDetails.FromString,
+                )
 
 
 class ManifestServicer(object):
-  """The Manifest service
+    """The Manifest service
 
-  """
-
-  def Poke(self, request, context):
-    """FIXME: this is outdated but may have some good bits!
-    check for updates and emit a notice if since the last poke families
-    were updated
-    so if there's a change, we'll download it directly and put the files
-    ordered into a Files message. The sha256 hash is what we emit as
-    a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
-    PokeResponse, is basically nothing, just a OK message ... how to do this
-    best with grpc?
-    Maybe we could directly send this to the cache?
-    If we need to re-run an entiren Collection, because Font Bakery changed,
-    we still need the latest versions of the collection on disk.
-    so, it would be nice to have some form of atomicity between asking the
-    informing the ManifestMaster and running the tests. Therefore, we could
-    just put the entire current state into the cache and then let the
-    ManifestMaster decide which ones to keep and which ones to drop.
-    The Manifest itselt can in the meantime update itself etc.
-    I.e. We create a "Snapshot" of the manifest in the cache, then
-    we can forget about it
     """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
 
-  def Get(self, request, context):
-    """This is the same data as the manifestSource would dispatch as
-    CollectionFamilyJob for Font Bakery.
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Poke(self, request, context):
+        """FIXME: this is outdated but may have some good bits!
+        check for updates and emit a notice if since the last poke families
+        were updated
+        so if there's a change, we'll download it directly and put the files
+        ordered into a Files message. The sha256 hash is what we emit as
+        a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
+        PokeResponse, is basically nothing, just a OK message ... how to do this
+        best with grpc?
+        Maybe we could directly send this to the cache?
+        If we need to re-run an entiren Collection, because Font Bakery changed,
+        we still need the latest versions of the collection on disk.
+        so, it would be nice to have some form of atomicity between asking the
+        informing the ManifestMaster and running the tests. Therefore, we could
+        just put the entire current state into the cache and then let the
+        ManifestMaster decide which ones to keep and which ones to drop.
+        The Manifest itselt can in the meantime update itself etc.
+        I.e. We create a "Snapshot" of the manifest in the cache, then
+        we can forget about it
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def GetDelayed(self, request, context):
-    """same as get but replies via AMQP/ProcessCommand and hence is immune
-    to timeout issues. FamilyRequest must specify a ProcessCommand.
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Get(self, request, context):
+        """This is the same data as the manifestSource would dispatch as
+        CollectionFamilyJob for Font Bakery.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def List(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def GetDelayed(self, request, context):
+        """same as get but replies via AMQP/ProcessCommand and hence is immune
+        to timeout issues. FamilyRequest must specify a ProcessCommand.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def GetSourceDetails(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def List(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetSourceDetails(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_ManifestServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'Poke': grpc.unary_unary_rpc_method_handler(
-          servicer.Poke,
-          request_deserializer=messages__pb2.ManifestSourceId.FromString,
-          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-      ),
-      'Get': grpc.unary_unary_rpc_method_handler(
-          servicer.Get,
-          request_deserializer=messages__pb2.FamilyRequest.FromString,
-          response_serializer=messages__pb2.FamilyData.SerializeToString,
-      ),
-      'GetDelayed': grpc.unary_unary_rpc_method_handler(
-          servicer.GetDelayed,
-          request_deserializer=messages__pb2.FamilyRequest.FromString,
-          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-      ),
-      'List': grpc.unary_unary_rpc_method_handler(
-          servicer.List,
-          request_deserializer=messages__pb2.ManifestSourceId.FromString,
-          response_serializer=messages__pb2.FamilyNamesList.SerializeToString,
-      ),
-      'GetSourceDetails': grpc.unary_unary_rpc_method_handler(
-          servicer.GetSourceDetails,
-          request_deserializer=messages__pb2.FamilyRequest.FromString,
-          response_serializer=messages__pb2.SourceDetails.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.Manifest', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'Poke': grpc.unary_unary_rpc_method_handler(
+                    servicer.Poke,
+                    request_deserializer=messages__pb2.ManifestSourceId.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'Get': grpc.unary_unary_rpc_method_handler(
+                    servicer.Get,
+                    request_deserializer=messages__pb2.FamilyRequest.FromString,
+                    response_serializer=messages__pb2.FamilyData.SerializeToString,
+            ),
+            'GetDelayed': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDelayed,
+                    request_deserializer=messages__pb2.FamilyRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'List': grpc.unary_unary_rpc_method_handler(
+                    servicer.List,
+                    request_deserializer=messages__pb2.ManifestSourceId.FromString,
+                    response_serializer=messages__pb2.FamilyNamesList.SerializeToString,
+            ),
+            'GetSourceDetails': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetSourceDetails,
+                    request_deserializer=messages__pb2.FamilyRequest.FromString,
+                    response_serializer=messages__pb2.SourceDetails.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.Manifest', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Manifest(object):
+    """The Manifest service
+
+    """
+
+    @staticmethod
+    def Poke(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Manifest/Poke',
+            messages__pb2.ManifestSourceId.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Get(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Manifest/Get',
+            messages__pb2.FamilyRequest.SerializeToString,
+            messages__pb2.FamilyData.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetDelayed(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Manifest/GetDelayed',
+            messages__pb2.FamilyRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def List(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Manifest/List',
+            messages__pb2.ManifestSourceId.SerializeToString,
+            messages__pb2.FamilyNamesList.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetSourceDetails(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Manifest/GetSourceDetails',
+            messages__pb2.FamilyRequest.SerializeToString,
+            messages__pb2.SourceDetails.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class ReportsStub(object):
-  """The Reports service
+    """The Reports service
 
-  Provides interfaces to read the data, get listings/filter.
-  """
-
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
+    Provides interfaces to read the data, get listings/filter.
     """
-    self.File = channel.unary_unary(
-        '/fontbakery.dashboard.Reports/File',
-        request_serializer=messages__pb2.Report.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-        )
-    self.Query = channel.unary_stream(
-        '/fontbakery.dashboard.Reports/Query',
-        request_serializer=messages__pb2.ReportsQuery.SerializeToString,
-        response_deserializer=messages__pb2.Report.FromString,
-        )
-    self.Get = channel.unary_stream(
-        '/fontbakery.dashboard.Reports/Get',
-        request_serializer=messages__pb2.ReportIds.SerializeToString,
-        response_deserializer=messages__pb2.Report.FromString,
-        )
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.File = channel.unary_unary(
+                '/fontbakery.dashboard.Reports/File',
+                request_serializer=messages__pb2.Report.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.Query = channel.unary_stream(
+                '/fontbakery.dashboard.Reports/Query',
+                request_serializer=messages__pb2.ReportsQuery.SerializeToString,
+                response_deserializer=messages__pb2.Report.FromString,
+                )
+        self.Get = channel.unary_stream(
+                '/fontbakery.dashboard.Reports/Get',
+                request_serializer=messages__pb2.ReportIds.SerializeToString,
+                response_deserializer=messages__pb2.Report.FromString,
+                )
 
 
 class ReportsServicer(object):
-  """The Reports service
+    """The Reports service
 
-  Provides interfaces to read the data, get listings/filter.
-  """
-
-  def File(self, request, context):
-    """to file the report ("file" as a verb, but by convention first letter uppercased)
+    Provides interfaces to read the data, get listings/filter.
     """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
 
-  def Query(self, request, context):
-    """Get a list of reports including selection/filtering etc.
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def File(self, request, context):
+        """to file the report ("file" as a verb, but by convention first letter uppercased)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def Get(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Query(self, request, context):
+        """Get a list of reports including selection/filtering etc.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def Get(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_ReportsServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'File': grpc.unary_unary_rpc_method_handler(
-          servicer.File,
-          request_deserializer=messages__pb2.Report.FromString,
-          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-      ),
-      'Query': grpc.unary_stream_rpc_method_handler(
-          servicer.Query,
-          request_deserializer=messages__pb2.ReportsQuery.FromString,
-          response_serializer=messages__pb2.Report.SerializeToString,
-      ),
-      'Get': grpc.unary_stream_rpc_method_handler(
-          servicer.Get,
-          request_deserializer=messages__pb2.ReportIds.FromString,
-          response_serializer=messages__pb2.Report.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.Reports', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'File': grpc.unary_unary_rpc_method_handler(
+                    servicer.File,
+                    request_deserializer=messages__pb2.Report.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'Query': grpc.unary_stream_rpc_method_handler(
+                    servicer.Query,
+                    request_deserializer=messages__pb2.ReportsQuery.FromString,
+                    response_serializer=messages__pb2.Report.SerializeToString,
+            ),
+            'Get': grpc.unary_stream_rpc_method_handler(
+                    servicer.Get,
+                    request_deserializer=messages__pb2.ReportIds.FromString,
+                    response_serializer=messages__pb2.Report.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.Reports', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class Reports(object):
+    """The Reports service
+
+    Provides interfaces to read the data, get listings/filter.
+    """
+
+    @staticmethod
+    def File(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.Reports/File',
+            messages__pb2.Report.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Query(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/fontbakery.dashboard.Reports/Query',
+            messages__pb2.ReportsQuery.SerializeToString,
+            messages__pb2.Report.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Get(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/fontbakery.dashboard.Reports/Get',
+            messages__pb2.ReportIds.SerializeToString,
+            messages__pb2.Report.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class ProcessManagerStub(object):
-  """The Process Manager service ...
+    """The Process Manager service ...
 
-  """
-
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
     """
-    self.SubscribeProcess = channel.unary_stream(
-        '/fontbakery.dashboard.ProcessManager/SubscribeProcess',
-        request_serializer=messages__pb2.ProcessQuery.SerializeToString,
-        response_deserializer=messages__pb2.ProcessState.FromString,
-        )
-    self.GetProcess = channel.unary_unary(
-        '/fontbakery.dashboard.ProcessManager/GetProcess',
-        request_serializer=messages__pb2.ProcessQuery.SerializeToString,
-        response_deserializer=messages__pb2.ProcessState.FromString,
-        )
-    self.Execute = channel.unary_unary(
-        '/fontbakery.dashboard.ProcessManager/Execute',
-        request_serializer=messages__pb2.ProcessCommand.SerializeToString,
-        response_deserializer=messages__pb2.ProcessCommandResult.FromString,
-        )
-    self.InitProcess = channel.unary_unary(
-        '/fontbakery.dashboard.ProcessManager/InitProcess',
-        request_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
-        response_deserializer=messages__pb2.ProcessCommandResult.FromString,
-        )
-    self.GetInitProcessUi = channel.unary_unary(
-        '/fontbakery.dashboard.ProcessManager/GetInitProcessUi',
-        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=messages__pb2.ProcessState.FromString,
-        )
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.SubscribeProcess = channel.unary_stream(
+                '/fontbakery.dashboard.ProcessManager/SubscribeProcess',
+                request_serializer=messages__pb2.ProcessQuery.SerializeToString,
+                response_deserializer=messages__pb2.ProcessState.FromString,
+                )
+        self.GetProcess = channel.unary_unary(
+                '/fontbakery.dashboard.ProcessManager/GetProcess',
+                request_serializer=messages__pb2.ProcessQuery.SerializeToString,
+                response_deserializer=messages__pb2.ProcessState.FromString,
+                )
+        self.Execute = channel.unary_unary(
+                '/fontbakery.dashboard.ProcessManager/Execute',
+                request_serializer=messages__pb2.ProcessCommand.SerializeToString,
+                response_deserializer=messages__pb2.ProcessCommandResult.FromString,
+                )
+        self.InitProcess = channel.unary_unary(
+                '/fontbakery.dashboard.ProcessManager/InitProcess',
+                request_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
+                response_deserializer=messages__pb2.ProcessCommandResult.FromString,
+                )
+        self.GetInitProcessUi = channel.unary_unary(
+                '/fontbakery.dashboard.ProcessManager/GetInitProcessUi',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=messages__pb2.ProcessState.FromString,
+                )
 
 
 class ProcessManagerServicer(object):
-  """The Process Manager service ...
+    """The Process Manager service ...
 
-  """
-
-  def SubscribeProcess(self, request, context):
-    """returns the current Process state initially and on each change of
-    the Process state a new Process
     """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
 
-  def GetProcess(self, request, context):
-    """same as SubscribeProcess but only returns the current state once
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def SubscribeProcess(self, request, context):
+        """returns the current Process state initially and on each change of
+        the Process state a new Process
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def Execute(self, request, context):
-    """issue a state change for a Process. `ticket` will be used to make
-    sure only expected commands are executed.
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def GetProcess(self, request, context):
+        """same as SubscribeProcess but only returns the current state once
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def InitProcess(self, request, context):
-    """the any will have to unpack to a specific message defined in the
-    ProcessManagerImplementation. e.g. DispatcherProcessManager will
-    expect here a DispatcherInitProcess
-    this may also be part of making it possible to create different
-    kinds of processes in the same process manager.
-    but right now we only deal with one process implementation at a time!
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Execute(self, request, context):
+        """issue a state change for a Process. `ticket` will be used to make
+        sure only expected commands are executed.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def GetInitProcessUi(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def InitProcess(self, request, context):
+        """the any will have to unpack to a specific message defined in the
+        ProcessManagerImplementation. e.g. DispatcherProcessManager will
+        expect here a DispatcherInitProcess
+        this may also be part of making it possible to create different
+        kinds of processes in the same process manager.
+        but right now we only deal with one process implementation at a time!
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetInitProcessUi(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_ProcessManagerServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'SubscribeProcess': grpc.unary_stream_rpc_method_handler(
-          servicer.SubscribeProcess,
-          request_deserializer=messages__pb2.ProcessQuery.FromString,
-          response_serializer=messages__pb2.ProcessState.SerializeToString,
-      ),
-      'GetProcess': grpc.unary_unary_rpc_method_handler(
-          servicer.GetProcess,
-          request_deserializer=messages__pb2.ProcessQuery.FromString,
-          response_serializer=messages__pb2.ProcessState.SerializeToString,
-      ),
-      'Execute': grpc.unary_unary_rpc_method_handler(
-          servicer.Execute,
-          request_deserializer=messages__pb2.ProcessCommand.FromString,
-          response_serializer=messages__pb2.ProcessCommandResult.SerializeToString,
-      ),
-      'InitProcess': grpc.unary_unary_rpc_method_handler(
-          servicer.InitProcess,
-          request_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
-          response_serializer=messages__pb2.ProcessCommandResult.SerializeToString,
-      ),
-      'GetInitProcessUi': grpc.unary_unary_rpc_method_handler(
-          servicer.GetInitProcessUi,
-          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=messages__pb2.ProcessState.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.ProcessManager', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'SubscribeProcess': grpc.unary_stream_rpc_method_handler(
+                    servicer.SubscribeProcess,
+                    request_deserializer=messages__pb2.ProcessQuery.FromString,
+                    response_serializer=messages__pb2.ProcessState.SerializeToString,
+            ),
+            'GetProcess': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetProcess,
+                    request_deserializer=messages__pb2.ProcessQuery.FromString,
+                    response_serializer=messages__pb2.ProcessState.SerializeToString,
+            ),
+            'Execute': grpc.unary_unary_rpc_method_handler(
+                    servicer.Execute,
+                    request_deserializer=messages__pb2.ProcessCommand.FromString,
+                    response_serializer=messages__pb2.ProcessCommandResult.SerializeToString,
+            ),
+            'InitProcess': grpc.unary_unary_rpc_method_handler(
+                    servicer.InitProcess,
+                    request_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
+                    response_serializer=messages__pb2.ProcessCommandResult.SerializeToString,
+            ),
+            'GetInitProcessUi': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetInitProcessUi,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=messages__pb2.ProcessState.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.ProcessManager', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class ProcessManager(object):
+    """The Process Manager service ...
+
+    """
+
+    @staticmethod
+    def SubscribeProcess(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/fontbakery.dashboard.ProcessManager/SubscribeProcess',
+            messages__pb2.ProcessQuery.SerializeToString,
+            messages__pb2.ProcessState.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetProcess(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.ProcessManager/GetProcess',
+            messages__pb2.ProcessQuery.SerializeToString,
+            messages__pb2.ProcessState.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Execute(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.ProcessManager/Execute',
+            messages__pb2.ProcessCommand.SerializeToString,
+            messages__pb2.ProcessCommandResult.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def InitProcess(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.ProcessManager/InitProcess',
+            google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
+            messages__pb2.ProcessCommandResult.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetInitProcessUi(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.ProcessManager/GetInitProcessUi',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            messages__pb2.ProcessState.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class DispatcherProcessManagerStub(object):
-  """This service is added next to the ProcessManager service, it
-  implements specific interfaces for the Font Bakery DispatcherProcessManager
-  In this case things that can't be done without specific knowledge about
-  how the specific process implementation (FamilyPRDispatcherProcess)
-  is stored in the database and thus, how to query them.
-  FamilyPRDispatcherProcess adds an important "family" name key to it's
-  state which is used as a secondary key in the database and has no
-  semantic/use in other implementations.
-  """
-
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
+    """This service is added next to the ProcessManager service, it
+    implements specific interfaces for the Font Bakery DispatcherProcessManager
+    In this case things that can't be done without specific knowledge about
+    how the specific process implementation (FamilyPRDispatcherProcess)
+    is stored in the database and thus, how to query them.
+    FamilyPRDispatcherProcess adds an important "family" name key to it's
+    state which is used as a secondary key in the database and has no
+    semantic/use in other implementations.
     """
-    self.SubscribeProcessList = channel.unary_stream(
-        '/fontbakery.dashboard.DispatcherProcessManager/SubscribeProcessList',
-        request_serializer=messages__pb2.ProcessListQuery.SerializeToString,
-        response_deserializer=messages__pb2.ProcessList.FromString,
-        )
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.SubscribeProcessList = channel.unary_stream(
+                '/fontbakery.dashboard.DispatcherProcessManager/SubscribeProcessList',
+                request_serializer=messages__pb2.ProcessListQuery.SerializeToString,
+                response_deserializer=messages__pb2.ProcessList.FromString,
+                )
 
 
 class DispatcherProcessManagerServicer(object):
-  """This service is added next to the ProcessManager service, it
-  implements specific interfaces for the Font Bakery DispatcherProcessManager
-  In this case things that can't be done without specific knowledge about
-  how the specific process implementation (FamilyPRDispatcherProcess)
-  is stored in the database and thus, how to query them.
-  FamilyPRDispatcherProcess adds an important "family" name key to it's
-  state which is used as a secondary key in the database and has no
-  semantic/use in other implementations.
-  """
-
-  def SubscribeProcessList(self, request, context):
-    """returns the ProcessList for the current query and then an updated
-    ProcessList when the list changes.
+    """This service is added next to the ProcessManager service, it
+    implements specific interfaces for the Font Bakery DispatcherProcessManager
+    In this case things that can't be done without specific knowledge about
+    how the specific process implementation (FamilyPRDispatcherProcess)
+    is stored in the database and thus, how to query them.
+    FamilyPRDispatcherProcess adds an important "family" name key to it's
+    state which is used as a secondary key in the database and has no
+    semantic/use in other implementations.
     """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+
+    def SubscribeProcessList(self, request, context):
+        """returns the ProcessList for the current query and then an updated
+        ProcessList when the list changes.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_DispatcherProcessManagerServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'SubscribeProcessList': grpc.unary_stream_rpc_method_handler(
-          servicer.SubscribeProcessList,
-          request_deserializer=messages__pb2.ProcessListQuery.FromString,
-          response_serializer=messages__pb2.ProcessList.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.DispatcherProcessManager', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'SubscribeProcessList': grpc.unary_stream_rpc_method_handler(
+                    servicer.SubscribeProcessList,
+                    request_deserializer=messages__pb2.ProcessListQuery.FromString,
+                    response_serializer=messages__pb2.ProcessList.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.DispatcherProcessManager', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class DispatcherProcessManager(object):
+    """This service is added next to the ProcessManager service, it
+    implements specific interfaces for the Font Bakery DispatcherProcessManager
+    In this case things that can't be done without specific knowledge about
+    how the specific process implementation (FamilyPRDispatcherProcess)
+    is stored in the database and thus, how to query them.
+    FamilyPRDispatcherProcess adds an important "family" name key to it's
+    state which is used as a secondary key in the database and has no
+    semantic/use in other implementations.
+    """
+
+    @staticmethod
+    def SubscribeProcessList(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/fontbakery.dashboard.DispatcherProcessManager/SubscribeProcessList',
+            messages__pb2.ProcessListQuery.SerializeToString,
+            messages__pb2.ProcessList.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class AuthServiceStub(object):
-  """/////
-  Authorization/GitHub OAuth stuff
-  /////
+    """/////
+    Authorization/GitHub OAuth stuff
+    /////
 
-  """
-
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
     """
-    self.InitSession = channel.unary_unary(
-        '/fontbakery.dashboard.AuthService/InitSession',
-        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=messages__pb2.AuthStatus.FromString,
-        )
-    self.Logout = channel.unary_unary(
-        '/fontbakery.dashboard.AuthService/Logout',
-        request_serializer=messages__pb2.SessionId.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-        )
-    self.Authorize = channel.unary_unary(
-        '/fontbakery.dashboard.AuthService/Authorize',
-        request_serializer=messages__pb2.AuthorizeRequest.SerializeToString,
-        response_deserializer=messages__pb2.AuthStatus.FromString,
-        )
-    self.CheckSession = channel.unary_unary(
-        '/fontbakery.dashboard.AuthService/CheckSession',
-        request_serializer=messages__pb2.SessionId.SerializeToString,
-        response_deserializer=messages__pb2.AuthStatus.FromString,
-        )
-    self.GetRoles = channel.unary_unary(
-        '/fontbakery.dashboard.AuthService/GetRoles',
-        request_serializer=messages__pb2.AuthorizedRolesRequest.SerializeToString,
-        response_deserializer=messages__pb2.AuthorizedRoles.FromString,
-        )
-    self.GetOAuthToken = channel.unary_unary(
-        '/fontbakery.dashboard.AuthService/GetOAuthToken',
-        request_serializer=messages__pb2.SessionId.SerializeToString,
-        response_deserializer=messages__pb2.OAuthToken.FromString,
-        )
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.InitSession = channel.unary_unary(
+                '/fontbakery.dashboard.AuthService/InitSession',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=messages__pb2.AuthStatus.FromString,
+                )
+        self.Logout = channel.unary_unary(
+                '/fontbakery.dashboard.AuthService/Logout',
+                request_serializer=messages__pb2.SessionId.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.Authorize = channel.unary_unary(
+                '/fontbakery.dashboard.AuthService/Authorize',
+                request_serializer=messages__pb2.AuthorizeRequest.SerializeToString,
+                response_deserializer=messages__pb2.AuthStatus.FromString,
+                )
+        self.CheckSession = channel.unary_unary(
+                '/fontbakery.dashboard.AuthService/CheckSession',
+                request_serializer=messages__pb2.SessionId.SerializeToString,
+                response_deserializer=messages__pb2.AuthStatus.FromString,
+                )
+        self.GetRoles = channel.unary_unary(
+                '/fontbakery.dashboard.AuthService/GetRoles',
+                request_serializer=messages__pb2.AuthorizedRolesRequest.SerializeToString,
+                response_deserializer=messages__pb2.AuthorizedRoles.FromString,
+                )
+        self.GetOAuthToken = channel.unary_unary(
+                '/fontbakery.dashboard.AuthService/GetOAuthToken',
+                request_serializer=messages__pb2.SessionId.SerializeToString,
+                response_deserializer=messages__pb2.OAuthToken.FromString,
+                )
 
 
 class AuthServiceServicer(object):
-  """/////
-  Authorization/GitHub OAuth stuff
-  /////
+    """/////
+    Authorization/GitHub OAuth stuff
+    /////
 
-  """
-
-  def InitSession(self, request, context):
-    """**authentication**
     """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
 
-  def Logout(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def InitSession(self, request, context):
+        """**authentication**
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def Authorize(self, request, context):
-    """named like this due to the OAuth workflow
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Logout(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def CheckSession(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Authorize(self, request, context):
+        """named like this due to the OAuth workflow
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def GetRoles(self, request, context):
-    """
-    **authorization** (could be another service)
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def CheckSession(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
-  def GetOAuthToken(self, request, context):
-    # missing associated documentation comment in .proto file
-    pass
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def GetRoles(self, request, context):
+        """
+        **authorization** (could be another service)
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetOAuthToken(self, request, context):
+        """Missing associated documentation comment in .proto file"""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_AuthServiceServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'InitSession': grpc.unary_unary_rpc_method_handler(
-          servicer.InitSession,
-          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=messages__pb2.AuthStatus.SerializeToString,
-      ),
-      'Logout': grpc.unary_unary_rpc_method_handler(
-          servicer.Logout,
-          request_deserializer=messages__pb2.SessionId.FromString,
-          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-      ),
-      'Authorize': grpc.unary_unary_rpc_method_handler(
-          servicer.Authorize,
-          request_deserializer=messages__pb2.AuthorizeRequest.FromString,
-          response_serializer=messages__pb2.AuthStatus.SerializeToString,
-      ),
-      'CheckSession': grpc.unary_unary_rpc_method_handler(
-          servicer.CheckSession,
-          request_deserializer=messages__pb2.SessionId.FromString,
-          response_serializer=messages__pb2.AuthStatus.SerializeToString,
-      ),
-      'GetRoles': grpc.unary_unary_rpc_method_handler(
-          servicer.GetRoles,
-          request_deserializer=messages__pb2.AuthorizedRolesRequest.FromString,
-          response_serializer=messages__pb2.AuthorizedRoles.SerializeToString,
-      ),
-      'GetOAuthToken': grpc.unary_unary_rpc_method_handler(
-          servicer.GetOAuthToken,
-          request_deserializer=messages__pb2.SessionId.FromString,
-          response_serializer=messages__pb2.OAuthToken.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.AuthService', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'InitSession': grpc.unary_unary_rpc_method_handler(
+                    servicer.InitSession,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=messages__pb2.AuthStatus.SerializeToString,
+            ),
+            'Logout': grpc.unary_unary_rpc_method_handler(
+                    servicer.Logout,
+                    request_deserializer=messages__pb2.SessionId.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'Authorize': grpc.unary_unary_rpc_method_handler(
+                    servicer.Authorize,
+                    request_deserializer=messages__pb2.AuthorizeRequest.FromString,
+                    response_serializer=messages__pb2.AuthStatus.SerializeToString,
+            ),
+            'CheckSession': grpc.unary_unary_rpc_method_handler(
+                    servicer.CheckSession,
+                    request_deserializer=messages__pb2.SessionId.FromString,
+                    response_serializer=messages__pb2.AuthStatus.SerializeToString,
+            ),
+            'GetRoles': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRoles,
+                    request_deserializer=messages__pb2.AuthorizedRolesRequest.FromString,
+                    response_serializer=messages__pb2.AuthorizedRoles.SerializeToString,
+            ),
+            'GetOAuthToken': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetOAuthToken,
+                    request_deserializer=messages__pb2.SessionId.FromString,
+                    response_serializer=messages__pb2.OAuthToken.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.AuthService', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class AuthService(object):
+    """/////
+    Authorization/GitHub OAuth stuff
+    /////
+
+    """
+
+    @staticmethod
+    def InitSession(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.AuthService/InitSession',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            messages__pb2.AuthStatus.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Logout(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.AuthService/Logout',
+            messages__pb2.SessionId.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Authorize(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.AuthService/Authorize',
+            messages__pb2.AuthorizeRequest.SerializeToString,
+            messages__pb2.AuthStatus.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CheckSession(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.AuthService/CheckSession',
+            messages__pb2.SessionId.SerializeToString,
+            messages__pb2.AuthStatus.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetRoles(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.AuthService/GetRoles',
+            messages__pb2.AuthorizedRolesRequest.SerializeToString,
+            messages__pb2.AuthorizedRoles.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetOAuthToken(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.AuthService/GetOAuthToken',
+            messages__pb2.SessionId.SerializeToString,
+            messages__pb2.OAuthToken.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class GitHubOperationsStub(object):
-  """The Pull Request Dispatcher service
+    """The Pull Request Dispatcher service
 
-  """
-
-  def __init__(self, channel):
-    """Constructor.
-
-    Args:
-      channel: A grpc.Channel.
     """
-    self.DispatchPullRequest = channel.unary_unary(
-        '/fontbakery.dashboard.GitHubOperations/DispatchPullRequest',
-        request_serializer=messages__pb2.PullRequest.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-        )
-    self.FileIssue = channel.unary_unary(
-        '/fontbakery.dashboard.GitHubOperations/FileIssue',
-        request_serializer=messages__pb2.Issue.SerializeToString,
-        response_deserializer=messages__pb2.GitHubReport.FromString,
-        )
+
+    def __init__(self, channel):
+        """Constructor.
+
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.DispatchPullRequest = channel.unary_unary(
+                '/fontbakery.dashboard.GitHubOperations/DispatchPullRequest',
+                request_serializer=messages__pb2.PullRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.FileIssue = channel.unary_unary(
+                '/fontbakery.dashboard.GitHubOperations/FileIssue',
+                request_serializer=messages__pb2.Issue.SerializeToString,
+                response_deserializer=messages__pb2.GitHubReport.FromString,
+                )
 
 
 class GitHubOperationsServicer(object):
-  """The Pull Request Dispatcher service
+    """The Pull Request Dispatcher service
 
-  """
-
-  def DispatchPullRequest(self, request, context):
-    """If answering directly THIS COULD TIME OUT!
-    instead, we answer with Empty and send the
-    GitHubReport message via another channel,
-    currently this is implement using an
-    AMQP queue which feeds a ProcessCommand into ProcessManager.Execute
     """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
 
-  def FileIssue(self, request, context):
-    """If needed the answering mechanism will be changed to the ProcessCommand
-    way, but an issue should be fast to file.
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def DispatchPullRequest(self, request, context):
+        """If answering directly THIS COULD TIME OUT!
+        instead, we answer with Empty and send the
+        GitHubReport message via another channel,
+        currently this is implement using an
+        AMQP queue which feeds a ProcessCommand into ProcessManager.Execute
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def FileIssue(self, request, context):
+        """If needed the answering mechanism will be changed to the ProcessCommand
+        way, but an issue should be fast to file.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_GitHubOperationsServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'DispatchPullRequest': grpc.unary_unary_rpc_method_handler(
-          servicer.DispatchPullRequest,
-          request_deserializer=messages__pb2.PullRequest.FromString,
-          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-      ),
-      'FileIssue': grpc.unary_unary_rpc_method_handler(
-          servicer.FileIssue,
-          request_deserializer=messages__pb2.Issue.FromString,
-          response_serializer=messages__pb2.GitHubReport.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.GitHubOperations', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'DispatchPullRequest': grpc.unary_unary_rpc_method_handler(
+                    servicer.DispatchPullRequest,
+                    request_deserializer=messages__pb2.PullRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'FileIssue': grpc.unary_unary_rpc_method_handler(
+                    servicer.FileIssue,
+                    request_deserializer=messages__pb2.Issue.FromString,
+                    response_serializer=messages__pb2.GitHubReport.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.GitHubOperations', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class GitHubOperations(object):
+    """The Pull Request Dispatcher service
+
+    """
+
+    @staticmethod
+    def DispatchPullRequest(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.GitHubOperations/DispatchPullRequest',
+            messages__pb2.PullRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def FileIssue(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.GitHubOperations/FileIssue',
+            messages__pb2.Issue.SerializeToString,
+            messages__pb2.GitHubReport.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
 
 
 class InitWorkersStub(object):
-  # missing associated documentation comment in .proto file
-  pass
+    """Missing associated documentation comment in .proto file"""
 
-  def __init__(self, channel):
-    """Constructor.
+    def __init__(self, channel):
+        """Constructor.
 
-    Args:
-      channel: A grpc.Channel.
-    """
-    self.Init = channel.unary_unary(
-        '/fontbakery.dashboard.InitWorkers/Init',
-        request_serializer=messages__pb2.WorkerDescription.SerializeToString,
-        response_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
-        )
+        Args:
+            channel: A grpc.Channel.
+        """
+        self.Init = channel.unary_unary(
+                '/fontbakery.dashboard.InitWorkers/Init',
+                request_serializer=messages__pb2.WorkerDescription.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_any__pb2.Any.FromString,
+                )
 
 
 class InitWorkersServicer(object):
-  # missing associated documentation comment in .proto file
-  pass
+    """Missing associated documentation comment in .proto file"""
 
-  def Init(self, request, context):
-    """the message type of the answer is worker implementation dependent.
-    """
-    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    def Init(self, request, context):
+        """the message type of the answer is worker implementation dependent.
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
 
 def add_InitWorkersServicer_to_server(servicer, server):
-  rpc_method_handlers = {
-      'Init': grpc.unary_unary_rpc_method_handler(
-          servicer.Init,
-          request_deserializer=messages__pb2.WorkerDescription.FromString,
-          response_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
-      ),
-  }
-  generic_handler = grpc.method_handlers_generic_handler(
-      'fontbakery.dashboard.InitWorkers', rpc_method_handlers)
-  server.add_generic_rpc_handlers((generic_handler,))
+    rpc_method_handlers = {
+            'Init': grpc.unary_unary_rpc_method_handler(
+                    servicer.Init,
+                    request_deserializer=messages__pb2.WorkerDescription.FromString,
+                    response_serializer=google_dot_protobuf_dot_any__pb2.Any.SerializeToString,
+            ),
+    }
+    generic_handler = grpc.method_handlers_generic_handler(
+            'fontbakery.dashboard.InitWorkers', rpc_method_handlers)
+    server.add_generic_rpc_handlers((generic_handler,))
+
+
+ # This class is part of an EXPERIMENTAL API.
+class InitWorkers(object):
+    """Missing associated documentation comment in .proto file"""
+
+    @staticmethod
+    def Init(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/fontbakery.dashboard.InitWorkers/Init',
+            messages__pb2.WorkerDescription.SerializeToString,
+            google_dot_protobuf_dot_any__pb2.Any.FromString,
+            options, channel_credentials,
+            call_credentials, compression, wait_for_ready, timeout, metadata)
