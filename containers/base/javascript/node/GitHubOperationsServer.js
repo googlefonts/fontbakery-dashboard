@@ -854,7 +854,7 @@ function commitChanges(log, repo, authorSignature, branchName, treeOID
 function deepInsert(repo, tree, path, items/* [[oid, mode], ...] */) {
     var [dirName, ...pathparts] = typeof path === 'string'
                         ? path.split('/')
-                        : path.slice() // defensive copy
+                        : path
       , promise
       ;
     if(dirName) {
