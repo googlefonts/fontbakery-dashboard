@@ -199,6 +199,8 @@ function getSetup() {
               , value=>new Set(JSON.parse(value)), null
             ]
           , ['frontendBaseURL', 'FRONTEND_BASE_URL']
+          , ['csvSheetUrlSandbox', 'CSV_SHEET_URL_SANDBOX']
+          , ['csvSheetUrlUpstream', 'CSV_SHEET_URL_UPSTREAM']
     ]);
 
     setup.logging = new Logging(process.env.FONTBAKERY_LOG_LEVEL || 'INFO');
