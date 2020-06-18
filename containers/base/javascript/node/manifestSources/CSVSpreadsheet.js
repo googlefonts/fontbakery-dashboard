@@ -1180,9 +1180,9 @@ if (typeof require != 'undefined' && require.main==module) {
       // TODO: could be configured via setup, however, not doing this
       // now, because the current situation doesn't require this.
       // This is the production data:
-      , upstreamSheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ampzD9veEdrwUMkOAJkMNkftqtv1jEygiPR0wZ6eNl8/pub?gid=0&single=true&output=csv'
+      , upstreamSheetCSVUrl = setup.csvSheetUrlUpstream
       // This is the sandbox version:
-      , sanboxSheetCSVUrl = 'https://docs.google.com/spreadsheets/d/1ODnp-yRYw1LrI3RTX-VZZsigPPieviE954sOsrlcx5o/pub?gid=0&single=true&output=csv'
+      , sanboxSheetCSVUrl = setup.csvSheetUrlSandbox
       // NOTE: temporary local copy for development can be specified like.
       //, sheetCSVUrl = 'file://upstream-sources.csv'
       , grpcPort=50051
