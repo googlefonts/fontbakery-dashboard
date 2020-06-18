@@ -343,7 +343,7 @@ var StorageService = exports.StorageService = {
     responseDeserialize: deserialize_fontbakery_dashboard_StorageKey,
   },
   // Sends another greeting
-  get: {
+get: {
     path: '/fontbakery.dashboard.Storage/Get',
     requestStream: false,
     responseStream: false,
@@ -372,24 +372,24 @@ exports.StorageClient = grpc.makeGenericClientConstructor(StorageService);
 //
 var ManifestService = exports.ManifestService = {
   // FIXME: this is outdated but may have some good bits!
-  // check for updates and emit a notice if since the last poke families
-  // were updated
-  // so if there's a change, we'll download it directly and put the files
-  // ordered into a Files message. The sha256 hash is what we emit as
-  // a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
-  // PokeResponse, is basically nothing, just a OK message ... how to do this
-  // best with grpc?
-  // Maybe we could directly send this to the cache?
-  // If we need to re-run an entiren Collection, because Font Bakery changed,
-  // we still need the latest versions of the collection on disk.
-  // so, it would be nice to have some form of atomicity between asking the
-  // informing the ManifestMaster and running the tests. Therefore, we could
-  // just put the entire current state into the cache and then let the
-  // ManifestMaster decide which ones to keep and which ones to drop.
-  // The Manifest itselt can in the meantime update itself etc.
-  // I.e. We create a "Snapshot" of the manifest in the cache, then
-  // we can forget about it
-  poke: {
+// check for updates and emit a notice if since the last poke families
+// were updated
+// so if there's a change, we'll download it directly and put the files
+// ordered into a Files message. The sha256 hash is what we emit as
+// a change message ManifestKey: (manifiestid/collectionid, family name, filesHash)
+// PokeResponse, is basically nothing, just a OK message ... how to do this
+// best with grpc?
+// Maybe we could directly send this to the cache?
+// If we need to re-run an entiren Collection, because Font Bakery changed,
+// we still need the latest versions of the collection on disk.
+// so, it would be nice to have some form of atomicity between asking the
+// informing the ManifestMaster and running the tests. Therefore, we could
+// just put the entire current state into the cache and then let the
+// ManifestMaster decide which ones to keep and which ones to drop.
+// The Manifest itselt can in the meantime update itself etc.
+// I.e. We create a "Snapshot" of the manifest in the cache, then
+// we can forget about it
+poke: {
     path: '/fontbakery.dashboard.Manifest/Poke',
     requestStream: false,
     responseStream: false,
@@ -401,8 +401,8 @@ var ManifestService = exports.ManifestService = {
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
   // This is the same data as the manifestSource would dispatch as
-  // CollectionFamilyJob for Font Bakery.
-  get: {
+// CollectionFamilyJob for Font Bakery.
+get: {
     path: '/fontbakery.dashboard.Manifest/Get',
     requestStream: false,
     responseStream: false,
@@ -414,8 +414,8 @@ var ManifestService = exports.ManifestService = {
     responseDeserialize: deserialize_fontbakery_dashboard_FamilyData,
   },
   // same as get but replies via AMQP/ProcessCommand and hence is immune
-  // to timeout issues. FamilyRequest must specify a ProcessCommand.
-  getDelayed: {
+// to timeout issues. FamilyRequest must specify a ProcessCommand.
+getDelayed: {
     path: '/fontbakery.dashboard.Manifest/GetDelayed',
     requestStream: false,
     responseStream: false,
@@ -455,7 +455,7 @@ exports.ManifestClient = grpc.makeGenericClientConstructor(ManifestService);
 //
 var ReportsService = exports.ReportsService = {
   // to file the report ("file" as a verb, but by convention first letter uppercased)
-  file: {
+file: {
     path: '/fontbakery.dashboard.Reports/File',
     requestStream: false,
     responseStream: false,
@@ -467,7 +467,7 @@ var ReportsService = exports.ReportsService = {
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
   // Get a list of reports including selection/filtering etc.
-  query: {
+query: {
     path: '/fontbakery.dashboard.Reports/Query',
     requestStream: false,
     responseStream: true,
@@ -497,8 +497,8 @@ exports.ReportsClient = grpc.makeGenericClientConstructor(ReportsService);
 //
 var ProcessManagerService = exports.ProcessManagerService = {
   // returns the current Process state initially and on each change of
-  // the Process state a new Process
-  subscribeProcess: {
+// the Process state a new Process
+subscribeProcess: {
     path: '/fontbakery.dashboard.ProcessManager/SubscribeProcess',
     requestStream: false,
     responseStream: true,
@@ -510,7 +510,7 @@ var ProcessManagerService = exports.ProcessManagerService = {
     responseDeserialize: deserialize_fontbakery_dashboard_ProcessState,
   },
   // same as SubscribeProcess but only returns the current state once
-  getProcess: {
+getProcess: {
     path: '/fontbakery.dashboard.ProcessManager/GetProcess',
     requestStream: false,
     responseStream: false,
@@ -522,8 +522,8 @@ var ProcessManagerService = exports.ProcessManagerService = {
     responseDeserialize: deserialize_fontbakery_dashboard_ProcessState,
   },
   // issue a state change for a Process. `ticket` will be used to make
-  // sure only expected commands are executed.
-  execute: {
+// sure only expected commands are executed.
+execute: {
     path: '/fontbakery.dashboard.ProcessManager/Execute',
     requestStream: false,
     responseStream: false,
@@ -535,12 +535,12 @@ var ProcessManagerService = exports.ProcessManagerService = {
     responseDeserialize: deserialize_fontbakery_dashboard_ProcessCommandResult,
   },
   // the any will have to unpack to a specific message defined in the
-  // ProcessManagerImplementation. e.g. DispatcherProcessManager will
-  // expect here a DispatcherInitProcess
-  // this may also be part of making it possible to create different
-  // kinds of processes in the same process manager.
-  // but right now we only deal with one process implementation at a time!
-  initProcess: {
+// ProcessManagerImplementation. e.g. DispatcherProcessManager will
+// expect here a DispatcherInitProcess
+// this may also be part of making it possible to create different
+// kinds of processes in the same process manager.
+// but right now we only deal with one process implementation at a time!
+initProcess: {
     path: '/fontbakery.dashboard.ProcessManager/InitProcess',
     requestStream: false,
     responseStream: false,
@@ -575,8 +575,8 @@ exports.ProcessManagerClient = grpc.makeGenericClientConstructor(ProcessManagerS
 // semantic/use in other implementations.
 var DispatcherProcessManagerService = exports.DispatcherProcessManagerService = {
   // returns the ProcessList for the current query and then an updated
-  // ProcessList when the list changes.
-  subscribeProcessList: {
+// ProcessList when the list changes.
+subscribeProcessList: {
     path: '/fontbakery.dashboard.DispatcherProcessManager/SubscribeProcessList',
     requestStream: false,
     responseStream: true,
@@ -596,7 +596,7 @@ exports.DispatcherProcessManagerClient = grpc.makeGenericClientConstructor(Dispa
 //
 var AuthServiceService = exports.AuthServiceService = {
   // **authentication**
-  initSession: {
+initSession: {
     path: '/fontbakery.dashboard.AuthService/InitSession',
     requestStream: false,
     responseStream: false,
@@ -619,7 +619,7 @@ var AuthServiceService = exports.AuthServiceService = {
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
   // named like this due to the OAuth workflow
-  authorize: {
+authorize: {
     path: '/fontbakery.dashboard.AuthService/Authorize',
     requestStream: false,
     responseStream: false,
@@ -642,8 +642,8 @@ var AuthServiceService = exports.AuthServiceService = {
     responseDeserialize: deserialize_fontbakery_dashboard_AuthStatus,
   },
   //
-  // **authorization** (could be another service)
-  getRoles: {
+// **authorization** (could be another service)
+getRoles: {
     path: '/fontbakery.dashboard.AuthService/GetRoles',
     requestStream: false,
     responseStream: false,
@@ -672,11 +672,11 @@ exports.AuthServiceClient = grpc.makeGenericClientConstructor(AuthServiceService
 //
 var GitHubOperationsService = exports.GitHubOperationsService = {
   // If answering directly THIS COULD TIME OUT!
-  // instead, we answer with Empty and send the
-  // GitHubReport message via another channel,
-  // currently this is implement using an
-  // AMQP queue which feeds a ProcessCommand into ProcessManager.Execute
-  dispatchPullRequest: {
+// instead, we answer with Empty and send the
+// GitHubReport message via another channel,
+// currently this is implement using an
+// AMQP queue which feeds a ProcessCommand into ProcessManager.Execute
+dispatchPullRequest: {
     path: '/fontbakery.dashboard.GitHubOperations/DispatchPullRequest',
     requestStream: false,
     responseStream: false,
@@ -688,8 +688,8 @@ var GitHubOperationsService = exports.GitHubOperationsService = {
     responseDeserialize: deserialize_google_protobuf_Empty,
   },
   // If needed the answering mechanism will be changed to the ProcessCommand
-  // way, but an issue should be fast to file.
-  fileIssue: {
+// way, but an issue should be fast to file.
+fileIssue: {
     path: '/fontbakery.dashboard.GitHubOperations/FileIssue',
     requestStream: false,
     responseStream: false,
@@ -705,7 +705,7 @@ var GitHubOperationsService = exports.GitHubOperationsService = {
 exports.GitHubOperationsClient = grpc.makeGenericClientConstructor(GitHubOperationsService);
 var InitWorkersService = exports.InitWorkersService = {
   // the message type of the answer is worker implementation dependent.
-  init: {
+init: {
     path: '/fontbakery.dashboard.InitWorkers/Init',
     requestStream: false,
     responseStream: false,
