@@ -24,9 +24,7 @@ spec:
           #- name: DEVEL_FAMILY_WHITELIST
           #  value: "[\"Rosario\", \"Amiri\", \"Pacifico\", \"Astloch\"]"
           - name: CSV_SHEET_URL_SANDBOX
-            value: https://doc-00-08-sheets.googleusercontent.com/pub/l5l039s6ni5uumqbsj9o11lmdc/u5fi8qu65t5vutaoq1f2t42b8g/1592511455000/101961686124685905596/*/1ODnp-yRYw1LrI3RTX-VZZsigPPieviE954sOsrlcx5o?gid=0&single=true&output=csv
-            # use $ curl -Ls -o /dev/null -w %{url_effective} "https://my.url"
-            # OLD value: https://docs.google.com/spreadsheets/d/1ODnp-yRYw1LrI3RTX-VZZsigPPieviE954sOsrlcx5o/pub?gid=0&single=true&output=csv
+            value: https://docs.google.com/spreadsheets/d/1ODnp-yRYw1LrI3RTX-VZZsigPPieviE954sOsrlcx5o/pub?gid=0&single=true&output=csv
           - name: CSV_SHEET_URL_UPSTREAM
             value: https://docs.google.com/spreadsheets/d/1ampzD9veEdrwUMkOAJkMNkftqtv1jEygiPR0wZ6eNl8/pub?gid=0&single=true&output=csv
         workingDir: /var/javascript
