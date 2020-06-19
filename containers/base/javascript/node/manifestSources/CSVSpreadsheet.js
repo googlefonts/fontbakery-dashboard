@@ -389,7 +389,57 @@ var CSVData = (function() {
 })();
 
 function downloadCSVData(fileUrl) {
-    function onResult(resolve, reject, res) {
+    var maxRedirects = 7 // 2 should be enough ...
+      , redirectCount = 0
+      ;
+    function requestHTTPx(resolve, reject, requestedUrl) {
+        var protocol = requestedUrl.protocol
+          , httpx = protocol === 'https:' ? https : http
+          ;
+        httpx.get(requestedUrl, reqResult => {
+            //  good hints about edge cases from a blogpost
+            // https://www.mattlunn.me.uk/blog/2012/05/handling-a-http-redirect-in-node-js/
+            if (reqResult.statusCode === 200) {
+                onResult(resolve, reject, reqResult);
+            }
+            else if (reqResult.statusCode > 300 && reqResult.statusCode < 400
+                                            && reqResult.headers.location) {
+                // The location for some (most) redirects will only contain the path,
+                // not the hostname; detect this and add the host to the path.
+                var targetURL = url.parse(reqResult.headers.location);
+                if (!targetURL.hostname)
+                    // Hostname not included; get host from requested URL
+                    // and prepend to location.
+                    targetURL = url.parse(`${requestedUrl.hostname}/${reqResult.headers.location}`);
+
+                if(targetURL.protocol === 'http:'
+                                && requestedUrl.protocol === 'https:') {
+                    reject(new Error('Won\'t follow redirect that downgrades '
+                            + 'from https:// to http://\n'
+                            + `the redirection of ${requestedUrl.href}\n`
+                            + `downgrades to ${targetURL.href}\n`
+                            + `originally requested was ${fileUrl}`));
+                    return;
+                }
+
+                redirectCount += 1;
+                if(redirectCount > maxRedirects) {
+                    // fail, don't redirect
+                    reject(new Error(`Too many redirects (${redirectCount}) `
+                                    + ` following ${fileUrl}.`));
+                    return;
+                }
+
+                // follow the redirect
+                requestHTTPx(resolve, reject, targetURL);
+            }
+            else
+                reject(new Error(`Can't handle HTTP status code ${reqResult.statusCode} `
+                    + `returned from GET ${requestedUrl}`));
+        });
+    }
+
+    function onResult(resolve, reject, resultStream) {
         var csvReader = csvParse({
               //  columns:true// => creates dicts instead of arrays
                 trim: true
@@ -399,8 +449,8 @@ function downloadCSVData(fileUrl) {
           , result = null
           , lineNo = 0
           ;
-        // res.pipe(process.stdout);// => for debugging
-        res.pipe(csvReader) // ->  <stream.Writable>
+        // resultStream.pipe(process.stdout);// => for debugging
+        resultStream.pipe(csvReader) // ->  <stream.Writable>
             .on('data', function (row) {
                 lineNo += 1;
                 if(!result) {
@@ -419,16 +469,14 @@ function downloadCSVData(fileUrl) {
             });
     }
     return new Promise(function(resolve, reject) {
-        let resultHandler = onResult.bind(null, resolve, reject)
-          , protocol = fileUrl.split('://', 1)[0]
+        let parsedUrl = url.parse(fileUrl)
+          , protocol = parsedUrl.protocol
           ;
 
-        if(protocol.startsWith('http')) {
-            var httpx = protocol === 'https' ? https : http;
-            httpx.get(url.parse(fileUrl), resultHandler);
-        }
-        else if(protocol === 'file')
-            resultHandler(fs.createReadStream(fileUrl.slice('file://'.length)));
+        if(protocol.startsWith('http'))
+            requestHTTPx(resolve, reject, parsedUrl);
+        else if(protocol === 'file:')
+            onResult(resolve, reject, fs.createReadStream(fileUrl.slice('file://'.length)));
         else
             throw new Error('Don\'t know how to handle file url "'+fileUrl+'"; '
                 + 'it should start with "http://", "https://" or "file://".');
