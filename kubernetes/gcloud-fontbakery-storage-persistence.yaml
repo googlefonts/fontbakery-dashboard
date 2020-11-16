@@ -25,7 +25,7 @@ spec:
                   values: ["us-central1-a"] # the storage volume must be here!
       containers:
       - name: fontbakery-storage-persistence
-        image: gcr.io/fontbakery-168509/base-javascript:20
+        image: gcr.io/fontbakery-168509/base-javascript:21
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
