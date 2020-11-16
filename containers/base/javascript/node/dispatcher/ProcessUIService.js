@@ -1389,7 +1389,7 @@ function _rqlProcessMerges(r, process){
 
 const _PLUCK_DISPATCHER_LIST_ITEM = [
     'id', 'created', 'initiator', 'mode'
-  // TODO: create changed an other derrived fields in the query!
+  // TODO: create changed an other derived fields in the query!
   // BUT: since we likely can't merge before filter in a change feed,
   // we best can reuse the definition of these fields directly in the
   // filter as well.

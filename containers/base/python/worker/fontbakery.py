@@ -24,7 +24,7 @@ from fontbakery.reporters import FontbakeryReporter
 from fontbakery.message import Message
 from fontbakery.checkrunner import STARTCHECK, ENDCHECK, DEBUG
 
-RDB_FAMILYTESTS = 'familytests'
+RDB_FAMILYCHECKS = 'familytests'
 
 
 __private_marker = object()
@@ -201,17 +201,16 @@ class DashbordWorkerReporter(FontbakeryReporter):
     super(DashbordWorkerReporter, self).__init__(runner=runner, **kwd)
     self._dbOps = dbOps
     self._jobid = jobid
-    self._profile = profile;
+    self._profile = profile
     self.ticks_to_flush = ticks_to_flush or 1
-    self.doc = []
     self._current = None
     self._collectedChecks = None
 
   def _register(self, event):
     super(DashbordWorkerReporter, self)._register(event)
     status, message, identity = event
-    section, test, iterargs = identity
-    if not test:
+    section, check, iterargs = identity
+    if not check:
       return
 
     key = self._profile.serialize_identity(identity)
@@ -225,7 +224,7 @@ class DashbordWorkerReporter(FontbakeryReporter):
     if status == ENDCHECK:
         # Do more? Anything more would make access easier but also be a
         # derivative of the actual data, i.e. not SSOT. Calculating (and
-        # thus interpreting) results for the tests is probably not too
+        # thus interpreting) results for the checks is probably not too
         # expensive to do it on the fly.
         self._current['result'] = message.name
         self._save_result(key, self._current)
@@ -260,11 +259,11 @@ class DashbordWorkerReporter(FontbakeryReporter):
         log['message'] = '{}'.format(message)
       self._current['statuses'].append(log)
 
-  def _save_result(self, key, test_result):
-    """ send test_result to the retthinkdb document"""
+  def _save_result(self, key, check_result):
+    """ send check_result to the retthinkdb document"""
     if self._collectedChecks is None:
       self._collectedChecks = {}
-    self._collectedChecks[key] = test_result
+    self._collectedChecks[key] = check_result
     if len(self._collectedChecks) >= self.ticks_to_flush:
       self.flush()
 
@@ -281,7 +280,7 @@ class Distributor(WorkerBase):
     self._job = job
     self._cache = cache
     # rethinkdb = (r, rdb_connection, rdb_name)
-    rethinkdb = rethinkdb + (RDB_FAMILYTESTS, )
+    rethinkdb = rethinkdb + (RDB_FAMILYCHECKS, )
     self._dbOps = DBOperations(rethinkdb, job)
     self._queue = queue
 
@@ -292,10 +291,10 @@ class Distributor(WorkerBase):
 
     # this must survive JSON
     full_order = list(profile.serialize_order(runner.order))
-    tests = {identity:{'index':index}  for index, identity in enumerate(full_order)}
+    checks = {identity:{'index':index}  for index, identity in enumerate(full_order)}
 
     # FIXME: do something fancy to split this up
-    # maybe we can distribute long running tests evenly or such
+    # maybe we can distribute long running checks evenly or such
     # this would require more info of course.
     jobs = len(fonts) + 1  # go with number of fonts plus one for not font specific checks parallel jobs
     self._log.info('worker_distribute_jobs: Splitting up into %s jobs.', jobs)
@@ -313,7 +312,7 @@ class Distributor(WorkerBase):
       jobs_meta[jobid] = {
           'id': jobid
         , 'created': datetime.now(pytz.utc)
-        # the indexes in full_order of the tests this job is supposed to run
+        # the indexes in full_order of the checks this job is supposed to run
         # could be helpful, to mark the not finished ones as doomed if the
         # job has an exception and terminates.
       }
@@ -334,11 +333,11 @@ class Distributor(WorkerBase):
           # order again. The items in the execution_order list are JSON
           # formatted strings and can be used as keys.
         , 'iterargs': runner.iterargs
-        , 'test_descriptions': {test.id: test.description
-                                          for _, test, _ in runner.order}
+        , 'test_descriptions': {check.id: test.description
+                                          for _, check, _ in runner.order}
           # and to have a place where the sub-workers can report
         , 'jobs': jobs_meta # record start and end times
-        , 'tests': tests
+        , 'tests': checks
         , 'results': {}
     })
     for job in jobs:
@@ -388,7 +387,7 @@ class Checker(WorkerBase):
     self._cache = cache
 
     # rethinkdb = (r, rdb_connection, rdb_name)
-    rethinkdb = rethinkdb + (RDB_FAMILYTESTS, )
+    rethinkdb = rethinkdb + (RDB_FAMILYCHECKS, )
     self._dbOps = DBOperations(rethinkdb, job)
     self._queue = queue
     self._tmp_directory = tmp_directory

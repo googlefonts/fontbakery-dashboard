@@ -906,7 +906,7 @@ function insertOrReplaceDir(repo, tree, path, items) {
 
 /**
  * wrap this into a this._queue.schedule!
- * NOTE: when called in _dispatch it is by wrapped!
+ * NOTE: when called in _dispatch it is wrapped!
  *
  * hmm, basically if I have the origins "upstream" and "origin" and "origin"
  * is a fork of "upstream". In branch master -> origin/master

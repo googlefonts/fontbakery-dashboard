@@ -698,6 +698,30 @@ _p._fetchGit = function(familyData) {
                         , 'remoteName:', familyData.remoteName
                         , 'referenceName:', familyData.referenceName
                         , err);
+            // FIXME:
+            // had an HTTP 404 here with
+            // remoteUrl: https://github.com/vv-monsalve/rowdies/tree/master.git
+            // upstream: https://github.com/vv-monsalve/rowdies/tree/master
+            // expected:
+            // upstream "https://github.com/vv-monsalve/rowdies"
+            //
+            // This will log as:
+            // ERROR failed _fetchRef remoteUrl:
+            // https://github.com/vv-monsalve/rowdies/tree/master.git
+            // remoteName: upstream/Rowdies
+            // referenceName: master
+            // [Error: unexpected HTTP status code: 404] {
+            //      errno: -1,
+            //      errorFunction: 'Remote.fetch'
+            // }
+            //
+            // but the re-raised error only has the part:
+            // "[Error: unexpected HTTP status code: 404]"
+            // THE FIX:
+            // we should raise an error that explicitly says that we cant
+            // fetch the configured upstream url {upstream} plus the
+            // error message, because that's the message that will be
+            // printed in the frontend,
             throw err; // re-raise
         });
 };
@@ -1056,7 +1080,7 @@ _p._prepareAndDispatchGit = function(familyData, reference) {
         .then(null, err=>{
             let [path, ] = familyData.fontFilesLocation
               , message = ['Can\'t dispatch path "' + path + '" for'
-                          , familyData.name , 'derrived from fontfilesPrefix:'
+                          , familyData.name , 'derived from fontfilesPrefix:'
                           , familyData.fontfilesPrefix
                           ].join(' ')
               ;
