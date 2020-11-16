@@ -16,7 +16,7 @@ spec:
         cloud.google.com/gke-nodepool: default-pool
       containers:
       - name: fontbakery-api
-        image: gcr.io/fontbakery-168509/base-javascript:20
+        image: gcr.io/fontbakery-168509/base-javascript:21
         env:
           - name: FONTBAKERY_LOG_LEVEL
             value: "DEBUG"
@@ -43,7 +43,8 @@ spec:
         workingDir: /var/javascript
         # CAUTION!
         # command: ["node", "--inspect=0.0.0.0:9229", "node/api.js"]
-        command: ["npm", "start"]
+        # command: ["npm", "start"]
+        command: ["node", "node/MaintenanceServer.js", "suspended-note.html"]
 ---
 apiVersion: cloud.google.com/v1beta1
 kind: BackendConfig
