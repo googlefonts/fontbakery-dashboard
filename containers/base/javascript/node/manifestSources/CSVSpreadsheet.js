@@ -18,7 +18,7 @@
  *
  * Currently we only use git repositories.
  *
- * In here, we don't have branch information yet, we use "master"
+ * In here, we don't have branch information yet, we use "main"
  * as referenceName  by default! We could include ":otherBranch" at the
  * end of "upstream" in the future.
  *
@@ -61,7 +61,7 @@ const MAX_PARALLEL_GIT_FETCHES = 1; // 8;
 /**
  * The sources are listed in a google docs spreadsheet.
  */
-function CSVSpreadsheet(logging, id, reposPath, sheetCSVUrl, familyWhitelist
+function CSVSpreadsheet(logging, id, reposPath, sheetCSVUrl, familyAllowlist
                                                         , reportsSetup) {
     this._log = logging;
     this._sheetCSVUrl = sheetCSVUrl;
@@ -72,10 +72,10 @@ function CSVSpreadsheet(logging, id, reposPath, sheetCSVUrl, familyWhitelist
     // anymore after an update?
     this._gitRepos = new Map();
     this.id = id;
-    this._familyWhitelist = familyWhitelist;
+    this._familyAllowlist = familyAllowlist;
     this._familyReportTable = null; // specific for this Source currently
     this._reposPath = reposPath;
-    Parent.call(this, logging, id, familyWhitelist, reportsSetup);
+    Parent.call(this, logging, id, familyAllowlist, reportsSetup);
 }
 
 var _p = CSVSpreadsheet.prototype = Object.create(Parent.prototype);
@@ -187,7 +187,7 @@ var CSVFamily = (function() {
       , referenceName: {
             get: function() {
                 if(this.repoType === 'git')
-                    return this.branch || 'master'; // default to master
+                    return this.branch || 'main'; // default to main
                 // make this explicit if usable for other repo types
                 throw new Error('"referenceName" not implemented for repoType: ' + this.repoType);
             }
@@ -702,12 +702,12 @@ _p._fetchGit = function(familyData) {
         });
 };
 
-_p._fetchGoogleFontsMaster = function() {
+_p._fetchGoogleFontsMainBranch = function() {
     return this._fetchGit({
-            name: 'Google Fonts GitHub Master'
+            name: 'Google Fonts GitHub Main Branch'
           , remoteName: 'google/fonts'
           , remoteUrl: 'https://github.com/google/fonts.git'
-          , referenceName: 'master'
+          , referenceName: 'main'
     }); // -> git reference promise
 };
 
@@ -740,8 +740,8 @@ function zip(...arrays) {
     return result;
 }
 
-function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
-    var isUpdate = !!googleMasterFamilyTree
+function _getMetadata(files, familyData, commit, tree, googleMainBranchFamilyTree) {
+    var isUpdate = !!googleMainBranchFamilyTree
         // Ideally the two cases yield the same result! However, existing
         // families may have directories violating the
         // {licenseDir}/{familyDirName} rule
@@ -752,7 +752,7 @@ function _getMetadata(files, familyData, commit, tree, googleMasterFamilyTree) {
       ;
 
     if(isUpdate) {
-        targetDirectory = googleMasterFamilyTree.path();
+        targetDirectory = googleMainBranchFamilyTree.path();
         // If this is the wrong licenseDir it's unlikely that
         // the dispatcher pipeline will work for the family.
         // At least the PR will end in the wrong place!
@@ -905,7 +905,7 @@ function findAllFilesEntriesInPath(rootTree, path, filterFunction) {
 }
 
 _p._collectDataGit = function(familyData, commit, tree, rootTree
-                                        , masterFamilyTree, filesPrefix) {
+                                        , mainBranchFamilyTree, filesPrefix) {
     var files = new Map()
       , treeToFiles = (tree, filterFunc) => {
             return this._treeToFilesData(tree, filterFunc)
@@ -916,12 +916,12 @@ _p._collectDataGit = function(familyData, commit, tree, rootTree
         }
       ;
 
-    // From masterFamilyTree: get all files, except the .ttf ones
+    // From mainBranchFamilyTree: get all files, except the .ttf ones
     // that's e.g. OFL.txt and DESCRIPTION.en_us.html from the
-    // google/fonts master.
-    return (masterFamilyTree
+    // google/fonts main branch.
+    return (mainBranchFamilyTree
                 // this may be null, e.g. if the family is a new addition
-                ? treeToFiles(masterFamilyTree, filename=>!filename.endsWith('.ttf'))
+                ? treeToFiles(mainBranchFamilyTree, filename=>!filename.endsWith('.ttf'))
                 : Promise.resolve())
     // From tree: get all .ttf files starting with filesPrefix
     .then(()=>treeToFiles(tree, filename=>{
@@ -965,7 +965,7 @@ _p._collectDataGit = function(familyData, commit, tree, rootTree
     // that way we could update stuff using the dispatcher pipeline
     // without having to program rare exceptions.
     .then(()=>{
-        var metadata = _getMetadata(files, familyData, commit, tree, masterFamilyTree);
+        var metadata = _getMetadata(files, familyData, commit, tree, mainBranchFamilyTree);
         return this._insertMetadataPB(
                         Array.from(files.entries()) // -> filesData
                      ,  metadata
@@ -1007,15 +1007,15 @@ function _findTree(
     );
 }
 
-_p._getGitMasterTreeForFamily = function(familyName) {
-    return this._fetchGoogleFontsMaster()
+_p._getGitMainBranchTreeForFamily = function(familyName) {
+    return this._fetchGoogleFontsMainBranch()
         .then(reference=>this._getCommit(reference.owner(), reference.target()))
         .then(currentCommit=>_findTree(
                 currentCommit
               , familyName.toLowerCase().replace(/ /g, '')/*familyDirName*/
               , ['ofl', 'apache', 'ufl']/*licenseDirs*/))
         .then(null, err=>{
-            this._log.info('Can\'t get ', familyName, 'tree from master:', err);
+            this._log.info('Can\'t get ', familyName, 'tree from main branch:', err);
             return null;
         });
 };
@@ -1040,12 +1040,12 @@ _p._getGitData = function(familyData, reference) {
                                 })
                                 .then(_getTreeFromTreeEntry) // -> tree
 
-              , masterFamilyTreePromise = this._getGitMasterTreeForFamily(familyData.name)
+              , mainBranchFamilyTreePromise = this._getGitMainBranchTreeForFamily(familyData.name)
               ;
 
-            return Promise.all([familyData, commit, treePromise, rootTreePromise, masterFamilyTreePromise, filesPrefix]);
+            return Promise.all([familyData, commit, treePromise, rootTreePromise, mainBranchFamilyTreePromise, filesPrefix]);
         })
-        // args = [familyData, commit, tree, rootTree, masterFamilyTree, filesPrefix]
+        // args = [familyData, commit, tree, rootTree, mainBranchFamilyTree, filesPrefix]
         .then(args=>this._collectDataGit(...args))// -> [baseDir, filesData, metadata, path, familyName]
         ;
 };
@@ -1088,11 +1088,11 @@ _p._update = function(csvData) {
 
     for(let familyData of csvData.values()) {
         let familyName = familyData.name;
-        if(this._familyWhitelist && !this._familyWhitelist.has(familyName)) {
-            // TODO: maybe only report the whitelist once.
+        if(this._familyAllowlist && !this._familyAllowlist.has(familyName)) {
+            // TODO: maybe only report the allowlist once.
             // Much less noise! and it can be used as a tool to only update
             // selected families (e.g. just one)
-            this._reportFamily(familyName,'skipped', 'Not whitelisted.');
+            this._reportFamily(familyName,'skipped', 'Not allowlisted.');
             continue;
         }
         if(familyData.keySuffix){
@@ -1221,7 +1221,7 @@ _p.getSourceDetails = function(familyName) {
 
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup(), sources = [], server
-      , familyWhitelist = setup.develFamilyWhitelist
+      , familyAllowlist = setup.develFamilyAllowlist
         // For development may contain /var/git-repositories/github.com_google_fonts.git
         // /var/git-repositories$ git clone --bare https://github.com/google/fonts.git github.com_google_fonts.git
       , repoPath = '/var/git-repositories'
@@ -1246,8 +1246,8 @@ if (typeof require != 'undefined' && require.main==module) {
     }
 
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    if(familyWhitelist)
-        setup.logging.debug('FAMILY_WHITELIST:', familyWhitelist);
+    if(familyAllowlist)
+        setup.logging.debug('FAMILY_ALLOWLIST:', familyAllowlist);
     // the prod api
 
     // Could be used in local development to reduce environment complexity
@@ -1257,13 +1257,13 @@ if (typeof require != 'undefined' && require.main==module) {
     // TODO: rename to production-upstream, but there are many places to
     // do so!
     sources.push(new CSVSpreadsheet(setup.logging, 'upstream', repoPath
-                            , upstreamSheetCSVUrl, familyWhitelist, setup.reports));
+                            , upstreamSheetCSVUrl, familyAllowlist, setup.reports));
     // In sandbox mode, we allow feature branches as upstream sources
     // I had the worry that there may be race conditions between the
     // two sources, but it seems like this is solved via the queue which
     // is shared by ManifestServer via the setQueue interface.
     sources.push(new CSVSpreadsheet(setup.logging, 'sandbox-upstream', repoPath
-                            , sanboxSheetCSVUrl, familyWhitelist, setup.reports));
+                            , sanboxSheetCSVUrl, familyAllowlist, setup.reports));
 
     // NOTE: this was used for development.
     // let _queues = new Map()

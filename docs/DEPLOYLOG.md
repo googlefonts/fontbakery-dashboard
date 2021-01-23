@@ -388,7 +388,7 @@ GITHUB_API_TOKEN=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
 GITHUB_OAUTH_CLIENT_ID=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
 GITHUB_OAUTH_CLIENT_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSS
 
-# whitelist user login names on github to have the role "engineer"
+# allowlist user login names on github to have the role "engineer"
 GITHUB_AUTH_ENGINEERS="[\"userlogina\", \"userloginb\", \"userloginc\"]"
 # did generate it like so: $ head -c 33  /dev/urandom | base64 --wrap=0 ;echo ''
 WEB_SERVER_COOKIE_SECRET=AAAAAAAAABBBBBBXXXXXX{PRIVATE}QQQZZZSSSSSSSS
@@ -461,7 +461,7 @@ kubectl create configmap env-config --from-literal=ENVIRONMENT_VERSION="$ENVIRON
 2. gcloud-rethinkdb-stage-2.yaml
 3. gcloud-fontbakery-storage-cache.yaml
 4. gcloud-fontbakery-worker-cleanup.yaml, gcloud-fontbakery-worker-checker.yaml,
-   gcloud-fontbakery-worker-distributor.yaml, gcloud-fontbakery-manifest-master.yaml
+   gcloud-fontbakery-worker-distributor.yaml, gcloud-fontbakery-manifest-main.yaml
 5. gcloud-fontbakery-api.yaml
 6. gcloud-fontbakery-manifest-gfapi.yaml
 7. gcloud-fontbakery-manifest-githubgf.yaml
@@ -499,7 +499,7 @@ kubectl apply -f kubernetes/gcloud-fontbakery-worker.yaml
 
 kubectl apply -f kubernetes/gcloud-fontbakery-reports.yaml
 kubectl apply -f kubernetes/minikube-fontbakery-init-workers.yaml
-kubectl apply -f kubernetes/gcloud-fontbakery-manifest-master.yaml
+kubectl apply -f kubernetes/gcloud-fontbakery-manifest-main.yaml
 
 kubectl apply -f kubernetes/minikube-fontbakery-github-auth.yaml
 kubectl apply -f kubernetes/minikube-fontbakery-github-operations.yaml
@@ -519,7 +519,7 @@ kubectl delete deployment fontbakery-worker-cleanup
 kubectl delete deployment fontbakery-worker-checker
 kubectl delete deployment fontbakery-worker-distributor
 kubectl delete deployment fontbakery-api
-kubectl delete deployment fontbakery-manifest-master
+kubectl delete deployment fontbakery-manifest-main
 
 kubectl delete deployment fontbakery-manifest-gfapi
 kubectl delete deployment fontbakery-manifest-githubgf
