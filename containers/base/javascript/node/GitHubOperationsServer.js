@@ -315,18 +315,18 @@ _p._fetchRef = function(noQueue, remoteName, remoteUrl, referenceName) {
 };
 
 /**
- * $ git fetch upstream master
+ * $ git fetch upstream main
  *
  * this will run frequently before creating a new branch
  */
-_p._fetchUpstreamMaster = function(remoteName, remoteRef, noQueue) {
+_p._fetchUpstreamMain = function(remoteName, remoteRef, noQueue) {
     return this._fetchRef(noQueue
                         , remoteName
                         , remoteRef.remoteUrl
                         , remoteRef.branchName); // -> ref
 };
 
-_p._fetchUpstreamMasters = function() {
+_p._fetchUpstreamMainBranches = function() {
     var promises = []
       , seen = new Set()
       ;
@@ -336,14 +336,14 @@ _p._fetchUpstreamMasters = function() {
             continue;
         seen.add(remoteName);
                       // this is queued
-        promises.push(this._fetchUpstreamMaster(remoteName, remoteRef));
+        promises.push(this._fetchUpstreamMain(remoteName, remoteRef));
     }
     return Promise.all(promises);
 };
 
 _p._branch = function(branchName, reference, force) {
     // https://www.nodegit.org/api/branch/#create
-    // name: (String) Branch name, e.g. “master”
+    // name: (String) Branch name, e.g. “main”
     // commit: (Commit, String, Oid) The commit the branch will point to
     // force: (bool) Overwrite branch if it exists
     this._log.debug('_branch:', branchName);
@@ -417,7 +417,7 @@ _p._makeRemoteBranchName = function(targetDirectory) {
 
 /**
  * make a PR:
- *   - fetch current upstream master
+ *   - fetch current upstream main
  *   - git branch {branchName}
  *   - get {package} for {cacheKey}
  *   - replace {gfontsDirectory} with the contents of {package}
@@ -543,7 +543,7 @@ _p._dispatch = function(authorSignature, localBranchName, targetDirectory
       , [upRemoteName, upRremoteRef] = this._getUpstreamRemoteRef(prTargetName)
       ;
     // noQueue is true because _dispatch is/must be queued!
-    return this._fetchUpstreamMaster(upRemoteName, upRremoteRef, true)// -> ref
+    return this._fetchUpstreamMain(upRemoteName, upRremoteRef, true)// -> ref
     .then(reference=>this._branch(localBranchName, reference, true))
     .then(headCommitReference=>this._replaceDirCommit(authorSignature
                             , localBranchName, headCommitReference
@@ -556,7 +556,7 @@ _p._dispatch = function(authorSignature, localBranchName, targetDirectory
                             , prRemoteRef.repoOwner
                             , prRemoteRef.repoName
                             , remoteRef.prHead // head e.g. user:branchName
-                            , prRemoteRef.branchName // base e.g. master
+                            , prRemoteRef.branchName // base e.g. main
                             ))
     .then((getPRResult)=>{
         // We only create a new PR if it doesn't exists:
@@ -752,7 +752,7 @@ _p.serve = function() {
 
     return this._initRepository()
         .then(()=>this._initUpstreams())
-        .then(()=>this._fetchUpstreamMasters())
+        .then(()=>this._fetchUpstreamMainBranches())
         .then(()=>{
             this._log.info('Conecting external services...');
             return Promise.all([this._auth.waitForReady().then(()=>this._log.info('auth is ready now'))
@@ -909,16 +909,16 @@ function insertOrReplaceDir(repo, tree, path, items) {
  * NOTE: when called in _dispatch it is by wrapped!
  *
  * hmm, basically if I have the origins "upstream" and "origin" and "origin"
- * is a fork of "upstream". In branch master -> origin/master
+ * is a fork of "upstream". In branch main -> origin/main
  *      git fetch upstream
- *      git rebase upstream/master
+ *      git rebase upstream/main
  *      git push
- * brings my origin/master to the same state as upstream/master
+ * brings my origin/main to the same state as upstream/main
  * so in this case, I should just push the local upstream branch to
  * the prTarget...
  */
 _p._updateUpstream = function(remoteName, remoteRef) {
-        // e.g. remoteName = "graphicore"  remoteRef.branchName = "master"
+        // e.g. remoteName = "graphicore"  remoteRef.branchName = "main"
     var upstreamRemoteName = remoteRef.upstream
       , upstreamRemoteRef
       , fullLocalRef
@@ -928,7 +928,7 @@ _p._updateUpstream = function(remoteName, remoteRef) {
     if(!upstreamRemoteName || !remoteRef.updateWithUpstreamBeforePR)
         return;
     upstreamRemoteRef = this._getRemoteRef(upstreamRemoteName);
-    // e.g. refs/remotes/upstream/master
+    // e.g. refs/remotes/upstream/main
     fullLocalRef = `refs/remotes/${upstreamRemoteName}/${upstreamRemoteRef.branchName}`;
     return this._push(remoteName, fullLocalRef, remoteRef, force);
 };
@@ -950,12 +950,12 @@ _p._push = function(remoteName, localBranchName, remoteRef, force) {
             //      |   |-- staging
             //      |   |   `-- Font_Bakery_Dispatcher_2019_10_11_ofl_abeezee
             //      |   `-- upstream
-            //      |       `-- master
+            //      |       `-- main
             //      `-- tags
             //
             // to push from a remote that was fetched e.g.:
-            //     fullLocalRef = refs/remotes/upstream/master
-            //     fullRemoteRef = refs/heads/master
+            //     fullLocalRef = refs/remotes/upstream/main
+            //     fullRemoteRef = refs/heads/main
             // localBranchName can also be a fullLocalRef
         var fullLocalRef = localBranchName.indexOf('refs/') === 0
                         ? localBranchName
@@ -1070,7 +1070,7 @@ _p._gitHubPR = function(OAuthAccessToken
                       , title
                       , body  /* markdown */
                       , head  /* i.e. graphicore:fontbakery-test_01 */
-                      , prBase /* new GitHubRef('google', 'fonts', 'master') */
+                      , prBase /* new GitHubRef('google', 'fonts', 'main') */
                       ) {
 
     this._log.debug('_gitHubPR:', head, '=>', prBase.remoteName, prBase.branchName);
@@ -1164,7 +1164,7 @@ function fetchRef(log, repo, remoteName, remoteUrl, referenceName, allowUpdateUr
             log.info('Started fetching remote "'
                             + remoteName + ':' + referenceName + '"');
         // this may take a while!
-        // E.g. initially fetching google/fonts:master
+        // E.g. initially fetching google/fonts:main
         // also, it kind of fails silently if there's no referenceName
         // at remote. Thus, later is checked if we can get the actual
         // reference from the repo.
@@ -1182,8 +1182,8 @@ function fetchRef(log, repo, remoteName, remoteUrl, referenceName, allowUpdateUr
         if(err.errno === NodeGit.Error.CODE.ENOTFOUND)
         // message: no reference found for shorthand '{fullReferenceName}'
         // errno: -3
-        // at the moment E.g.: ERROR upstream: FAILED: Fetching remote "upstream/Rakkas:master"
-        // … for shorthand 'upstream/Rakkas/master'
+        // at the moment E.g.: ERROR upstream: FAILED: Fetching remote "upstream/Rakkas:main"
+        // … for shorthand 'upstream/Rakkas/main'
         // And indeed, there's only a `gh-pages` branch (which is the default as well)
             if(log)
                 log.error('FAILED: Fetching remote (branch) '
@@ -1230,14 +1230,14 @@ if (typeof require != 'undefined' && require.main==module) {
         // all PRs are based on the respective upstream repository branch
       , remoteRefs = {
             googlefonts: new GitHubRef(
-                                'google', 'fonts', 'master'
+                                'google', 'fonts', 'main'
                                 // this has no upstream, it is its own upstream
                               , null
                               , setup.gitHubAPIToken
                               , false // updateWithUpstreamBeforePR
                               )
           , graphicore: new GitHubRef(
-                                'graphicore', 'googleFonts', 'master'
+                                'graphicore', 'googleFonts', 'main'
                               , 'googlefonts' // upstream: the key in this "remoteRefs" object
                               , setup.gitHubAPIToken
                               , true // updateWithUpstreamBeforePR

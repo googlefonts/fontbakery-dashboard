@@ -14,7 +14,7 @@
 const { spawn } = require('child_process')
     , { FamilyProto } = require('protocolbuffers/fonts_public_pb')
 // > START INLINE PYTHON SCRIPT
-// needs: $ pip install git+https://github.com/googlefonts/gftools.git@master
+// needs: $ pip install git+https://github.com/googlefonts/gftools.git@main
 // sys.argv[1] is the unicode text content of a METADATA.pb file
     , PYTHON_PARSE_FAMILY_PROTO = `
 import sys

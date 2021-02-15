@@ -41,14 +41,14 @@ function ManifestServer(logging, id, sources, port, cacheSetup, amqpSetup) {
     this._sourcesSetup = sources;
     this._amqpSetup = amqpSetup;
     this._amqp = null;
-    this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
+    this._manifestMainJobQueueName = 'fontbakery-manifest-main-jobs';
 
     this._any = new ProtobufAnyHandler(this._log, {FamilyData:FamilyData});
 
     // FIXME: do we need this?
     // if it's only about the POKE function, we may as well just wait for
     // incoming queues or such.
-    // this._manifestMasterRegisterSourceQueueName = 'fontbakery-manifest-master-register-source';
+    // this._manifestMainRegisterSourceQueueName = 'fontbakery-manifest-main-register-source';
 
     this._sources = Object.create(null);
     this._queues = new Map();
@@ -82,8 +82,8 @@ _p._addSources = function(sources) {
 _p._registerSource = function(sourceID) {
     // jshint unused:vars
     // PASS.
-    // Discussion in the constructor at _manifestMasterRegisterSourceQueueName
-    // return this._sendAMQPMessage(this._manifestMasterRegisterSourceQueueName, buffer);
+    // Discussion in the constructor at _manifestMainRegisterSourceQueueName
+    // return this._sendAMQPMessage(this._manifestMainRegisterSourceQueueName, buffer);
 };
 
 _p._addSource = function(source) {
@@ -197,7 +197,7 @@ _p._dispatchFamilyJob = function(sourceid, familyName, cacheKey, metadata) {
         job.setMetadata(JSON.stringify(metadata));
 
     buffer = new Buffer(job.serializeBinary());
-    return this._sendAMQPMessage(this._manifestMasterJobQueueName, buffer);
+    return this._sendAMQPMessage(this._manifestMainJobQueueName, buffer);
 };
 
 _p._dispatchFamily = function(sourceid, familyName, baseDir, filesData, metadata) {

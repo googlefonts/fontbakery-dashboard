@@ -15,7 +15,7 @@ from diffenator.font import DFont
 
 #################
 # START taken from gftools-qa
-# https://github.com/googlefonts/gftools/blob/master/bin/gftools-qa.py
+# https://github.com/googlefonts/gftools/blob/main/bin/gftools-qa.py
 #################
 DIFFENATOR_THRESHOLDS = {
     "weak": dict(

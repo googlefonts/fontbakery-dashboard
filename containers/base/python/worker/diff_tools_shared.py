@@ -25,7 +25,7 @@ from fontTools.ttLib import TTFont
 
 #################
 # START taken from gftools-qa
-# https://github.com/googlefonts/gftools/blob/master/bin/gftools-qa.py
+# https://github.com/googlefonts/gftools/blob/main/bin/gftools-qa.py
 # and mixed with suggestions from
 # https://github.com/googlefonts/fontdiffenator/issues/54#issuecomment-479614229
 #################

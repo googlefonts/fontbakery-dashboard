@@ -52,7 +52,7 @@ $ kf apply -f kubernetes/minikube-fontbakery-storage-cache.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-storage-persistence.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-init-workers.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-worker.yaml
-$ kf apply -f kubernetes/minikube-fontbakery-manifest-master.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-main.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-github-auth.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-github-operations.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-reports.yaml
@@ -337,7 +337,7 @@ $ kf apply -f kubernetes/minikube-fontbakery-storage-persistence.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-init-workers.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-worker.yaml
 # SKIP for now (don't want to kick of the checking at the moment!)
-$ kf apply -f kubernetes/minikube-fontbakery-manifest-master.yaml
+$ kf apply -f kubernetes/minikube-fontbakery-manifest-main.yaml
 # new stuff
 $ kf apply -f kubernetes/minikube-fontbakery-github-auth.yaml
 $ kf apply -f kubernetes/minikube-fontbakery-github-operations.yaml

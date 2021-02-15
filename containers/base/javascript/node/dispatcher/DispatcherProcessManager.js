@@ -114,7 +114,7 @@ function DispatcherProcessManager(setup, ...args) {
                     // for completeness, but unusable in this context.
                     case ('pulls'):
                         // falls through
-                    case ('master'):
+                    case ('main'):
                         sourceClient = this._manifestGitHubGFClient;
                         break;
                     default:

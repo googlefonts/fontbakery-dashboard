@@ -72,7 +72,7 @@ RUN touch /tmp/cache_spoof_4
 # RUN pip3 install git+https://github.com/graphicore/fontbakery@dashboard_related
 
 #RUN git clone --depth 1 -b p3_fixes git://github.com/graphicore/fontbakery /var/fontbakery;\
-#RUN git clone --depth 1 -b master git://github.com/googlefonts/fontbakery /var/fontbakery;\
+#RUN git clone --depth 1 -b main git://github.com/googlefonts/fontbakery /var/fontbakery;\
 #    pip3 install /var/fontbakery;
 
 # FIXME: probably all `pip3 install dependencies should be in requirements.txt

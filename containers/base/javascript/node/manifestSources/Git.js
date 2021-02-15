@@ -27,7 +27,7 @@ const GitShared = (function() {
  * us inherit a lot of gits own optimizations.
  *
  * The two sources should get initialized serially, the first one
- * (whichever it is) will load the  google/fonts:master tree
+ * (whichever it is) will load the  google/fonts:main tree
  * the second one will only see see that it is already loaded (for the
  * sake of simplicity probably even call git fetch, but without any download
  * action following).
@@ -50,7 +50,7 @@ _p._initRepo = function(repoPath) {
 // remoteName = resourcePath.slice(1)
 // remoteName = "google/fonts"
 // remoteUrl = "https://github.com/google/fonts.git"
-// referenceName = "master"
+// referenceName = "main"
 //
 // remoteName = "m4rc1e/fonts"
 // remoteUrl = "https://github.com/m4rc1e/fonts.git"
@@ -83,7 +83,7 @@ _p.__fetchRef = function(remoteName, remoteUrl, referenceName) {
            this._log.info(this.id + ': Started fetching remote "'
                                 + remoteName + ':' + referenceName + '"');
             // this may take a while!
-            // E.g. initially fetching google/fonts:master
+            // E.g. initially fetching google/fonts:main
             // also, it kind of fails silently if there's no referenceName
             // at remote. Thus, later is checked if we can get the actual
             // reference from the repo.
@@ -100,8 +100,8 @@ _p.__fetchRef = function(remoteName, remoteUrl, referenceName) {
             if(err.errno === NodeGit.Error.CODE.ENOTFOUND)
             // message: no reference found for shorthand '{fullReferenceName}'
             // errno: -3
-            // at the moment E.g.: ERROR upstream: FAILED: Fetching remote "upstream/Rakkas:master"
-            // … for shorthand 'upstream/Rakkas/master'
+            // at the moment E.g.: ERROR upstream: FAILED: Fetching remote "upstream/Rakkas:main"
+            // … for shorthand 'upstream/Rakkas/main'
             // And indeed, there's only a `gh-pages` branch (which is the default as well)
                 this._log.error(this.id + ': FAILED: Fetching remote (branch) '
                                 + '"' + remoteName + ':' + referenceName + '" '
@@ -154,7 +154,7 @@ const _FAMILY_WEIGHT_REGEX = /([^/-]+)-(\w+)\.ttf$/;
 _p._familyNameFromFilename = function (filename) {
   /**
    * Ported partially from Python gftools.util.google_fonts.FileFamilyStyleWeight
-   * https://github.com/googlefonts/tools/blob/master/Lib/gftools/util/google_fonts.py#L449
+   * https://github.com/googlefonts/tools/blob/main/Lib/gftools/util/google_fonts.py#L449
    *
    * If style and weight is needed it's worth porting the whole function.
    *
@@ -178,7 +178,7 @@ _p._familyNameFromFilename = function (filename) {
 function familyName(fontname) {
   /**
    * Ported from Python gftools.util.google_fonts.FamilyName
-   * https://github.com/googlefonts/tools/blob/master/Lib/gftools/util/google_fonts.py#L417
+   * https://github.com/googlefonts/tools/blob/main/Lib/gftools/util/google_fonts.py#L417
    *
    * Attempts to build family name from font name.
    * For example, HPSimplifiedSans => HP Simplified Sans.
@@ -464,7 +464,7 @@ return GitBase;
 
 const GitBranch = (function() {
 
-// google/fonts:master -> monitored branch
+// google/fonts:main -> monitored branch
 //            -> checks differences between last check and current
 //              `if families in the branch changed`
 //            -> to check if there was an actual change, we
@@ -473,7 +473,7 @@ const GitBranch = (function() {
 // "old_tree" => tree of last checked commit.
 //               if no old_tree is available, we check
 //               the full collection, i.e. the tree of the current commit.
-// "new_tree" => current google/fonts/master
+// "new_tree" => current google/fonts/main
 function GitBranch(logging, id, repoPath, baseReference, familyWhitelist
                                                         , reportsSetup) {
     GitBase.call(this, logging, id, repoPath, baseReference, familyWhitelist
@@ -631,13 +631,13 @@ return GitBranch;
 
 const GitBranchGithubPRs = (function() {
 
-//     google/fonts:master/pull-requests -> via github api!
+//     google/fonts:main/pull-requests -> via github api!
 //              -> fetches PRs from github for the monitored branch
-//              -> so this is ONLY PRs to master (===baseRefName)
+//              -> so this is ONLY PRs to main (===baseRefName)
 //              -> and also uses only the latest commit that is
-//                           adressed to master.
+//                           adressed to main.
 //             uses one "old_tree" and many "new_trees"
-//             old_tree => current google/fonts/master (baseRefName)
+//             old_tree => current google/fonts/main (baseRefName)
 
 
 function GitBranchGithubPRs(logging, id, repoPath, baseReference
@@ -849,7 +849,7 @@ _p._getOrfetchRef = function(remoteName, referenceName, oid) {
  *     "url": "https://github.com/google/fonts/pull/1385",
  *     "createdAt": "2017-12-08T11:34:02Z",
  *     "updatedAt": "2017-12-08T12:24:06Z",
- *     "baseRefName": "master",
+ *     "baseRefName": "main",
  *     "resourcePath": "/google/fonts/pull/1385",
  *     "title": "nunito: v3.500 added",
  *     "mergeable": "MERGEABLE",
@@ -894,7 +894,7 @@ _p._filterPullRequests = function(prsData) {
             //    url: 'https://github.com/google/fonts/pull/1358',
             //    createdAt: '2017-11-28T16:07:22Z',
             //    updatedAt: '2017-11-28T16:07:22Z',
-            //    baseRefName: 'master',
+            //    baseRefName: 'main',
             //    resourcePath: '/google/fonts/pull/1358',
             //    title: 'Correct spelling of "emoji"',
             //    mergeable: 'MERGEABLE',
@@ -1053,11 +1053,11 @@ if (typeof require != 'undefined' && require.main==module) {
     var baseReference = {
             repoOwner: 'google'
           , repoName: 'fonts'
-          , name: 'master'
+          , name: 'main'
     };
 
     sources.push(new GitBranch(
-            setup.logging, 'master', repoPath, baseReference, familyWhitelist
+            setup.logging, 'main', repoPath, baseReference, familyWhitelist
     ));
     sources.push(new GitBranchGithubPRs(
             setup.logging, 'pulls', repoPath, baseReference

@@ -43,7 +43,7 @@ ENV CXXFLAGS="-D_BSD_SOURCE"
 RUN pip install ninja
 
 
-RUN git clone --depth 1 -b master https://github.com/googlefonts/gftools.git /var/gftools;\
+RUN git clone --depth 1 -b main https://github.com/googlefonts/gftools.git /var/gftools;\
     pip install /var/gftools;
 
 RUN cd /var/javascript \

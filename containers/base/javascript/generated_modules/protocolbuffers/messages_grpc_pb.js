@@ -383,9 +383,9 @@ var ManifestService = exports.ManifestService = {
 // If we need to re-run an entiren Collection, because Font Bakery changed,
 // we still need the latest versions of the collection on disk.
 // so, it would be nice to have some form of atomicity between asking the
-// informing the ManifestMaster and running the tests. Therefore, we could
+// informing the ManifestMain and running the tests. Therefore, we could
 // just put the entire current state into the cache and then let the
-// ManifestMaster decide which ones to keep and which ones to drop.
+// ManifestMain decide which ones to keep and which ones to drop.
 // The Manifest itselt can in the meantime update itself etc.
 // I.e. We create a "Snapshot" of the manifest in the cache, then
 // we can forget about it

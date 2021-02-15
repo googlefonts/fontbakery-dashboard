@@ -29,7 +29,7 @@ def _repeated_mkdir(directory_path):
 
 #################
 # START taken from gftools-qa (and now modified!)
-# https://github.com/googlefonts/gftools/blob/master/bin/gftools-qa.py
+# https://github.com/googlefonts/gftools/blob/main/bin/gftools-qa.py
 #################
 
 def run_plot_glyphs(font_path, out):

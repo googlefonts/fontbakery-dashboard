@@ -12,7 +12,7 @@ const { getSetup } = require('./util/getSetup')
   ;
 
 /**
- * The ManifestMaster receives requests for tests from the Manifests
+ * The ManifestMain receives requests for tests from the Manifests
  * via a queue.
  * It then decides whether to execute the test run or if it can just
  * shortcut the execution, because an identical test already exists.
@@ -45,10 +45,10 @@ const { getSetup } = require('./util/getSetup')
  * else
  *      create the full entry
  */
-function ManifestMaster(logging, setup) {
+function ManifestMain(logging, setup) {
     this._log = logging;
     this._io = new IOOperations(logging, setup.db, setup.amqp);
-    this._manifestMasterJobQueueName = 'fontbakery-manifest-master-jobs';
+    this._manifestMainJobQueueName = 'fontbakery-manifest-main-jobs';
     this._cache = new StorageClient(logging, setup.cache.host, setup.cache.port);
     this._initWorkers = new InitWorkersClient(logging, setup.initWorkers.host, setup.initWorkers.port);
 
@@ -70,11 +70,11 @@ function ManifestMaster(logging, setup) {
     });
 }
 
-var _p = ManifestMaster.prototype;
+var _p = ManifestMain.prototype;
 
 _p._listen = function() {
     return this._io.queueListen(
-        this._manifestMasterJobQueueName, this._consumeQueue.bind(this));
+        this._manifestMainJobQueueName, this._consumeQueue.bind(this));
 };
 
 _p._getCollectionFamilyJob = function(messageContent) {
@@ -152,7 +152,7 @@ _p._createCollectionEntry = function(job, familytests_id) {
 if (typeof require != 'undefined' && require.main==module) {
     var setup = getSetup();
     setup.logging.log('Loglevel', setup.logging.loglevel);
-    new ManifestMaster(setup.logging, {
+    new ManifestMain(setup.logging, {
         // passing these explicitly to document the dependencies
         db: setup.db
       , amqp: setup.amqp

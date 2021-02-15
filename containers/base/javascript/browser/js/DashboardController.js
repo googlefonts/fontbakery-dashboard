@@ -1037,7 +1037,7 @@ define([
         this._collectionOrder = [
               'GoogleFontsAPI/production'
             //, 'GoogleFontsAPI/sandbox'
-            , 'GitHub-GoogleFonts/master'
+            , 'GitHub-GoogleFonts/main'
             , 'GitHub-GoogleFonts/pulls'
             , 'CSVSpreadsheet/upstream'
             , 'fontnames' // TODO: make sure this is always the first column!

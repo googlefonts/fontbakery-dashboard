@@ -1,4 +1,4 @@
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://github.com/googlefonts/fontbakery/blob/master/LICENSE.txt)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-brightgreen.svg)](https://github.com/googlefonts/fontbakery/blob/main/LICENSE.txt)
 
 Font Bakery-Dashboard is a web application to make [Font Bakery](https://github.com/googlefonts/fontbakery) (a command-line font project checker) available easily to everyone.
 

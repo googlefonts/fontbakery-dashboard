@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fontbakery-manifest-master
+  name: fontbakery-manifest-main
 spec:
   replicas: 1
   selector:
     matchLabels:
-      component: fontbakery-manifest-master
+      component: fontbakery-manifest-main
   template:
     metadata:
       labels:
-        component: fontbakery-manifest-master
+        component: fontbakery-manifest-main
         role: manifest
     spec:
       nodeSelector:
         cloud.google.com/gke-nodepool: default-pool
       containers:
-      - name: fontbakery-manifest-master
+      - name: fontbakery-manifest-main
         image: gcr.io/fontbakery-168509/base-javascript:20
         env:
           - name: FONTBAKERY_LOG_LEVEL
@@ -27,4 +27,4 @@ spec:
                 name: external-resources
                 key: rethinkdb-password
         workingDir: /var/javascript
-        command: ["node", "node/ManifestMaster.js"]
+        command: ["node", "node/ManifestMain.js"]

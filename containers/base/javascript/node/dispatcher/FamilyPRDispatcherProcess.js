@@ -222,7 +222,7 @@ function _taskGetFilesPackage(source, familyKey, callbackName, ...continuationAr
     // the service. That can still happen when using the `get` gRPC interface
     // with a too small deadline. Now, this uses the processCommand path.
     // the error with the gRPC timeout was:
-    //    'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:master"'
+    //    'CSVSpreadsheet: INFO upstream: Started fetching remote "google/fonts:main"'
     //  , 'Error: 4 DEADLINE_EXCEEDED: Deadline Exceeded\n');
     //
     // NOW we can respond via amqp execute from getFamilyDataDelayed!
@@ -374,7 +374,7 @@ _p.uiApproveProcess = function() {
 **Family Name** \`${this.process.familyName || '—'}\`<br />
 **Family Key Suffix** \`${this.process.familyKeySuffix || '—'}\`<br />
 **GitHub Repository** \`${this.process.repoNameWithOwner || '—'}\`<br />
-**git branch** \`${this.process.branch || '(default: master)'}\`<br />
+**git branch** \`${this.process.branch || '(default: main)'}\`<br />
 **Where are the TTF-files in your repo (folder and file-prefix)** \`${this.process.fontfilesPrefix || '—'}\`<br />
 **Genre** \`${this.process.genre || '—'}\`
 `
@@ -751,12 +751,12 @@ _p.callbackReceiveFiles = function([requester, sessionID]
         // this are the most important lines here.
         this.process._state.filesStorageKey = filesStorageKey;
         this.process._state.targetDirectory = metadata.targetDirectory;
-        // isUpdate is only telling us if the family is in Github/google/fonts:master
+        // isUpdate is only telling us if the family is in Github/google/fonts:main
         // the family may not be (yet?) in the production API! This is
         // semantically important, as we already expected wrongly availability
         // in the production API at a different position in the code, when
-        // the family was just in master.
-        // TODO: rename this to "isUpdateInMaster" maybe?
+        // the family was just in main.
+        // TODO: rename this to "isUpdateInMain" maybe?
         this.process._state.isUpdate = metadata.isUpdate;
 
         familyDataSummaryMarkdown.push(
@@ -1106,8 +1106,8 @@ const _diffComparisonSources = new Map([
    ['upstream', 'Registered upstream of this family']
  , ['production', 'Google Fonts Production API']
  //, ['sandbox', 'Google Fonts Sandbox API']
-   // [pulls, 'latest Pull Request to master'// (just because we can?)
- , ['master', 'GitHub google/fonts master']
+   // [pulls, 'latest Pull Request to main'// (just because we can?)
+ , ['main', 'GitHub google/fonts main']
    // similar to the custom sandboxed sources feature once it exists,
    // so we can e.g.compare to just another branch or a random forked
    // repo or even any repo. Don't know how this would work!
@@ -1162,9 +1162,9 @@ _p.uiChooseAction = function() {
               , type: 'choice'
               , label: 'Select the version of the family to compare against.'
               , options: this.process.mode === PROCESS_MODE_PRODUCTION
-                        ? _getDiffComparisonSourcesOptions('production', 'master')
+                        ? _getDiffComparisonSourcesOptions('production', 'main')
                         // is sandbox mode
-                        : _getDiffComparisonSourcesOptions('production', 'master', 'upstream')
+                        : _getDiffComparisonSourcesOptions('production', 'main', 'upstream')
             //, default: 'production' // 0 => the first item is the default
             }
           , {   name: 'accept'
@@ -1247,8 +1247,8 @@ _p._activate = function() {
     //      the possible choices in here will differ, but even for production
     //      it's hard to make a good guess: the gf production API may not
     //      be up to date and it may be more interesting to create a diff
-    //      against github/google/fonts master, which has the latest update.
-    //      Or the font may not yet be in github/google/fonts master (true
+    //      against github/google/fonts main, which has the latest update.
+    //      Or the font may not yet be in github/google/fonts main (true
     //      for some) at which point diffing against the production api
     //      must be done. Only if the font is truly a new onboarding,
     //      we can skip this task, but for that to determine, neither
@@ -1384,9 +1384,9 @@ _p.uiChooseAction = function() {
               , type: 'choice'
               , label: 'Select the version of the family to compare against.'
               , options: this.process.mode === PROCESS_MODE_PRODUCTION
-                        ? _getDiffComparisonSourcesOptions('production', 'master', null)
+                        ? _getDiffComparisonSourcesOptions('production', 'main', null)
                         // is sandbox mode
-                        : _getDiffComparisonSourcesOptions('production', 'master', 'upstream', null)
+                        : _getDiffComparisonSourcesOptions('production', 'main', 'upstream', null)
 
             //, default: 'production' // 0 => the first item is the default
             }
@@ -1697,7 +1697,7 @@ _p.uiConfirmDispatch = function() {
 };
 
 // make the PR:
-//   * fetch current upstream master
+//   * fetch current upstream main
 //   * checkout --branch {branchName}
 //   * get {package} for {cacheKey}
 //   * replace {gfontsDirectory} with the contents of {package}
@@ -2208,8 +2208,8 @@ function _getInitNewUI() {
             }
           , {   name: 'branch'
               , type: 'line' // input type:text
-              , label: 'git branch name (default: master)'
-              , placeholder: 'master'
+              , label: 'git branch name (default: main)'
+              , placeholder: 'main'
             }
           , {   name: 'fontfilesPrefix'
               , type: 'line' // input type:text
@@ -2408,7 +2408,7 @@ function callbackPreInit(resources, requester, values) {
         FIXME('We should check properly if this is a existing, public(!) repo.');
         repoNameWithOwner = _extractRepoNameWithOwner(values.ghNameWithOwner.trim());
         branch = values.branch.trim() || null;
-        if(branch === 'master')
+        if(branch === 'main')
             branch = null;
         // values.fontfilesPrefix => just use this, it's impossible to
         // evaluate without actually trying to get the files
@@ -2562,7 +2562,7 @@ stateManagerMixin(_p, {
   , note: _genericStateItem
   , filesStorageKey: _genericStateItem
   , targetDirectory: _genericStateItem
-  // if the familydir (targetDirectory) was found in google/fonts:master
+  // if the familydir (targetDirectory) was found in google/fonts:main
   , isUpdate: _genericStateItem
   , mode: {
         init: ()=>null
